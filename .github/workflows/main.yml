@@ -1,0 +1,58 @@
+name: CI
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  analyze:
+    strategy:
+      matrix:
+        packages: [sqlite3]
+    
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: DanTup/gh-actions/setup-dart@master
+      with:
+        channel: dev
+    
+    - name: Format
+      run: dart format --set-exit-if-changed .
+      working-directory: sqlite3/
+    
+    - name: Analyze
+      run: dart analyze
+      working-directory: sqlite3/
+    
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        dart: [dev]
+    
+    runs-on: ${{ matrix.os }}
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    - uses: actions/checkout@v2
+    - uses: DanTup/gh-actions/setup-dart@master
+      with:
+        channel: ${{ matrix.os }}
+    
+    - name: install sqlite (Linux)
+      if: runner.os == 'Linux'
+      run: sudo apt-get install -y libsqlite3-dev
+      
+    - name: install sqlite (Windows)
+      if: runner.os == 'Windows'
+      run: choco install sqlite
+    
+    - name: Test
+      run: dart test
+      working-directory: sqlite3/
