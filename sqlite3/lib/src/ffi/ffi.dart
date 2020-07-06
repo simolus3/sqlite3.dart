@@ -119,6 +119,8 @@ class ValueList with ListMixin<Object> implements List<Object> {
   final Pointer<Pointer<sqlite3_value>> argArray;
   final Bindings bindings;
 
+  bool isValid = true;
+
   final List<Object> _cachedCopies;
 
   ValueList(this.length, this.argArray, this.bindings)
@@ -131,6 +133,13 @@ class ValueList with ListMixin<Object> implements List<Object> {
 
   @override
   Object operator [](int index) {
+    assert(
+      isValid,
+      'Invalid arguments. This commonly happens when an application-defined '
+      'sql function leaks its arguments after it finishes running. '
+      'Please use List.of(arguments) in the function to create a copy of '
+      'the argument instead.',
+    );
     RangeError.checkValidIndex(index, this, 'index', length);
 
     final cached = _cachedCopies[index];

@@ -88,6 +88,7 @@ void _scalarFunctionImpl(
   } catch (e) {
     context.setError(bindingsForStore, Error.safeToString(e));
   }
+  arguments.isValid = false;
 }
 
 Pointer<Void> _xFunc = Pointer.fromFunction<
@@ -134,6 +135,7 @@ void _xStepImpl(
 
   final arguments = ValueList(argCount, args, bindingsForStore);
   function.step(arguments, dartContext);
+  arguments.isValid = false;
 }
 
 Pointer<Void> _xStep = Pointer.fromFunction<

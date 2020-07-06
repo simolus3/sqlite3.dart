@@ -133,13 +133,15 @@ void main() {
 
   group('user-defined functions', () {
     test('can read arguments of user defined functions', () {
-      List<dynamic> readArguments;
+      List<Object> readArguments;
 
       database.createFunction(
         functionName: 'test_fun',
         argumentCount: const AllowedArgumentCount(6),
         function: (args) {
-          readArguments = args;
+          // copy since the args become invalid as soon as this function
+          // finishes.
+          readArguments = List.of(args);
         },
       );
 
