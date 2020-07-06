@@ -40,14 +40,14 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
         dart: [dev]
     
-    runs-on: ${{ matrix.dart }}
+    runs-on: ${{ matrix.os }}
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     - uses: actions/checkout@v2
     - uses: DanTup/gh-actions/setup-dart@master
       with:
-        channel: ${{ matrix.os }}
+        channel: ${{ matrix.dart }}
     
     - name: install sqlite (Linux)
       if: runner.os == 'Linux'
