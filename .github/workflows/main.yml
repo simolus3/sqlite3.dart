@@ -13,7 +13,7 @@ jobs:
   analyze:
     strategy:
       matrix:
-        packages: [sqlite3]
+        package: [sqlite3]
     
     runs-on: ubuntu-latest
     steps:
@@ -21,14 +21,18 @@ jobs:
     - uses: DanTup/gh-actions/setup-dart@master
       with:
         channel: dev
-    
+
+    - name: Pub get
+      run: dart pub get
+      working-directory: ${{ matrix.package }}
+
     - name: Format
       run: dart format --set-exit-if-changed .
-      working-directory: sqlite3/
+      working-directory: ${{ matrix.package }}
     
     - name: Analyze
       run: dart analyze
-      working-directory: sqlite3/
+      working-directory: ${{ matrix.package }}
     
   test:
     strategy:
@@ -36,7 +40,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
         dart: [dev]
     
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.dart }}
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -54,5 +58,7 @@ jobs:
       run: choco install sqlite
     
     - name: Test
-      run: dart test
+      run: |
+        pub get
+        dart test
       working-directory: sqlite3/
