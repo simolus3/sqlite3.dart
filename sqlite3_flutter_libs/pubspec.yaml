@@ -1,0 +1,17 @@
+name: sqlite3_flutter_libs
+description: Flutter plugin to include native sqlite3 libraries with your app
+version: 0.0.1
+homepage: https://github.com/simolus3/sqlite3.dart/
+
+environment:
+  sdk: ">=2.7.0 <3.0.0"
+  flutter: ">=1.10.1"
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: eu.simonbinder.sqlite3_flutter_libs
+        pluginClass: Sqlite3FlutterLibsPlugin
+      ios:
+        pluginClass: Sqlite3FlutterLibsPlugin

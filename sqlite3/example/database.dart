@@ -1,11 +1,8 @@
 import 'dart:io';
 
-import 'package:sqlite3/default_open.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 void main() {
-  // Use defaultOpen to load sqlite3 on Desktop systems with sqlite installed
-  final sqlite3 = defaultOpen();
   print('Using sqlite3 ${sqlite3.version}');
 
   // Create a new in-memory database.

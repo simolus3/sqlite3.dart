@@ -5,11 +5,7 @@ import 'package:path/path.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
 
-import 'open.dart';
-
 void main() {
-  final sqlite3 = open();
-
   Database database;
 
   setUp(() => database = sqlite3.openInMemory());

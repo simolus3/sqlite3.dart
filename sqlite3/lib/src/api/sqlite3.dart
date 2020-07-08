@@ -1,7 +1,10 @@
-import 'package:sqlite3/default_open.dart';
+import 'package:sqlite3/open.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:sqlite3/src/ffi/ffi.dart';
 import 'package:sqlite3/src/impl/implementation.dart';
+
+/// Provides access to `sqlite3` functions, such as opening new databases.
+Sqlite3 sqlite3 = Sqlite3._(open.openSqlite());
 
 /// Provides access to `sqlite3` functions, such as opening new databases.
 class Sqlite3 {
@@ -9,14 +12,9 @@ class Sqlite3 {
 
   /// Loads `sqlite3` bindings by looking up functions in the [library].
   ///
-  /// On an OS where `sqlite3` comes preinstalled, [defaultOpen] can be used to
-  /// obtain a suitable [library].
-  /// Flutter users will want to use a plugin package to ensure that they're
-  /// using the latest `sqlite3` version with their app.
-  ///
   /// If application-defined functions are used, there shouldn't be multiple
   /// [Sqlite3] objects with a different underlying [library].
-  Sqlite3(DynamicLibrary library) : _bindings = Bindings(library);
+  Sqlite3._(DynamicLibrary library) : _bindings = Bindings(library);
 
   /// The version of the sqlite3 library in used.
   Version get version {

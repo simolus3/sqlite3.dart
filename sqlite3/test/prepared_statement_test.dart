@@ -3,11 +3,7 @@ import 'dart:typed_data';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
 
-import 'open.dart';
-
 void main() {
-  final sqlite3 = open();
-
   test('prepared statements can be used multiple times', () {
     final opened = sqlite3.openInMemory();
     opened.execute('CREATE TABLE tbl (a TEXT);');

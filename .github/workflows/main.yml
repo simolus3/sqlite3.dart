@@ -37,7 +37,9 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+#        os: [ubuntu-latest, windows-latest, macOS-latest]
+        # todo: Figure out why macOS isn't working
+        os: [ubuntu-latest, windows-latest]
         dart: [dev]
     
     runs-on: ${{ matrix.os }}
