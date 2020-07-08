@@ -86,7 +86,7 @@ extension ContextUtils on Pointer<sqlite3_context> {
     } else if (result is double) {
       bindings.sqlite3_result_double(this, result);
     } else if (result is bool) {
-      bindings.sqlite3_result_int64(this, result ? 0 : 1);
+      bindings.sqlite3_result_int64(this, result ? 1 : 0);
     } else if (result is String) {
       final bytes = utf8.encode(result);
       final ptr = allocateBytes(bytes);
