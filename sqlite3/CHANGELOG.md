@@ -1,3 +1,7 @@
+## 0.1.3
+
+- Lower minimum version requirement on `collection` to `^1.14.0`
+
 ## 0.1.2
 
 - Enable extended result codes
