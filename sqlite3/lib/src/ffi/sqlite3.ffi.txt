@@ -7,6 +7,8 @@ type sqlite3_stmt = opaque struct;
 int32 sqlite3_open_v2(char* filename, sqlite3 **ppDb, int32 flags, char* zVfs);
 int32 sqlite3_close_v2(sqlite3 *db);
 
+int32 sqlite3_extended_result_codes(sqlite3* db, int32 onoff);
+
 # Error handling
 int32 sqlite3_extended_errcode(sqlite3 *db);
 char* sqlite3_errmsg(sqlite3* db);

@@ -4,14 +4,16 @@ import 'package:collection/collection.dart';
 
 /// Stores the result of a select statement.
 class ResultSet extends Iterable<Row> {
+  /// The column names of this query, as returned by `sqlite3`.
   final List<String> columnNames;
   // a result set can have multiple columns with the same name, but that's rare
   // and users usually use a name as index. So we cache that for O(1) lookups
   Map<String, int> _calculatedIndexes;
 
-  final List<List<Object>> _rows;
+  /// The raw row data.
+  final List<List<Object>> rows;
 
-  ResultSet(this.columnNames, this._rows) {
+  ResultSet(this.columnNames, this.rows) {
     _calculatedIndexes = {
       for (var column in columnNames) column: columnNames.lastIndexOf(column),
     };
@@ -31,7 +33,7 @@ class Row extends MapMixin<String, dynamic>
 
   /// Returns the value stored in the [i]-th column in this row (zero-indexed).
   dynamic columnAt(int i) {
-    return _result._rows[_rowIndex][i];
+    return _result.rows[_rowIndex][i];
   }
 
   @override
@@ -60,6 +62,6 @@ class _ResultIterator extends Iterator<Row> {
   @override
   bool moveNext() {
     index++;
-    return index < result._rows.length;
+    return index < result.rows.length;
   }
 }

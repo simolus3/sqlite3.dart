@@ -39,6 +39,7 @@ class DatabaseImpl implements Database {
       throw createExceptionRaw(bindings, dbPtr, result);
     }
 
+    bindings.sqlite3_extended_result_codes(dbPtr, 1);
     return DatabaseImpl(bindings, dbPtr);
   }
 

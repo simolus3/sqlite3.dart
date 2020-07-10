@@ -19,6 +19,10 @@ typedef sqlite3_open_v2_dart = int Function(Pointer<char> filename,
     Pointer<Pointer<sqlite3>> ppDb, int flags, Pointer<char> zVfs);
 typedef _sqlite3_close_v2_native = Int32 Function(Pointer<sqlite3>);
 typedef sqlite3_close_v2_dart = int Function(Pointer<sqlite3> db);
+typedef _sqlite3_extended_result_codes_native = Int32 Function(
+    Pointer<sqlite3>, Int32);
+typedef sqlite3_extended_result_codes_dart = int Function(
+    Pointer<sqlite3> db, int onoff);
 typedef _sqlite3_extended_errcode_native = Int32 Function(Pointer<sqlite3>);
 typedef sqlite3_extended_errcode_dart = int Function(Pointer<sqlite3> db);
 typedef _sqlite3_errmsg_native = Pointer<char> Function(Pointer<sqlite3>);
@@ -31,13 +35,13 @@ typedef _sqlite3_libversion_native = Pointer<char> Function();
 typedef sqlite3_libversion_dart = Pointer<char> Function();
 typedef _sqlite3_sourceid_native = Pointer<char> Function();
 typedef sqlite3_sourceid_dart = Pointer<char> Function();
-typedef _sqlite3_libversion_number_native = IntPtr Function();
+typedef _sqlite3_libversion_number_native = Int32 Function();
 typedef sqlite3_libversion_number_dart = int Function();
 typedef _sqlite3_last_insert_rowid_native = Int64 Function(Pointer<sqlite3>);
 typedef sqlite3_last_insert_rowid_dart = int Function(Pointer<sqlite3> db);
 typedef _sqlite3_changes_native = Int32 Function(Pointer<sqlite3>);
 typedef sqlite3_changes_dart = int Function(Pointer<sqlite3> db);
-typedef _sqlite3_exec_native = IntPtr Function(Pointer<sqlite3>, Pointer<char>,
+typedef _sqlite3_exec_native = Int32 Function(Pointer<sqlite3>, Pointer<char>,
     Pointer<Void>, Pointer<Void>, Pointer<Pointer<char>>);
 typedef sqlite3_exec_dart = int Function(
     Pointer<sqlite3> db,
@@ -72,26 +76,26 @@ typedef _sqlite3_bind_parameter_count_native = Int32 Function(
 typedef sqlite3_bind_parameter_count_dart = int Function(
     Pointer<sqlite3_stmt> pStmt);
 typedef _sqlite3_column_name_native = Pointer<char> Function(
-    Pointer<sqlite3_stmt>, IntPtr);
+    Pointer<sqlite3_stmt>, Int32);
 typedef sqlite3_column_name_dart = Pointer<char> Function(
     Pointer<sqlite3_stmt> pStmt, int N);
-typedef _sqlite3_bind_blob64_native = IntPtr Function(
+typedef _sqlite3_bind_blob64_native = Int32 Function(
     Pointer<sqlite3_stmt>, Int32, Pointer<Void>, Uint64, Pointer<Void>);
 typedef sqlite3_bind_blob64_dart = int Function(Pointer<sqlite3_stmt> pStmt,
     int index, Pointer<Void> data, int length, Pointer<Void> destructor);
-typedef _sqlite3_bind_double_native = IntPtr Function(
+typedef _sqlite3_bind_double_native = Int32 Function(
     Pointer<sqlite3_stmt>, Int32, Double);
 typedef sqlite3_bind_double_dart = int Function(
     Pointer<sqlite3_stmt> pStmt, int index, double data);
-typedef _sqlite3_bind_int64_native = IntPtr Function(
+typedef _sqlite3_bind_int64_native = Int32 Function(
     Pointer<sqlite3_stmt>, Int32, Int64);
 typedef sqlite3_bind_int64_dart = int Function(
     Pointer<sqlite3_stmt> pStmt, int index, int data);
-typedef _sqlite3_bind_null_native = IntPtr Function(
+typedef _sqlite3_bind_null_native = Int32 Function(
     Pointer<sqlite3_stmt>, Int32);
 typedef sqlite3_bind_null_dart = int Function(
     Pointer<sqlite3_stmt> pStmt, int index);
-typedef _sqlite3_bind_text_native = IntPtr Function(
+typedef _sqlite3_bind_text_native = Int32 Function(
     Pointer<sqlite3_stmt>, Int32, Pointer<char>, Int32, Pointer<Void>);
 typedef sqlite3_bind_text_dart = int Function(Pointer<sqlite3_stmt> pStmt,
     int index, Pointer<char> data, int length, Pointer<Void> destructor);
@@ -111,11 +115,11 @@ typedef _sqlite3_column_text_native = Pointer<char> Function(
     Pointer<sqlite3_stmt>, Int32);
 typedef sqlite3_column_text_dart = Pointer<char> Function(
     Pointer<sqlite3_stmt> pStmt, int iCol);
-typedef _sqlite3_column_bytes_native = IntPtr Function(
+typedef _sqlite3_column_bytes_native = Int32 Function(
     Pointer<sqlite3_stmt>, Int32);
 typedef sqlite3_column_bytes_dart = int Function(
     Pointer<sqlite3_stmt> pStmt, int iCol);
-typedef _sqlite3_column_type_native = IntPtr Function(
+typedef _sqlite3_column_type_native = Int32 Function(
     Pointer<sqlite3_stmt>, Int32);
 typedef sqlite3_column_type_dart = int Function(
     Pointer<sqlite3_stmt> pStmt, int iCol);
@@ -126,7 +130,7 @@ typedef sqlite3_value_blob_dart = Pointer<Void> Function(
 typedef _sqlite3_value_double_native = Double Function(Pointer<sqlite3_value>);
 typedef sqlite3_value_double_dart = double Function(
     Pointer<sqlite3_value> value);
-typedef _sqlite3_value_type_native = IntPtr Function(Pointer<sqlite3_value>);
+typedef _sqlite3_value_type_native = Int32 Function(Pointer<sqlite3_value>);
 typedef sqlite3_value_type_dart = int Function(Pointer<sqlite3_value> value);
 typedef _sqlite3_value_int64_native = Int64 Function(Pointer<sqlite3_value>);
 typedef sqlite3_value_int64_dart = int Function(Pointer<sqlite3_value> value);
@@ -134,13 +138,13 @@ typedef _sqlite3_value_text_native = Pointer<char> Function(
     Pointer<sqlite3_value>);
 typedef sqlite3_value_text_dart = Pointer<char> Function(
     Pointer<sqlite3_value> value);
-typedef _sqlite3_value_bytes_native = IntPtr Function(Pointer<sqlite3_value>);
+typedef _sqlite3_value_bytes_native = Int32 Function(Pointer<sqlite3_value>);
 typedef sqlite3_value_bytes_dart = int Function(Pointer<sqlite3_value> value);
 typedef _sqlite3_create_function_v2_native = Int32 Function(
     Pointer<sqlite3>,
     Pointer<char>,
-    IntPtr,
-    IntPtr,
+    Int32,
+    Int32,
     Pointer<Void>,
     Pointer<Void>,
     Pointer<Void>,
@@ -183,13 +187,14 @@ typedef sqlite3_result_int64_dart = void Function(
 typedef _sqlite3_result_null_native = Void Function(Pointer<sqlite3_context>);
 typedef sqlite3_result_null_dart = void Function(Pointer<sqlite3_context> ctx);
 typedef _sqlite3_result_text_native = Void Function(
-    Pointer<sqlite3_context>, Pointer<char>, IntPtr, Pointer<Void>);
+    Pointer<sqlite3_context>, Pointer<char>, Int32, Pointer<Void>);
 typedef sqlite3_result_text_dart = void Function(Pointer<sqlite3_context> ctx,
     Pointer<char> data, int length, Pointer<Void> destructor);
 
 class Bindings {
   final sqlite3_open_v2_dart sqlite3_open_v2;
   final sqlite3_close_v2_dart sqlite3_close_v2;
+  final sqlite3_extended_result_codes_dart sqlite3_extended_result_codes;
   final sqlite3_extended_errcode_dart sqlite3_extended_errcode;
   final sqlite3_errmsg_dart sqlite3_errmsg;
   final sqlite3_errstr_dart sqlite3_errstr;
@@ -238,6 +243,10 @@ class Bindings {
             sqlite3_open_v2_dart>('sqlite3_open_v2'),
         sqlite3_close_v2 = library.lookupFunction<_sqlite3_close_v2_native,
             sqlite3_close_v2_dart>('sqlite3_close_v2'),
+        sqlite3_extended_result_codes = library.lookupFunction<
+                _sqlite3_extended_result_codes_native,
+                sqlite3_extended_result_codes_dart>(
+            'sqlite3_extended_result_codes'),
         sqlite3_extended_errcode = library.lookupFunction<
             _sqlite3_extended_errcode_native,
             sqlite3_extended_errcode_dart>('sqlite3_extended_errcode'),
