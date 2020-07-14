@@ -1,0 +1,12 @@
+language: dart
+sudo: required
+dart:
+  - stable
+  - beta
+  - dev
+before_script:
+  - sudo apt-get -y install libsqlite3-dev
+script:
+  - cd sqlite3
+  - pub get
+  - pub run test
