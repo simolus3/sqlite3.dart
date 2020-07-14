@@ -205,6 +205,15 @@ typedef _sqlite3_result_text_native = Void Function(
 typedef sqlite3_result_text_dart = void Function(Pointer<sqlite3_context> ctx,
     Pointer<char> data, int length, Pointer<Void> destructor);
 
+// Handle old version of sqlite3
+sqlite3_prepare_v3_dart _lookupSqlite3PrepareV3OrNull(DynamicLibrary library) {
+  try {
+    return library.lookupFunction<_sqlite3_prepare_v3_native,
+        sqlite3_prepare_v3_dart>('sqlite3_prepare_v3');
+  } catch (_) {}
+  return null;
+}
+
 class Bindings {
   final sqlite3_open_v2_dart sqlite3_open_v2;
   final sqlite3_close_v2_dart sqlite3_close_v2;
@@ -289,8 +298,7 @@ class Bindings {
         sqlite3_exec =
             library.lookupFunction<_sqlite3_exec_native, sqlite3_exec_dart>(
                 'sqlite3_exec'),
-        sqlite3_prepare_v3 = library.lookupFunction<_sqlite3_prepare_v3_native,
-            sqlite3_prepare_v3_dart>('sqlite3_prepare_v3'),
+        sqlite3_prepare_v3 = _lookupSqlite3PrepareV3OrNull(library),
         sqlite3_prepare_v2 = library.lookupFunction<_sqlite3_prepare_v2_native,
             sqlite3_prepare_v2_dart>('sqlite3_prepare_v2'),
         sqlite3_finalize = library.lookupFunction<_sqlite3_finalize_native,

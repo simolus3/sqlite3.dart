@@ -121,7 +121,7 @@ class DatabaseImpl implements Database {
     }
 
     int resultCode;
-    try {
+    if (_bindings.sqlite3_prepare_v3 != null) {
       resultCode = _bindings.sqlite3_prepare_v3(
         _handle,
         sqlPtr.cast(),
@@ -130,7 +130,7 @@ class DatabaseImpl implements Database {
         stmtOut,
         nullPtr(),
       );
-    } catch (_) {
+    } else {
       // Handle old version of sqlite (needed on Ubuntu 16.04)
       resultCode = _bindings.sqlite3_prepare_v2(
         _handle,
