@@ -120,14 +120,40 @@ class DatabaseImpl implements Database {
       prepFlags |= SQLITE_PREPARE_NO_VTAB;
     }
 
-    final resultCode = _bindings.sqlite3_prepare_v3(
-      _handle,
-      sqlPtr.cast(),
-      bytes.length,
-      prepFlags,
-      stmtOut,
-      nullPtr(),
-    );
+    int resultCode;
+    // Use prepare_v3 if support, fall-back to prepare_v2 otherwise
+    if (_bindings.supportsOpenV3) {
+      final function = _bindings.appropriateOpenFunction
+          .cast<NativeFunction<sqlite3_prepare_v3_native>>()
+          .asFunction<sqlite3_prepare_v3_dart>();
+
+      resultCode = function(
+        _handle,
+        sqlPtr.cast(),
+        bytes.length,
+        prepFlags,
+        stmtOut,
+        nullPtr(),
+      );
+    } else {
+      assert(
+        prepFlags == 0,
+        'Used custom preparation flags, but the loaded sqlite library does not '
+        'support prepare_v3',
+      );
+
+      final function = _bindings.appropriateOpenFunction
+          .cast<NativeFunction<sqlite3_prepare_v2_native>>()
+          .asFunction<sqlite3_prepare_v2_dart>();
+
+      resultCode = function(
+        _handle,
+        sqlPtr.cast(),
+        bytes.length,
+        stmtOut,
+        nullPtr(),
+      );
+    }
 
     final stmtPtr = stmtOut.value;
     stmtOut.free();

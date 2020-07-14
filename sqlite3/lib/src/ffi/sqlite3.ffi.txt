@@ -30,7 +30,6 @@ int sqlite3_exec(sqlite3 *db, char *sql, void *callback, void *argToCb, char **e
 
 # Statements
 
-int32 sqlite3_prepare_v3(sqlite3 *db, void *zSql, int32 nByte, uint32 prepFlags, sqlite3_stmt **ppStmt, char **pzTail);
 int32 sqlite3_finalize(sqlite3_stmt *pStmt);
 int32 sqlite3_step(sqlite3_stmt *pStmt);
 int32 sqlite3_reset(sqlite3_stmt *pStmt);

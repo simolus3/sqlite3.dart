@@ -49,20 +49,6 @@ typedef sqlite3_exec_dart = int Function(
     Pointer<Void> callback,
     Pointer<Void> argToCb,
     Pointer<Pointer<char>> errorOut);
-typedef _sqlite3_prepare_v3_native = Int32 Function(
-    Pointer<sqlite3>,
-    Pointer<Void>,
-    Int32,
-    Uint32,
-    Pointer<Pointer<sqlite3_stmt>>,
-    Pointer<Pointer<char>>);
-typedef sqlite3_prepare_v3_dart = int Function(
-    Pointer<sqlite3> db,
-    Pointer<Void> zSql,
-    int nByte,
-    int prepFlags,
-    Pointer<Pointer<sqlite3_stmt>> ppStmt,
-    Pointer<Pointer<char>> pzTail);
 typedef _sqlite3_finalize_native = Int32 Function(Pointer<sqlite3_stmt>);
 typedef sqlite3_finalize_dart = int Function(Pointer<sqlite3_stmt> pStmt);
 typedef _sqlite3_step_native = Int32 Function(Pointer<sqlite3_stmt>);
@@ -192,6 +178,7 @@ typedef sqlite3_result_text_dart = void Function(Pointer<sqlite3_context> ctx,
     Pointer<char> data, int length, Pointer<Void> destructor);
 
 class Bindings {
+  final DynamicLibrary library;
   final sqlite3_open_v2_dart sqlite3_open_v2;
   final sqlite3_close_v2_dart sqlite3_close_v2;
   final sqlite3_extended_result_codes_dart sqlite3_extended_result_codes;
@@ -205,7 +192,6 @@ class Bindings {
   final sqlite3_last_insert_rowid_dart sqlite3_last_insert_rowid;
   final sqlite3_changes_dart sqlite3_changes;
   final sqlite3_exec_dart sqlite3_exec;
-  final sqlite3_prepare_v3_dart sqlite3_prepare_v3;
   final sqlite3_finalize_dart sqlite3_finalize;
   final sqlite3_step_dart sqlite3_step;
   final sqlite3_reset_dart sqlite3_reset;
@@ -238,7 +224,7 @@ class Bindings {
   final sqlite3_result_int64_dart sqlite3_result_int64;
   final sqlite3_result_null_dart sqlite3_result_null;
   final sqlite3_result_text_dart sqlite3_result_text;
-  Bindings(DynamicLibrary library)
+  Bindings(this.library)
       : sqlite3_open_v2 = library.lookupFunction<_sqlite3_open_v2_native,
             sqlite3_open_v2_dart>('sqlite3_open_v2'),
         sqlite3_close_v2 = library.lookupFunction<_sqlite3_close_v2_native,
@@ -274,8 +260,6 @@ class Bindings {
         sqlite3_exec =
             library.lookupFunction<_sqlite3_exec_native, sqlite3_exec_dart>(
                 'sqlite3_exec'),
-        sqlite3_prepare_v3 = library.lookupFunction<_sqlite3_prepare_v3_native,
-            sqlite3_prepare_v3_dart>('sqlite3_prepare_v3'),
         sqlite3_finalize = library.lookupFunction<_sqlite3_finalize_native,
             sqlite3_finalize_dart>('sqlite3_finalize'),
         sqlite3_step =
