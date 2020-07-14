@@ -13,6 +13,8 @@ class sqlite3_value extends Struct {}
 
 class sqlite3_context extends Struct {}
 
+// ignore_for_file: avoid_private_typedef_functions
+
 typedef _sqlite3_open_v2_native = Int32 Function(
     Pointer<char>, Pointer<Pointer<sqlite3>>, Int32, Pointer<char>);
 typedef sqlite3_open_v2_dart = int Function(Pointer<char> filename,
@@ -61,6 +63,18 @@ typedef sqlite3_prepare_v3_dart = int Function(
     Pointer<Void> zSql,
     int nByte,
     int prepFlags,
+    Pointer<Pointer<sqlite3_stmt>> ppStmt,
+    Pointer<Pointer<char>> pzTail);
+typedef _sqlite3_prepare_v2_native = Int32 Function(
+    Pointer<sqlite3>,
+    Pointer<Void>,
+    Int32,
+    Pointer<Pointer<sqlite3_stmt>>,
+    Pointer<Pointer<char>>);
+typedef sqlite3_prepare_v2_dart = int Function(
+    Pointer<sqlite3> db,
+    Pointer<Void> zSql,
+    int nByte,
     Pointer<Pointer<sqlite3_stmt>> ppStmt,
     Pointer<Pointer<char>> pzTail);
 typedef _sqlite3_finalize_native = Int32 Function(Pointer<sqlite3_stmt>);
@@ -206,6 +220,7 @@ class Bindings {
   final sqlite3_changes_dart sqlite3_changes;
   final sqlite3_exec_dart sqlite3_exec;
   final sqlite3_prepare_v3_dart sqlite3_prepare_v3;
+  final sqlite3_prepare_v2_dart sqlite3_prepare_v2;
   final sqlite3_finalize_dart sqlite3_finalize;
   final sqlite3_step_dart sqlite3_step;
   final sqlite3_reset_dart sqlite3_reset;
@@ -276,6 +291,8 @@ class Bindings {
                 'sqlite3_exec'),
         sqlite3_prepare_v3 = library.lookupFunction<_sqlite3_prepare_v3_native,
             sqlite3_prepare_v3_dart>('sqlite3_prepare_v3'),
+        sqlite3_prepare_v2 = library.lookupFunction<_sqlite3_prepare_v2_native,
+            sqlite3_prepare_v2_dart>('sqlite3_prepare_v2'),
         sqlite3_finalize = library.lookupFunction<_sqlite3_finalize_native,
             sqlite3_finalize_dart>('sqlite3_finalize'),
         sqlite3_step =

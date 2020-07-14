@@ -120,14 +120,26 @@ class DatabaseImpl implements Database {
       prepFlags |= SQLITE_PREPARE_NO_VTAB;
     }
 
-    final resultCode = _bindings.sqlite3_prepare_v3(
-      _handle,
-      sqlPtr.cast(),
-      bytes.length,
-      prepFlags,
-      stmtOut,
-      nullPtr(),
-    );
+    int resultCode;
+    try {
+      resultCode = _bindings.sqlite3_prepare_v3(
+        _handle,
+        sqlPtr.cast(),
+        bytes.length,
+        prepFlags,
+        stmtOut,
+        nullPtr(),
+      );
+    } catch (_) {
+      // Handle old version of sqlite (needed on Ubuntu 16.04)
+      resultCode = _bindings.sqlite3_prepare_v2(
+        _handle,
+        sqlPtr.cast(),
+        bytes.length,
+        stmtOut,
+        nullPtr(),
+      );
+    }
 
     final stmtPtr = stmtOut.value;
     stmtOut.free();
