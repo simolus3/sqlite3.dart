@@ -29,7 +29,17 @@ void main() {
 
   // You can run select statements with PreparedStatement.select, or directly
   // on the database:
-  print(db.select('SELECT * FROM artists WHERE name LIKE ?', ['The %']));
+  final ResultSet resultSet =
+      db.select('SELECT * FROM artists WHERE name LIKE ?', ['The %']);
+
+  // You can iterate on the result set multiple ways to retrieve Row objects
+  // one by one.
+  resultSet.forEach((element) {
+    print(element);
+  });
+  for (final Row row in resultSet) {
+    print('Artist[id: ${row['id']}, name: ${row['name']}]');
+  }
 
   // Register a custom function we can invoke from sql:
   db.createFunction(
