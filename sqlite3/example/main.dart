@@ -32,7 +32,7 @@ void main() {
   final ResultSet resultSet =
       db.select('SELECT * FROM artists WHERE name LIKE ?', ['The %']);
 
-  // You can iterate on the result set multiple ways to retrieve Row objects
+  // You can iterate on the result set in multiple ways to retrieve Row objects
   // one by one.
   resultSet.forEach((element) {
     print(element);
