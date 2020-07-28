@@ -85,35 +85,42 @@ void main() {
     db.dispose();
   });
 
-  test('throws an exception when iterating over result rows', () {
-    final db = sqlite3.openInMemory()
-      ..createFunction(
-        functionName: 'raise_if_two',
-        function: (args) {
-          if (args.first == 2) {
-            // ignore: only_throw_errors
-            throw 'parameter was two';
-          } else {
-            return null;
-          }
-        },
+  test(
+    'throws an exception when iterating over result rows',
+    () {
+      final db = sqlite3.openInMemory()
+        ..createFunction(
+          functionName: 'raise_if_two',
+          function: (args) {
+            if (args.first == 2) {
+              // ignore: only_throw_errors
+              throw 'parameter was two';
+            } else {
+              return null;
+            }
+          },
+        );
+
+      db.execute(
+          'CREATE TABLE tbl (a INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT)');
+      // insert with a = 1..3
+      for (var i = 0; i < 3; i++) {
+        db.execute('INSERT INTO tbl DEFAULT VALUES');
+      }
+
+      final statement =
+          db.prepare('SELECT raise_if_two(a) FROM tbl ORDER BY a');
+
+      expect(
+        statement.select,
+        throwsA(isA<SqliteException>()
+            .having((e) => e.message, 'message', contains('was two'))),
       );
-
-    db.execute(
-        'CREATE TABLE tbl (a INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT)');
-    // insert with a = 1..3
-    for (var i = 0; i < 3; i++) {
-      db.execute('INSERT INTO tbl DEFAULT VALUES');
-    }
-
-    final statement = db.prepare('SELECT raise_if_two(a) FROM tbl ORDER BY a');
-
-    expect(
-      statement.select,
-      throwsA(isA<SqliteException>()
-          .having((e) => e.message, 'message', contains('was two'))),
-    );
-  });
+    },
+    onPlatform: const <String, dynamic>{
+      'mac-os': Skip('TODO: User-defined functions cause a sigkill on MacOS')
+    },
+  );
 
   test('throws an exception when passing an invalid type as argument', () {
     final db = sqlite3.openInMemory();

@@ -127,135 +127,141 @@ void main() {
     db.dispose();
   });
 
-  group('user-defined functions', () {
-    test('can read arguments of user defined functions', () {
-      List<Object> readArguments;
+  group(
+    'user-defined functions',
+    () {
+      test('can read arguments of user defined functions', () {
+        List<Object> readArguments;
 
-      database.createFunction(
-        functionName: 'test_fun',
-        argumentCount: const AllowedArgumentCount(6),
-        function: (args) {
-          // copy since the args become invalid as soon as this function
-          // finishes.
-          readArguments = List.of(args);
-        },
-      );
-
-      database.execute(
-          r'''SELECT test_fun(1, 2.5, 'hello world', X'ff00ff', X'', NULL)''');
-
-      expect(readArguments, <dynamic>[
-        1,
-        2.5,
-        'hello world',
-        Uint8List.fromList([255, 0, 255]),
-        Uint8List(0),
-        null,
-      ]);
-    });
-
-    test('throws when using a long function name', () {
-      expect(
-        () => database.createFunction(
-            functionName: 'foo' * 100, function: (args) {}),
-        throwsArgumentError,
-      );
-    });
-
-    group('scalar return', () {
-      test('null', () {
         database.createFunction(
-          functionName: 'test_null',
-          function: (args) => null,
-          argumentCount: const AllowedArgumentCount(0),
+          functionName: 'test_fun',
+          argumentCount: const AllowedArgumentCount(6),
+          function: (args) {
+            // copy since the args become invalid as soon as this function
+            // finishes.
+            readArguments = List.of(args);
+          },
         );
-        final stmt = database.prepare('SELECT test_null() AS result');
 
-        expect(stmt.select(), [
-          {'result': null}
+        database.execute(
+            r'''SELECT test_fun(1, 2.5, 'hello world', X'ff00ff', X'', NULL)''');
+
+        expect(readArguments, <dynamic>[
+          1,
+          2.5,
+          'hello world',
+          Uint8List.fromList([255, 0, 255]),
+          Uint8List(0),
+          null,
         ]);
       });
 
-      test('integers', () {
-        database.createFunction(
-          functionName: 'test_int',
-          function: (args) => 420,
-          argumentCount: const AllowedArgumentCount(0),
+      test('throws when using a long function name', () {
+        expect(
+          () => database.createFunction(
+              functionName: 'foo' * 100, function: (args) {}),
+          throwsArgumentError,
         );
-        final stmt = database.prepare('SELECT test_int() AS result');
-
-        expect(stmt.select(), [
-          {'result': 420}
-        ]);
       });
 
-      test('doubles', () {
-        database.createFunction(
-          functionName: 'test_double',
-          function: (args) => 133.7,
-          argumentCount: const AllowedArgumentCount(0),
-        );
-        final stmt = database.prepare('SELECT test_double() AS result');
+      group('scalar return', () {
+        test('null', () {
+          database.createFunction(
+            functionName: 'test_null',
+            function: (args) => null,
+            argumentCount: const AllowedArgumentCount(0),
+          );
+          final stmt = database.prepare('SELECT test_null() AS result');
 
-        expect(stmt.select(), [
-          {'result': 133.7}
-        ]);
+          expect(stmt.select(), [
+            {'result': null}
+          ]);
+        });
+
+        test('integers', () {
+          database.createFunction(
+            functionName: 'test_int',
+            function: (args) => 420,
+            argumentCount: const AllowedArgumentCount(0),
+          );
+          final stmt = database.prepare('SELECT test_int() AS result');
+
+          expect(stmt.select(), [
+            {'result': 420}
+          ]);
+        });
+
+        test('doubles', () {
+          database.createFunction(
+            functionName: 'test_double',
+            function: (args) => 133.7,
+            argumentCount: const AllowedArgumentCount(0),
+          );
+          final stmt = database.prepare('SELECT test_double() AS result');
+
+          expect(stmt.select(), [
+            {'result': 133.7}
+          ]);
+        });
+
+        test('bytes', () {
+          database.createFunction(
+            functionName: 'test_blob',
+            function: (args) => [1, 2, 3],
+            argumentCount: const AllowedArgumentCount(0),
+          );
+          final stmt = database.prepare('SELECT test_blob() AS result');
+
+          expect(stmt.select(), [
+            {
+              'result': [1, 2, 3]
+            }
+          ]);
+        });
+
+        test('text', () {
+          database.createFunction(
+            functionName: 'test_text',
+            function: (args) => 'hello from Dart',
+            argumentCount: const AllowedArgumentCount(0),
+          );
+          final stmt = database.prepare('SELECT test_text() AS result');
+
+          expect(stmt.select(), [
+            {'result': 'hello from Dart'}
+          ]);
+        });
       });
 
-      test('bytes', () {
-        database.createFunction(
-          functionName: 'test_blob',
-          function: (args) => [1, 2, 3],
-          argumentCount: const AllowedArgumentCount(0),
+      test('aggregate functions', () {
+        database
+          ..execute('CREATE TABLE test (a INT, b TEXT);')
+          ..execute('INSERT INTO test VALUES '
+              "(1, 'hello world'), "
+              "(2, 'foo'), "
+              "(1, 'another'), "
+              "(2, 'bar');");
+
+        database.createAggregateFunction(
+          functionName: 'sum_lengths',
+          function: const _SummedStringLength(),
+          argumentCount: const AllowedArgumentCount(1),
         );
-        final stmt = database.prepare('SELECT test_blob() AS result');
 
-        expect(stmt.select(), [
-          {
-            'result': [1, 2, 3]
-          }
-        ]);
-      });
-
-      test('text', () {
-        database.createFunction(
-          functionName: 'test_text',
-          function: (args) => 'hello from Dart',
-          argumentCount: const AllowedArgumentCount(0),
+        expect(
+          database.select('SELECT a, sum_lengths(b) AS l FROM test GROUP BY a '
+              'ORDER BY 2;'),
+          [
+            {'a': 2, 'l': 6 /* foo + bar */},
+            {'a': 1, 'l': 18 /* hello world + another */},
+          ],
         );
-        final stmt = database.prepare('SELECT test_text() AS result');
-
-        expect(stmt.select(), [
-          {'result': 'hello from Dart'}
-        ]);
       });
-    });
-
-    test('aggregate functions', () {
-      database
-        ..execute('CREATE TABLE test (a INT, b TEXT);')
-        ..execute('INSERT INTO test VALUES '
-            "(1, 'hello world'), "
-            "(2, 'foo'), "
-            "(1, 'another'), "
-            "(2, 'bar');");
-
-      database.createAggregateFunction(
-        functionName: 'sum_lengths',
-        function: const _SummedStringLength(),
-        argumentCount: const AllowedArgumentCount(1),
-      );
-
-      expect(
-        database.select('SELECT a, sum_lengths(b) AS l FROM test GROUP BY a '
-            'ORDER BY 2;'),
-        [
-          {'a': 2, 'l': 6 /* foo + bar */},
-          {'a': 1, 'l': 18 /* hello world + another */},
-        ],
-      );
-    });
-  });
+    },
+    onPlatform: const <String, dynamic>{
+      'mac-os': Skip('TODO: User-defined functions cause a sigkill on MacOS')
+    },
+  );
 }
 
 /// Aggregate function that counts the length of all string parameters it
