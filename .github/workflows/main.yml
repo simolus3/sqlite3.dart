@@ -68,7 +68,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: List simulators
-      - run: "xcrun instruments -s"
+        run: "xcrun instruments -s"
 
       - name: Start simulator
         run: |
