@@ -1,0 +1,21 @@
+name: flutter_libs
+description: Integration tests for the sqlite3_flutter_libs package
+
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.7.0 <3.0.0"
+
+dependencies:
+  sqlite3_flutter_libs:
+    path: ../../sqlite3_flutter_libs
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  sqlite3:
+    path: ../../sqlite3
+  flutter_driver:
+    sdk: flutter
+  test:
