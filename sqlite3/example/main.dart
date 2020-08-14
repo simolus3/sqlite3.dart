@@ -5,7 +5,8 @@ import 'package:sqlite3/sqlite3.dart';
 void main() {
   print('Using sqlite3 ${sqlite3.version}');
 
-  // Create a new in-memory database.
+  // Create a new in-memory database. To use a database backed by a file, you
+  // can replace this with sqlite3.open(yourFilePath).
   final db = sqlite3.openInMemory();
 
   // Create a table and insert some data

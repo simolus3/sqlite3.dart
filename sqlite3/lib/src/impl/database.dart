@@ -32,7 +32,7 @@ class DatabaseImpl implements Database {
     // Free pointers we allocated
     namePtr.free();
     outDb.free();
-    vfsPtr.free();
+    if (vfs != null) vfsPtr.free();
 
     if (result != SQLITE_OK) {
       bindings.sqlite3_close_v2(dbPtr);
