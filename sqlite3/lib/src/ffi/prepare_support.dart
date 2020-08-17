@@ -40,7 +40,7 @@ extension PrepareSupport on Bindings {
     if (_usesV2[this] != null) return;
 
     try {
-      final ptr = library.lookup('sqlite3_open_v3');
+      final ptr = library.lookup('sqlite3_prepare_v3');
       _usesV2[this] = false;
       _prepareFunction[this] = ptr;
       // ignore: avoid_catching_errors
