@@ -1,3 +1,8 @@
+## 0.1.5
+
+- Use `sqlite3_version` to determine if `sqlite3_prepare_v3` is available
+  instead of catching an error.
+
 ## 0.1.4
 
 - Use `sqlite3_prepare_v2` if `sqlite3_prepare_v3` is not available

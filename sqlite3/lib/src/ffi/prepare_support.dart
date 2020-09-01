@@ -34,17 +34,18 @@ typedef sqlite3_prepare_v2_dart = int Function(
 Expando<bool> _usesV2 = Expando();
 Expando<Pointer<NativeType>> _prepareFunction = Expando();
 
+// sqlite3_prepare_v3 was added in 3.20.0
+const int _firstVersionForV3 = 3020000;
+
 extension PrepareSupport on Bindings {
   void _ensureLoaded() {
     // Already set?
     if (_usesV2[this] != null) return;
 
-    try {
-      final ptr = library.lookup('sqlite3_prepare_v3');
+    if (sqlite3_libversion_number() >= _firstVersionForV3) {
       _usesV2[this] = false;
-      _prepareFunction[this] = ptr;
-      // ignore: avoid_catching_errors
-    } on ArgumentError {
+      _prepareFunction[this] = library.lookup('sqlite3_prepare_v3');
+    } else {
       _usesV2[this] = true;
       _prepareFunction[this] = library.lookup('sqlite3_prepare_v2');
     }
