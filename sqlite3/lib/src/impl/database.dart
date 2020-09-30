@@ -11,15 +11,24 @@ class DatabaseImpl implements Database {
 
   DatabaseImpl(this._bindings, this._handle);
 
-  factory DatabaseImpl.open(Bindings bindings, String filename,
-      {String vfs, OpenMode mode = OpenMode.readWriteCreate}) {
+  factory DatabaseImpl.open(
+    Bindings bindings,
+    String filename, {
+    String vfs,
+    OpenMode mode = OpenMode.readWriteCreate,
+    bool uri = false,
+  }) {
     bindingsForStore = bindings;
 
-    final flags = const {
+    var flags = const {
       OpenMode.readOnly: SQLITE_OPEN_READONLY,
       OpenMode.readWrite: SQLITE_OPEN_READWRITE,
       OpenMode.readWriteCreate: SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
     }[mode];
+
+    if (uri) {
+      flags |= SQLITE_OPEN_URI;
+    }
 
     final namePtr = allocateZeroTerminated(filename);
     final outDb = allocate<Pointer<sqlite3>>();

@@ -7,7 +7,10 @@ void main() {
 
   // Create a new in-memory database. To use a database backed by a file, you
   // can replace this with sqlite3.open(yourFilePath).
-  final db = sqlite3.openInMemory();
+  final db = sqlite3.open(
+    'file:moor_temporary_store?mode=memory&cache=shared',
+    uri: true,
+  );
 
   // Create a table and insert some data
   db.execute('''

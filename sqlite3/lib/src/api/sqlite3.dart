@@ -29,12 +29,22 @@ class Sqlite3 {
   ///
   /// The [vfs] option can be used to set the appropriate virtual file system
   /// implementation. When null, the default file system will be used.
+  ///
+  /// If [uri] is enabled (defaults to `false`), the [filename] will be
+  /// interpreted as an uri as according to https://www.sqlite.org/uri.html.
   Database open(
     String filename, {
     String /*?*/ vfs,
     OpenMode mode = OpenMode.readWriteCreate,
+    bool uri = false,
   }) {
-    return DatabaseImpl.open(_bindings, filename, vfs: vfs, mode: mode);
+    return DatabaseImpl.open(
+      _bindings,
+      filename,
+      vfs: vfs,
+      mode: mode,
+      uri: uri,
+    );
   }
 
   /// Creates a [Database] from an opened sqlite3 database connection.

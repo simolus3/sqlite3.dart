@@ -1,6 +1,7 @@
 ## 0.1.6
 
 - Expose underlying database and statement handles
+- Support opening databases from uris
 
 ## 0.1.5
 

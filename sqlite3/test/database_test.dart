@@ -89,6 +89,18 @@ void main() {
     );
   });
 
+  test('open shared in-memory instances', () {
+    final db1 = sqlite3.open('file:test?mode=memory&cache=shared', uri: true);
+    final db2 = sqlite3.open('file:test?mode=memory&cache=shared', uri: true);
+
+    db1
+      ..execute('CREATE TABLE tbl (a INTEGER NOT NULL);')
+      ..execute('INSERT INTO tbl VALUES (1), (2), (3);');
+
+    final result = db2.select('SELECT * FROM tbl');
+    expect(result, hasLength(3));
+  });
+
   test('open read-only', () async {
     final path = join('.dart_tool', 'sqlite3', 'test', 'read_only.db');
     // Make sure the path exists
