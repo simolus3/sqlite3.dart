@@ -1,3 +1,7 @@
+## 0.1.6
+
+- Expose underlying database and statement handles
+
 ## 0.1.5
 
 - Use `sqlite3_version` to determine if `sqlite3_prepare_v3` is available

@@ -13,6 +13,12 @@ abstract class Database {
   /// Returns the row id of the last inserted row.
   int get lastInsertRowId;
 
+  /// The native database connection handle from sqlite.
+  ///
+  /// This returns a pointer towards the opaque sqlite3 structure as defined
+  /// [here](https://www.sqlite.org/c3ref/sqlite3.html).
+  Pointer<void> get handle;
+
   /// The amount of rows affected by the last `INSERT`, `UPDATE` or `DELETE`
   /// statement.
   int getUpdatedRows();

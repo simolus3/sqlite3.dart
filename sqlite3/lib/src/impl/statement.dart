@@ -19,6 +19,9 @@ class PreparedStatementImpl implements PreparedStatement {
   }
 
   @override
+  Pointer<void> get handle => _stmt;
+
+  @override
   void execute([List<Object> parameters = const <Object>[]]) {
     _ensureNotFinalized();
     _ensureMatchingParameters(parameters);

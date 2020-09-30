@@ -64,6 +64,9 @@ class DatabaseImpl implements Database {
   }
 
   @override
+  Pointer<void> get handle => _handle;
+
+  @override
   int getUpdatedRows() {
     return _bindings.sqlite3_changes(_handle);
   }

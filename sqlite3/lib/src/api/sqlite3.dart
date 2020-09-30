@@ -37,6 +37,14 @@ class Sqlite3 {
     return DatabaseImpl.open(_bindings, filename, vfs: vfs, mode: mode);
   }
 
+  /// Creates a [Database] from an opened sqlite3 database connection.
+  ///
+  /// The [database] must be a pointer towards an open sqlite3 database
+  /// connection [handle](https://www.sqlite.org/c3ref/sqlite3.html).
+  Database fromPointer(Pointer<void> database) {
+    return DatabaseImpl(_bindings, database.cast());
+  }
+
   /// Opens an in-memory database.
   Database openInMemory() {
     return DatabaseImpl.open(_bindings, ':memory:');
