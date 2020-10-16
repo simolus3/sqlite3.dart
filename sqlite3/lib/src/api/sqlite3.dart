@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:sqlite3/open.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:sqlite3/src/ffi/ffi.dart';
@@ -9,12 +11,15 @@ Sqlite3 sqlite3 = Sqlite3._(open.openSqlite());
 /// Provides access to `sqlite3` functions, such as opening new databases.
 class Sqlite3 {
   final Bindings _bindings;
+  final Pointer<Pointer<char>> _sqlite3_temp_directory;
 
   /// Loads `sqlite3` bindings by looking up functions in the [library].
   ///
   /// If application-defined functions are used, there shouldn't be multiple
   /// [Sqlite3] objects with a different underlying [library].
-  Sqlite3._(DynamicLibrary library) : _bindings = Bindings(library);
+  Sqlite3._(DynamicLibrary library)
+      : _bindings = Bindings(library),
+        _sqlite3_temp_directory = library.lookup('sqlite3_temp_directory');
 
   /// The version of the sqlite3 library in used.
   Version get version {
@@ -58,6 +63,32 @@ class Sqlite3 {
   /// Opens an in-memory database.
   Database openInMemory() {
     return DatabaseImpl.open(_bindings, ':memory:');
+  }
+
+  /// Reads the `sqlite3_temp_directory` variable.
+  ///
+  /// See also: https://www.sqlite.org/c3ref/temp_directory.html
+  String get tempDirectory {
+    final charPtr = _sqlite3_temp_directory.value;
+    if (charPtr.isNullPointer) {
+      return null;
+    } else {
+      return charPtr.readString();
+    }
+  }
+
+  /// Overrides the `sqlite3_temp_directory` variable.
+  ///
+  /// Note that this operation might not be safe if a database connection is
+  /// being used at the same time in different isolates.
+  ///
+  /// See also: https://www.sqlite.org/c3ref/temp_directory.html
+  set tempDirectory(String value) {
+    if (value == null) {
+      _sqlite3_temp_directory.value = nullPtr();
+    } else {
+      _sqlite3_temp_directory.value = allocateZeroTerminated(value);
+    }
   }
 }
 

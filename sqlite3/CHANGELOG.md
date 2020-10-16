@@ -1,3 +1,7 @@
+## 0.1.7
+
+- Expose the `sqlite3_temp_directory` global variable
+
 ## 0.1.6
 
 - Expose underlying database and statement handles

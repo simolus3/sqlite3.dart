@@ -114,7 +114,7 @@ extension ContextUtils on Pointer<sqlite3_context> {
 }
 
 /// An unmodifiable Dart list backed by native sqlite3 values.
-class ValueList with ListMixin<Object> implements List<Object> {
+class ValueList extends ListBase<Object> {
   @override
   final int length;
   final Pointer<Pointer<sqlite3_value>> argArray;
