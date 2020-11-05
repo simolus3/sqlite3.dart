@@ -47,8 +47,8 @@ void main() {
 }
 
 DynamicLibrary _openOnLinux() {
-  final script = File(Platform.script.toFilePath());
-  final libraryNextToScript = File('${script.path}/sqlite3.so');
+  final scriptDir = File(Platform.script.toFilePath()).parent;
+  final libraryNextToScript = File('${scriptDir.path}/sqlite3.so');
   return DynamicLibrary.open(libraryNextToScript.path);
 }
 ```
