@@ -1,3 +1,8 @@
+## 0.1.8
+
+- Added the `mutex` parameter to control the serialization mode
+  when opening databases.
+
 ## 0.1.7
 
 - Expose the `sqlite3_temp_directory` global variable

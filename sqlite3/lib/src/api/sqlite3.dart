@@ -37,11 +37,16 @@ class Sqlite3 {
   ///
   /// If [uri] is enabled (defaults to `false`), the [filename] will be
   /// interpreted as an uri as according to https://www.sqlite.org/uri.html.
+  ///
+  /// If the [mutex] parameter is set to true, the `SQLITE_OPEN_FULLMUTEX` flag
+  /// will be set. If it's set to false, `SQLITE_OPEN_NOMUTEX` will be enabled.
+  /// By default, neither parameter will be set.
   Database open(
     String filename, {
     String /*?*/ vfs,
     OpenMode mode = OpenMode.readWriteCreate,
     bool uri = false,
+    bool mutex,
   }) {
     return DatabaseImpl.open(
       _bindings,

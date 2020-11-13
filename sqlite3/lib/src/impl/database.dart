@@ -17,6 +17,7 @@ class DatabaseImpl implements Database {
     String vfs,
     OpenMode mode = OpenMode.readWriteCreate,
     bool uri = false,
+    bool mutex,
   }) {
     bindingsForStore = bindings;
 
@@ -28,6 +29,10 @@ class DatabaseImpl implements Database {
 
     if (uri) {
       flags |= SQLITE_OPEN_URI;
+    }
+
+    if (mutex != null) {
+      flags |= mutex ? SQLITE_OPEN_FULLMUTEX : SQLITE_OPEN_NOMUTEX;
     }
 
     final namePtr = allocateZeroTerminated(filename);
