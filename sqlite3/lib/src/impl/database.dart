@@ -14,18 +14,25 @@ class DatabaseImpl implements Database {
   factory DatabaseImpl.open(
     Bindings bindings,
     String filename, {
-    String vfs,
+    String? vfs,
     OpenMode mode = OpenMode.readWriteCreate,
     bool uri = false,
-    bool mutex,
+    bool? mutex,
   }) {
     bindingsForStore = bindings;
 
-    var flags = const {
-      OpenMode.readOnly: SQLITE_OPEN_READONLY,
-      OpenMode.readWrite: SQLITE_OPEN_READWRITE,
-      OpenMode.readWriteCreate: SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
-    }[mode];
+    int flags;
+    switch (mode) {
+      case OpenMode.readOnly:
+        flags = SQLITE_OPEN_READONLY;
+        break;
+      case OpenMode.readWrite:
+        flags = SQLITE_OPEN_READWRITE;
+        break;
+      case OpenMode.readWriteCreate:
+        flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
+        break;
+    }
 
     if (uri) {
       flags |= SQLITE_OPEN_URI;
@@ -99,7 +106,7 @@ class DatabaseImpl implements Database {
     final errorPtr = errorOut.value;
     errorOut.free();
 
-    String errorMsg;
+    String? errorMsg;
     if (!errorPtr.isNullPointer) {
       errorMsg = errorPtr.readString();
       // The message was allocated from sqlite3, we need to free it
@@ -107,7 +114,7 @@ class DatabaseImpl implements Database {
     }
 
     if (result != SQLITE_OK) {
-      throw SqliteException(result, errorMsg);
+      throw SqliteException(result, errorMsg ?? 'unknown error');
     }
   }
 
@@ -209,8 +216,8 @@ class DatabaseImpl implements Database {
 
   @override
   void createFunction({
-    @required String functionName,
-    @required ScalarFunction function,
+    required String functionName,
+    required ScalarFunction function,
     AllowedArgumentCount argumentCount = const AllowedArgumentCount.any(),
     bool deterministic = false,
     bool directOnly = true,
@@ -224,7 +231,7 @@ class DatabaseImpl implements Database {
       argumentCount.allowedArgs,
       _eTextRep(deterministic, directOnly),
       storedFunction.applicationData.cast(),
-      storedFunction.xFunc.cast(),
+      storedFunction.xFunc!.cast(),
       nullPtr(),
       nullPtr(),
       storedFunction.xDestroy.cast(),
@@ -238,8 +245,8 @@ class DatabaseImpl implements Database {
 
   @override
   void createAggregateFunction<V>({
-    String functionName,
-    AggregateFunction<V> function,
+    required String functionName,
+    required AggregateFunction<V> function,
     AllowedArgumentCount argumentCount = const AllowedArgumentCount.any(),
     bool deterministic = false,
     bool directOnly = true,
@@ -254,8 +261,8 @@ class DatabaseImpl implements Database {
       _eTextRep(deterministic, directOnly),
       storedFunction.applicationData.cast(),
       nullPtr(),
-      storedFunction.xStep.cast(),
-      storedFunction.xFinal.cast(),
+      storedFunction.xStep!.cast(),
+      storedFunction.xFinal!.cast(),
       storedFunction.xDestroy.cast(),
     );
     namePtr.free();
@@ -275,7 +282,7 @@ class DatabaseImpl implements Database {
     }
 
     final code = _bindings.sqlite3_close_v2(_handle);
-    SqliteException exception;
+    SqliteException? exception;
     if (code != SQLITE_OK) {
       exception = createException(this, code);
     }

@@ -53,11 +53,11 @@ extension PrepareSupport on Bindings {
 
   bool get supportsOpenV3 {
     _ensureLoaded();
-    return !_usesV2[this];
+    return !_usesV2[this]!;
   }
 
   Pointer<NativeType> get appropriateOpenFunction {
     _ensureLoaded();
-    return _prepareFunction[this];
+    return _prepareFunction[this]!;
   }
 }

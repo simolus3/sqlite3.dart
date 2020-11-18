@@ -22,7 +22,7 @@ class PreparedStatementImpl implements PreparedStatement {
   Pointer<void> get handle => _stmt;
 
   @override
-  void execute([List<Object> parameters = const <Object>[]]) {
+  void execute([List<Object?> parameters = const <Object>[]]) {
     _ensureNotFinalized();
     _ensureMatchingParameters(parameters);
 
@@ -36,7 +36,7 @@ class PreparedStatementImpl implements PreparedStatement {
   }
 
   @override
-  ResultSet select([List<Object> parameters = const <Object>[]]) {
+  ResultSet select([List<Object?> parameters = const <Object>[]]) {
     _ensureNotFinalized();
     _ensureMatchingParameters(parameters);
 
@@ -45,17 +45,17 @@ class PreparedStatementImpl implements PreparedStatement {
 
     final columnCount = _bindings.sqlite3_column_count(_stmt);
 
-    final names = List<String>(columnCount);
-    final rows = <List<Object>>[];
-
-    for (var i = 0; i < columnCount; i++) {
-      // name pointer doesn't need to be disposed, that happens when we finalize
-      names[i] = _bindings.sqlite3_column_name(_stmt, i).readString();
-    }
+    final names = [
+      for (var i = 0; i < columnCount; i++)
+        // name pointer doesn't need to be disposed, that happens when we
+        // finalize
+        _bindings.sqlite3_column_name(_stmt, i).readString()
+    ];
+    final rows = <List<Object?>>[];
 
     int resultCode;
     while ((resultCode = _step()) == SQLITE_ROW) {
-      rows.add(<Object>[for (var i = 0; i < columnCount; i++) _readValue(i)]);
+      rows.add(<Object?>[for (var i = 0; i < columnCount; i++) _readValue(i)]);
     }
 
     if (resultCode != SQLITE_OK && resultCode != SQLITE_DONE) {
@@ -88,7 +88,7 @@ class PreparedStatementImpl implements PreparedStatement {
     _allocatedWhileBinding.clear();
   }
 
-  void _bindParams(List<dynamic> params) {
+  void _bindParams(List<Object?>? params) {
     if (params == null || params.isEmpty) return;
 
     // variables in sqlite are 1-indexed
@@ -135,7 +135,7 @@ class PreparedStatementImpl implements PreparedStatement {
     _variablesBound = true;
   }
 
-  Object _readValue(int index) {
+  Object? _readValue(int index) {
     final type = _bindings.sqlite3_column_type(_stmt, index);
     switch (type) {
       case SQLITE_INTEGER:
@@ -168,7 +168,7 @@ class PreparedStatementImpl implements PreparedStatement {
     }
   }
 
-  void _ensureMatchingParameters(List<dynamic> parameters) {
+  void _ensureMatchingParameters(List<Object?>? parameters) {
     final length = parameters?.length ?? 0;
     final count = parameterCount;
 

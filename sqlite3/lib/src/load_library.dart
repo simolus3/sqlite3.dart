@@ -67,12 +67,12 @@ DynamicLibrary _defaultOpen() {
 /// [overrideForAll].
 class OpenDynamicLibrary {
   final Map<OperatingSystem, OpenLibrary> _overriddenPlatforms = {};
-  OpenLibrary _overriddenForAll;
+  OpenLibrary? _overriddenForAll;
 
   OpenDynamicLibrary._();
 
   /// Returns the current [OperatingSystem] as read from the [Platform] getters.
-  OperatingSystem get os {
+  OperatingSystem? get os {
     if (Platform.isAndroid) return OperatingSystem.android;
     if (Platform.isLinux) return OperatingSystem.linux;
     if (Platform.isIOS) return OperatingSystem.iOS;
@@ -86,8 +86,9 @@ class OpenDynamicLibrary {
   /// [DynamicLibrary.lookup] sqlite's methods that will be used. This method is
   /// meant to be called by `moor_ffi` only.
   DynamicLibrary openSqlite() {
-    if (_overriddenForAll != null) {
-      return _overriddenForAll();
+    final forAll = _overriddenForAll;
+    if (forAll != null) {
+      return forAll();
     }
 
     final forPlatform = _overriddenPlatforms[os];

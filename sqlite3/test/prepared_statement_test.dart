@@ -42,7 +42,7 @@ void main() {
     expect(stmt.select, throwsStateError);
   });
 
-  Uint8List _insertBlob(Uint8List value) {
+  Uint8List? _insertBlob(Uint8List? value) {
     final opened = sqlite3.openInMemory();
     opened.execute('CREATE TABLE tbl (x BLOB);');
 
@@ -54,7 +54,7 @@ void main() {
     final result = select.select().single;
 
     opened.dispose();
-    return result['x'] as Uint8List;
+    return result['x'] as Uint8List?;
   }
 
   test('can bind empty blob in prepared statements', () {

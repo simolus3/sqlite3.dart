@@ -43,10 +43,10 @@ class Sqlite3 {
   /// By default, neither parameter will be set.
   Database open(
     String filename, {
-    String /*?*/ vfs,
+    String? vfs,
     OpenMode mode = OpenMode.readWriteCreate,
     bool uri = false,
-    bool mutex,
+    bool? mutex,
   }) {
     return DatabaseImpl.open(
       _bindings,
@@ -73,7 +73,7 @@ class Sqlite3 {
   /// Reads the `sqlite3_temp_directory` variable.
   ///
   /// See also: https://www.sqlite.org/c3ref/temp_directory.html
-  String get tempDirectory {
+  String? get tempDirectory {
     final charPtr = _sqlite3_temp_directory.value;
     if (charPtr.isNullPointer) {
       return null;
@@ -88,7 +88,7 @@ class Sqlite3 {
   /// being used at the same time in different isolates.
   ///
   /// See also: https://www.sqlite.org/c3ref/temp_directory.html
-  set tempDirectory(String value) {
+  set tempDirectory(String? value) {
     if (value == null) {
       _sqlite3_temp_directory.value = nullPtr();
     } else {

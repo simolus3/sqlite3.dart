@@ -6,7 +6,7 @@ import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
 
 void main() {
-  Database database;
+  late Database database;
 
   setUp(() => database = sqlite3.openInMemory());
   tearDown(() => database.dispose());
@@ -143,7 +143,7 @@ void main() {
     'user-defined functions',
     () {
       test('can read arguments of user defined functions', () {
-        List<Object> readArguments;
+        late List<Object?> readArguments;
 
         database.createFunction(
           functionName: 'test_fun',
@@ -287,7 +287,7 @@ class _SummedStringLength implements AggregateFunction<int> {
   }
 
   @override
-  void step(List<Object> arguments, AggregateContext<int> context) {
+  void step(List<Object?> arguments, AggregateContext<int> context) {
     if (arguments.length != 1) return;
 
     final arg = arguments.single;

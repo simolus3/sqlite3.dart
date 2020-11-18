@@ -1,3 +1,7 @@
+## 0.1.9
+
+- Migrate package to null safety
+
 ## 0.1.8
 
 - Added the `mutex` parameter to control the serialization mode

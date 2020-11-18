@@ -7,7 +7,7 @@ class SqliteException implements Exception {
   final String message;
 
   /// An optional explanation providing more detail on what went wrong.
-  final String /*?*/ explanation;
+  final String? explanation;
 
   /// SQLite extended result code.
   ///
