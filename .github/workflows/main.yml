@@ -87,9 +87,9 @@ jobs:
           channel: 'dev'
       
       - name: sqlite3 driver tests
-        run: "flutter drive --target=test_driver/integration.dart"
+        run: "flutter pub run test_driver/integration_test.dart"
         working-directory: integration_tests/flutter_libs
 
       - name: sqlcipher driver tests
-        run: "flutter drive --target=test_driver/integration.dart"
+        run: "flutter pub run test_driver/integration_test.dart"
         working-directory: integration_tests/sqlcipher_flutter
