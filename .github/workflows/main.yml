@@ -84,12 +84,15 @@ jobs:
       - uses: actions/checkout@v2
       - uses: subosito/flutter-action@v1
         with:
-          channel: 'dev'
+          channel: 'beta'
+      
+      - name: Flutter version
+        run: flutter --version
       
       - name: sqlite3 driver tests
-        run: "flutter pub run test_driver/integration_test.dart"
+        run: "flutter pub get && flutter pub run test_driver/integration_test.dart"
         working-directory: integration_tests/flutter_libs
 
       - name: sqlcipher driver tests
-        run: "flutter pub run test_driver/integration_test.dart"
+        run: "flutter pub get && flutter pub run test_driver/integration_test.dart"
         working-directory: integration_tests/sqlcipher_flutter
