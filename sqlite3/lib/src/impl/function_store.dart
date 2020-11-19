@@ -1,7 +1,7 @@
 part of 'implementation.dart';
 
 final FunctionStore functionStore = FunctionStore._();
-Bindings bindingsForStore;
+late Bindings bindingsForStore;
 
 /// Helper class to use abitrary functions as sqlite callbacks.
 ///
@@ -58,19 +58,20 @@ class FunctionStore {
 }
 
 class FunctionPointerAndData {
-  final Pointer<NativeType> xFunc;
-  final Pointer<NativeType> xStep;
-  final Pointer<NativeType> xFinal;
+  final Pointer<NativeType>? xFunc;
+  final Pointer<NativeType>? xStep;
+  final Pointer<NativeType>? xFinal;
   final Pointer<NativeType> xDestroy;
 
   final Pointer<NativeType> applicationData;
 
-  FunctionPointerAndData(
-      {this.xFunc,
-      this.xStep,
-      this.xFinal,
-      this.xDestroy,
-      this.applicationData});
+  FunctionPointerAndData({
+    required this.xDestroy,
+    required this.applicationData,
+    this.xFunc,
+    this.xStep,
+    this.xFinal,
+  });
 }
 
 void _scalarFunctionImpl(
@@ -130,7 +131,7 @@ void _xStepImpl(
     functionStore._activeContexts[ctxId] = dartContext;
     agCtxPtr.value = ctxId;
   } else {
-    dartContext = functionStore._activeContexts[agCtxPtr.value];
+    dartContext = functionStore._activeContexts[agCtxPtr.value]!;
   }
 
   final arguments = ValueList(argCount, args, bindingsForStore);
@@ -155,7 +156,7 @@ void _xFinalImpl(Pointer<sqlite3_context> context) {
   // xStep allocated memory before, that pointer would be returned, and it would
   // point to an existing context.
   if (!agCtxPtr.isNullPointer) {
-    aggregateContext = functionStore._activeContexts[agCtxPtr.value];
+    aggregateContext = functionStore._activeContexts[agCtxPtr.value]!;
     functionStore._activeContexts.remove(agCtxPtr.value);
   } else {
     aggregateContext = function.createContext();

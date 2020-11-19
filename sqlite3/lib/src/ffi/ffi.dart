@@ -24,7 +24,7 @@ extension Utf8Utils on Pointer<char> {
     return length;
   }
 
-  String readString([int /*?*/ length]) {
+  String readString([int? length]) {
     final resolvedLength = length ??= _length;
 
     return utf8
@@ -44,7 +44,7 @@ extension PointerUtils on Pointer<NativeType> {
 
 extension ValueUtils on Pointer<sqlite3_value> {
   /// Copies the value stored in the raw sqlite3_value object.
-  Object read(Bindings bindings) {
+  Object? read(Bindings bindings) {
     final type = bindings.sqlite3_value_type(this);
     switch (type) {
       case SQLITE_INTEGER:
@@ -79,7 +79,7 @@ extension ContextUtils on Pointer<sqlite3_context> {
     return bindings.sqlite3_user_data(this);
   }
 
-  void setResult(Bindings bindings, Object result) {
+  void setResult(Bindings bindings, Object? result) {
     if (result == null) {
       bindings.sqlite3_result_null(this);
     } else if (result is int) {
@@ -114,7 +114,7 @@ extension ContextUtils on Pointer<sqlite3_context> {
 }
 
 /// An unmodifiable Dart list backed by native sqlite3 values.
-class ValueList extends ListBase<Object> {
+class ValueList extends ListBase<Object?> {
   @override
   final int length;
   final Pointer<Pointer<sqlite3_value>> argArray;
@@ -122,10 +122,10 @@ class ValueList extends ListBase<Object> {
 
   bool isValid = true;
 
-  final List<Object> _cachedCopies;
+  final List<Object?> _cachedCopies;
 
   ValueList(this.length, this.argArray, this.bindings)
-      : _cachedCopies = List(length);
+      : _cachedCopies = List.filled(length, null);
 
   @override
   set length(int length) {
@@ -133,7 +133,7 @@ class ValueList extends ListBase<Object> {
   }
 
   @override
-  Object operator [](int index) {
+  Object? operator [](int index) {
     assert(
       isValid,
       'Invalid arguments. This commonly happens when an application-defined '
@@ -159,7 +159,7 @@ class ValueList extends ListBase<Object> {
   }
 
   @override
-  void operator []=(int index, Object value) {
+  void operator []=(int index, Object? value) {
     throw UnsupportedError('The argument list is mutable');
   }
 }

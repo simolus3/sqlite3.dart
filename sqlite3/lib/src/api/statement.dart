@@ -15,11 +15,11 @@ abstract class PreparedStatement {
 
   /// If this statement contains parameters and [parameters] is too short, an
   /// exception will be thrown.
-  void execute([List<Object> parameters = const <Object>[]]);
+  void execute([List<Object?> parameters = const <Object>[]]);
 
   /// If this statement contains parameters and [parameters] is too short, an
   /// exception will be thrown.
-  ResultSet select([List<Object> parameters = const <Object>[]]);
+  ResultSet select([List<Object?> parameters = const <Object>[]]);
 
   /// Disposes this statement and releases associated memory.
   void dispose();

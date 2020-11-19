@@ -9,7 +9,7 @@ import 'package:meta/meta.dart';
 /// If invoking the function throws a Dart exception, the sql function will
 /// result with an error result as well.
 /// {@endtemplate}
-typedef ScalarFunction = dynamic Function(List<Object> arguments);
+typedef ScalarFunction = Object? Function(List<Object?> arguments);
 
 /// Interface for application-defined aggregate functions.
 ///
@@ -53,12 +53,12 @@ abstract class AggregateFunction<V> {
   ///
   /// The [context] should be modified to reflect the new row calling this
   /// function with [arguments].
-  void step(List<Object> arguments, AggregateContext<V> context);
+  void step(List<Object?> arguments, AggregateContext<V> context);
 
   /// Computes the final value from a populated [context].
   ///
   /// {@macro sqlite3_function_behavior}
-  Object /*?*/ finalize(AggregateContext<V> context);
+  Object? finalize(AggregateContext<V> context);
 }
 
 /// Application-defined context used to compute results in aggregate functions.

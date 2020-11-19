@@ -8,7 +8,8 @@ import 'statement.dart';
 /// An opened sqlite3 database.
 abstract class Database {
   /// The application defined version of this database.
-  int userVersion;
+  int get userVersion;
+  set userVersion(int version);
 
   /// Returns the row id of the last inserted row.
   int get lastInsertRowId;
@@ -75,8 +76,8 @@ abstract class Database {
   ///
   /// For more information, see https://www.sqlite.org/appfunc.html.
   void createFunction({
-    @required String functionName,
-    @required ScalarFunction function,
+    required String functionName,
+    required ScalarFunction function,
     AllowedArgumentCount argumentCount = const AllowedArgumentCount.any(),
     bool deterministic = false,
     bool directOnly = true,
@@ -90,8 +91,8 @@ abstract class Database {
   /// For more details on how to write aggregate functions (including an
   /// example), see the documentation of [AggregateFunction].
   void createAggregateFunction<V>({
-    @required String functionName,
-    @required AggregateFunction<V> function,
+    required String functionName,
+    required AggregateFunction<V> function,
     AllowedArgumentCount argumentCount = const AllowedArgumentCount.any(),
     bool deterministic = false,
     bool directOnly = true,

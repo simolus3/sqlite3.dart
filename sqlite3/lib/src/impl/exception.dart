@@ -9,14 +9,13 @@ SqliteException createExceptionRaw(
   final dbMessage = bindings.sqlite3_errmsg(db).readString();
 
   String explanation;
-  if (returnCode != null) {
-    // Getting hold of more explanatory error code as SQLITE_IOERR error group
-    // has an extensive list of extended error codes
-    final extendedCode = bindings.sqlite3_extended_errcode(db);
-    final errStr = bindings.sqlite3_errstr(extendedCode).readString();
 
-    explanation = '$errStr (code $extendedCode)';
-  }
+  // Getting hold of more explanatory error code as SQLITE_IOERR error group
+  // has an extensive list of extended error codes
+  final extendedCode = bindings.sqlite3_extended_errcode(db);
+  final errStr = bindings.sqlite3_errstr(extendedCode).readString();
+
+  explanation = '$errStr (code $extendedCode)';
 
   return SqliteException(returnCode, dbMessage, explanation);
 }

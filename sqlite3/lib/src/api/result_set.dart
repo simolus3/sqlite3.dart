@@ -8,16 +8,16 @@ class ResultSet extends Iterable<Row> {
   final List<String> columnNames;
   // a result set can have multiple columns with the same name, but that's rare
   // and users usually use a name as index. So we cache that for O(1) lookups
-  Map<String, int> _calculatedIndexes;
+  final Map<String, int> _calculatedIndexes;
 
   /// The raw row data.
-  final List<List<Object>> rows;
+  final List<List<Object?>> rows;
 
-  ResultSet(this.columnNames, this.rows) {
-    _calculatedIndexes = {
-      for (var column in columnNames) column: columnNames.lastIndexOf(column),
-    };
-  }
+  ResultSet(this.columnNames, this.rows)
+      : _calculatedIndexes = {
+          for (var column in columnNames)
+            column: columnNames.lastIndexOf(column),
+        };
 
   @override
   Iterator<Row> get iterator => _ResultIterator(this);
@@ -37,7 +37,7 @@ class Row extends MapMixin<String, dynamic>
   }
 
   @override
-  dynamic operator [](Object key) {
+  dynamic operator [](Object? key) {
     if (key is! String) return null;
 
     final index = _result._calculatedIndexes[key];
