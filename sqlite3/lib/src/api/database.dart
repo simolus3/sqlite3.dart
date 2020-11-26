@@ -1,5 +1,4 @@
 import 'dart:ffi';
-import 'package:meta/meta.dart';
 import 'package:sqlite3/src/api/result_set.dart';
 
 import 'functions.dart';
@@ -29,7 +28,7 @@ abstract class Database {
 
   /// Prepares the [sql] select statement and runs it with the provided
   /// [parameters].
-  ResultSet select(String sql, [List<Object> parameters]);
+  ResultSet select(String sql, [List<Object?> parameters]);
 
   /// Compiles the [sql] statement to execute it later.
   ///

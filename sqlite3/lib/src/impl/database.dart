@@ -119,7 +119,7 @@ class DatabaseImpl implements Database {
   }
 
   @override
-  ResultSet select(String sql, [List<Object> parameters = const []]) {
+  ResultSet select(String sql, [List<Object?> parameters = const []]) {
     final stmt = prepare(sql);
     final result = stmt.select(parameters);
     stmt.dispose();

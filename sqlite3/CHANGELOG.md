@@ -1,4 +1,4 @@
-## 0.1.9
+## 0.1.9-nullsafety.1
 
 - Migrate package to null safety
 
