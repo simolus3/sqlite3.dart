@@ -33,6 +33,8 @@ void main() {
       if (!ptr.isNullPointer) {
         lastOption = ptr.readString();
         print('Compile-option: $lastOption');
+      } else {
+        lastOption = null;
       }
 
       i++;
