@@ -44,7 +44,15 @@ DynamicLibrary _defaultOpen() {
     }
   }
   if (Platform.isIOS) {
-    return DynamicLibrary.process();
+    try {
+      return DynamicLibrary.open('sqlite3.framework/sqlite3');
+    } on ArgumentError catch (_) {
+      // In an iOS app without sqlite3_flutter_libs this falls back to using the version provided by iOS.
+      // This version is different for each iOS release.
+      //
+      // When using sqlcipher_flutter_libs this falls back to the version provided by the SQLCipher pod.
+      return DynamicLibrary.process();
+    }
   }
   if (Platform.isMacOS) {
     return DynamicLibrary.open('/usr/lib/libsqlite3.dylib');
