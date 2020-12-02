@@ -44,7 +44,7 @@ DynamicLibrary _defaultOpen() {
     }
   }
   if (Platform.isIOS) {
-    return DynamicLibrary.process();
+    return DynamicLibrary.open('sqlite3.framework/sqlite3');
   }
   if (Platform.isMacOS) {
     return DynamicLibrary.open('/usr/lib/libsqlite3.dylib');
