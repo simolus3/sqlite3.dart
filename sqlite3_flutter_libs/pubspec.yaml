@@ -8,6 +8,10 @@ environment:
   sdk: ">=2.7.0 <3.0.0"
   flutter: ">=1.10.1"
 
+dependencies:
+  flutter:
+    sdk: flutter
+
 flutter:
   plugin:
     platforms:
