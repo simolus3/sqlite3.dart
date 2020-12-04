@@ -46,6 +46,9 @@ DynamicLibrary _defaultOpen() {
   if (Platform.isIOS) {
     try {
       return DynamicLibrary.open('sqlite3.framework/sqlite3');
+      // Ignoring the error because its the only way to know if it was sucessful
+      // or not...
+      // ignore: avoid_catching_errors
     } on ArgumentError catch (_) {
       // In an iOS app without sqlite3_flutter_libs this falls back to using the version provided by iOS.
       // This version is different for each iOS release.
