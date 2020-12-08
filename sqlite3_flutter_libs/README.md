@@ -36,6 +36,10 @@ There appears to be a problem when loading native libraries on Android 6 (see [t
 If you're seeing those crashes, you could try setting `android.bundle.enableUncompressedNativeLibs=false` in your `gradle.properties`
 file. Be aware that this increases the size of your application when installed.
 
+Alternatively, you can use the `applyWorkaroundToOpenSqlite3OnOldAndroidVersions` method from this library.
+It will try to open `sqlite3` in Java, which seems to work more reliably. After sqlite3 has been loaded from Java,
+we can open it in Dart too.
+
 ### Providing a temporary path
 
 If you have complex queries failing with a `SQLITE_IOERR_GETTEMPPATH 6410` error, you could try to explicitly set the

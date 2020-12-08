@@ -1,3 +1,7 @@
+## 0.1.9-nullsafety.2
+
+- Fix loading sqlite3 on iOS
+
 ## 0.1.9-nullsafety.1
 
 - Migrate package to null safety

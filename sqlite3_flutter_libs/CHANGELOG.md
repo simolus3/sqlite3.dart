@@ -1,3 +1,7 @@
+## 0.3.0
+
+- Add workaround for an apparent loader bug in Android 6.0.1 (see readme for details)
+
 ## 0.2.0
 
 - Use ObjectiveC instead of Swift for the iOS plugin
