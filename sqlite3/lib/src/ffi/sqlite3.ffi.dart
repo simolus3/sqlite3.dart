@@ -3,15 +3,15 @@
 
 import 'dart:ffi';
 
-class char extends Struct {}
+class char extends Opaque {}
 
-class sqlite3 extends Struct {}
+class sqlite3 extends Opaque {}
 
-class sqlite3_stmt extends Struct {}
+class sqlite3_stmt extends Opaque {}
 
-class sqlite3_value extends Struct {}
+class sqlite3_value extends Opaque {}
 
-class sqlite3_context extends Struct {}
+class sqlite3_context extends Opaque {}
 
 typedef _sqlite3_open_v2_native = Int32 Function(
     Pointer<char>, Pointer<Pointer<sqlite3>>, Int32, Pointer<char>);

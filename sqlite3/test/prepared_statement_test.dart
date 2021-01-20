@@ -79,7 +79,7 @@ void main() {
     expect(
       stmt.execute,
       throwsA(isA<SqliteException>()
-          .having((e) => e.message, 'message', contains('foo'))),
+          .having((e) => e.message, 'message', contains('constraint failed'))),
     );
 
     db.dispose();
