@@ -6,6 +6,8 @@ import 'package:ffi/ffi.dart' as ffi;
 
 import 'sqlite3.ffi.dart';
 
+const allocate = ffi.malloc;
+
 /// Loads a null-pointer with a specified type.
 ///
 /// The [nullptr] getter from `dart:ffi` can be slow due to being a
@@ -26,11 +28,11 @@ final Pointer<NativeFunction<Pointer<Void> Function(Pointer<Void>)>>
     freeFunctionPtr = Pointer.fromFunction(_freeImpl);
 
 extension FreePointerExtension on Pointer {
-  void free() => ffi.free(this);
+  void free() => allocate.free(this);
 }
 
 Pointer<Uint8> allocateBytes(List<int> bytes, {int additionalLength = 0}) {
-  final ptr = ffi.allocate<Uint8>(count: bytes.length + additionalLength);
+  final ptr = allocate.allocate<Uint8>(bytes.length + additionalLength);
 
   final data = Uint8List(bytes.length + additionalLength)..setAll(0, bytes);
   ptr.asTypedList(bytes.length + additionalLength).setAll(0, data);

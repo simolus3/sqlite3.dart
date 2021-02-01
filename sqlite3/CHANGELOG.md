@@ -1,3 +1,10 @@
+## 0.1.10-nullsafety.0
+
+- Support version `0.3.0` of `package:ffi`
+- Migrate library to support breaking ffi changes in Dart 2.13:
+  - Use `Opaque` instead of empty structs
+  - Use `Allocator` api
+
 ## 0.1.9-nullsafety.2
 
 - Fix loading sqlite3 on iOS

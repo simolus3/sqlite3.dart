@@ -93,7 +93,7 @@ class PreparedStatementImpl implements PreparedStatement {
 
     // variables in sqlite are 1-indexed
     for (var i = 1; i <= params.length; i++) {
-      final dynamic param = params[i - 1];
+      final Object? param = params[i - 1];
 
       if (param == null) {
         _bindings.sqlite3_bind_null(_stmt, i);
