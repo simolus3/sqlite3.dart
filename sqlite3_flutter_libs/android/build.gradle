@@ -15,10 +15,12 @@ buildscript {
 rootProject.allprojects {
     repositories {
         google()
-        jcenter()
 
         maven {
-            url 'https://dl.bintray.com/sbinder/sqlite3-native-library/'
+            url 'https://simonbinder.eu/maven/'
+            content {
+                includeGroup('eu.simonbinder')
+            }
         }
     }
 }
@@ -37,5 +39,5 @@ android {
 }
 
 dependencies {
-    implementation 'eu.simonbinder:sqlite3-native-library:3.32.3'
+    implementation 'eu.simonbinder:sqlite3-native-library:3.34.1'
 }
