@@ -8,20 +8,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.5.0'
-    }
-}
-
-rootProject.allprojects {
-    repositories {
-        google()
-
-        maven {
-            url 'https://simonbinder.eu/maven/'
-            content {
-                includeGroup('eu.simonbinder')
-            }
-        }
+        classpath 'com.android.tools.build:gradle:4.1.2'
     }
 }
 
