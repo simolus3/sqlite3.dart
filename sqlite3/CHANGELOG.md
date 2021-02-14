@@ -1,3 +1,7 @@
+## 1.0.0
+
+- Support version `1.0.0` of `package:ffi`
+
 ## 0.1.10-nullsafety.0
 
 - Support version `0.3.0` of `package:ffi`

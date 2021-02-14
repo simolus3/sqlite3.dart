@@ -1,3 +1,7 @@
+## 0.4.0
+
+- Migrate native Android dependencies away from Bintray
+
 ## 0.3.0
 
 - Add workaround for an apparent loader bug in Android 6.0.1 (see readme for details)
