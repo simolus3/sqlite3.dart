@@ -3,6 +3,7 @@ import 'dart:io';
 
 Future<void> main() async {
   // Regular test driver isn't working, so this is what we do.
+
   final process = await Process.start(
       'flutter', ['run', '--target=test_driver/integration.dart']);
 
@@ -15,6 +16,7 @@ Future<void> main() async {
       .listen((line) {
     if (line.contains('All tests passed!')) {
       isSuccessful = true;
+      process.kill();
     }
 
     stdout.writeln(line);
@@ -22,5 +24,5 @@ Future<void> main() async {
 
   await process.exitCode; // wait until the process is done
   await outputSubscription.cancel();
-  exit(isSuccessful ? 0 : -1);
+  exit(isSuccessful ? 0 : 1);
 }

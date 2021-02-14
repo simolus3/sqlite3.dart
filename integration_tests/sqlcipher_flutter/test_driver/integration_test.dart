@@ -14,6 +14,7 @@ Future<void> main() async {
       .transform(const LineSplitter())
       .listen((line) {
     if (line.contains('All tests passed!')) {
+      process.kill();
       isSuccessful = true;
     }
 
