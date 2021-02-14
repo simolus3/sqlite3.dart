@@ -68,18 +68,12 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: List simulators
-        run: "xcrun instruments -s"
+        run: "xcrun xctrace list devices"
 
       - name: Start simulator
         run: |
-          UDID=$(
-            xcrun instruments -s |
-            awk \
-              -F ' *[][]' \
-              -v 'device=iPhone 12' \
-              '$1 == device { print $2 }'
-          )
-          xcrun simctl boot "${UDID:?No Simulator with this name found}"
+          IPHONE12=$(xcrun xctrace list devices  2>&1 | grep -m 1 "iPhone 12 Pro" | awk -F'[()]' '{print $4}')
+          xcrun simctl boot $IPHONE12
       
       - uses: actions/checkout@v2
       - uses: subosito/flutter-action@v1
