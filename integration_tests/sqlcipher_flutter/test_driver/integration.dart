@@ -16,7 +16,7 @@ void main() {
 
   tearDownAll(() {
     // See https://github.com/flutter/flutter/issues/12427#issuecomment-464449765
-    Future.delayed(const Duration(milliseconds: 50)).then((_) => exit(0));
+    Future.delayed(const Duration(milliseconds: 500)).then((_) => exit(0));
   });
 
   test('can open sqlite3', () {
