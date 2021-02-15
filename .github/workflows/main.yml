@@ -75,6 +75,10 @@ jobs:
       - uses: subosito/flutter-action@v1
         with:
           channel: 'dev'
+      
+      - name: pub get
+        run: flutter pub get
+
       - name: run tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
