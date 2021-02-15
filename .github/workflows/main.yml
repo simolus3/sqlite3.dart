@@ -63,8 +63,28 @@ jobs:
         dart test
       working-directory: sqlite3/
 
+  integration_test_android:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        test:
+          - flutter_libs
+          - sqlcipher_flutter
+    steps:
+      - uses: actions/checkout@v2
+      - uses: subosito/flutter-action@v1
+        with:
+          channel: 'dev'
+      - name: run tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          script: flutter pub run test_driver/integration_test.dart
+          working-directory: "integration_tests/${{ matrix.test }}"
+
+
   # Shamelessly stolen from https://medium.com/flutter-community/run-flutter-driver-tests-on-github-actions-13c639c7e4ab
-  integration_test:
+  integration_test_ios:
     runs-on: macos-latest
     steps:
       - name: List simulators
