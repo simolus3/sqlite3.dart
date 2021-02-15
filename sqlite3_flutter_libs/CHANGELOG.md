@@ -1,5 +1,8 @@
 ## 0.4.0
 
+`0.4.0+1` fixes an issue causing sqlite3 libraries to be unavailable in the
+compiled app. Please don't use `0.4.0`!
+
 - Migrate native Android dependencies away from Bintray
 
 ## 0.3.0
