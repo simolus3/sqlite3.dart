@@ -79,6 +79,8 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
+          target: google_apis # Default target is not available yet for api level 30
+          arch: x86_64
           script: flutter pub run test_driver/integration_test.dart
           working-directory: "integration_tests/${{ matrix.test }}"
 
