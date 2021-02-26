@@ -5,8 +5,12 @@ import 'package:sqlite3/sqlite3.dart';
 import 'package:sqlite3/src/ffi/ffi.dart';
 import 'package:sqlite3/src/impl/implementation.dart';
 
+Sqlite3? _sqlite3;
+
 /// Provides access to `sqlite3` functions, such as opening new databases.
-Sqlite3 sqlite3 = Sqlite3._(open.openSqlite());
+Sqlite3 get sqlite3 {
+  return _sqlite3 ??= Sqlite3._(open.openSqlite());
+}
 
 /// Provides access to `sqlite3` functions, such as opening new databases.
 class Sqlite3 {
