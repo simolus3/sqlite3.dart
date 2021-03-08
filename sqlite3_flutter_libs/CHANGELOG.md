@@ -1,3 +1,7 @@
+## 0.4.1
+
+- Raise minimum SDK constraint to Dart 2.12
+
 ## 0.4.0
 
 `0.4.0+1` fixes an issue causing sqlite3 libraries to be unavailable in the
