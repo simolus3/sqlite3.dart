@@ -1,3 +1,7 @@
+## 0.4.2
+
+- Upgrade to sqlite3 version 3.35.0
+
 ## 0.4.1
 
 - Raise minimum SDK constraint to Dart 2.12
