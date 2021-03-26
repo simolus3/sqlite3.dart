@@ -166,6 +166,9 @@ void main() {
     opened.dispose();
   });
 
+  final version = sqlite3.version;
+  final hasReturning = version.versionNumber > 3035000;
+
   group('returning', () {
     late Database database;
     late PreparedStatement statement;
@@ -193,5 +196,8 @@ void main() {
       final row = result.single;
       expect(row, {'foo': null});
     });
-  });
+  },
+      skip: hasReturning
+          ? null
+          : 'RETURNING not supported by current sqlite3 version');
 }
