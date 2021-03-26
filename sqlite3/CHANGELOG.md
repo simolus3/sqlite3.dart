@@ -1,3 +1,8 @@
+## 1.0.1
+
+- Don't throw when `PreparedStatement.execute` is used on a statement returning
+  rows.
+
 ## 1.0.0
 
 - Support version `1.0.0` of `package:ffi`

@@ -165,4 +165,33 @@ void main() {
 
     opened.dispose();
   });
+
+  group('returning', () {
+    late Database database;
+    late PreparedStatement statement;
+
+    setUp(() {
+      database = sqlite3.openInMemory()
+        ..execute('CREATE TABLE tbl (foo TEXT);');
+      statement =
+          database.prepare('INSERT INTO tbl DEFAULT VALUES RETURNING *');
+    });
+
+    tearDown(() {
+      statement.dispose();
+      database.dispose();
+    });
+
+    test('can be used with execute', () {
+      statement.execute();
+    });
+
+    test('can get returned rows', () {
+      final result = statement.select();
+      expect(result, hasLength(1));
+
+      final row = result.single;
+      expect(row, {'foo': null});
+    });
+  });
 }

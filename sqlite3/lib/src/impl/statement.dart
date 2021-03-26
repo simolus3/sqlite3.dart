@@ -29,7 +29,14 @@ class PreparedStatementImpl implements PreparedStatement {
     _reset();
     _bindParams(parameters);
 
-    final result = _step();
+    int result;
+
+    // Users should be able to execute statements returning rows, so we should
+    // call _step() to skip past rows.
+    do {
+      result = _step();
+    } while (result == SQLITE_ROW);
+
     if (result != SQLITE_OK && result != SQLITE_DONE) {
       throwException(_db, result);
     }

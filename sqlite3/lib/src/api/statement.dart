@@ -1,5 +1,6 @@
 import 'dart:ffi';
 
+import 'exception.dart';
 import 'result_set.dart';
 
 /// A prepared statement.
@@ -13,12 +14,18 @@ abstract class PreparedStatement {
   /// the sqlite3 C-api that this [PreparedStatement] wraps.
   Pointer<void> get handle;
 
+  /// Executes this statement, ignoring result rows if there are any.
+  ///
   /// If this statement contains parameters and [parameters] is too short, an
-  /// exception will be thrown.
+  /// [ArgumentError] will be thrown.
+  /// If sqlite3 reports an error while running this statement, a
+  /// [SqliteException] will be thrown.
   void execute([List<Object?> parameters = const <Object>[]]);
 
   /// If this statement contains parameters and [parameters] is too short, an
-  /// exception will be thrown.
+  /// [ArgumentError] will be thrown.
+  /// If sqlite3 reports an error while running this statement, a
+  /// [SqliteException] will be thrown.
   ResultSet select([List<Object?> parameters = const <Object>[]]);
 
   /// Disposes this statement and releases associated memory.

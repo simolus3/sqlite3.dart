@@ -145,7 +145,7 @@ class DatabaseImpl implements Database {
     }
 
     int resultCode;
-    // Use prepare_v3 if support, fall-back to prepare_v2 otherwise
+    // Use prepare_v3 if supported, fall-back to prepare_v2 otherwise
     if (_bindings.supportsOpenV3) {
       final function = _bindings.appropriateOpenFunction
           .cast<NativeFunction<sqlite3_prepare_v3_native>>()
