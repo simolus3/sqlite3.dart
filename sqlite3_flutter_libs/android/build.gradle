@@ -8,7 +8,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:4.1.2'
+        classpath 'com.android.tools.build:gradle:4.1.3'
     }
 }
 
@@ -26,5 +26,5 @@ android {
 }
 
 dependencies {
-    implementation 'eu.simonbinder:sqlite3-native-library:3.35.0'
+    implementation 'eu.simonbinder:sqlite3-native-library:3.35.4'
 }

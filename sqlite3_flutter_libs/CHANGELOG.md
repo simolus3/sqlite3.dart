@@ -1,6 +1,6 @@
 ## 0.4.2
 
-- Upgrade to sqlite3 version 3.35.0
+- Upgrade to sqlite3 version 3.35.4
 
 ## 0.4.1
 
