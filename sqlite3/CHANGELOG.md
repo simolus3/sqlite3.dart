@@ -1,3 +1,7 @@
+## 1.1.0
+
+- Add optional parameters to `execute`.
+
 ## 1.0.1
 
 - Don't throw when `PreparedStatement.execute` is used on a statement returning

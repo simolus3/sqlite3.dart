@@ -23,8 +23,9 @@ abstract class Database {
   /// statement.
   int getUpdatedRows();
 
-  /// Executes the [sql] statement and ignores the result.
-  void execute(String sql);
+  /// Executes the [sql] statement with the provided [parameters] and ignores
+  /// the result.
+  void execute(String sql, [List<Object?> parameters = const []]);
 
   /// Prepares the [sql] select statement and runs it with the provided
   /// [parameters].

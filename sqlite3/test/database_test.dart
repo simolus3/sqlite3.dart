@@ -55,6 +55,15 @@ void main() {
     ]);
   });
 
+  test('can use execute with parameters', () {
+    database.execute('CREATE TABLE foo (a);');
+    database.execute('INSERT INTO foo VALUES (?)', [123]);
+
+    final result = database.select('SELECT * FROM foo');
+    expect(result, hasLength(1));
+    expect(result.single['a'], 123);
+  });
+
   group('throws', () {
     test('when executing an invalid statement', () {
       database.execute('CREATE TABLE foo (bar INTEGER CHECK (bar > 10));');

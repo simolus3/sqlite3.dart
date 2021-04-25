@@ -93,28 +93,12 @@ class DatabaseImpl implements Database {
   }
 
   @override
-  void execute(String sql) {
-    _ensureOpen();
-
-    final sqlPtr = allocateZeroTerminated(sql);
-    final errorOut = allocate<Pointer<char>>();
-
-    final result =
-        _bindings.sqlite3_exec(_handle, sqlPtr, nullPtr(), nullPtr(), errorOut);
-    sqlPtr.free();
-
-    final errorPtr = errorOut.value;
-    errorOut.free();
-
-    String? errorMsg;
-    if (!errorPtr.isNullPointer) {
-      errorMsg = errorPtr.readString();
-      // The message was allocated from sqlite3, we need to free it
-      _bindings.sqlite3_free(errorPtr.cast());
-    }
-
-    if (result != SQLITE_OK) {
-      throw SqliteException(result, errorMsg ?? 'unknown error');
+  void execute(String sql, [List<Object?> parameters = const []]) {
+    final stmt = prepare(sql);
+    try {
+      stmt.execute(parameters);
+    } finally {
+      stmt.dispose();
     }
   }
 
