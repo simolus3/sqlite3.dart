@@ -22,7 +22,7 @@ const _platform = MethodChannel('sqlcipher_flutter_libs');
 ///
 /// Big thanks to [@knaeckeKami](https://github.com/knaeckeKami) for finding
 /// this workaround!!
-Future<void> applyWorkaroundToOpenSqlite3OnOldAndroidVersions() async {
+Future<void> applyWorkaroundToOpenSqlCipherOnOldAndroidVersions() async {
   if (!Platform.isAndroid) return;
 
   try {
