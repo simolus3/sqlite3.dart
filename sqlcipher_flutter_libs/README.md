@@ -21,7 +21,7 @@ we can open it in Dart too.
       OperatingSystem.android, openCipherOnAndroid);
 ```
 
-### no change needed for ios
+__No changes are necessary for iOS__
 
 For more details on how to actually use this package in a Flutter app, see 
 [sqlite3](https://pub.dev/packages/sqlite3).
