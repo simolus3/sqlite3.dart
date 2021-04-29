@@ -10,7 +10,7 @@ If you're seeing those crashes, you could try setting `android.bundle.enableUnco
 file. Be aware that this increases the size of your application when installed.
 
 Alternatively, you can use the `applyWorkaroundToOpenSqlite3OnOldAndroidVersions` method from this library.
-It will try to open `sqlite3` in Java, which seems to work more reliably. After sqlite3 has been loaded from Java,
+It will try to open `sqlcipher` in Java, which seems to work more reliably. After the native library has been loaded from Java,
 we can open it in Dart too.
 
 ### working with Android
