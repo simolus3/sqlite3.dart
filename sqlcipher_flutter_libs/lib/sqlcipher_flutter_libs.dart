@@ -13,7 +13,7 @@ import 'package:flutter/services.dart';
 
 const _platform = MethodChannel('sqlcipher_flutter_libs');
 
-/// Workaround to open sqlite3 on old Android versions.
+/// Workaround to open sqlcipher on old Android versions.
 ///
 /// On old Android versions, this method can help if you're having issues
 /// opening sqlite3 (e.g. if you're seeing crashes about `libsqlcipher.so` not
