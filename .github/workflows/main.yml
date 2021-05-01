@@ -18,9 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: DanTup/gh-actions/setup-dart@master
-      with:
-        channel: dev
+    - uses: dart-lang/setup-dart@v1
 
     - name: Pub get
       run: dart pub get
@@ -38,16 +36,13 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
-        dart: [dev]
     
     runs-on: ${{ matrix.os }}
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     - uses: actions/checkout@v2
-    - uses: DanTup/gh-actions/setup-dart@master
-      with:
-        channel: ${{ matrix.dart }}
+    - uses: dart-lang/setup-dart@v1
     
     - name: install sqlite (Linux)
       if: runner.os == 'Linux'
@@ -73,8 +68,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: subosito/flutter-action@v1
-        with:
-          channel: 'dev'
       
       - name: pub get
         working-directory: "integration_tests/${{ matrix.test }}"
@@ -104,8 +97,6 @@ jobs:
       
       - uses: actions/checkout@v2
       - uses: subosito/flutter-action@v1
-        with:
-          channel: 'dev'
       
       - name: Flutter version
         run: flutter --version
