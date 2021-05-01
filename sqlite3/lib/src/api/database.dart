@@ -1,7 +1,7 @@
 import 'dart:ffi';
-import 'package:sqlite3/src/api/result_set.dart';
 
 import 'functions.dart';
+import 'result_set.dart';
 import 'statement.dart';
 
 /// An opened sqlite3 database.

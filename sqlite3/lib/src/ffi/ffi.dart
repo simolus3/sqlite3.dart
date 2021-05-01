@@ -3,9 +3,8 @@ import 'dart:convert';
 import 'dart:ffi';
 import 'dart:typed_data';
 
-import 'package:sqlite3/src/ffi/memory.dart';
-
 import 'constants.dart';
+import 'memory.dart';
 import 'sqlite3.ffi.dart';
 
 export 'dart:ffi';

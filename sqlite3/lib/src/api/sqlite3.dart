@@ -1,9 +1,9 @@
 import 'dart:ffi';
 
-import 'package:sqlite3/open.dart';
-import 'package:sqlite3/sqlite3.dart';
-import 'package:sqlite3/src/ffi/ffi.dart';
-import 'package:sqlite3/src/impl/implementation.dart';
+import '../../open.dart';
+import '../ffi/ffi.dart';
+import '../impl/implementation.dart';
+import 'database.dart';
 
 Sqlite3? _sqlite3;
 
