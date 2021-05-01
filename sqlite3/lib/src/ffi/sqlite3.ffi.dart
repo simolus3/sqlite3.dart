@@ -41,6 +41,14 @@ typedef _sqlite3_last_insert_rowid_native = Int64 Function(Pointer<sqlite3>);
 typedef sqlite3_last_insert_rowid_dart = int Function(Pointer<sqlite3> db);
 typedef _sqlite3_changes_native = Int32 Function(Pointer<sqlite3>);
 typedef sqlite3_changes_dart = int Function(Pointer<sqlite3> db);
+typedef _sqlite3_exec_native = Int32 Function(Pointer<sqlite3>, Pointer<char>,
+    Pointer<Void>, Pointer<Void>, Pointer<Pointer<char>>);
+typedef sqlite3_exec_dart = int Function(
+    Pointer<sqlite3> db,
+    Pointer<char> sql,
+    Pointer<Void> callback,
+    Pointer<Void> argToCb,
+    Pointer<Pointer<char>> errorOut);
 typedef _sqlite3_finalize_native = Int32 Function(Pointer<sqlite3_stmt>);
 typedef sqlite3_finalize_dart = int Function(Pointer<sqlite3_stmt> pStmt);
 typedef _sqlite3_step_native = Int32 Function(Pointer<sqlite3_stmt>);
@@ -183,6 +191,7 @@ class Bindings {
   final sqlite3_libversion_number_dart sqlite3_libversion_number;
   final sqlite3_last_insert_rowid_dart sqlite3_last_insert_rowid;
   final sqlite3_changes_dart sqlite3_changes;
+  final sqlite3_exec_dart sqlite3_exec;
   final sqlite3_finalize_dart sqlite3_finalize;
   final sqlite3_step_dart sqlite3_step;
   final sqlite3_reset_dart sqlite3_reset;
@@ -248,6 +257,9 @@ class Bindings {
             sqlite3_last_insert_rowid_dart>('sqlite3_last_insert_rowid'),
         sqlite3_changes = library.lookupFunction<_sqlite3_changes_native,
             sqlite3_changes_dart>('sqlite3_changes'),
+        sqlite3_exec =
+            library.lookupFunction<_sqlite3_exec_native, sqlite3_exec_dart>(
+                'sqlite3_exec'),
         sqlite3_finalize = library.lookupFunction<_sqlite3_finalize_native,
             sqlite3_finalize_dart>('sqlite3_finalize'),
         sqlite3_step =

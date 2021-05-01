@@ -55,13 +55,33 @@ void main() {
     ]);
   });
 
-  test('can use execute with parameters', () {
-    database.execute('CREATE TABLE foo (a);');
-    database.execute('INSERT INTO foo VALUES (?)', [123]);
+  group('execute', () {
+    test('can run multiple statements at once', () {
+      database.execute('CREATE TABLE foo (a); CREATE TABLE bar (b);');
 
-    final result = database.select('SELECT * FROM foo');
-    expect(result, hasLength(1));
-    expect(result.single['a'], 123);
+      final result = database
+          .select('SELECT name FROM sqlite_master')
+          .map((row) => row['name'] as String);
+      expect(result, containsAll(<String>['foo', 'bar']));
+    });
+
+    test('can use parameters', () {
+      database.execute('CREATE TABLE foo (a);');
+      database.execute('INSERT INTO foo VALUES (?)', [123]);
+
+      final result = database.select('SELECT * FROM foo');
+      expect(result, hasLength(1));
+      expect(result.single['a'], 123);
+    });
+
+    test('does not allow multiple statements with parameters', () {
+      database.execute('CREATE TABLE foo (a);');
+
+      expect(
+          () => database.execute(
+              'INSERT INTO foo VALUES (?); INSERT INTO foo VALUES (?);', [123]),
+          throwsArgumentError);
+    });
   });
 
   group('throws', () {

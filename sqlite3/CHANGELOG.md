@@ -1,3 +1,9 @@
+## 1.1.1
+
+- Fix memory leak when preparing statements!
+- Don't allow `execute` with arguments when the provided sql string contains
+  more than one argument.
+
 ## 1.1.0
 
 - Add optional parameters to `execute`.

@@ -42,8 +42,11 @@ abstract class Database {
   /// a virtual table, [prepare] throws an exception.
   /// For more information on the optional parameters, see
   /// [the sqlite documentation](https://www.sqlite.org/c3ref/c_prepare_normalize.html)
+  /// If [checkNoTail] is enabled (it defaults to `false`) and the [sql] string
+  /// contains trailing data, an exception will be thrown and the statement will
+  /// not be executed.
   PreparedStatement prepare(String sql,
-      {bool persistent = false, bool vtab = true});
+      {bool persistent = false, bool vtab = true, bool checkNoTail = false});
 
   /// Creates a scalar function that can be called from sql queries sent against
   /// this database.

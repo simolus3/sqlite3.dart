@@ -94,11 +94,37 @@ class DatabaseImpl implements Database {
 
   @override
   void execute(String sql, [List<Object?> parameters = const []]) {
-    final stmt = prepare(sql);
-    try {
-      stmt.execute(parameters);
-    } finally {
-      stmt.dispose();
+    if (parameters.isEmpty) {
+      // Use sqlite3_exec since that can run multiple statements at once.
+      _ensureOpen();
+
+      final sqlPtr = allocateZeroTerminated(sql);
+      final errorOut = allocate<Pointer<char>>();
+
+      final result = _bindings.sqlite3_exec(
+          _handle, sqlPtr, nullPtr(), nullPtr(), errorOut);
+      sqlPtr.free();
+
+      final errorPtr = errorOut.value;
+      errorOut.free();
+
+      String? errorMsg;
+      if (!errorPtr.isNullPointer) {
+        errorMsg = errorPtr.readString();
+        // The message was allocated from sqlite3, we need to free it
+        _bindings.sqlite3_free(errorPtr.cast());
+      }
+
+      if (result != SQLITE_OK) {
+        throw SqliteException(result, errorMsg ?? 'unknown error');
+      }
+    } else {
+      final stmt = prepare(sql, checkNoTail: true);
+      try {
+        stmt.execute(parameters);
+      } finally {
+        stmt.dispose();
+      }
     }
   }
 
@@ -112,10 +138,12 @@ class DatabaseImpl implements Database {
 
   @override
   PreparedStatement prepare(String sql,
-      {bool persistent = false, bool vtab = true}) {
+      {bool persistent = false, bool vtab = true, bool checkNoTail = false}) {
     _ensureOpen();
 
     final stmtOut = allocate<Pointer<sqlite3_stmt>>();
+    final pzTail =
+        checkNoTail ? allocate<Pointer<char>>() : nullPtr<Pointer<char>>();
 
     final bytes = utf8.encode(sql);
     final sqlPtr = allocateBytes(bytes);
@@ -141,7 +169,7 @@ class DatabaseImpl implements Database {
         bytes.length,
         prepFlags,
         stmtOut,
-        nullPtr(),
+        pzTail,
       );
     } else {
       assert(
@@ -159,14 +187,27 @@ class DatabaseImpl implements Database {
         sqlPtr.cast(),
         bytes.length,
         stmtOut,
-        nullPtr(),
+        pzTail,
       );
     }
 
     final stmtPtr = stmtOut.value;
     stmtOut.free();
+    sqlPtr.free();
+
     if (resultCode != SQLITE_OK) {
       throwException(this, resultCode);
+    }
+
+    if (checkNoTail) {
+      final usedBytes = pzTail.value.address - sqlPtr.address;
+      pzTail.free();
+
+      if (usedBytes < bytes.length) {
+        _bindings.sqlite3_finalize(stmtPtr);
+        throw ArgumentError.value(
+            sql, 'sql', 'Has trailing data after the first sql statement;');
+      }
     }
 
     final stmt = PreparedStatementImpl(stmtPtr, this);

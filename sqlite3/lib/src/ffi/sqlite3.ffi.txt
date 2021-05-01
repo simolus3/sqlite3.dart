@@ -26,6 +26,7 @@ int sqlite3_libversion_number();
 
 int64 sqlite3_last_insert_rowid(sqlite3 *db);
 int32 sqlite3_changes(sqlite3 *db);
+int sqlite3_exec(sqlite3 *db, char *sql, void *callback, void *argToCb, char **errorOut);
 
 # Statements
 
