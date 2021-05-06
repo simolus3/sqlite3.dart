@@ -2,6 +2,7 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter_driver/driver_extension.dart';
+import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 import 'package:sqlite3/open.dart';
 import 'package:test/test.dart';
 import 'package:sqlite3/sqlite3.dart';
@@ -9,7 +10,9 @@ import 'package:sqlite3/sqlite3.dart';
 void main() {
   enableFlutterDriverExtension();
 
-  setUpAll(() {
+  setUpAll(() async {
+    await applyWorkaroundToOpenSqlCipherOnOldAndroidVersions();
+
     open.overrideFor(
         OperatingSystem.android, () => DynamicLibrary.open('libsqlcipher.so'));
   });

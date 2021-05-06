@@ -3,6 +3,7 @@
 ///
 /// The purpose of the `sqlcipher_flutter_libs` package is to provide `sqlite3`
 /// native libraries when building Flutter apps for Android and iOS.
+// @dart=2.12
 library sqlcipher_flutter_libs;
 
 import 'dart:ffi';
