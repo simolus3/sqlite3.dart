@@ -1,6 +1,6 @@
 ## 0.4.3
 
-- Upgrade to sqlite3 version 3.35.5 on iOS and Android
+- Upgrade to sqlite3 version 3.35.4 on iOS as well
 
 ## 0.4.2
 
