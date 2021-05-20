@@ -1,6 +1,10 @@
+## 0.4.3
+
+- Upgrade to sqlite3 version 3.35.4 on iOS
+
 ## 0.4.2
 
-- Upgrade to sqlite3 version 3.35.4
+- Upgrade to sqlite3 version 3.35.4 on Android
 
 ## 0.4.1
 
