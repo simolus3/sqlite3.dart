@@ -94,7 +94,7 @@ extension ContextUtils on Pointer<sqlite3_context> {
       bindings.sqlite3_result_text(
           this, ptr.cast(), bytes.length, SQLITE_TRANSIENT);
       ptr.free();
-    } else if (result is List<int>) {
+    } else if (result is Uint8List) {
       final ptr = allocateBytes(result);
 
       bindings.sqlite3_result_blob64(
@@ -148,7 +148,7 @@ class ValueList extends ListBase<Object?> {
     }
 
     final result = argArray[index].read(bindings);
-    if (result is String || result is List<int>) {
+    if (result is String || result is Uint8List) {
       // Cache to avoid excessive copying in case the argument is loaded
       // multiple times
       _cachedCopies[index] = result;

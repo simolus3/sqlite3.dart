@@ -115,7 +115,7 @@ class PreparedStatementImpl implements PreparedStatement {
 
         _bindings.sqlite3_bind_text(
             _stmt, i, ptr.cast(), bytes.length, nullPtr());
-      } else if (param is List<int>) {
+      } else if (param is Uint8List) {
         if (param.isEmpty) {
           // malloc(0) is implementation-defined and might return a null
           // pointer, which is not what we want: Passing a null-pointer to
@@ -134,7 +134,7 @@ class PreparedStatementImpl implements PreparedStatement {
           param,
           'params[$i]',
           'Allowed parameters must either be null or an int, num, String or '
-              'List<int>.',
+              'Uint8List.',
         );
       }
     }
