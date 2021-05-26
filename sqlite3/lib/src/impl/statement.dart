@@ -100,7 +100,10 @@ class PreparedStatementImpl implements PreparedStatement {
 
     // variables in sqlite are 1-indexed
     for (var i = 1; i <= params.length; i++) {
-      final Object? param = params[i - 1];
+      Object? param = params[i - 1];
+      if (param is List<int>) {
+        param = Uint8List.fromList(param);
+      }
 
       if (param == null) {
         _bindings.sqlite3_bind_null(_stmt, i);
@@ -133,7 +136,7 @@ class PreparedStatementImpl implements PreparedStatement {
         throw ArgumentError.value(
           param,
           'params[$i]',
-          'Allowed parameters must either be null or an int, num, String or '
+          'Allowed parameters must either be null or an int, num, String, List<int> or '
               'Uint8List.',
         );
       }
