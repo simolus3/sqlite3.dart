@@ -109,7 +109,7 @@ class PreparedStatementImpl implements PreparedStatement {
       } else if (param is double) {
         _bindings.sqlite3_bind_double(_stmt, i, param.toDouble());
       } else if (param is String) {
-        final bytes = utf8.encode(param);
+        final bytes = utf8Encode(param);
         final ptr = allocateBytes(bytes);
         _allocatedWhileBinding.add(ptr);
 

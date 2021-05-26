@@ -69,6 +69,8 @@ extension ValueUtils on Pointer<sqlite3_value> {
   }
 }
 
+final utf8Encode = utf8.encoder.convert;
+
 extension ContextUtils on Pointer<sqlite3_context> {
   Pointer<Void> aggregateContext(Bindings bindings, int bytes) {
     return bindings.sqlite3_aggregate_context(this, bytes);
@@ -88,7 +90,7 @@ extension ContextUtils on Pointer<sqlite3_context> {
     } else if (result is bool) {
       bindings.sqlite3_result_int64(this, result ? 1 : 0);
     } else if (result is String) {
-      final bytes = utf8.encode(result);
+      Uint8List bytes = utf8Encode(result);
       final ptr = allocateBytes(bytes);
 
       bindings.sqlite3_result_text(
@@ -104,7 +106,7 @@ extension ContextUtils on Pointer<sqlite3_context> {
   }
 
   void setError(Bindings bindings, String description) {
-    final bytes = utf8.encode(description);
+    final Uint8List bytes = utf8Encode(description);
     final ptr = allocateBytes(bytes);
 
     bindings.sqlite3_result_error(this, ptr.cast(), bytes.length);

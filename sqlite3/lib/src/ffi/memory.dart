@@ -40,6 +40,7 @@ Pointer<Uint8> allocateBytes(Uint8List bytes, {int additionalLength = 0}) {
   return ptr;
 }
 
+final utf8Encode = utf8.encoder.convert;
 Pointer<char> allocateZeroTerminated(String string) {
-  return allocateBytes(utf8.encode(string), additionalLength: 1).cast();
+  return allocateBytes(utf8Encode(string), additionalLength: 1).cast();
 }

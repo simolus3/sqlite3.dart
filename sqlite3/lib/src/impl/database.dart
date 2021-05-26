@@ -145,7 +145,7 @@ class DatabaseImpl implements Database {
     final pzTail =
         checkNoTail ? allocate<Pointer<char>>() : nullPtr<Pointer<char>>();
 
-    final bytes = utf8.encode(sql);
+    final bytes = utf8Encode(sql);
     final sqlPtr = allocateBytes(bytes);
 
     var prepFlags = 0;
@@ -229,7 +229,7 @@ class DatabaseImpl implements Database {
   }
 
   Pointer<Uint8> _functionName(String functionName) {
-    final functionNameBytes = utf8.encode(functionName);
+    final functionNameBytes = utf8Encode(functionName);
 
     if (functionNameBytes.length > 255) {
       throw ArgumentError.value(functionName, 'functionName',
