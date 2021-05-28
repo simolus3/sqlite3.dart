@@ -11,6 +11,14 @@ contain native `SQLCipher` libraries.
       OperatingSystem.android, openCipherOnAndroid);
 ```
 
+
+### working with MacOS
+  on MacOS you need to override the open method like this
+
+```dart
+  open.overrideFor(OperatingSystem.macOS, openCipherOnMacOS);
+    
+```
 __No changes are necessary for iOS__
 
 For more details on how to actually use this package in a Flutter app, see 

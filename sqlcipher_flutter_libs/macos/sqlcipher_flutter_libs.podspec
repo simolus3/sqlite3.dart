@@ -1,6 +1,6 @@
 #
 # To learn more about a Podspec see http://guides.cocoapods.org/syntax/podspec.html.
-# Run `pod lib lint sqlite3_flutter_libs.podspec' to validate before publishing.
+# Run `pod lib lint sqlcipher_flutter_libs.podspec` to validate before publishing.
 #
 Pod::Spec.new do |s|
   s.name             = 'sqlcipher_flutter_libs'
@@ -13,14 +13,15 @@ A new flutter plugin project.
   s.license          = { :file => '../LICENSE' }
   s.author           = { 'Your Company' => 'email@example.com' }
   s.source           = { :path => '.' }
-  s.source_files = 'Classes/**/*'
+  s.source_files     = 'Classes/**/*'
   s.public_header_files = 'Classes/**/*.h'
-  s.dependency 'Flutter'
+  s.dependency 'FlutterMacOS'
 
   s.dependency 'SQLCipher', '~> 4.4.3'
   
-  s.platform = :ios, '8.0'
-
-  # Flutter.framework does not contain a i386 slice. Only x86_64 simulators are supported.
-  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'VALID_ARCHS[sdk=iphonesimulator*]' => 'x86_64' }
+  s.platform = :osx, '10.11'
+  s.pod_target_xcconfig = { 
+    'DEFINES_MODULE' => 'YES'
+  }
+  s.swift_version = '5.0'
 end
