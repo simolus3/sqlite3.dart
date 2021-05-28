@@ -25,4 +25,9 @@ void main() {
   test('can open sqlite3', () {
     print(sqlite3.version);
   });
+
+  test('contains sqlite3_key function', () {
+    expect(open.openSqlite().lookup('sqlite3_key'),
+        isA<Pointer>().having((e) => e.address, 'address', isPositive));
+  });
 }

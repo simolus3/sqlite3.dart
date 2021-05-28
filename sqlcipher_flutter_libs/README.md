@@ -11,7 +11,8 @@ contain native `SQLCipher` libraries.
       OperatingSystem.android, openCipherOnAndroid);
 ```
 
-__No changes are necessary for iOS__
+
+__No changes are necessary for iOS and MacOS__
 
 For more details on how to actually use this package in a Flutter app, see 
 [sqlite3](https://pub.dev/packages/sqlite3).

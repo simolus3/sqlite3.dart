@@ -58,7 +58,19 @@ DynamicLibrary _defaultOpen() {
     }
   }
   if (Platform.isMacOS) {
-    return DynamicLibrary.open('/usr/lib/libsqlite3.dylib');
+    DynamicLibrary result;
+
+    // First, try to load embed library with Pod
+    result = DynamicLibrary.process();
+
+    // Check if the process includes sqlite3. If it doesn't, fallback to the
+    // library from the system.
+    if (result.lookup('sqlite3_version').address <= 0) {
+      //No embed Sqlite3 library found with sqlite3_version function
+      //Load pre installed library on MacOS
+      result = DynamicLibrary.open('/usr/lib/libsqlite3.dylib');
+    }
+    return result;
   }
   if (Platform.isWindows) {
     return DynamicLibrary.open('sqlite3.dll');
