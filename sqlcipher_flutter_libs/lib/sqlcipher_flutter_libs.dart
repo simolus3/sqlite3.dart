@@ -55,3 +55,7 @@ DynamicLibrary openCipherOnAndroid() {
     return DynamicLibrary.open('/data/data/$appId/lib/libsqlcipher.so');
   }
 }
+
+DynamicLibrary openCipherOnMacOS() {
+  return DynamicLibrary.process();
+}
