@@ -1,3 +1,7 @@
+## 1.1.2
+
+- Attempt opening sqlite3 from `DynamicLibrary.process()` on macOS
+
 ## 1.1.1
 
 - Fix memory leak when preparing statements!

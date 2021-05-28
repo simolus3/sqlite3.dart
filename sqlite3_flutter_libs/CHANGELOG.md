@@ -1,3 +1,7 @@
+## 0.5.0
+
+- Also include sqlite when building for macOS
+
 ## 0.4.3
 
 - Upgrade to sqlite3 version 3.35.4 on iOS as well

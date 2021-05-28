@@ -18,9 +18,11 @@ Here's how to use this library on the most popular platforms:
 - __Linux__: You need to install an additional package (like `libsqlite3-dev` on Debian), or you manually
   ship sqlite3 with your app (see below)
 - __macOS__: Contains a built-in version of sqlite that this package will use by default.
+  Also, you can depend on `sqlite3_flutter_libs` if you want to include the latest
+  sqlite3 version with your app.
 - __Windows__: You need to manually ship sqlite3 with your app (see below)
 
-On Android and iOS, you can depend on the `sqlcipher_flutter_libs` package to use 
+On Android, iOS and macOS, you can depend on the `sqlcipher_flutter_libs` package to use 
 [SQLCipher](https://www.zetetic.net/sqlcipher/) instead of SQLite.
 Just be sure to never depend on both `sqlcipher_flutter_libs` and `sqlite3_flutter_libs`!
 
