@@ -7,4 +7,4 @@ export 'src/api/functions.dart';
 export 'src/api/result_set.dart';
 export 'src/api/sqlite3.dart';
 export 'src/api/statement.dart';
-export 'src/ffi/constants.dart';
+export 'src/ffi/constants.dart' show SqlError, SqlExtendedError;

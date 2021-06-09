@@ -46,14 +46,14 @@ extension ValueUtils on Pointer<sqlite3_value> {
   Object? read(Bindings bindings) {
     final type = bindings.sqlite3_value_type(this);
     switch (type) {
-      case SqlTypes.SQLITE_INTEGER:
+      case SqlType.SQLITE_INTEGER:
         return bindings.sqlite3_value_int64(this);
-      case SqlTypes.SQLITE_FLOAT:
+      case SqlType.SQLITE_FLOAT:
         return bindings.sqlite3_value_double(this);
-      case SqlTypes.SQLITE_TEXT:
+      case SqlType.SQLITE_TEXT:
         final length = bindings.sqlite3_value_bytes(this);
         return bindings.sqlite3_value_text(this).readString(length);
-      case SqlTypes.SQLITE_BLOB:
+      case SqlType.SQLITE_BLOB:
         final length = bindings.sqlite3_value_bytes(this);
         if (length == 0) {
           // sqlite3_column_blob returns a null pointer for non-null blobs with
@@ -62,7 +62,7 @@ extension ValueUtils on Pointer<sqlite3_value> {
           return Uint8List(0);
         }
         return bindings.sqlite3_value_blob(this).copyRange(length);
-      case SqlTypes.SQLITE_NULL:
+      case SqlType.SQLITE_NULL:
       default:
         return null;
     }

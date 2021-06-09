@@ -35,9 +35,9 @@ class PreparedStatementImpl implements PreparedStatement {
     // call _step() to skip past rows.
     do {
       result = _step();
-    } while (result == SqlErrors.SQLITE_ROW);
+    } while (result == SqlError.SQLITE_ROW);
 
-    if (result != SqlErrors.SQLITE_OK && result != SqlErrors.SQLITE_DONE) {
+    if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
       throwException(_db, result);
     }
   }
@@ -61,12 +61,12 @@ class PreparedStatementImpl implements PreparedStatement {
     final rows = <List<Object?>>[];
 
     int resultCode;
-    while ((resultCode = _step()) == SqlErrors.SQLITE_ROW) {
+    while ((resultCode = _step()) == SqlError.SQLITE_ROW) {
       rows.add(<Object?>[for (var i = 0; i < columnCount; i++) _readValue(i)]);
     }
 
-    if (resultCode != SqlErrors.SQLITE_OK &&
-        resultCode != SqlErrors.SQLITE_DONE) {
+    if (resultCode != SqlError.SQLITE_OK &&
+        resultCode != SqlError.SQLITE_DONE) {
       throwException(_db, resultCode);
     }
 
@@ -146,14 +146,14 @@ class PreparedStatementImpl implements PreparedStatement {
   Object? _readValue(int index) {
     final type = _bindings.sqlite3_column_type(_stmt, index);
     switch (type) {
-      case SqlTypes.SQLITE_INTEGER:
+      case SqlType.SQLITE_INTEGER:
         return _bindings.sqlite3_column_int64(_stmt, index);
-      case SqlTypes.SQLITE_FLOAT:
+      case SqlType.SQLITE_FLOAT:
         return _bindings.sqlite3_column_double(_stmt, index);
-      case SqlTypes.SQLITE_TEXT:
+      case SqlType.SQLITE_TEXT:
         final length = _bindings.sqlite3_column_bytes(_stmt, index);
         return _bindings.sqlite3_column_text(_stmt, index).readString(length);
-      case SqlTypes.SQLITE_BLOB:
+      case SqlType.SQLITE_BLOB:
         final length = _bindings.sqlite3_column_bytes(_stmt, index);
         if (length == 0) {
           // sqlite3_column_blob returns a null pointer for non-null blobs with
@@ -162,7 +162,7 @@ class PreparedStatementImpl implements PreparedStatement {
           return Uint8List(0);
         }
         return _bindings.sqlite3_column_blob(_stmt, index).copyRange(length);
-      case SqlTypes.SQLITE_NULL:
+      case SqlType.SQLITE_NULL:
       default:
         return null;
     }
