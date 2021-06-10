@@ -16,6 +16,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: dart-lang/setup-dart@v1
+      with:
+        sdk: dev
 
     - name: Pub get
       run: dart pub get
@@ -67,6 +69,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: subosito/flutter-action@v1
+        with:
+          channel: dev
       
       - name: pub get
         working-directory: "integration_tests/${{ matrix.test }}"
@@ -96,6 +100,8 @@ jobs:
       
       - uses: actions/checkout@v2
       - uses: subosito/flutter-action@v1
+        with:
+          channel: dev
       
       - name: Flutter version
         run: flutter --version
