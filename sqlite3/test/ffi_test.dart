@@ -1,7 +1,7 @@
 import 'dart:ffi';
 
-import 'package:test/test.dart';
 import 'package:sqlite3/src/ffi/ffi.dart';
+import 'package:test/test.dart';
 
 void main() {
   test('isNullPointer', () {
