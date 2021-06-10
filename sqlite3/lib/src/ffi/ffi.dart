@@ -46,14 +46,14 @@ extension ValueUtils on Pointer<sqlite3_value> {
   Object? read(Bindings bindings) {
     final type = bindings.sqlite3_value_type(this);
     switch (type) {
-      case SQLITE_INTEGER:
+      case SqlType.SQLITE_INTEGER:
         return bindings.sqlite3_value_int64(this);
-      case SQLITE_FLOAT:
+      case SqlType.SQLITE_FLOAT:
         return bindings.sqlite3_value_double(this);
-      case SQLITE_TEXT:
+      case SqlType.SQLITE_TEXT:
         final length = bindings.sqlite3_value_bytes(this);
         return bindings.sqlite3_value_text(this).readString(length);
-      case SQLITE_BLOB:
+      case SqlType.SQLITE_BLOB:
         final length = bindings.sqlite3_value_bytes(this);
         if (length == 0) {
           // sqlite3_column_blob returns a null pointer for non-null blobs with
@@ -62,7 +62,7 @@ extension ValueUtils on Pointer<sqlite3_value> {
           return Uint8List(0);
         }
         return bindings.sqlite3_value_blob(this).copyRange(length);
-      case SQLITE_NULL:
+      case SqlType.SQLITE_NULL:
       default:
         return null;
     }
@@ -91,14 +91,14 @@ extension ContextUtils on Pointer<sqlite3_context> {
       final bytes = utf8.encode(result);
       final ptr = allocateBytes(bytes);
 
-      bindings.sqlite3_result_text(
-          this, ptr.cast(), bytes.length, SQLITE_TRANSIENT);
+      bindings.sqlite3_result_text(this, ptr.cast(), bytes.length,
+          SqlSpecialDestructor.SQLITE_TRANSIENT);
       ptr.free();
     } else if (result is List<int>) {
       final ptr = allocateBytes(result);
 
-      bindings.sqlite3_result_blob64(
-          this, ptr.cast(), result.length, SQLITE_TRANSIENT);
+      bindings.sqlite3_result_blob64(this, ptr.cast(), result.length,
+          SqlSpecialDestructor.SQLITE_TRANSIENT);
       ptr.free();
     }
   }

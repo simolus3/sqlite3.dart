@@ -24,22 +24,23 @@ class DatabaseImpl implements Database {
     int flags;
     switch (mode) {
       case OpenMode.readOnly:
-        flags = SQLITE_OPEN_READONLY;
+        flags = SqlFlag.SQLITE_OPEN_READONLY;
         break;
       case OpenMode.readWrite:
-        flags = SQLITE_OPEN_READWRITE;
+        flags = SqlFlag.SQLITE_OPEN_READWRITE;
         break;
       case OpenMode.readWriteCreate:
-        flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
+        flags = SqlFlag.SQLITE_OPEN_READWRITE | SqlFlag.SQLITE_OPEN_CREATE;
         break;
     }
 
     if (uri) {
-      flags |= SQLITE_OPEN_URI;
+      flags |= SqlFlag.SQLITE_OPEN_URI;
     }
 
     if (mutex != null) {
-      flags |= mutex ? SQLITE_OPEN_FULLMUTEX : SQLITE_OPEN_NOMUTEX;
+      flags |=
+          mutex ? SqlFlag.SQLITE_OPEN_FULLMUTEX : SqlFlag.SQLITE_OPEN_NOMUTEX;
     }
 
     final namePtr = allocateZeroTerminated(filename);
@@ -55,7 +56,7 @@ class DatabaseImpl implements Database {
     outDb.free();
     if (vfs != null) vfsPtr.free();
 
-    if (result != SQLITE_OK) {
+    if (result != SqlError.SQLITE_OK) {
       bindings.sqlite3_close_v2(dbPtr);
       throw createExceptionRaw(bindings, dbPtr, result);
     }
@@ -115,7 +116,7 @@ class DatabaseImpl implements Database {
         _bindings.sqlite3_free(errorPtr.cast());
       }
 
-      if (result != SQLITE_OK) {
+      if (result != SqlError.SQLITE_OK) {
         throw SqliteException(result, errorMsg ?? 'unknown error');
       }
     } else {
@@ -150,10 +151,10 @@ class DatabaseImpl implements Database {
 
     var prepFlags = 0;
     if (persistent) {
-      prepFlags |= SQLITE_PREPARE_PERSISTENT;
+      prepFlags |= SqlPrepareFlag.SQLITE_PREPARE_PERSISTENT;
     }
     if (!vtab) {
-      prepFlags |= SQLITE_PREPARE_NO_VTAB;
+      prepFlags |= SqlPrepareFlag.SQLITE_PREPARE_NO_VTAB;
     }
 
     int resultCode;
@@ -195,7 +196,7 @@ class DatabaseImpl implements Database {
     stmtOut.free();
     sqlPtr.free();
 
-    if (resultCode != SQLITE_OK) {
+    if (resultCode != SqlError.SQLITE_OK) {
       throwException(this, resultCode);
     }
 
@@ -217,12 +218,12 @@ class DatabaseImpl implements Database {
   }
 
   int _eTextRep(bool deterministic, bool directOnly) {
-    var flags = SQLITE_UTF8;
+    var flags = SqlTextEncoding.SQLITE_UTF8;
     if (deterministic) {
-      flags |= SQLITE_DETERMINISTIC;
+      flags |= SqlFunctionFlag.SQLITE_DETERMINISTIC;
     }
     if (directOnly) {
-      flags |= SQLITE_DIRECTONLY;
+      flags |= SqlFunctionFlag.SQLITE_DIRECTONLY;
     }
 
     return flags;
@@ -263,7 +264,7 @@ class DatabaseImpl implements Database {
     );
     namePtr.free();
 
-    if (result != SQLITE_OK) {
+    if (result != SqlError.SQLITE_OK) {
       throwException(this, result);
     }
   }
@@ -292,7 +293,7 @@ class DatabaseImpl implements Database {
     );
     namePtr.free();
 
-    if (result != SQLITE_OK) {
+    if (result != SqlError.SQLITE_OK) {
       throwException(this, result);
     }
   }
@@ -308,7 +309,7 @@ class DatabaseImpl implements Database {
 
     final code = _bindings.sqlite3_close_v2(_handle);
     SqliteException? exception;
-    if (code != SQLITE_OK) {
+    if (code != SqlError.SQLITE_OK) {
       exception = createException(this, code);
     }
 
