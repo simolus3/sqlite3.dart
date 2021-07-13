@@ -21,23 +21,23 @@ class SqliteException implements Exception {
   /// code, providing some idea of the cause of the failure.
   int get resultCode => extendedResultCode & 0xFF;
 
-  /// Last SQL command executed
-  String sqlCommand;
+  /// The SQL statement triggering this exception.
+  String? sqlStatement;
 
-  SqliteException(this.extendedResultCode, this.message, this.sqlCommand,
-      [this.explanation]);
+  SqliteException(this.extendedResultCode, this.message,
+      [this.explanation, this.sqlStatement]);
 
   @override
   String toString() {
     if (explanation == null) {
       return '''
 SqliteException($extendedResultCode): $message
-    SQL: $sqlCommand
+    SQL: $sqlStatement
       ''';
     } else {
       return '''
 SqliteException($extendedResultCode): $message, $explanation
-    SQL: $sqlCommand
+    SQL: $sqlStatement
 ''';
     }
   }

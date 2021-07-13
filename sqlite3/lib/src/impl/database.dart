@@ -117,7 +117,7 @@ class DatabaseImpl implements Database {
       }
 
       if (result != SqlError.SQLITE_OK) {
-        throw SqliteException(result, errorMsg ?? 'unknown error', sql);
+        throw SqliteException(result, errorMsg ?? 'unknown error', null, sql);
       }
     } else {
       final stmt = prepare(sql, checkNoTail: true);
