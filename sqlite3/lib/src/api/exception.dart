@@ -22,7 +22,7 @@ class SqliteException implements Exception {
   int get resultCode => extendedResultCode & 0xFF;
 
   /// The SQL statement triggering this exception.
-  String? sqlStatement;
+  final String? sqlStatement;
 
   SqliteException(this.extendedResultCode, this.message,
       [this.explanation, this.sqlStatement]);
