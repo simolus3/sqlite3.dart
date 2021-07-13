@@ -21,14 +21,34 @@ class SqliteException implements Exception {
   /// code, providing some idea of the cause of the failure.
   int get resultCode => extendedResultCode & 0xFF;
 
-  SqliteException(this.extendedResultCode, this.message, [this.explanation]);
+  /// The SQL statement triggering this exception.
+  ///
+  /// This may be null when no prior statement is known.
+  final String? causingStatement;
+
+  SqliteException(this.extendedResultCode, this.message,
+      [this.explanation, this.causingStatement]);
 
   @override
   String toString() {
-    if (explanation == null) {
-      return 'SqliteException($extendedResultCode): $message';
-    } else {
-      return 'SqliteException($extendedResultCode): $message, $explanation';
+    final buffer = StringBuffer('SqliteException(')
+      ..write(extendedResultCode)
+      ..write('): ')
+      ..write(message);
+
+    if (explanation != null) {
+      buffer
+        ..write(', ')
+        ..write(explanation);
     }
+
+    if (causingStatement != null) {
+      buffer
+        ..writeln()
+        ..write('  Causing statement: ')
+        ..write(causingStatement);
+    }
+
+    return buffer.toString();
   }
 }

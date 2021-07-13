@@ -1,6 +1,7 @@
 part of 'implementation.dart';
 
 class PreparedStatementImpl implements PreparedStatement {
+  final String originalSql;
   final Pointer<sqlite3_stmt> _stmt;
   final DatabaseImpl _db;
 
@@ -11,7 +12,7 @@ class PreparedStatementImpl implements PreparedStatement {
 
   Bindings get _bindings => _db._bindings;
 
-  PreparedStatementImpl(this._stmt, this._db);
+  PreparedStatementImpl(this.originalSql, this._stmt, this._db);
 
   @override
   int get parameterCount {
@@ -38,7 +39,7 @@ class PreparedStatementImpl implements PreparedStatement {
     } while (result == SqlError.SQLITE_ROW);
 
     if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
-      throwException(_db, result);
+      throwException(_db, result, originalSql);
     }
   }
 
@@ -67,7 +68,7 @@ class PreparedStatementImpl implements PreparedStatement {
 
     if (resultCode != SqlError.SQLITE_OK &&
         resultCode != SqlError.SQLITE_DONE) {
-      throwException(_db, resultCode);
+      throwException(_db, resultCode, originalSql);
     }
 
     return ResultSet(names, rows);

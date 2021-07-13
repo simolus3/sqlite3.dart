@@ -120,4 +120,53 @@ void main() {
     }
     db.dispose();
   });
+
+  group('reports the causing SQL statement', () {
+    late Database db;
+
+    setUp(() => db = sqlite3.openInMemory());
+    tearDown(() => db.dispose());
+
+    test('in execute()', () {
+      expect(
+          () => db.execute('this is no valid sql'),
+          throwsA(isA<SqliteException>().having((e) => e.causingStatement,
+              'causingStatement', 'this is no valid sql')));
+    });
+
+    test('for prepared statements (syntax)', () {
+      expect(
+          () => db.prepare('this is no valid sql'),
+          throwsA(isA<SqliteException>().having((e) => e.causingStatement,
+              'causingStatement', 'this is no valid sql')));
+    });
+
+    test('for prepared statements (selecting)', () {
+      db.createFunction(
+        functionName: 'fail',
+        function: (args) => throw Exception('not allowed'),
+      );
+
+      expect(
+          () => db.prepare('SELECT fail()').select(),
+          throwsA(isA<SqliteException>().having(
+              (e) => e.causingStatement, 'causingStatement', 'SELECT fail()')));
+    });
+
+    test('reports previous statement in toString()', () {
+      expect(
+        SqliteException(1, 'message', 'explanation', 'SELECT foo;').toString(),
+        '''
+SqliteException(1): message, explanation
+  Causing statement: SELECT foo;''',
+      );
+
+      expect(
+        SqliteException(1, 'message', null, 'SELECT foo;').toString(),
+        '''
+SqliteException(1): message
+  Causing statement: SELECT foo;''',
+      );
+    });
+  });
 }

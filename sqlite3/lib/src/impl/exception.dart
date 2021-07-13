@@ -1,7 +1,8 @@
 part of 'implementation.dart';
 
 SqliteException createExceptionRaw(
-    Bindings bindings, Pointer<sqlite3> db, int returnCode) {
+    Bindings bindings, Pointer<sqlite3> db, int returnCode,
+    [String? previousStatement]) {
   // We don't need to free the pointer returned by sqlite3_errmsg: "Memory to
   // hold the error message string is managed internally. The application does
   // not need to worry about freeing the result."
@@ -17,16 +18,18 @@ SqliteException createExceptionRaw(
 
   explanation = '$errStr (code $extendedCode)';
 
-  return SqliteException(returnCode, dbMessage, explanation);
+  return SqliteException(returnCode, dbMessage, explanation, previousStatement);
 }
 
-SqliteException createException(DatabaseImpl db, int returnCode) {
+SqliteException createException(DatabaseImpl db, int returnCode,
+    [String? previousStatement]) {
   final bindings = db._bindings;
   final handle = db._handle;
 
-  return createExceptionRaw(bindings, handle, returnCode);
+  return createExceptionRaw(bindings, handle, returnCode, previousStatement);
 }
 
-void throwException(DatabaseImpl db, int returnCode) {
-  throw createException(db, returnCode);
+Never throwException(DatabaseImpl db, int returnCode,
+    [String? previousStatement]) {
+  throw createException(db, returnCode, previousStatement);
 }

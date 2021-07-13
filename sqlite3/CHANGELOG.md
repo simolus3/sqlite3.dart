@@ -1,3 +1,8 @@
+## 1.2.0-dev
+
+- Report the causing SQL statement in exceptions
+- Use a new Dart API to determine whether symbols are available
+
 ## 1.1.2
 
 - Attempt opening sqlite3 from `DynamicLibrary.process()` on macOS

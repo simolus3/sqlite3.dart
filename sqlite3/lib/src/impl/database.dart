@@ -117,7 +117,7 @@ class DatabaseImpl implements Database {
       }
 
       if (result != SqlError.SQLITE_OK) {
-        throw SqliteException(result, errorMsg ?? 'unknown error');
+        throw SqliteException(result, errorMsg ?? 'unknown error', null, sql);
       }
     } else {
       final stmt = prepare(sql, checkNoTail: true);
@@ -197,7 +197,7 @@ class DatabaseImpl implements Database {
     sqlPtr.free();
 
     if (resultCode != SqlError.SQLITE_OK) {
-      throwException(this, resultCode);
+      throwException(this, resultCode, sql);
     }
 
     if (checkNoTail) {
@@ -211,7 +211,7 @@ class DatabaseImpl implements Database {
       }
     }
 
-    final stmt = PreparedStatementImpl(stmtPtr, this);
+    final stmt = PreparedStatementImpl(sql, stmtPtr, this);
 
     _statements.add(stmt);
     return stmt;
