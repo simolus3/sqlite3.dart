@@ -102,7 +102,10 @@ class PreparedStatementImpl implements PreparedStatement {
 
     // variables in sqlite are 1-indexed
     for (var i = 1; i <= params.length; i++) {
-      final Object? param = params[i - 1];
+      Object? param = params[i - 1];
+      if (param is List<int>) {
+        param = Uint8List.fromList(param);
+      }
 
       if (param == null) {
         _bindings.sqlite3_bind_null(_stmt, i);
@@ -111,13 +114,13 @@ class PreparedStatementImpl implements PreparedStatement {
       } else if (param is double) {
         _bindings.sqlite3_bind_double(_stmt, i, param.toDouble());
       } else if (param is String) {
-        final bytes = utf8.encode(param);
+        final bytes = utf8Encode(param);
         final ptr = allocateBytes(bytes);
         _allocatedWhileBinding.add(ptr);
 
         _bindings.sqlite3_bind_text(
             _stmt, i, ptr.cast(), bytes.length, nullPtr());
-      } else if (param is List<int>) {
+      } else if (param is Uint8List) {
         if (param.isEmpty) {
           // malloc(0) is implementation-defined and might return a null
           // pointer, which is not what we want: Passing a null-pointer to
@@ -135,8 +138,8 @@ class PreparedStatementImpl implements PreparedStatement {
         throw ArgumentError.value(
           param,
           'params[$i]',
-          'Allowed parameters must either be null or an int, num, String or '
-              'List<int>.',
+          'Allowed parameters must either be null or an int, num, String, List<int> or '
+              'Uint8List.',
         );
       }
     }
