@@ -3,7 +3,10 @@
 Flutter apps depending on this package will contain native `SQLCipher` libraries
 on Android, iOS and macOS.
 
-### Using this package
+As `SQLCipher` has an ABI compatible to the regular `sqlite3` library, it can be used
+with an unmodified `sqlite3` package.
+
+## Using this package
 
 When using this package on Android, you need to tell the `sqlite3` package
 how to open `sqlcipher` since it will attempt to open the regular
@@ -25,8 +28,21 @@ __No changes are necessary for iOS and MacOS__
 For more details on how to actually use this package in a Flutter app, see 
 [sqlite3](https://pub.dev/packages/sqlite3).
 
+## Incompatibilities with `sqlite3` on iOS and macOS
 
-### Problems on Android 6
+For iOS and macOS builds, depending on this package will install the `SQLCipher` pod.
+When depending on another package linking the regular `sqlite3` pod or library, this can lead to undefined
+behavior which may mean that __SQLCipher will not be available in your app__.
+On such problematic package is `google_mobile_ads`.
+
+To fix this problem, you can put `-framework SQLCipher` in "Other Linker Flags" in your project's settings
+on XCode.
+For more details on this, see
+
+- [Important Advisory: SQLCipher with Xcode 8 and new SDKs](https://discuss.zetetic.net/t/important-advisory-sqlcipher-with-xcode-8-and-new-sdks/1688)
+- [Cannot open encrypted database with SQLCipher 4](https://discuss.zetetic.net/t/cannot-open-encrypted-database-with-sqlcipher-4/3654/3)
+
+## Problems on Android 6
 
 There appears to be a problem when loading native libraries on Android 6 (see [this issue](https://github.com/simolus3/moor/issues/895#issuecomment-720195005)).
 If you're seeing those crashes, you could try setting `android.bundle.enableUncompressedNativeLibs=false` in your `gradle.properties`
