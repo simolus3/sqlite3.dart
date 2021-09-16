@@ -166,6 +166,108 @@ void main() {
     opened.dispose();
   });
 
+  group('cursors', () {
+    late Database database;
+
+    setUp(() => database = sqlite3.openInMemory());
+
+    tearDown(() => database.dispose());
+
+    test('report correct values', () {
+      final stmt = database.prepare('VALUES (1), (2), (3);');
+
+      expect(
+        _TestIterable(stmt.selectCursor()).toList(),
+        [
+          {'column1': 1},
+          {'column1': 2},
+          {'column1': 3}
+        ],
+      );
+    });
+
+    test('bind variables', () {
+      final stmt = database.prepare('VALUES (?), (?), (?);');
+
+      expect(
+        _TestIterable(stmt.selectCursor([2, 3, 5])).toList(),
+        [
+          {'column1': 2},
+          {'column1': 3},
+          {'column1': 5}
+        ],
+      );
+    });
+
+    test('throw exceptions', () {
+      database
+        ..execute('CREATE TABLE foo (a);')
+        ..execute('INSERT INTO foo VALUES (1), (2), (3);')
+        ..createFunction(
+          functionName: 'throw_if',
+          function: (args) {
+            if (args[0] == args[1]) throw Exception('boom!');
+
+            return args[0];
+          },
+          argumentCount: const AllowedArgumentCount(2),
+        );
+
+      final stmt = database.prepare(
+          'WITH seq(a) AS (VALUES (1), (2), (3)) SELECT throw_if(a, 3) AS r FROM seq;');
+      final cursor = stmt.selectCursor();
+
+      expect(cursor.columnNames, ['r']);
+
+      expect(cursor.moveNext(), isTrue);
+      expect(cursor.current, {'r': 1});
+
+      expect(cursor.moveNext(), isTrue);
+      expect(cursor.current, {'r': 2});
+
+      expect(cursor.moveNext, throwsA(isA<SqliteException>()));
+      expect(cursor.moveNext(), isFalse);
+    });
+
+    group('are closed', () {
+      test('by closing the prepared statement', () {
+        final stmt = database.prepare('VALUES (1), (2), (3);');
+        final cursor = stmt.selectCursor();
+        expect(cursor.moveNext(), isTrue);
+
+        stmt.dispose();
+        expect(cursor.moveNext(), isFalse);
+      });
+
+      test('by invoking select', () {
+        final stmt = database.prepare('VALUES (1), (2), (3);');
+        final cursor = stmt.selectCursor();
+        expect(cursor.moveNext(), isTrue);
+
+        stmt.select();
+        expect(cursor.moveNext(), isFalse);
+      });
+
+      test('by invoking execute', () {
+        final stmt = database.prepare('VALUES (1), (2), (3);');
+        final cursor = stmt.selectCursor();
+        expect(cursor.moveNext(), isTrue);
+
+        stmt.execute();
+        expect(cursor.moveNext(), isFalse);
+      });
+
+      test('by invoking selectCursor', () {
+        final stmt = database.prepare('VALUES (1), (2), (3);');
+        final cursor = stmt.selectCursor();
+        expect(cursor.moveNext(), isTrue);
+
+        stmt.selectCursor();
+        expect(cursor.moveNext(), isFalse);
+      });
+    });
+  });
+
   final version = sqlite3.version;
   final hasReturning = version.versionNumber > 3035000;
 
@@ -200,4 +302,11 @@ void main() {
       skip: hasReturning
           ? null
           : 'RETURNING not supported by current sqlite3 version');
+}
+
+class _TestIterable<T> extends Iterable<T> {
+  @override
+  final Iterator<T> iterator;
+
+  _TestIterable(this.iterator);
 }

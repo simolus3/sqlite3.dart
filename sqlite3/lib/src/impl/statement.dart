@@ -6,6 +6,7 @@ class PreparedStatementImpl implements PreparedStatement {
   final DatabaseImpl _db;
 
   bool _closed = false;
+  _ActiveCursorIterator? _currentCursor;
 
   bool _variablesBound = false;
   final List<Pointer> _allocatedWhileBinding = [];
@@ -43,22 +44,27 @@ class PreparedStatementImpl implements PreparedStatement {
     }
   }
 
+  List<String> get _columnNames {
+    final columnCount = _bindings.sqlite3_column_count(_stmt);
+
+    return [
+      for (var i = 0; i < columnCount; i++)
+        // name pointer doesn't need to be disposed, that happens when we
+        // finalize
+        _bindings.sqlite3_column_name(_stmt, i).readString()
+    ];
+  }
+
   @override
-  ResultSet select([List<Object?> parameters = const <Object>[]]) {
+  ResultSet select([List<Object?> parameters = const <Object?>[]]) {
     _ensureNotFinalized();
     _ensureMatchingParameters(parameters);
 
     _reset();
     _bindParams(parameters);
 
-    final columnCount = _bindings.sqlite3_column_count(_stmt);
-
-    final names = [
-      for (var i = 0; i < columnCount; i++)
-        // name pointer doesn't need to be disposed, that happens when we
-        // finalize
-        _bindings.sqlite3_column_name(_stmt, i).readString()
-    ];
+    final names = _columnNames;
+    final columnCount = names.length;
     final rows = <List<Object?>>[];
 
     int resultCode;
@@ -72,6 +78,18 @@ class PreparedStatementImpl implements PreparedStatement {
     }
 
     return ResultSet(names, rows);
+  }
+
+  @override
+  IteratingCursor selectCursor([List<Object?> parameters = const <Object?>[]]) {
+    _ensureNotFinalized();
+    _ensureMatchingParameters(parameters);
+
+    _reset();
+    _bindParams(parameters);
+
+    final names = _columnNames;
+    return _currentCursor = _ActiveCursorIterator(this, names);
   }
 
   @override
@@ -95,6 +113,7 @@ class PreparedStatementImpl implements PreparedStatement {
       pointer.free();
     }
     _allocatedWhileBinding.clear();
+    _currentCursor = null;
   }
 
   void _bindParams(List<Object?>? params) {
@@ -185,5 +204,42 @@ class PreparedStatementImpl implements PreparedStatement {
       throw ArgumentError.value(
           parameters, 'parameters', 'Expected $count parameters, got $length');
     }
+  }
+}
+
+class _ActiveCursorIterator extends IteratingCursor {
+  final PreparedStatementImpl statement;
+  final int columnCount;
+
+  @override
+  late Row current;
+
+  _ActiveCursorIterator(this.statement, List<String> columnNames)
+      : columnCount = columnNames.length,
+        super(columnNames);
+
+  @override
+  bool moveNext() {
+    if (statement._closed || statement._currentCursor != this) return false;
+
+    final result = statement._step();
+
+    if (result == SqlError.SQLITE_ROW) {
+      final rowData = <Object?>[
+        for (var i = 0; i < columnCount; i++) statement._readValue(i)
+      ];
+
+      current = Row(this, rowData);
+      return true;
+    }
+
+    // We're at the end of the result set or encountered an exception here.
+    statement._currentCursor = null;
+
+    if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
+      throwException(statement._db, result, statement.originalSql);
+    }
+
+    return false;
   }
 }

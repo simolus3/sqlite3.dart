@@ -1,39 +1,60 @@
 import 'dart:collection';
 
 import 'package:collection/collection.dart';
+import 'package:meta/meta.dart';
 
-/// Stores the result of a select statement.
-class ResultSet extends Iterable<Row> {
+/// Base class for result sets that are either in-memory ([ResultSet])
+@sealed
+abstract class Cursor {
   /// The column names of this query, as returned by `sqlite3`.
   final List<String> columnNames;
   // a result set can have multiple columns with the same name, but that's rare
   // and users usually use a name as index. So we cache that for O(1) lookups
   final Map<String, int> _calculatedIndexes;
 
-  /// The raw row data.
-  final List<List<Object?>> rows;
-
-  ResultSet(this.columnNames, this.rows)
+  Cursor(this.columnNames)
       : _calculatedIndexes = {
           for (var column in columnNames)
             column: columnNames.lastIndexOf(column),
         };
+}
+
+/// A [Cursor] that can only be read once, obtaining rows from the database as
+/// necessary.
+abstract class IteratingCursor extends Cursor implements Iterator<Row> {
+  IteratingCursor(List<String> columnNames) : super(columnNames);
+}
+
+/// Stores the full result of a select statement.
+class ResultSet extends Cursor
+    with IterableMixin<Row>
+    implements Iterable<Row> {
+  /// The raw row data.
+  final List<List<Object?>> rows;
+
+  ResultSet(List<String> columnNames, this.rows) : super(columnNames);
 
   @override
   Iterator<Row> get iterator => _ResultIterator(this);
 }
 
-/// Stores a single row in the result of a select statement.
-class Row extends MapMixin<String, dynamic>
-    with UnmodifiableMapMixin<String, dynamic> {
-  final ResultSet _result;
-  final int _rowIndex;
+/// A single row in the result of a select statement.
+///
+/// This class implements the [Map] interface, which can be used to look up the
+/// value of a column by its name.
+/// The [columnAt] method may be used to obtain the value of a column by its
+/// index.
+class Row
+    with UnmodifiableMapMixin<String, dynamic>, MapMixin<String, dynamic>
+    implements Map<String, dynamic> {
+  final Cursor _result;
+  final List<Object?> _data;
 
-  Row._(this._result, this._rowIndex);
+  Row(this._result, this._data);
 
   /// Returns the value stored in the [i]-th column in this row (zero-indexed).
   dynamic columnAt(int i) {
-    return _result.rows[_rowIndex][i];
+    return _data[i];
   }
 
   @override
@@ -57,7 +78,7 @@ class _ResultIterator extends Iterator<Row> {
   _ResultIterator(this.result);
 
   @override
-  Row get current => Row._(result, index);
+  Row get current => Row(result, result.rows[index]);
 
   @override
   bool moveNext() {

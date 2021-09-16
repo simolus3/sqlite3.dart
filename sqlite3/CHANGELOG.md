@@ -1,5 +1,6 @@
 ## 1.2.0-dev
 
+- Add the `selectCursor` API on `PreparedStatement` to step through a result set row by row.
 - Report the causing SQL statement in exceptions
 - Use a new Dart API to determine whether symbols are available
 

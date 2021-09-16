@@ -16,17 +16,35 @@ abstract class PreparedStatement {
 
   /// Executes this statement, ignoring result rows if there are any.
   ///
-  /// If this statement contains parameters and [parameters] is too short, an
-  /// [ArgumentError] will be thrown.
+  /// If the [parameters] list does not match the amount of parameters in the
+  /// original SQL statement ([parameterCount]), an [ArgumentError] will be
+  /// thrown.
   /// If sqlite3 reports an error while running this statement, a
   /// [SqliteException] will be thrown.
   void execute([List<Object?> parameters = const <Object>[]]);
 
-  /// If this statement contains parameters and [parameters] is too short, an
-  /// [ArgumentError] will be thrown.
+  /// Selects all rows into a [ResultSet].
+  ///
+  /// If the [parameters] list does not match the amount of parameters in the
+  /// original SQL statement ([parameterCount]), an [ArgumentError] will be
+  /// thrown.
   /// If sqlite3 reports an error while running this statement, a
   /// [SqliteException] will be thrown.
   ResultSet select([List<Object?> parameters = const <Object>[]]);
+
+  /// Starts selecting rows by running this prepared statement with the given
+  /// [parameters].
+  ///
+  /// If the [parameters] list does not match the amount of parameters in the
+  /// original SQL statement ([parameterCount]), an [ArgumentError] will be
+  /// thrown.
+  ///
+  /// If sqlite3 reports an error while running this statement, it will be
+  /// thrown by a call to [Iterator.moveNext].
+  ///
+  /// The iterator returned here will become invalid with the next call to
+  /// [execute], [select] or [selectCursor].
+  IteratingCursor selectCursor([List<Object?> parameters = const <Object>[]]);
 
   /// Disposes this statement and releases associated memory.
   void dispose();
