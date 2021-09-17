@@ -1,4 +1,4 @@
-## 1.2.0-dev
+## 1.2.0
 
 - Add the `selectCursor` API on `PreparedStatement` to step through a result set row by row.
 - Report the causing SQL statement in exceptions

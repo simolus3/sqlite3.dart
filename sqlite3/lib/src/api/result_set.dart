@@ -3,7 +3,8 @@ import 'dart:collection';
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
-/// Base class for result sets that are either in-memory ([ResultSet])
+/// Base class for result sets that are either an in-memory ([ResultSet]) or
+/// a lazy iterator ([IteratingCursor]).
 @sealed
 abstract class Cursor {
   /// The column names of this query, as returned by `sqlite3`.
