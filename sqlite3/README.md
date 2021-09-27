@@ -2,7 +2,7 @@
 
 Provides Dart bindings to [SQLite](https://www.sqlite.org/index.html) via `dart:ffi`.
 
-For an example on how to use this library from Dart, see the [example](https://pub.dev/packages/sqlite3#-example-tab-).
+For an example on how to use this library from Dart, see the [example](https://pub.dev/packages/sqlite3/example).
 
 ## Supported platforms
 
