@@ -77,7 +77,7 @@ jobs:
         run: flutter pub get
 
       - name: run tests
-        uses: reactivecircus/android-emulator-runner@v2.20
+        uses: reactivecircus/android-emulator-runner@v2.20.0
         with:
           api-level: 30
           target: google_apis # Default target is not available yet for api level 30
