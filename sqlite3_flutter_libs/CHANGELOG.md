@@ -1,3 +1,7 @@
+## 0.5.1
+
+- Update sqlite to version `3.36.0`
+
 ## 0.5.0
 
 - Also include sqlite when building for macOS
