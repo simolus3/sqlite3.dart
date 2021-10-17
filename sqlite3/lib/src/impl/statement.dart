@@ -55,6 +55,16 @@ class PreparedStatementImpl implements PreparedStatement {
     ];
   }
 
+  List<String> get _tableNames {
+    final columnCount = _bindings.sqlite3_column_count(_stmt);
+
+    return Iterable.generate(columnCount, (i) {
+      final _tableName =
+          _bindings.sqlite3_column_table_name(_stmt, i).readNullableString();
+      return _tableName ?? '';
+    }).toList();
+  }
+
   @override
   ResultSet select([List<Object?> parameters = const <Object?>[]]) {
     _ensureNotFinalized();
@@ -64,6 +74,7 @@ class PreparedStatementImpl implements PreparedStatement {
     _bindParams(parameters);
 
     final names = _columnNames;
+    final tableNames = _tableNames;
     final columnCount = names.length;
     final rows = <List<Object?>>[];
 
@@ -77,7 +88,7 @@ class PreparedStatementImpl implements PreparedStatement {
       throwException(_db, resultCode, originalSql);
     }
 
-    return ResultSet(names, rows);
+    return ResultSet(names, tableNames, rows);
   }
 
   @override
@@ -89,7 +100,8 @@ class PreparedStatementImpl implements PreparedStatement {
     _bindParams(parameters);
 
     final names = _columnNames;
-    return _currentCursor = _ActiveCursorIterator(this, names);
+    final tableNames = _tableNames;
+    return _currentCursor = _ActiveCursorIterator(this, names, tableNames);
   }
 
   @override
@@ -214,9 +226,12 @@ class _ActiveCursorIterator extends IteratingCursor {
   @override
   late Row current;
 
-  _ActiveCursorIterator(this.statement, List<String> columnNames)
-      : columnCount = columnNames.length,
-        super(columnNames);
+  _ActiveCursorIterator(
+    this.statement,
+    List<String> columnNames,
+    List<String> tableNames,
+  )   : columnCount = columnNames.length,
+        super(columnNames, tableNames);
 
   @override
   bool moveNext() {
