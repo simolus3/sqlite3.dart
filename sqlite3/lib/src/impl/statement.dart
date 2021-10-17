@@ -55,13 +55,15 @@ class PreparedStatementImpl implements PreparedStatement {
     ];
   }
 
-  List<String> get _tableNames {
+  List<String?>? get _tableNames {
+    if (_bindings.sqlite3_column_table_name == null) {
+      // unsupported
+      return null;
+    }
     final columnCount = _bindings.sqlite3_column_count(_stmt);
-
     return Iterable.generate(columnCount, (i) {
-      final _tableName =
-          _bindings.sqlite3_column_table_name(_stmt, i).readNullableString();
-      return _tableName ?? '';
+      final pointer = _bindings.sqlite3_column_table_name!(_stmt, i);
+      return pointer.isNullPointer ? null : pointer.readString();
     }).toList();
   }
 
@@ -229,7 +231,7 @@ class _ActiveCursorIterator extends IteratingCursor {
   _ActiveCursorIterator(
     this.statement,
     List<String> columnNames,
-    List<String> tableNames,
+    List<String?>? tableNames,
   )   : columnCount = columnNames.length,
         super(columnNames, tableNames);
 

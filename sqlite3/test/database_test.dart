@@ -99,25 +99,33 @@ void main() {
           "INSERT INTO bar(b, a_ref) VALUES ('1', NULL), ('2', 2), ('3', 3);");
 
       final result = database.select(
-          'SELECT *, foo.a > 2 is_greater_than_2 FROM foo INNER JOIN bar ON bar.a_ref = foo.a;');
+        'SELECT *, foo.a > 2 is_greater_than_2 FROM foo'
+        ' INNER JOIN bar bar_alias ON bar_alias.a_ref = foo.a;',
+      );
 
       expect(result, [
         {'a': 2, 'b': '2', 'a_ref': 2, 'is_greater_than_2': 0},
         {'a': 3, 'b': '3', 'a_ref': 3, 'is_greater_than_2': 1},
       ]);
 
-      expect(result.map((row) => row.toTableColumnMap()), [
-        {
-          '': {'is_greater_than_2': 0},
-          'foo': {'a': 2},
-          'bar': {'b': '2', 'a_ref': 2},
-        },
-        {
-          '': {'is_greater_than_2': 1},
-          'foo': {'a': 3},
-          'bar': {'b': '3', 'a_ref': 3},
-        },
-      ]);
+      final tableColumnMaps = result.map((row) => row.toTableColumnMap());
+      if (tableColumnMaps.first == null) {
+        // tables names unsupported in sqlite3 library
+        expect(tableColumnMaps, [null, null]);
+      } else {
+        expect(tableColumnMaps, [
+          {
+            null: {'is_greater_than_2': 0},
+            'foo': {'a': 2},
+            'bar': {'b': '2', 'a_ref': 2},
+          },
+          {
+            null: {'is_greater_than_2': 1},
+            'foo': {'a': 3},
+            'bar': {'b': '3', 'a_ref': 3},
+          },
+        ]);
+      }
     });
   });
 

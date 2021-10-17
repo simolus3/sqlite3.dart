@@ -202,7 +202,7 @@ class Bindings {
   final sqlite3_column_count_dart sqlite3_column_count;
   final sqlite3_bind_parameter_count_dart sqlite3_bind_parameter_count;
   final sqlite3_column_name_dart sqlite3_column_name;
-  final sqlite3_column_table_name_dart sqlite3_column_table_name;
+  final sqlite3_column_table_name_dart? sqlite3_column_table_name;
   final sqlite3_bind_blob64_dart sqlite3_bind_blob64;
   final sqlite3_bind_double_dart sqlite3_bind_double;
   final sqlite3_bind_int64_dart sqlite3_bind_int64;
@@ -282,9 +282,13 @@ class Bindings {
         sqlite3_column_name = library.lookupFunction<
             _sqlite3_column_name_native,
             sqlite3_column_name_dart>('sqlite3_column_name'),
-        sqlite3_column_table_name = library.lookupFunction<
-            _sqlite3_column_table_name_native,
-            sqlite3_column_table_name_dart>('sqlite3_column_table_name'),
+        sqlite3_column_table_name =
+            // Available if the library was compiled with the
+            // SQLITE_ENABLE_COLUMN_METADATA C-preprocessor symbol
+            library.providesSymbol('sqlite3_column_table_name')
+                ? library.lookupFunction<_sqlite3_column_table_name_native,
+                    sqlite3_column_table_name_dart>('sqlite3_column_table_name')
+                : null,
         sqlite3_bind_blob64 = library.lookupFunction<
             _sqlite3_bind_blob64_native,
             sqlite3_bind_blob64_dart>('sqlite3_bind_blob64'),

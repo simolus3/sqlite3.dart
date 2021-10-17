@@ -29,15 +29,6 @@ extension Utf8Utils on Pointer<char> {
     return utf8
         .decode(cast<Uint8>().asTypedList(resolvedLength).buffer.asUint8List());
   }
-
-  String? readNullableString([int? length]) {
-    final pointer = cast<Uint8>();
-    if (pointer.isNullPointer) {
-      return null;
-    }
-
-    return readString(length);
-  }
 }
 
 extension PointerUtils on Pointer<NativeType> {

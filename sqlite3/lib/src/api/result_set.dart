@@ -10,11 +10,13 @@ abstract class Cursor {
   /// The column names of this query, as returned by `sqlite3`.
   final List<String> columnNames;
 
-  /// The table names of this query, as returned by `sqlite3` or empty string when null.
-  ///
-  /// Empty string when the column is not directly associated
+  /// The table names of this query, as returned by `sqlite3`.
+  /// 
+  /// A table name is null when the column is not directly associated
   /// with a table, such as a computed column.
-  final List<String> tableNames;
+  /// The list is null when the sqlite library wasn't compiled with the SQLITE_ENABLE_COLUMN_METADATA 
+  /// C-preprocessor symbol.
+  final List<String?>? tableNames;
   // a result set can have multiple columns with the same name, but that's rare
   // and users usually use a name as index. So we cache that for O(1) lookups
   final Map<String, int> _calculatedIndexes;
@@ -29,7 +31,7 @@ abstract class Cursor {
 /// A [Cursor] that can only be read once, obtaining rows from the database as
 /// necessary.
 abstract class IteratingCursor extends Cursor implements Iterator<Row> {
-  IteratingCursor(List<String> columnNames, List<String> tableNames)
+  IteratingCursor(List<String> columnNames, List<String?>? tableNames)
       : super(columnNames, tableNames);
 }
 
@@ -40,7 +42,7 @@ class ResultSet extends Cursor
   /// The raw row data.
   final List<List<Object?>> rows;
 
-  ResultSet(List<String> columnNames, List<String> tableNames, this.rows)
+  ResultSet(List<String> columnNames, List<String?>? tableNames, this.rows)
       : super(columnNames, tableNames);
 
   @override
@@ -80,11 +82,20 @@ class Row
   Iterable<String> get keys => _result.columnNames;
 
   /// Returns a two-level map that on the first level contains the resolved
-  /// table name, and on the second level the column name (or its alias).
-  Map<String, Map<String, dynamic>> toTableColumnMap() {
-    final Map<String, Map<String, dynamic>> map = {};
+  /// non-aliased table name, and on the second level the column name (or its alias).
+  /// 
+  /// A table name (first level map key) is null when the column is not directly associated
+  /// with a table, such as a computed column.
+  /// The map is not null if the sqlite3 library was compiled with the SQLITE_ENABLE_COLUMN_METADATA 
+  /// C-preprocessor symbol. 
+  /// More information in https://www.sqlite.org/c3ref/column_database_name.html.
+  Map<String?, Map<String, dynamic>>? toTableColumnMap() {
+    if (_result.tableNames == null) {
+      return null;
+    }
+    final Map<String?, Map<String, dynamic>> map = {};
     for (int i = 0; i < _data.length; i++) {
-      final tableName = _result.tableNames[i];
+      final tableName = _result.tableNames![i];
       final columnName = _result.columnNames[i];
       final value = _data[i];
 
