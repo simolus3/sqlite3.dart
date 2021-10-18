@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:path/path.dart';
+import 'package:sqlite3/open.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
 
@@ -82,6 +83,51 @@ void main() {
               'INSERT INTO foo VALUES (?); INSERT INTO foo VALUES (?);', [123]),
           throwsArgumentError);
     });
+
+    final hasColumnMeta =
+        open.openSqlite().providesSymbol('sqlite3_column_table_name');
+
+    test('inner join with toTableColumnMap and computed column', () {
+      database.execute('''
+      CREATE TABLE foo (
+        a INT
+      );
+      CREATE TABLE bar (
+        b TEXT,
+        a_ref INT,
+        FOREIGN KEY (a_ref) REFERENCES foo (a)
+      );
+      ''');
+      database.execute('INSERT INTO foo(a) VALUES (1), (2), (3);');
+      database.execute(
+          "INSERT INTO bar(b, a_ref) VALUES ('1', NULL), ('2', 2), ('3', 3);");
+
+      final result = database.select(
+        'SELECT *, foo.a > 2 is_greater_than_2 FROM foo'
+        ' INNER JOIN bar bar_alias ON bar_alias.a_ref = foo.a;',
+      );
+
+      expect(result, [
+        {'a': 2, 'b': '2', 'a_ref': 2, 'is_greater_than_2': 0},
+        {'a': 3, 'b': '3', 'a_ref': 3, 'is_greater_than_2': 1},
+      ]);
+
+      expect(result.map((row) => row.toTableColumnMap()), [
+        {
+          null: {'is_greater_than_2': 0},
+          'foo': {'a': 2},
+          'bar': {'b': '2', 'a_ref': 2},
+        },
+        {
+          null: {'is_greater_than_2': 1},
+          'foo': {'a': 3},
+          'bar': {'b': '3', 'a_ref': 3},
+        },
+      ]);
+    },
+        skip: hasColumnMeta
+            ? null
+            : 'sqlite3 was compiled without column metadata');
   });
 
   group('throws', () {
