@@ -11,11 +11,12 @@ abstract class Cursor {
   final List<String> columnNames;
 
   /// The table names of this query, as returned by `sqlite3`.
-  /// 
+  ///
   /// A table name is null when the column is not directly associated
   /// with a table, such as a computed column.
-  /// The list is null when the sqlite library wasn't compiled with the SQLITE_ENABLE_COLUMN_METADATA 
+  /// The list is null if the sqlite library was not compiled with the SQLITE_ENABLE_COLUMN_METADATA
   /// C-preprocessor symbol.
+  /// More information in https://www.sqlite.org/c3ref/column_database_name.html.
   final List<String?>? tableNames;
   // a result set can have multiple columns with the same name, but that's rare
   // and users usually use a name as index. So we cache that for O(1) lookups
@@ -83,11 +84,11 @@ class Row
 
   /// Returns a two-level map that on the first level contains the resolved
   /// non-aliased table name, and on the second level the column name (or its alias).
-  /// 
+  ///
   /// A table name (first level map key) is null when the column is not directly associated
   /// with a table, such as a computed column.
-  /// The map is not null if the sqlite3 library was compiled with the SQLITE_ENABLE_COLUMN_METADATA 
-  /// C-preprocessor symbol. 
+  /// The map is null if the sqlite3 library was not compiled with the SQLITE_ENABLE_COLUMN_METADATA
+  /// C-preprocessor symbol.
   /// More information in https://www.sqlite.org/c3ref/column_database_name.html.
   Map<String?, Map<String, dynamic>>? toTableColumnMap() {
     if (_result.tableNames == null) {
