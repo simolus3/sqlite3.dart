@@ -55,36 +55,38 @@ jobs:
     
     - name: Test
       run: |
-        pub get
+        pub get#
         dart test
       working-directory: sqlite3/
 
-  integration_test_android:
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        test:
-          - flutter_libs
-          - sqlcipher_flutter
-    steps:
-      - uses: actions/checkout@v2
-      - uses: subosito/flutter-action@v1
-        with:
-          channel: dev
-      
-      - name: pub get
-        working-directory: "integration_tests/${{ matrix.test }}"
-        run: flutter pub get
-
-      - name: run tests
-        uses: reactivecircus/android-emulator-runner@v2.20.0
-        with:
-          api-level: 29
-          arch: x86_64
-          ndk: "21.0.5948944"
-          script: flutter pub run test_driver/integration_test.dart
-          working-directory: "integration_tests/${{ matrix.test }}"
-
+# The integration tests for android are currently broken (the emulator doesn't want to
+# start up...)
+#
+#  integration_test_android:
+#    runs-on: macos-latest
+#    strategy:
+#      matrix:
+#        test:
+#          - flutter_libs
+#          - sqlcipher_flutter
+#    steps:
+#      - uses: actions/checkout@v2
+#      - uses: subosito/flutter-action@v1
+#        with:
+#          channel: dev
+#      
+#      - name: pub get
+#        working-directory: "integration_tests/${{ matrix.test }}"
+#        run: flutter pub get
+#
+#      - name: run tests
+#        uses: reactivecircus/android-emulator-runner@v2.20.0
+#        with:
+#          api-level: 29
+#          arch: x86_64
+#          ndk: "21.0.5948944"
+#          script: flutter pub run test_driver/integration_test.dart
+#          working-directory: "integration_tests/${{ matrix.test }}"
 
   # Shamelessly stolen from https://medium.com/flutter-community/run-flutter-driver-tests-on-github-actions-13c639c7e4ab
   integration_test_ios:

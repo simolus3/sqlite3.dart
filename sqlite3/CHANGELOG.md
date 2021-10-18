@@ -1,3 +1,9 @@
+## 1.3.0
+
+- Add `Cursor.tableNames` and `Row.toTableColumnMap()` to obtain tables
+  involved in a result set.
+  Thanks to [@juancastillo0](https://github.com/juancastillo0)!
+
 ## 1.2.0
 
 - Add the `selectCursor` API on `PreparedStatement` to step through a result set row by row.
