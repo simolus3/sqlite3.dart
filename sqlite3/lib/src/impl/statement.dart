@@ -61,10 +61,10 @@ class PreparedStatementImpl implements PreparedStatement {
       return null;
     }
     final columnCount = _bindings.sqlite3_column_count(_stmt);
-    return Iterable.generate(columnCount, (i) {
+    return List.generate(columnCount, (i) {
       final pointer = _bindings.sqlite3_column_table_name!(_stmt, i);
       return pointer.isNullPointer ? null : pointer.readString();
-    }).toList();
+    });
   }
 
   @override
