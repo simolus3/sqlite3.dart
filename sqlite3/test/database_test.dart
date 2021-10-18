@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:path/path.dart';
+import 'package:sqlite3/open.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
 
@@ -83,6 +84,9 @@ void main() {
           throwsArgumentError);
     });
 
+    final hasColumnMeta =
+        open.openSqlite().providesSymbol('sqlite3_column_table_name');
+
     test('inner join with toTableColumnMap and computed column', () {
       database.execute('''
       CREATE TABLE foo (
@@ -108,25 +112,22 @@ void main() {
         {'a': 3, 'b': '3', 'a_ref': 3, 'is_greater_than_2': 1},
       ]);
 
-      final tableColumnMaps = result.map((row) => row.toTableColumnMap());
-      if (tableColumnMaps.first == null) {
-        // tables names unsupported in sqlite3 library
-        expect(tableColumnMaps, [null, null]);
-      } else {
-        expect(tableColumnMaps, [
-          {
-            null: {'is_greater_than_2': 0},
-            'foo': {'a': 2},
-            'bar': {'b': '2', 'a_ref': 2},
-          },
-          {
-            null: {'is_greater_than_2': 1},
-            'foo': {'a': 3},
-            'bar': {'b': '3', 'a_ref': 3},
-          },
-        ]);
-      }
-    });
+      expect(result.map((row) => row.toTableColumnMap()), [
+        {
+          null: {'is_greater_than_2': 0},
+          'foo': {'a': 2},
+          'bar': {'b': '2', 'a_ref': 2},
+        },
+        {
+          null: {'is_greater_than_2': 1},
+          'foo': {'a': 3},
+          'bar': {'b': '3', 'a_ref': 3},
+        },
+      ]);
+    },
+        skip: hasColumnMeta
+            ? null
+            : 'sqlite3 was compiled without column metadata');
   });
 
   group('throws', () {
