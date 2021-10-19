@@ -55,7 +55,7 @@ jobs:
     
     - name: Test
       run: |
-        pub get#
+        dart pub get
         dart test
       working-directory: sqlite3/
 
