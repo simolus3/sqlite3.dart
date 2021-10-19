@@ -1,3 +1,10 @@
+## 1.3.1
+
+- Fix a crash with common iOS and macOS configurations.
+  The crash has been introduced in version 1.3.0, which should be avoided.
+  Please consider adding `sqlite3: ^1.3.1` to your pubspec to avoid getting the
+  broken version
+
 ## 1.3.0
 
 - Add `Cursor.tableNames` and `Row.toTableColumnMap()` to obtain tables

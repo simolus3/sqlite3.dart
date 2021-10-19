@@ -40,4 +40,15 @@ void main() {
       i++;
     } while (lastOption != null);
   });
+
+  test('can open databases', () {
+    final db = sqlite3.openInMemory()
+      ..execute('CREATE TABLE foo (bar)')
+      ..execute('INSERT INTO foo VALUES (1), (2)');
+
+    expect(db.select('SELECT * FROM foo'), [
+      {'bar': 1},
+      {'bar': 2},
+    ]);
+  });
 }

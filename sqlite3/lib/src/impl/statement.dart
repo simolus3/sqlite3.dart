@@ -56,13 +56,14 @@ class PreparedStatementImpl implements PreparedStatement {
   }
 
   List<String?>? get _tableNames {
-    if (_bindings.sqlite3_column_table_name == null) {
+    final nameFunction = _bindings.columnNameFunction;
+    if (nameFunction == null) {
       // unsupported
       return null;
     }
     final columnCount = _bindings.sqlite3_column_count(_stmt);
     return List.generate(columnCount, (i) {
-      final pointer = _bindings.sqlite3_column_table_name!(_stmt, i);
+      final pointer = nameFunction(_stmt, i);
       return pointer.isNullPointer ? null : pointer.readString();
     });
   }

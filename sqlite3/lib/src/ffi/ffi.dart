@@ -11,7 +11,7 @@ export 'dart:ffi';
 
 export 'constants.dart';
 export 'memory.dart';
-export 'prepare_support.dart';
+export 'optional_functions.dart';
 export 'sqlite3.ffi.dart';
 
 extension Utf8Utils on Pointer<char> {
