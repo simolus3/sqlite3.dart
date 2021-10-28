@@ -51,3 +51,7 @@ file. Be aware that this increases the size of your application when installed.
 Alternatively, you can use the `applyWorkaroundToOpenSqlCipherOnOldAndroidVersions` method from this library.
 It will try to open `sqlcipher` in Java, which seems to work more reliably. After the native library has been loaded from Java,
 we can open it in Dart too.
+The method should be called before using `sqlite3` (either directly or indirectly through say a `NativeDatabase` from `package:drift`).
+
+As `applyWorkaroundToOpenSqlCipherOnOldAndroidVersions` uses platform channels, there may be issues when using it on a background isolate.
+We recommend awaiting it in the main isolate, _before_ spawning a background isolate that might use the database.
