@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 import '../../open.dart';
 import '../ffi/ffi.dart';
 import '../impl/implementation.dart';
