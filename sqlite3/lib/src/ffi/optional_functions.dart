@@ -31,13 +31,8 @@ typedef sqlite3_prepare_v2_dart = int Function(
     Pointer<Pointer<sqlite3_stmt>> ppStmt,
     Pointer<Pointer<char>> pzTail);
 
-typedef _sqlite3_column_table_name_native = Pointer<char> Function(
-    Pointer<sqlite3_stmt>, Int32);
 typedef sqlite3_column_table_name_dart = Pointer<char> Function(
     Pointer<sqlite3_stmt> pStmt, int N);
-
-typedef _sqlite3_compileoption_get_native = Pointer<Uint8> Function(Int32 n);
-typedef _sqlite3_compileoption_get_dart = Pointer<Uint8> Function(int n);
 
 Expando<bool> _usesV2 = Expando();
 Expando<Pointer<NativeType>> _prepareFunction = Expando();
@@ -62,9 +57,8 @@ extension PrepareSupport on Bindings {
     final knownCompileOptions =
         library.providesSymbol('sqlite3_compileoption_get');
     if (knownCompileOptions) {
-      final getOptions = library.lookupFunction<
-          _sqlite3_compileoption_get_native,
-          _sqlite3_compileoption_get_dart>('sqlite3_compileoption_get');
+      final getOptions = library.lookupFunction<Pointer<Uint8> Function(Int32),
+          Pointer<Uint8> Function(int)>('sqlite3_compileoption_get');
       final options = () sync* {
         var i = 0;
         String? lastOption;
@@ -86,7 +80,7 @@ extension PrepareSupport on Bindings {
 
       if (hasTableName) {
         _tableNameFunction[this] = library.lookupFunction<
-            _sqlite3_column_table_name_native,
+            Pointer<char> Function(Pointer<sqlite3_stmt>, Int32),
             sqlite3_column_table_name_dart>('sqlite3_column_table_name');
       }
     }
