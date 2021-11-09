@@ -17,7 +17,7 @@ A new flutter plugin project.
   s.public_header_files = 'Classes/**/*.h'
   s.dependency 'Flutter'
 
-  s.dependency 'SQLCipher', '~> 4.4.3'
+  s.dependency 'SQLCipher', '~> 4.5.0'
   
   s.platform = :ios, '8.0'
 
