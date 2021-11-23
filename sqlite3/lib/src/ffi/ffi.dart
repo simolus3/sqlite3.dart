@@ -69,6 +69,8 @@ extension ValueUtils on Pointer<sqlite3_value> {
   }
 }
 
+final utf8Encode = utf8.encoder.convert;
+
 extension ContextUtils on Pointer<sqlite3_context> {
   Pointer<Void> aggregateContext(Bindings bindings, int bytes) {
     return bindings.sqlite3_aggregate_context(this, bytes);
@@ -88,13 +90,13 @@ extension ContextUtils on Pointer<sqlite3_context> {
     } else if (result is bool) {
       bindings.sqlite3_result_int64(this, result ? 1 : 0);
     } else if (result is String) {
-      final bytes = utf8.encode(result);
+      Uint8List bytes = utf8Encode(result);
       final ptr = allocateBytes(bytes);
 
       bindings.sqlite3_result_text(this, ptr.cast(), bytes.length,
           SqlSpecialDestructor.SQLITE_TRANSIENT);
       ptr.free();
-    } else if (result is List<int>) {
+    } else if (result is Uint8List) {
       final ptr = allocateBytes(result);
 
       bindings.sqlite3_result_blob64(this, ptr.cast(), result.length,
@@ -104,7 +106,7 @@ extension ContextUtils on Pointer<sqlite3_context> {
   }
 
   void setError(Bindings bindings, String description) {
-    final bytes = utf8.encode(description);
+    final Uint8List bytes = utf8Encode(description);
     final ptr = allocateBytes(bytes);
 
     bindings.sqlite3_result_error(this, ptr.cast(), bytes.length);
@@ -148,7 +150,7 @@ class ValueList extends ListBase<Object?> {
     }
 
     final result = argArray[index].read(bindings);
-    if (result is String || result is List<int>) {
+    if (result is String || result is Uint8List) {
       // Cache to avoid excessive copying in case the argument is loaded
       // multiple times
       _cachedCopies[index] = result;
