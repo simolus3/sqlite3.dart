@@ -8,6 +8,8 @@ class DatabaseImpl implements Database {
   final List<PreparedStatementImpl> _statements = [];
   final List<Pointer<Void>> _furtherAllocations = [];
 
+  late final _DatabaseUpdates _updates = _DatabaseUpdates(this);
+
   bool _isClosed = false;
 
   DatabaseImpl(this._library, this._handle)
@@ -88,6 +90,9 @@ class DatabaseImpl implements Database {
   set userVersion(int value) {
     execute('PRAGMA user_version = $value;');
   }
+
+  @override
+  Stream<SqliteUpdate> get updates => _updates.updates;
 
   @override
   Pointer<void> get handle => _handle;
@@ -308,6 +313,7 @@ class DatabaseImpl implements Database {
     if (_isClosed) return;
 
     _isClosed = true;
+    _updates.close();
     for (final stmt in _statements) {
       stmt.dispose();
     }

@@ -508,3 +508,7 @@ class SqlFunctionFlag {
   ///The SQLITE_INNOCUOUS flag means that the function is unlikely to cause problems even if misused.
   static const SQLITE_INNOCUOUS = 0x000200000;
 }
+
+const SQLITE_DELETE = 9;
+const SQLITE_INSERT = 18;
+const SQLITE_UPDATE = 23;

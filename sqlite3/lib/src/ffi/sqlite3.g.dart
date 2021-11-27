@@ -230,6 +230,48 @@ class Bindings {
           ffi.Pointer<ffi.Void>,
           ffi.Pointer<ffi.Pointer<sqlite3_char>>)>();
 
+  ffi.Pointer<ffi.Void> sqlite3_update_hook(
+    ffi.Pointer<sqlite3> arg0,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Int32,
+                    ffi.Pointer<ffi.Int8>, ffi.Pointer<ffi.Int8>, ffi.Int64)>>
+        arg1,
+    ffi.Pointer<ffi.Void> arg2,
+  ) {
+    return _sqlite3_update_hook(
+      arg0,
+      arg1,
+      arg2,
+    );
+  }
+
+  late final _sqlite3_update_hookPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Void> Function(
+              ffi.Pointer<sqlite3>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Void Function(
+                          ffi.Pointer<ffi.Void>,
+                          ffi.Int32,
+                          ffi.Pointer<ffi.Int8>,
+                          ffi.Pointer<ffi.Int8>,
+                          ffi.Int64)>>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3_update_hook');
+  late final _sqlite3_update_hook = _sqlite3_update_hookPtr.asFunction<
+      ffi.Pointer<ffi.Void> Function(
+          ffi.Pointer<sqlite3>,
+          ffi.Pointer<
+              ffi.NativeFunction<
+                  ffi.Void Function(
+                      ffi.Pointer<ffi.Void>,
+                      ffi.Int32,
+                      ffi.Pointer<ffi.Int8>,
+                      ffi.Pointer<ffi.Int8>,
+                      ffi.Int64)>>,
+          ffi.Pointer<ffi.Void>)>();
+
   int sqlite3_finalize(
     ffi.Pointer<sqlite3_stmt> pStmt,
   ) {

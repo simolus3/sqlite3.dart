@@ -1,5 +1,7 @@
 import 'dart:ffi';
 
+import 'package:meta/meta.dart';
+
 import 'functions.dart';
 import 'result_set.dart';
 import 'statement.dart';
@@ -22,6 +24,24 @@ abstract class Database {
   /// The amount of rows affected by the last `INSERT`, `UPDATE` or `DELETE`
   /// statement.
   int getUpdatedRows();
+
+  /// An async stream of data changes happening on this database.
+  ///
+  /// Listening to this stream will register an "update hook" on the native
+  /// database. Each update that sqlite3 reports through that hook will then
+  /// be added to the stream.
+  ///
+  /// Note that the stream reports updates _asynchronously_, e.g. one event
+  /// loop iteration after sqlite reports them.
+  /// Also, be aware that not every update to the database will be reported.
+  /// In particular, updates to internal system tables like `sqlite_sequence`
+  /// are not reported. Further, updates to `WITHOUT ROWID` tables or truncating
+  /// deletes (without a `WHERE` clause) will not report updates either.
+  ///
+  /// See also:
+  ///  - [Data Change Notification Callbacks](https://www.sqlite.org/c3ref/update_hook.html)
+  @experimental
+  Stream<SqliteUpdate> get updates;
 
   /// Executes the [sql] statement with the provided [parameters] and ignores
   /// the result.
@@ -103,4 +123,30 @@ abstract class Database {
 
   /// Closes this database and releases associated resources.
   void dispose();
+}
+
+/// The kind of an [SqliteUpdate] received through a [Database.updates] stream.
+enum SqliteUpdateKind {
+  /// Notification for a new row being inserted into the database.
+  insert,
+
+  /// Notification for a row being updated.
+  update,
+
+  /// Notification for a row being deleted.
+  delete
+}
+
+/// A data change notification from sqlite.
+class SqliteUpdate {
+  /// The kind of write being reported.
+  final SqliteUpdateKind kind;
+
+  /// The table on which the update has happened.
+  final String tableName;
+
+  /// The id of the inserted, modified or deleted row.
+  final int rowId;
+
+  SqliteUpdate(this.kind, this.tableName, this.rowId);
 }
