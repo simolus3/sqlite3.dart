@@ -5,16 +5,23 @@ import 'dart:typed_data';
 
 import 'constants.dart';
 import 'memory.dart';
-import 'sqlite3.ffi.dart';
+import 'sqlite3.g.dart';
 
 export 'dart:ffi';
 
 export 'constants.dart';
 export 'memory.dart';
 export 'optional_functions.dart';
-export 'sqlite3.ffi.dart';
+export 'sqlite3.g.dart';
 
-extension Utf8Utils on Pointer<char> {
+class BindingsWithLibrary {
+  final Bindings bindings;
+  final DynamicLibrary library;
+
+  BindingsWithLibrary(this.library) : bindings = Bindings(library);
+}
+
+extension Utf8Utils on Pointer<sqlite3_char> {
   int get _length {
     final asBytes = cast<Uint8>();
     var length = 0;

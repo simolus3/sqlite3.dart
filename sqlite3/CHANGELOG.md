@@ -1,3 +1,7 @@
+## 1.4.0-dev
+
+- Use `ffigen` to generate native bindings
+
 ## 1.3.1
 
 - Fix a crash with common iOS and macOS configurations.

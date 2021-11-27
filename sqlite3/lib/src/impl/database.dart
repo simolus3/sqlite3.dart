@@ -1,6 +1,7 @@
 part of 'implementation.dart';
 
 class DatabaseImpl implements Database {
+  final BindingsWithLibrary _library;
   final Bindings _bindings;
 
   final Pointer<sqlite3> _handle;
@@ -9,16 +10,18 @@ class DatabaseImpl implements Database {
 
   bool _isClosed = false;
 
-  DatabaseImpl(this._bindings, this._handle);
+  DatabaseImpl(this._library, this._handle)
+      : this._bindings = _library.bindings;
 
   factory DatabaseImpl.open(
-    Bindings bindings,
+    BindingsWithLibrary library,
     String filename, {
     String? vfs,
     OpenMode mode = OpenMode.readWriteCreate,
     bool uri = false,
     bool? mutex,
   }) {
+    final bindings = library.bindings;
     bindingsForStore = bindings;
 
     int flags;
@@ -45,7 +48,8 @@ class DatabaseImpl implements Database {
 
     final namePtr = allocateZeroTerminated(filename);
     final outDb = allocate<Pointer<sqlite3>>();
-    final vfsPtr = vfs == null ? nullPtr<char>() : allocateZeroTerminated(vfs);
+    final vfsPtr =
+        vfs == null ? nullPtr<sqlite3_char>() : allocateZeroTerminated(vfs);
 
     final result = bindings.sqlite3_open_v2(namePtr, outDb, flags, vfsPtr);
 
@@ -62,7 +66,7 @@ class DatabaseImpl implements Database {
     }
 
     bindings.sqlite3_extended_result_codes(dbPtr, 1);
-    return DatabaseImpl(bindings, dbPtr);
+    return DatabaseImpl(library, dbPtr);
   }
 
   @override
@@ -100,7 +104,7 @@ class DatabaseImpl implements Database {
       _ensureOpen();
 
       final sqlPtr = allocateZeroTerminated(sql);
-      final errorOut = allocate<Pointer<char>>();
+      final errorOut = allocate<Pointer<sqlite3_char>>();
 
       final result = _bindings.sqlite3_exec(
           _handle, sqlPtr, nullPtr(), nullPtr(), errorOut);
@@ -143,8 +147,9 @@ class DatabaseImpl implements Database {
     _ensureOpen();
 
     final stmtOut = allocate<Pointer<sqlite3_stmt>>();
-    final pzTail =
-        checkNoTail ? allocate<Pointer<char>>() : nullPtr<Pointer<char>>();
+    final pzTail = checkNoTail
+        ? allocate<Pointer<sqlite3_char>>()
+        : nullPtr<Pointer<sqlite3_char>>();
 
     final bytes = utf8.encode(sql);
     final sqlPtr = allocateBytes(bytes);
@@ -159,8 +164,8 @@ class DatabaseImpl implements Database {
 
     int resultCode;
     // Use prepare_v3 if supported, fall-back to prepare_v2 otherwise
-    if (_bindings.supportsOpenV3) {
-      final function = _bindings.appropriateOpenFunction
+    if (_library.supportsOpenV3) {
+      final function = _library.appropriateOpenFunction
           .cast<NativeFunction<sqlite3_prepare_v3_native>>()
           .asFunction<sqlite3_prepare_v3_dart>();
 
@@ -179,7 +184,7 @@ class DatabaseImpl implements Database {
         'support prepare_v3',
       );
 
-      final function = _bindings.appropriateOpenFunction
+      final function = _library.appropriateOpenFunction
           .cast<NativeFunction<sqlite3_prepare_v2_native>>()
           .asFunction<sqlite3_prepare_v2_dart>();
 

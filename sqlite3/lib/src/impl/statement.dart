@@ -56,7 +56,7 @@ class PreparedStatementImpl implements PreparedStatement {
   }
 
   List<String?>? get _tableNames {
-    final nameFunction = _bindings.columnNameFunction;
+    final nameFunction = _db._library.columnNameFunction;
     if (nameFunction == null) {
       // unsupported
       return null;

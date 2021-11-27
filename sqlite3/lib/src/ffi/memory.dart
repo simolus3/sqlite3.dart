@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart' as ffi;
 
-import 'sqlite3.ffi.dart';
+import 'sqlite3.g.dart';
 
 const allocate = ffi.malloc;
 
@@ -40,6 +40,6 @@ Pointer<Uint8> allocateBytes(List<int> bytes, {int additionalLength = 0}) {
   return ptr;
 }
 
-Pointer<char> allocateZeroTerminated(String string) {
+Pointer<sqlite3_char> allocateZeroTerminated(String string) {
   return allocateBytes(utf8.encode(string), additionalLength: 1).cast();
 }

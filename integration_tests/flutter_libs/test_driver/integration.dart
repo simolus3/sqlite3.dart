@@ -4,7 +4,8 @@ import 'dart:io';
 import 'package:flutter_driver/driver_extension.dart';
 import 'package:test/test.dart';
 import 'package:sqlite3/sqlite3.dart';
-import 'package:sqlite3/src/ffi/ffi.dart' show char, Utf8Utils, PointerUtils;
+import 'package:sqlite3/src/ffi/ffi.dart'
+    show sqlite3_char, Utf8Utils, PointerUtils;
 import 'package:sqlite3/open.dart';
 
 typedef _sqlite3_compileoption_get_native = Pointer<Uint8> Function(Int32 n);
@@ -28,7 +29,7 @@ void main() {
     String? lastOption;
     var i = 0;
     do {
-      final ptr = getCompileOption(i).cast<char>();
+      final ptr = getCompileOption(i).cast<sqlite3_char>();
 
       if (!ptr.isNullPointer) {
         lastOption = ptr.readString();
