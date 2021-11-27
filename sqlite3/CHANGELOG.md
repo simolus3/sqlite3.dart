@@ -1,5 +1,6 @@
 ## 1.4.0-dev
 
+- Report updates on the database through the `Database.updates` stream
 - Use `ffigen` to generate native bindings
 
 ## 1.3.1

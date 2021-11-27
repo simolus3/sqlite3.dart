@@ -37,7 +37,7 @@ int sqlite3_finalize(sqlite3_stmt *pStmt);
 int sqlite3_step(sqlite3_stmt *pStmt);
 int sqlite3_reset(sqlite3_stmt *pStmt);
 
-int sqlite3_column_count(sqlite3_stmt * pStmt);
+int sqlite3_column_count(sqlite3_stmt *pStmt);
 int sqlite3_bind_parameter_count(sqlite3_stmt *pStmt);
 sqlite3_char *sqlite3_column_name(sqlite3_stmt *pStmt, int N);
 
