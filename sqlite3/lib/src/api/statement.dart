@@ -26,6 +26,8 @@ abstract class PreparedStatement {
   /// [SqliteException] will be thrown.
   void execute([List<Object?> parameters = const <Object>[]]);
 
+  void executeMap([Map<String, Object?> parameters = const {}]);
+
   /// Selects all rows into a [ResultSet].
   ///
   /// If the [parameters] list does not match the amount of parameters in the
@@ -34,6 +36,8 @@ abstract class PreparedStatement {
   /// If sqlite3 reports an error while running this statement, a
   /// [SqliteException] will be thrown.
   ResultSet select([List<Object?> parameters = const <Object>[]]);
+
+  ResultSet selectMap([Map<String, Object?> parameters = const {}]);
 
   /// Starts selecting rows by running this prepared statement with the given
   /// [parameters].

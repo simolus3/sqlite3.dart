@@ -342,6 +342,42 @@ class Bindings {
   late final _sqlite3_bind_parameter_count = _sqlite3_bind_parameter_countPtr
       .asFunction<int Function(ffi.Pointer<sqlite3_stmt>)>();
 
+  ffi.Pointer<sqlite3_char> sqlite3_bind_parameter_name(
+    ffi.Pointer<sqlite3_stmt> arg0,
+    int arg1,
+  ) {
+    return _sqlite3_bind_parameter_name(
+      arg0,
+      arg1,
+    );
+  }
+
+  late final _sqlite3_bind_parameter_namePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3_stmt>,
+              ffi.Int32)>>('sqlite3_bind_parameter_name');
+  late final _sqlite3_bind_parameter_name =
+      _sqlite3_bind_parameter_namePtr.asFunction<
+          ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3_stmt>, int)>();
+
+  int sqlite3_bind_parameter_index(
+    ffi.Pointer<sqlite3_stmt> arg0,
+    ffi.Pointer<sqlite3_char> zName,
+  ) {
+    return _sqlite3_bind_parameter_index(
+      arg0,
+      zName,
+    );
+  }
+
+  late final _sqlite3_bind_parameter_indexPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int32 Function(ffi.Pointer<sqlite3_stmt>,
+              ffi.Pointer<sqlite3_char>)>>('sqlite3_bind_parameter_index');
+  late final _sqlite3_bind_parameter_index =
+      _sqlite3_bind_parameter_indexPtr.asFunction<
+          int Function(ffi.Pointer<sqlite3_stmt>, ffi.Pointer<sqlite3_char>)>();
+
   ffi.Pointer<sqlite3_char> sqlite3_column_name(
     ffi.Pointer<sqlite3_stmt> pStmt,
     int N,

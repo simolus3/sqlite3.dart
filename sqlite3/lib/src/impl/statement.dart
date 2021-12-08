@@ -32,6 +32,21 @@ class PreparedStatementImpl implements PreparedStatement {
     _reset();
     _bindParams(parameters);
 
+    _execute();
+  }
+
+  @override
+  void executeMap([Map<String, Object?> parameters = const {}]) {
+    _ensureNotFinalized();
+    _ensureMatchingMapParameters(parameters);
+
+    _reset();
+    _bindMapParams(parameters);
+
+    _execute();
+  }
+
+  void _execute() {
     int result;
 
     // Users should be able to execute statements returning rows, so we should
@@ -77,6 +92,21 @@ class PreparedStatementImpl implements PreparedStatement {
     _reset();
     _bindParams(parameters);
 
+    return _selectResults();
+  }
+
+  @override
+  ResultSet selectMap([Map<String, Object?> parameters = const {}]) {
+    _ensureNotFinalized();
+    _ensureMatchingMapParameters(parameters);
+
+    _reset();
+    _bindMapParams(parameters);
+
+    return _selectResults();
+  }
+
+  ResultSet _selectResults() {
     final names = _columnNames;
     final tableNames = _tableNames;
     final columnCount = names.length;
@@ -139,44 +169,66 @@ class PreparedStatementImpl implements PreparedStatement {
     for (var i = 1; i <= params.length; i++) {
       final Object? param = params[i - 1];
 
-      if (param == null) {
-        _bindings.sqlite3_bind_null(_stmt, i);
-      } else if (param is int) {
-        _bindings.sqlite3_bind_int64(_stmt, i, param);
-      } else if (param is double) {
-        _bindings.sqlite3_bind_double(_stmt, i, param.toDouble());
-      } else if (param is String) {
-        final bytes = utf8.encode(param);
-        final ptr = allocateBytes(bytes);
-        _allocatedWhileBinding.add(ptr);
-
-        _bindings.sqlite3_bind_text(
-            _stmt, i, ptr.cast(), bytes.length, nullPtr());
-      } else if (param is List<int>) {
-        if (param.isEmpty) {
-          // malloc(0) is implementation-defined and might return a null
-          // pointer, which is not what we want: Passing a null-pointer to
-          // sqlite3_bind_blob will always bind NULL. So, we just pass 0x1 and
-          // set a length of 0
-          _bindings.sqlite3_bind_blob64(
-              _stmt, i, Pointer.fromAddress(1), param.length, nullPtr());
-        } else {
-          final ptr = allocateBytes(param).cast<Void>();
-
-          _bindings.sqlite3_bind_blob64(_stmt, i, ptr, param.length, nullPtr());
-          _allocatedWhileBinding.add(ptr);
-        }
-      } else {
-        throw ArgumentError.value(
-          param,
-          'params[$i]',
-          'Allowed parameters must either be null or an int, num, String or '
-              'List<int>.',
-        );
-      }
+      _bindParam(param, i);
     }
 
     _variablesBound = true;
+  }
+
+  void _bindMapParams(Map<String, Object?>? params) {
+    if (params == null || params.isEmpty) return;
+
+    // variables in sqlite are 1-indexed
+    for (var key in params.keys) {
+      final Object? param = params[key];
+
+      final keyBytes = utf8.encode(key);
+      final keyPtr = allocateBytes(keyBytes);
+      _allocatedWhileBinding.add(keyPtr);
+      final i = _bindings.sqlite3_bind_parameter_index(_stmt, keyPtr.cast());
+
+      _bindParam(param, i);
+    }
+
+    _variablesBound = true;
+  }
+
+  void _bindParam(Object? param, int i) {
+    if (param == null) {
+      _bindings.sqlite3_bind_null(_stmt, i);
+    } else if (param is int) {
+      _bindings.sqlite3_bind_int64(_stmt, i, param);
+    } else if (param is double) {
+      _bindings.sqlite3_bind_double(_stmt, i, param.toDouble());
+    } else if (param is String) {
+      final bytes = utf8.encode(param);
+      final ptr = allocateBytes(bytes);
+      _allocatedWhileBinding.add(ptr);
+
+      _bindings.sqlite3_bind_text(
+          _stmt, i, ptr.cast(), bytes.length, nullPtr());
+    } else if (param is List<int>) {
+      if (param.isEmpty) {
+        // malloc(0) is implementation-defined and might return a null
+        // pointer, which is not what we want: Passing a null-pointer to
+        // sqlite3_bind_blob will always bind NULL. So, we just pass 0x1 and
+        // set a length of 0
+        _bindings.sqlite3_bind_blob64(
+            _stmt, i, Pointer.fromAddress(1), param.length, nullPtr());
+      } else {
+        final ptr = allocateBytes(param).cast<Void>();
+
+        _bindings.sqlite3_bind_blob64(_stmt, i, ptr, param.length, nullPtr());
+        _allocatedWhileBinding.add(ptr);
+      }
+    } else {
+      throw ArgumentError.value(
+        param,
+        'params[$i]',
+        'Allowed parameters must either be null or an int, num, String or '
+            'List<int>.',
+      );
+    }
   }
 
   Object? _readValue(int index) {
@@ -213,6 +265,16 @@ class PreparedStatementImpl implements PreparedStatement {
   }
 
   void _ensureMatchingParameters(List<Object?>? parameters) {
+    final length = parameters?.length ?? 0;
+    final count = parameterCount;
+
+    if (length != count) {
+      throw ArgumentError.value(
+          parameters, 'parameters', 'Expected $count parameters, got $length');
+    }
+  }
+
+  void _ensureMatchingMapParameters(Map<String, Object?>? parameters) {
     final length = parameters?.length ?? 0;
     final count = parameterCount;
 
