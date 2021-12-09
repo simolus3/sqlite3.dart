@@ -1,7 +1,7 @@
-## 1.4.0-dev
+## 1.4.0
 
-- Report updates on the database through the `Database.updates` stream
-- Use `ffigen` to generate native bindings
+- Report writes on the database through the `Database.updates` stream
+- Internal: Use `ffigen` to generate native bindings
 
 ## 1.3.1
 
