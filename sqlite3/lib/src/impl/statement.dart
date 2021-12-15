@@ -187,6 +187,7 @@ class PreparedStatementImpl implements PreparedStatement {
       final keyBytes = utf8.encode(key);
       final keyPtr = allocateBytes(keyBytes, additionalLength: 1);
       _allocatedWhileBinding.add(keyPtr);
+      keyPtr[keyBytes.length] = 0;
       final i = _bindings.sqlite3_bind_parameter_index(_stmt, keyPtr.cast());
       if (i == 0) {
         throw ArgumentError.value(
