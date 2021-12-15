@@ -178,12 +178,14 @@ class PreparedStatementImpl implements PreparedStatement {
   void _bindMapParams(Map<String, Object?>? params) {
     if (params == null || params.isEmpty) return;
 
+    // _bindings.sqlite3_clear_bindings(_stmt);
+
     // variables in sqlite are 1-indexed
     for (var key in params.keys) {
       final Object? param = params[key];
 
       final keyBytes = utf8.encode(key);
-      final keyPtr = allocateBytes(keyBytes);
+      final keyPtr = allocateBytes(keyBytes, additionalLength: 1);
       _allocatedWhileBinding.add(keyPtr);
       final i = _bindings.sqlite3_bind_parameter_index(_stmt, keyPtr.cast());
       if (i == 0) {
