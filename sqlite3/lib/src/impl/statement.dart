@@ -36,7 +36,7 @@ class PreparedStatementImpl implements PreparedStatement {
   }
 
   @override
-  void executeMap([Map<String, Object?> parameters = const {}]) {
+  void executeMap(Map<String, Object?> parameters) {
     _ensureNotFinalized();
     _ensureMatchingMapParameters(parameters);
 
@@ -96,7 +96,7 @@ class PreparedStatementImpl implements PreparedStatement {
   }
 
   @override
-  ResultSet selectMap([Map<String, Object?> parameters = const {}]) {
+  ResultSet selectMap(Map<String, Object?> parameters) {
     _ensureNotFinalized();
     _ensureMatchingMapParameters(parameters);
 
@@ -181,13 +181,12 @@ class PreparedStatementImpl implements PreparedStatement {
     // _bindings.sqlite3_clear_bindings(_stmt);
 
     // variables in sqlite are 1-indexed
-    for (var key in params.keys) {
+    for (final key in params.keys) {
       final Object? param = params[key];
 
       final keyBytes = utf8.encode(key);
       final keyPtr = allocateBytes(keyBytes, additionalLength: 1);
       _allocatedWhileBinding.add(keyPtr);
-      keyPtr[keyBytes.length] = 0;
       final i = _bindings.sqlite3_bind_parameter_index(_stmt, keyPtr.cast());
       if (i == 0) {
         throw ArgumentError.value(
