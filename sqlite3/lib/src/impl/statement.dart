@@ -186,7 +186,10 @@ class PreparedStatementImpl implements PreparedStatement {
       final keyPtr = allocateBytes(keyBytes);
       _allocatedWhileBinding.add(keyPtr);
       final i = _bindings.sqlite3_bind_parameter_index(_stmt, keyPtr.cast());
-
+      if (i == 0) {
+        throw ArgumentError.value(
+            params, 'params', 'Key $key was not found in statement.');
+      }
       _bindParam(param, i);
     }
 
@@ -198,6 +201,8 @@ class PreparedStatementImpl implements PreparedStatement {
       _bindings.sqlite3_bind_null(_stmt, i);
     } else if (param is int) {
       _bindings.sqlite3_bind_int64(_stmt, i, param);
+    } else if (param is bool) {
+      _bindings.sqlite3_bind_int64(_stmt, i, param ? 1 : 0);
     } else if (param is double) {
       _bindings.sqlite3_bind_double(_stmt, i, param.toDouble());
     } else if (param is String) {
@@ -225,7 +230,7 @@ class PreparedStatementImpl implements PreparedStatement {
       throw ArgumentError.value(
         param,
         'params[$i]',
-        'Allowed parameters must either be null or an int, num, String or '
+        'Allowed parameters must either be null or bool, int, num, String or '
             'List<int>.',
       );
     }

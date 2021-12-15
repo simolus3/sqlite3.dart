@@ -378,6 +378,20 @@ class Bindings {
       _sqlite3_bind_parameter_indexPtr.asFunction<
           int Function(ffi.Pointer<sqlite3_stmt>, ffi.Pointer<sqlite3_char>)>();
 
+  int sqlite3_clear_bindings(
+    ffi.Pointer<sqlite3_stmt> arg0,
+  ) {
+    return _sqlite3_clear_bindings(
+      arg0,
+    );
+  }
+
+  late final _sqlite3_clear_bindingsPtr = _lookup<
+          ffi.NativeFunction<ffi.Int32 Function(ffi.Pointer<sqlite3_stmt>)>>(
+      'sqlite3_clear_bindings');
+  late final _sqlite3_clear_bindings = _sqlite3_clear_bindingsPtr
+      .asFunction<int Function(ffi.Pointer<sqlite3_stmt>)>();
+
   ffi.Pointer<sqlite3_char> sqlite3_column_name(
     ffi.Pointer<sqlite3_stmt> pStmt,
     int N,
@@ -890,6 +904,14 @@ class Bindings {
   late final _sqlite3_result_text = _sqlite3_result_textPtr.asFunction<
       void Function(ffi.Pointer<sqlite3_context>, ffi.Pointer<sqlite3_char>,
           int, ffi.Pointer<ffi.Void>)>();
+}
+
+class __mbstate_t extends ffi.Union {
+  @ffi.Array.multi([128])
+  external ffi.Array<ffi.Int8> __mbstate8;
+
+  @ffi.Int64()
+  external int _mbstateL;
 }
 
 class sqlite3_char extends ffi.Opaque {}
