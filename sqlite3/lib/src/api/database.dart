@@ -68,6 +68,18 @@ abstract class Database {
   PreparedStatement prepare(String sql,
       {bool persistent = false, bool vtab = true, bool checkNoTail = false});
 
+  /// Compiles multiple statements from [sql] to be executed later.
+  ///
+  /// Unlike [prepare], which can only compile a single statement,
+  /// [prepareMultiple] will return multiple statements if the source [sql]
+  /// string contains more than one statement.
+  /// For example, calling [prepareMultiple] with `SELECT 1; SELECT 2;` will
+  /// return `2` prepared statements.
+  ///
+  /// For the [persistent] and [vtab] parameters, see [prepare].
+  List<PreparedStatement> prepareMultiple(String sql,
+      {bool persistent = false, bool vtab = true});
+
   /// Creates a scalar function that can be called from sql queries sent against
   /// this database.
   ///

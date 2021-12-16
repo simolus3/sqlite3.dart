@@ -149,12 +149,29 @@ class DatabaseImpl implements Database {
   @override
   PreparedStatement prepare(String sql,
       {bool persistent = false, bool vtab = true, bool checkNoTail = false}) {
+    return _prepareInternal(sql,
+            persistent: persistent,
+            vtab: vtab,
+            maxStatements: 1,
+            checkNoTail: checkNoTail)
+        .single;
+  }
+
+  @override
+  List<PreparedStatement> prepareMultiple(String sql,
+      {bool persistent = false, bool vtab = true}) {
+    return _prepareInternal(sql, persistent: persistent, vtab: vtab);
+  }
+
+  List<PreparedStatement> _prepareInternal(String sql,
+      {bool persistent = false,
+      bool vtab = true,
+      int? maxStatements,
+      bool checkNoTail = false}) {
     _ensureOpen();
 
     final stmtOut = allocate<Pointer<sqlite3_stmt>>();
-    final pzTail = checkNoTail
-        ? allocate<Pointer<sqlite3_char>>()
-        : nullPtr<Pointer<sqlite3_char>>();
+    final pzTail = allocate<Pointer<sqlite3_char>>();
 
     final bytes = utf8.encode(sql);
     final sqlPtr = allocateBytes(bytes);
@@ -167,64 +184,91 @@ class DatabaseImpl implements Database {
       prepFlags |= SqlPrepareFlag.SQLITE_PREPARE_NO_VTAB;
     }
 
-    int resultCode;
-    // Use prepare_v3 if supported, fall-back to prepare_v2 otherwise
-    if (_library.supportsOpenV3) {
-      final function = _library.appropriateOpenFunction
-          .cast<NativeFunction<sqlite3_prepare_v3_native>>()
-          .asFunction<sqlite3_prepare_v3_dart>();
+    final createdStatements = <PreparedStatementImpl>[];
+    var offset = 0;
 
-      resultCode = function(
-        _handle,
-        sqlPtr.cast(),
-        bytes.length,
-        prepFlags,
-        stmtOut,
-        pzTail,
-      );
-    } else {
-      assert(
-        prepFlags == 0,
-        'Used custom preparation flags, but the loaded sqlite library does not '
-        'support prepare_v3',
-      );
+    void freeIntermediateResults() {
+      stmtOut.free();
+      sqlPtr.free();
+      pzTail.free();
 
-      final function = _library.appropriateOpenFunction
-          .cast<NativeFunction<sqlite3_prepare_v2_native>>()
-          .asFunction<sqlite3_prepare_v2_dart>();
-
-      resultCode = function(
-        _handle,
-        sqlPtr.cast(),
-        bytes.length,
-        stmtOut,
-        pzTail,
-      );
+      for (final stmt in createdStatements) {
+        _bindings.sqlite3_finalize(stmt.handle.cast());
+      }
     }
 
-    final stmtPtr = stmtOut.value;
-    stmtOut.free();
-    sqlPtr.free();
+    while (offset < bytes.length) {
+      int resultCode;
+      // Use prepare_v3 if supported, fall-back to prepare_v2 otherwise
+      if (_library.supportsOpenV3) {
+        final function = _library.appropriateOpenFunction
+            .cast<NativeFunction<sqlite3_prepare_v3_native>>()
+            .asFunction<sqlite3_prepare_v3_dart>();
 
-    if (resultCode != SqlError.SQLITE_OK) {
-      throwException(this, resultCode, sql);
+        resultCode = function(
+          _handle,
+          sqlPtr.elementAt(offset).cast(),
+          bytes.length,
+          prepFlags,
+          stmtOut,
+          pzTail,
+        );
+      } else {
+        assert(
+          prepFlags == 0,
+          'Used custom preparation flags, but the loaded sqlite library does '
+          'not support prepare_v3',
+        );
+
+        final function = _library.appropriateOpenFunction
+            .cast<NativeFunction<sqlite3_prepare_v2_native>>()
+            .asFunction<sqlite3_prepare_v2_dart>();
+
+        resultCode = function(
+          _handle,
+          sqlPtr.elementAt(offset).cast(),
+          bytes.length,
+          stmtOut,
+          pzTail,
+        );
+      }
+
+      if (resultCode != SqlError.SQLITE_OK) {
+        freeIntermediateResults();
+        throwException(this, resultCode, sql);
+      }
+
+      final stmtPtr = stmtOut.value;
+      final endOffset = pzTail.value.address - sqlPtr.address;
+
+      final sqlForStatement = utf8.decoder.convert(bytes, offset, endOffset);
+      final stmt = PreparedStatementImpl(sqlForStatement, stmtPtr, this);
+
+      createdStatements.add(stmt);
+
+      if (createdStatements.length == maxStatements) {
+        break;
+      }
+
+      offset = endOffset;
     }
 
     if (checkNoTail) {
       final usedBytes = pzTail.value.address - sqlPtr.address;
-      pzTail.free();
 
       if (usedBytes < bytes.length) {
-        _bindings.sqlite3_finalize(stmtPtr);
+        freeIntermediateResults();
         throw ArgumentError.value(
             sql, 'sql', 'Has trailing data after the first sql statement;');
       }
     }
 
-    final stmt = PreparedStatementImpl(sql, stmtPtr, this);
+    stmtOut.free();
+    sqlPtr.free();
+    pzTail.free();
 
-    _statements.add(stmt);
-    return stmt;
+    _statements.addAll(createdStatements);
+    return createdStatements;
   }
 
   int _eTextRep(bool deterministic, bool directOnly) {

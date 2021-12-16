@@ -5,6 +5,9 @@ import 'result_set.dart';
 
 /// A prepared statement.
 abstract class PreparedStatement {
+  /// The SQL statement backing this prepared statement.
+  String get sql;
+
   /// Returns the amount of parameters in this prepared statement.
   int get parameterCount;
 

@@ -406,6 +406,44 @@ void main() {
       database.dispose();
     });
   });
+
+  test('prepare does not throw for multiple statements by default', () {
+    final db = sqlite3.openInMemory();
+    addTearDown(db.dispose);
+
+    final stmt = db.prepare('SELECT 1; SELECT 2');
+    expect(stmt.sql, 'SELECT 1;');
+  });
+
+  test('prepare throws with checkNoTail', () {
+    final db = sqlite3.openInMemory();
+    addTearDown(db.dispose);
+
+    expect(() => db.prepare('SELECT 1; SELECT 2', checkNoTail: true),
+        throwsArgumentError);
+  });
+
+  group('prepareMultiple', () {
+    late Database db;
+
+    setUp(() => db = sqlite3.openInMemory());
+    tearDown(() => db.dispose());
+
+    test('can prepare multiple statements', () {
+      final statements = db.prepareMultiple('SELECT 1; SELECT 2;');
+      expect(statements, [_statement('SELECT 1;'), _statement(' SELECT 2;')]);
+    });
+
+    test('fails for trailing syntax error', () {
+      expect(() => db.prepareMultiple('SELECT 1; error here '),
+          throwsA(isA<SqliteException>()));
+    });
+
+    test('fails for syntax error in the middle', () {
+      expect(() => db.prepareMultiple('SELECT 1; error here; SELECT 2;'),
+          throwsA(isA<SqliteException>()));
+    });
+  });
 }
 
 Matcher _update(SqliteUpdate update) {
@@ -413,6 +451,10 @@ Matcher _update(SqliteUpdate update) {
       .having((e) => e.kind, 'kind', update.kind)
       .having((e) => e.tableName, 'tableName', update.tableName)
       .having((e) => e.rowId, 'rowId', update.rowId);
+}
+
+Matcher _statement(String sql) {
+  return isA<PreparedStatement>().having((e) => e.sql, 'sql', sql);
 }
 
 /// Aggregate function that counts the length of all string parameters it

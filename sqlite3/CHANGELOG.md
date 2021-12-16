@@ -1,3 +1,7 @@
+## 1.5.0-dev
+
+- Add `prepareMultiple` method to prepare multiple statements from one SQL string.
+
 ## 1.4.0
 
 - Report writes on the database through the `Database.updates` stream
