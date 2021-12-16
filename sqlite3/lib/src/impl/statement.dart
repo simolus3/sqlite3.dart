@@ -27,7 +27,6 @@ class PreparedStatementImpl implements PreparedStatement {
   @override
   void execute([List<Object?> parameters = const <Object>[]]) {
     _ensureNotFinalized();
-    _ensureMatchingParameters(parameters);
 
     _reset();
     _bindParams(parameters);
@@ -38,7 +37,6 @@ class PreparedStatementImpl implements PreparedStatement {
   @override
   void executeMap(Map<String, Object?> parameters) {
     _ensureNotFinalized();
-    _ensureMatchingMapParameters(parameters);
 
     _reset();
     _bindMapParams(parameters);
@@ -87,7 +85,6 @@ class PreparedStatementImpl implements PreparedStatement {
   @override
   ResultSet select([List<Object?> parameters = const <Object?>[]]) {
     _ensureNotFinalized();
-    _ensureMatchingParameters(parameters);
 
     _reset();
     _bindParams(parameters);
@@ -98,7 +95,6 @@ class PreparedStatementImpl implements PreparedStatement {
   @override
   ResultSet selectMap(Map<String, Object?> parameters) {
     _ensureNotFinalized();
-    _ensureMatchingMapParameters(parameters);
 
     _reset();
     _bindMapParams(parameters);
@@ -128,7 +124,6 @@ class PreparedStatementImpl implements PreparedStatement {
   @override
   IteratingCursor selectCursor([List<Object?> parameters = const <Object?>[]]) {
     _ensureNotFinalized();
-    _ensureMatchingParameters(parameters);
 
     _reset();
     _bindParams(parameters);
@@ -163,6 +158,7 @@ class PreparedStatementImpl implements PreparedStatement {
   }
 
   void _bindParams(List<Object?>? params) {
+    _ensureMatchingParameters(params);
     if (params == null || params.isEmpty) return;
 
     // variables in sqlite are 1-indexed
@@ -176,11 +172,16 @@ class PreparedStatementImpl implements PreparedStatement {
   }
 
   void _bindMapParams(Map<String, Object?>? params) {
-    if (params == null || params.isEmpty) return;
+    final expectedLength = parameterCount;
 
-    // _bindings.sqlite3_clear_bindings(_stmt);
+    if (params == null || params.isEmpty) {
+      if (expectedLength != 0) {
+        throw ArgumentError.value(params, 'params',
+            'Expected $expectedLength parameters, but none were set.');
+      }
+      return;
+    }
 
-    // variables in sqlite are 1-indexed
     for (final key in params.keys) {
       final Object? param = params[key];
 
@@ -188,11 +189,21 @@ class PreparedStatementImpl implements PreparedStatement {
       final keyPtr = allocateBytes(keyBytes, additionalLength: 1);
       _allocatedWhileBinding.add(keyPtr);
       final i = _bindings.sqlite3_bind_parameter_index(_stmt, keyPtr.cast());
+
+      // SQL parameters are 1-indexed, so i indicates that no parameter with
+      // that name was found.
       if (i == 0) {
-        throw ArgumentError.value(
-            params, 'params', 'Key $key was not found in statement.');
+        throw ArgumentError.value(params, 'params',
+            'This statement contains no parameter named `$key`');
       }
       _bindParam(param, i);
+    }
+
+    // If we reached this point. All parameters from [params] were bound. Check
+    // if the statement contains no additional parameters.
+    if (expectedLength != params.length) {
+      throw ArgumentError.value(
+          params, 'params', 'Expected $expectedLength parameters');
     }
 
     _variablesBound = true;
@@ -272,16 +283,6 @@ class PreparedStatementImpl implements PreparedStatement {
   }
 
   void _ensureMatchingParameters(List<Object?>? parameters) {
-    final length = parameters?.length ?? 0;
-    final count = parameterCount;
-
-    if (length != count) {
-      throw ArgumentError.value(
-          parameters, 'parameters', 'Expected $count parameters, got $length');
-    }
-  }
-
-  void _ensureMatchingMapParameters(Map<String, Object?>? parameters) {
     final length = parameters?.length ?? 0;
     final count = parameterCount;
 
