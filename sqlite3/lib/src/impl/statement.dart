@@ -171,10 +171,10 @@ class PreparedStatementImpl implements PreparedStatement {
     _variablesBound = true;
   }
 
-  void _bindMapParams(Map<String, Object?>? params) {
+  void _bindMapParams(Map<String, Object?> params) {
     final expectedLength = parameterCount;
 
-    if (params == null || params.isEmpty) {
+    if (params.isEmpty) {
       if (expectedLength != 0) {
         throw ArgumentError.value(params, 'params',
             'Expected $expectedLength parameters, but none were set.');
@@ -190,7 +190,7 @@ class PreparedStatementImpl implements PreparedStatement {
       _allocatedWhileBinding.add(keyPtr);
       final i = _bindings.sqlite3_bind_parameter_index(_stmt, keyPtr.cast());
 
-      // SQL parameters are 1-indexed, so i indicates that no parameter with
+      // SQL parameters are 1-indexed, so 0 indicates that no parameter with
       // that name was found.
       if (i == 0) {
         throw ArgumentError.value(params, 'params',
