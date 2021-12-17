@@ -1,6 +1,8 @@
 ## 1.5.0-dev
 
 - Add `prepareMultiple` method to prepare multiple statements from one SQL string.
+- Add `selectMap` and `executeMap` on `PreparedStatement` to bind SQL parameters by
+  their name instead of their index.
 
 ## 1.4.0
 
