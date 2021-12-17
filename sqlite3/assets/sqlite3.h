@@ -39,6 +39,7 @@ int sqlite3_reset(sqlite3_stmt *pStmt);
 
 int sqlite3_column_count(sqlite3_stmt *pStmt);
 int sqlite3_bind_parameter_count(sqlite3_stmt *pStmt);
+int sqlite3_bind_parameter_index(sqlite3_stmt *, sqlite3_char *zName);
 sqlite3_char *sqlite3_column_name(sqlite3_stmt *pStmt, int N);
 
 int sqlite3_bind_blob64(sqlite3_stmt *pStmt, int index, void *data,
