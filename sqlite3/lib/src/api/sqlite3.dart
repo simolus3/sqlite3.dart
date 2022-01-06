@@ -12,16 +12,15 @@ Sqlite3 get sqlite3 {
 
 /// Provides access to `sqlite3` functions, such as opening new databases.
 class Sqlite3 {
-  final Bindings _bindings;
-  final Pointer<Pointer<char>> _sqlite3_temp_directory;
+  final BindingsWithLibrary _library;
+
+  Bindings get _bindings => _library.bindings;
 
   /// Loads `sqlite3` bindings by looking up functions in the [library].
   ///
   /// If application-defined functions are used, there shouldn't be multiple
   /// [Sqlite3] objects with a different underlying [library].
-  Sqlite3._(DynamicLibrary library)
-      : _bindings = Bindings(library),
-        _sqlite3_temp_directory = library.lookup('sqlite3_temp_directory');
+  Sqlite3._(DynamicLibrary library) : _library = BindingsWithLibrary(library);
 
   /// The version of the sqlite3 library in used.
   Version get version {
@@ -51,7 +50,7 @@ class Sqlite3 {
     bool? mutex,
   }) {
     return DatabaseImpl.open(
-      _bindings,
+      _library,
       filename,
       vfs: vfs,
       mode: mode,
@@ -64,19 +63,19 @@ class Sqlite3 {
   /// The [database] must be a pointer towards an open sqlite3 database
   /// connection [handle](https://www.sqlite.org/c3ref/sqlite3.html).
   Database fromPointer(Pointer<void> database) {
-    return DatabaseImpl(_bindings, database.cast());
+    return DatabaseImpl(_library, database.cast());
   }
 
   /// Opens an in-memory database.
   Database openInMemory() {
-    return DatabaseImpl.open(_bindings, ':memory:');
+    return DatabaseImpl.open(_library, ':memory:');
   }
 
   /// Reads the `sqlite3_temp_directory` variable.
   ///
   /// See also: https://www.sqlite.org/c3ref/temp_directory.html
   String? get tempDirectory {
-    final charPtr = _sqlite3_temp_directory.value;
+    final charPtr = _bindings.sqlite3_temp_directory;
     if (charPtr.isNullPointer) {
       return null;
     } else {
@@ -92,9 +91,9 @@ class Sqlite3 {
   /// See also: https://www.sqlite.org/c3ref/temp_directory.html
   set tempDirectory(String? value) {
     if (value == null) {
-      _sqlite3_temp_directory.value = nullPtr();
+      _bindings.sqlite3_temp_directory = nullPtr();
     } else {
-      _sqlite3_temp_directory.value = allocateZeroTerminated(value);
+      _bindings.sqlite3_temp_directory = allocateZeroTerminated(value);
     }
   }
 }

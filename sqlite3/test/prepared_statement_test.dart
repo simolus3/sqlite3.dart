@@ -122,28 +122,57 @@ void main() {
     },
   );
 
-  test('throws an exception when passing an invalid type as argument', () {
+  test('can bind booleans', () {
     final db = sqlite3.openInMemory();
     final stmt = db.prepare('SELECT ?');
+    final result = stmt.select([false]).single;
 
-    expect(() => stmt.execute(<bool>[false]), throwsArgumentError);
+    expect(result.values.single, isZero);
     db.dispose();
+  });
+
+  test('can bind named parameters', () {
+    final db = sqlite3.openInMemory();
+    final stmt = db.prepare('SELECT ?1, :a, @b');
+    final result = stmt.selectMap({
+      '?1': 'first',
+      ':a': 'second',
+      '@b': 'third',
+    }).single;
+
+    expect(result.values, ['first', 'second', 'third']);
   });
 
   group('checks that the amount of parameters are correct', () {
     final db = sqlite3.openInMemory();
 
+    tearDownAll(db.dispose);
+
     test('when no parameters are set', () {
       final stmt = db.prepare('SELECT ?');
-      expect(stmt.select, throwsA(isA<ArgumentError>()));
+      expect(stmt.select, throwsArgumentError);
     });
 
     test('when the wrong amount of parameters are set', () {
       final stmt = db.prepare('SELECT ?, ?');
-      expect(() => stmt.select(<int>[1]), throwsA(isA<ArgumentError>()));
+      expect(() => stmt.select(<int>[1]), throwsArgumentError);
     });
 
-    tearDownAll(db.dispose);
+    test('when not all names are covered', () {
+      final stmt = db.prepare('SELECT :a, @b');
+      expect(() => stmt.executeMap({':a': 'a'}), throwsArgumentError);
+    });
+
+    test('when an invalid name is passed', () {
+      final stmt = db.prepare('SELECT :a, @b');
+      expect(() => stmt.executeMap({':a': 'a', '@b': 'b', ':c': 'c'}),
+          throwsArgumentError);
+    });
+
+    test('when named parameters are empty', () {
+      final stmt = db.prepare('SELECT :a, @b');
+      expect(() => stmt.executeMap({}), throwsArgumentError);
+    });
   });
 
   test('select statements return expected value', () {

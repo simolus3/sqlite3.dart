@@ -349,6 +349,112 @@ void main() {
       'mac-os': Skip('TODO: User-defined functions cause a sigkill on MacOS')
     },
   );
+
+  group('update stream', () {
+    late Database database;
+
+    setUp(() {
+      database = sqlite3.openInMemory()
+        ..execute('CREATE TABLE tbl (a TEXT, b INT);');
+    });
+
+    tearDown(() => database.dispose());
+
+    test('emits event after insert', () {
+      expect(database.updates,
+          emits(_update(SqliteUpdate(SqliteUpdateKind.insert, 'tbl', 1))));
+
+      database.execute("INSERT INTO tbl VALUES ('', 1);");
+    });
+
+    test('emits event after update', () {
+      database.execute("INSERT INTO tbl VALUES ('', 1);");
+
+      expect(database.updates,
+          emits(_update(SqliteUpdate(SqliteUpdateKind.update, 'tbl', 1))));
+
+      database.execute("UPDATE tbl SET b = b + 1;");
+    });
+
+    test('emits event after delete', () {
+      database.execute("INSERT INTO tbl VALUES ('', 1);");
+
+      expect(database.updates,
+          emits(_update(SqliteUpdate(SqliteUpdateKind.delete, 'tbl', 1))));
+
+      database.execute("DELETE FROM tbl WHERE b = 1;");
+    });
+
+    test('removes callback when no listener exists', () async {
+      database.execute("INSERT INTO tbl VALUES ('', 1);");
+
+      final subscription =
+          database.updates.listen(expectAsync1((data) {}, count: 0));
+
+      // Pause the subscription, cause an update and resume. As no listener
+      // exists, no event should have been received and buffered.
+      subscription.pause();
+      database.execute("DELETE FROM tbl WHERE b = 1;");
+      subscription.resume();
+      await pumpEventQueue();
+
+      await subscription.cancel();
+    });
+
+    test('closes when disposing the database', () {
+      expect(database.updates.listen(null).asFuture(null), completes);
+      database.dispose();
+    });
+  });
+
+  test('prepare does not throw for multiple statements by default', () {
+    final db = sqlite3.openInMemory();
+    addTearDown(db.dispose);
+
+    final stmt = db.prepare('SELECT 1; SELECT 2');
+    expect(stmt.sql, 'SELECT 1;');
+  });
+
+  test('prepare throws with checkNoTail', () {
+    final db = sqlite3.openInMemory();
+    addTearDown(db.dispose);
+
+    expect(() => db.prepare('SELECT 1; SELECT 2', checkNoTail: true),
+        throwsArgumentError);
+  });
+
+  group('prepareMultiple', () {
+    late Database db;
+
+    setUp(() => db = sqlite3.openInMemory());
+    tearDown(() => db.dispose());
+
+    test('can prepare multiple statements', () {
+      final statements = db.prepareMultiple('SELECT 1; SELECT 2;');
+      expect(statements, [_statement('SELECT 1;'), _statement(' SELECT 2;')]);
+    });
+
+    test('fails for trailing syntax error', () {
+      expect(() => db.prepareMultiple('SELECT 1; error here '),
+          throwsA(isA<SqliteException>()));
+    });
+
+    test('fails for syntax error in the middle', () {
+      expect(() => db.prepareMultiple('SELECT 1; error here; SELECT 2;'),
+          throwsA(isA<SqliteException>()));
+    });
+  });
+}
+
+Matcher _update(SqliteUpdate update) {
+  return isA<SqliteUpdate>()
+      .having((e) => e.kind, 'kind', update.kind)
+      .having((e) => e.tableName, 'tableName', update.tableName)
+      .having((e) => e.rowId, 'rowId', update.rowId);
+}
+
+Matcher _statement(String sql) {
+  return isA<PreparedStatement>().having((e) => e.sql, 'sql', sql);
 }
 
 /// Aggregate function that counts the length of all string parameters it

@@ -1,3 +1,14 @@
+## 1.5.0-dev
+
+- Add `prepareMultiple` method to prepare multiple statements from one SQL string.
+- Add `selectMap` and `executeMap` on `PreparedStatement` to bind SQL parameters by
+  their name instead of their index.
+
+## 1.4.0
+
+- Report writes on the database through the `Database.updates` stream
+- Internal: Use `ffigen` to generate native bindings
+
 ## 1.3.1
 
 - Fix a crash with common iOS and macOS configurations.
