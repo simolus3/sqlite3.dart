@@ -872,6 +872,43 @@ class Bindings {
   late final _sqlite3_result_text = _sqlite3_result_textPtr.asFunction<
       void Function(ffi.Pointer<sqlite3_context>, ffi.Pointer<sqlite3_char>,
           int, ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3_create_collation_v2(
+    ffi.Pointer<sqlite3> arg0,
+    ffi.Pointer<sqlite3_char> zName,
+    int eTextRep,
+    ffi.Pointer<ffi.Void> pArg,
+    ffi.Pointer<ffi.Int32> xCompare,
+    ffi.Pointer<ffi.Void> xDestroy,
+  ) {
+    return _sqlite3_create_collation_v2(
+      arg0,
+      zName,
+      eTextRep,
+      pArg,
+      xCompare,
+      xDestroy,
+    );
+  }
+
+  late final _sqlite3_create_collation_v2Ptr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int32 Function(
+              ffi.Pointer<sqlite3>,
+              ffi.Pointer<sqlite3_char>,
+              ffi.Int32,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Int32>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3_create_collation_v2');
+  late final _sqlite3_create_collation_v2 =
+      _sqlite3_create_collation_v2Ptr.asFunction<
+          int Function(
+              ffi.Pointer<sqlite3>,
+              ffi.Pointer<sqlite3_char>,
+              int,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Int32>,
+              ffi.Pointer<ffi.Void>)>();
 }
 
 class sqlite3_char extends ffi.Opaque {}

@@ -52,4 +52,59 @@ void main() {
       {'bar': 2},
     ]);
   });
+
+  test('can create collation', () {
+    final db = sqlite3.openInMemory()
+      ..execute('CREATE TABLE foo2 (bar)')
+      ..execute(
+          "INSERT INTO foo2 VALUES ('AaAaaaAA'), ('BBBbBb'),('cCCCcc    '), ('  dD   ')");
+
+    /// Create a collation to compare String without extra-blank to the right and
+    /// ignoring case
+    db.createCollation(
+      collateName: "RTRIMNOCASE",
+      function: (String? a, String? b) {
+        // Combining nocase and rtrim
+        //
+        String? compareA = a?.toLowerCase().trimRight();
+        String? compareB = b?.toLowerCase().trimRight();
+
+        if (compareA == null && compareB == null) {
+          return 0;
+        } else if (compareA == null) {
+          // a < b
+          return -1;
+        } else if (compareB == null) {
+          // a > b
+          return 1;
+        } else {
+          return compareA.compareTo(compareB);
+        }
+      },
+    );
+
+    expect(
+        db.select(
+            "SELECT * FROM foo2 WHERE bar = 'aaaaAaAa   ' COLLATE RTRIMNOCASE"),
+        [
+          {'bar': 'AaAaaaAA'},
+        ]);
+
+    expect(
+        db.select(
+            "SELECT * FROM foo2 WHERE bar = 'bbbbbb' COLLATE RTRIMNOCASE"),
+        [
+          {'bar': 'BBBbBb'},
+        ]);
+
+    expect(
+        db.select(
+            "SELECT * FROM foo2 WHERE bar = 'cCcccC' COLLATE RTRIMNOCASE"),
+        [
+          {'bar': 'cCCCcc    '},
+        ]);
+
+    expect(db.select("SELECT * FROM foo2 WHERE bar = 'dd' COLLATE RTRIMNOCASE"),
+        []);
+  });
 }
