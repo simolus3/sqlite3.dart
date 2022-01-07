@@ -33,8 +33,7 @@ extension Utf8Utils on Pointer<sqlite3_char> {
   String readString([int? length]) {
     final resolvedLength = length ??= _length;
 
-    return utf8
-        .decode(cast<Uint8>().asTypedList(resolvedLength).buffer.asUint8List());
+    return utf8.decode(cast<Uint8>().asTypedList(resolvedLength));
   }
 }
 
