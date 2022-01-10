@@ -1,8 +1,9 @@
-## 1.5.0-dev
+## 1.5.0
 
 - Add `prepareMultiple` method to prepare multiple statements from one SQL string.
 - Add `selectMap` and `executeMap` on `PreparedStatement` to bind SQL parameters by
   their name instead of their index.
+- Add support for custom collations with `createCollation`.
 
 ## 1.4.0
 
