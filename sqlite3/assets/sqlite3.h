@@ -90,4 +90,4 @@ void sqlite3_result_text(sqlite3_context *ctx, sqlite3_char *data, int length,
 
 // Collations
 int sqlite3_create_collation_v2(sqlite3 *, sqlite3_char *zName, int eTextRep,
-								void *pArg, int *xCompare, void *xDestroy);
+                                void *pArg, int *xCompare, void *xDestroy);
