@@ -295,6 +295,29 @@ class DatabaseImpl implements Database {
   }
 
   @override
+  void createCollation({
+    required String name,
+    required CollatingFunction function,
+  }) {
+    final storedFunction = functionStore.registerCollating(function);
+    final namePtr = _functionName(name);
+
+    final result = _bindings.sqlite3_create_collation_v2(
+      _handle,
+      namePtr.cast(), // zFunctionName
+      SqlTextEncoding.SQLITE_UTF8,
+      storedFunction.applicationData.cast(),
+      storedFunction.xCompare!.cast(),
+      storedFunction.xDestroy.cast(),
+    );
+    namePtr.free();
+
+    if (result != SqlError.SQLITE_OK) {
+      throwException(this, result);
+    }
+  }
+
+  @override
   void createFunction({
     required String functionName,
     required ScalarFunction function,

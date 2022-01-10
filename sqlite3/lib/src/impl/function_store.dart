@@ -25,6 +25,17 @@ class FunctionStore {
     _functions.remove(id);
   }
 
+  FunctionPointerAndData registerCollating(CollatingFunction f) {
+    final id = _idCounter++;
+    _functions[id] = f;
+
+    return FunctionPointerAndData(
+      xCompare: _xCompare,
+      xDestroy: _xDestroy,
+      applicationData: Pointer.fromAddress(id),
+    );
+  }
+
   FunctionPointerAndData registerScalar(ScalarFunction f) {
     final id = _idCounter++;
     _functions[id] = f;
@@ -48,6 +59,10 @@ class FunctionStore {
     );
   }
 
+  CollatingFunction readCollating(int id) {
+    return _functions[id] as CollatingFunction;
+  }
+
   ScalarFunction readScalar(int id) {
     return _functions[id] as ScalarFunction;
   }
@@ -58,6 +73,7 @@ class FunctionStore {
 }
 
 class FunctionPointerAndData {
+  final Pointer<NativeType>? xCompare;
   final Pointer<NativeType>? xFunc;
   final Pointer<NativeType>? xStep;
   final Pointer<NativeType>? xFinal;
@@ -71,7 +87,28 @@ class FunctionPointerAndData {
     this.xFunc,
     this.xStep,
     this.xFinal,
+    this.xCompare,
   });
+}
+
+int _collatingFunctionImpl(
+  Pointer<Void> udp,
+  int sizeA,
+  Pointer<Void> textA,
+  int sizeB,
+  Pointer<Void> textB,
+) {
+  final functionId = udp.address;
+  final target = functionStore.readCollating(functionId);
+
+  final String txtA = textA.cast<sqlite3_char>().readString(sizeA);
+  final String txtB = textB.cast<sqlite3_char>().readString(sizeB);
+
+  try {
+    return target(txtA, txtB);
+  } catch (e) {
+    return 0;
+  }
 }
 
 void _scalarFunctionImpl(
@@ -91,6 +128,11 @@ void _scalarFunctionImpl(
   }
   arguments.isValid = false;
 }
+
+Pointer<Void> _xCompare = Pointer.fromFunction<
+        Int32 Function(Pointer<Void>, Int32, Pointer<Void>, Int32,
+            Pointer<Void>)>(_collatingFunctionImpl, 0)
+    .cast();
 
 Pointer<Void> _xFunc = Pointer.fromFunction<
         Void Function(Pointer<sqlite3_context>, Int32,

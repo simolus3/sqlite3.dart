@@ -80,6 +80,30 @@ abstract class Database {
   List<PreparedStatement> prepareMultiple(String sql,
       {bool persistent = false, bool vtab = true});
 
+  /// Creates a collation that can be used from sql queries sent against
+  /// this database.
+  ///
+  /// The [collateName] defines the (case insensitive) name of the collating in
+  /// sql. The utf8 encoding of [collateName] must not exceed a length of 255
+  /// bytes.
+  ///
+  /// The [function] can be any Dart closure, it's not restricted to functions
+  /// that would be supported by [Pointer.fromFunction]. For more details on how
+  /// the sql function behaves, see the documentation on [CollatingFunction].
+  /// As it is a compare function, the [function] must return an integer value, and
+  /// receives two string parameters (**A** & **B**). [function] will return 0
+  /// if **A** and **B**
+  /// are considered equals. A negative value is returned if **A** is less than **B**,
+  /// but a positive if **A** is greater than **B**.
+  ///
+  ///
+  ///
+  /// For more information, see https://www.sqlite.org/c3ref/create_collation.html.
+  void createCollation({
+    required String name,
+    required CollatingFunction function,
+  });
+
   /// Creates a scalar function that can be called from sql queries sent against
   /// this database.
   ///
