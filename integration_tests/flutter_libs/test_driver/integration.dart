@@ -62,7 +62,7 @@ void main() {
     /// Create a collation to compare String without extra-blank to the right and
     /// ignoring case
     db.createCollation(
-      collateName: "RTRIMNOCASE",
+      name: "RTRIMNOCASE",
       function: (String? a, String? b) {
         // Combining nocase and rtrim
         //

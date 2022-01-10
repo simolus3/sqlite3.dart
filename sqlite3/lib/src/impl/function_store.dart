@@ -101,10 +101,8 @@ int _collatingFunctionImpl(
   final functionId = udp.address;
   final target = functionStore.readCollating(functionId);
 
-  final Uint8List bytesA = textA.copyRange(sizeA);
-  final Uint8List bytesB = textB.copyRange(sizeB);
-  final String txtA = String.fromCharCodes(bytesA);
-  final String txtB = String.fromCharCodes(bytesB);
+  final String txtA = textA.cast<sqlite3_char>().readString(sizeA);
+  final String txtB = textB.cast<sqlite3_char>().readString(sizeB);
 
   try {
     return target(txtA, txtB);

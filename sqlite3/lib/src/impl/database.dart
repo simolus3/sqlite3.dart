@@ -296,16 +296,16 @@ class DatabaseImpl implements Database {
 
   @override
   void createCollation({
-    required String collateName,
+    required String name,
     required CollatingFunction function,
   }) {
     final storedFunction = functionStore.registerCollating(function);
-    final namePtr = _functionName(collateName);
+    final namePtr = _functionName(name);
 
     final result = _bindings.sqlite3_create_collation_v2(
       _handle,
       namePtr.cast(), // zFunctionName
-      _eTextRep(false, false),
+      SqlTextEncoding.SQLITE_UTF8,
       storedFunction.applicationData.cast(),
       storedFunction.xCompare!.cast(),
       storedFunction.xDestroy.cast(),

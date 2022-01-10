@@ -100,7 +100,7 @@ abstract class Database {
   ///
   /// For more information, see https://www.sqlite.org/c3ref/create_collation.html.
   void createCollation({
-    required String collateName,
+    required String name,
     required CollatingFunction function,
   });
 
