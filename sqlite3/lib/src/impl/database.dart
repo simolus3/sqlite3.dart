@@ -149,12 +149,21 @@ class DatabaseImpl implements Database {
   @override
   PreparedStatement prepare(String sql,
       {bool persistent = false, bool vtab = true, bool checkNoTail = false}) {
-    return _prepareInternal(sql,
-            persistent: persistent,
-            vtab: vtab,
-            maxStatements: 1,
-            checkNoTail: checkNoTail)
-        .single;
+    final stmts = _prepareInternal(
+      sql,
+      persistent: persistent,
+      vtab: vtab,
+      maxStatements: 1,
+      checkNoTail: checkNoTail,
+    );
+
+    if (stmts.isEmpty) {
+      // Can happen without a syntax error if we're only given whitespace or
+      // comments.
+      throw ArgumentError.value(sql, 'sql', 'Must contain an SQL statement.');
+    }
+
+    return stmts.first;
   }
 
   @override
@@ -197,15 +206,14 @@ class DatabaseImpl implements Database {
       }
     }
 
-    while (offset < bytes.length) {
-      int resultCode;
+    int prepare() {
       // Use prepare_v3 if supported, fall-back to prepare_v2 otherwise
       if (_library.supportsOpenV3) {
         final function = _library.appropriateOpenFunction
             .cast<NativeFunction<sqlite3_prepare_v3_native>>()
             .asFunction<sqlite3_prepare_v3_dart>();
 
-        resultCode = function(
+        return function(
           _handle,
           sqlPtr.elementAt(offset).cast(),
           bytes.length,
@@ -224,7 +232,7 @@ class DatabaseImpl implements Database {
             .cast<NativeFunction<sqlite3_prepare_v2_native>>()
             .asFunction<sqlite3_prepare_v2_dart>();
 
-        resultCode = function(
+        return function(
           _handle,
           sqlPtr.elementAt(offset).cast(),
           bytes.length,
@@ -232,6 +240,10 @@ class DatabaseImpl implements Database {
           pzTail,
         );
       }
+    }
+
+    while (offset < bytes.length) {
+      final resultCode = prepare();
 
       if (resultCode != SqlError.SQLITE_OK) {
         freeIntermediateResults();
@@ -241,25 +253,43 @@ class DatabaseImpl implements Database {
       final stmtPtr = stmtOut.value;
       final endOffset = pzTail.value.address - sqlPtr.address;
 
-      final sqlForStatement = utf8.decoder.convert(bytes, offset, endOffset);
-      final stmt = PreparedStatementImpl(sqlForStatement, stmtPtr, this);
+      // prepare can return a null pointer with SQLITE_OK if only whitespace
+      // or comments were parsed. That's fine, just skip over it then.
+      if (!stmtPtr.isNullPointer) {
+        final sqlForStatement = utf8.decoder.convert(bytes, offset, endOffset);
+        final stmt = PreparedStatementImpl(sqlForStatement, stmtPtr, this);
 
-      createdStatements.add(stmt);
+        createdStatements.add(stmt);
+      }
+
+      offset = endOffset;
 
       if (createdStatements.length == maxStatements) {
         break;
       }
-
-      offset = endOffset;
     }
 
     if (checkNoTail) {
-      final usedBytes = pzTail.value.address - sqlPtr.address;
+      // Issue another prepare call at the current offset to account for
+      // potential whitespace.
+      while (offset < bytes.length) {
+        final resultCode = prepare();
+        offset = pzTail.value.address - sqlPtr.address;
 
-      if (usedBytes < bytes.length) {
-        freeIntermediateResults();
-        throw ArgumentError.value(
-            sql, 'sql', 'Has trailing data after the first sql statement;');
+        final stmtPtr = stmtOut.value;
+
+        if (!stmtPtr.isNullPointer) {
+          // Had an unexpected trailing statement -> throw!
+          createdStatements.add(PreparedStatementImpl('', stmtPtr, this));
+          freeIntermediateResults();
+          throw ArgumentError.value(
+              sql, 'sql', 'Had an unexpected trailing statement.');
+        } else if (resultCode != SqlError.SQLITE_OK) {
+          // Invalid content that's not just a whitespace or a comment.
+          freeIntermediateResults();
+          throw ArgumentError.value(
+              sql, 'sql', 'Has trailing data after the first sql statement:');
+        }
       }
     }
 

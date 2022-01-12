@@ -1,3 +1,10 @@
+## 1.5.1
+
+- Fix `checkNoTail` throwing for harmless whitespace or comments following a
+  SQL statement.
+- Fix a native null-pointer dereference when calling `prepare` with a statement
+  exclusively containing whitespace or comments.
+
 ## 1.5.0
 
 - Add `prepareMultiple` method to prepare multiple statements from one SQL string.

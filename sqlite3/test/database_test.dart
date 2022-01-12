@@ -443,6 +443,40 @@ void main() {
       expect(() => db.prepareMultiple('SELECT 1; error here; SELECT 2;'),
           throwsA(isA<SqliteException>()));
     });
+
+    group('edge-cases', () {
+      test('empty string', () {
+        expect(() => db.prepare(''), throwsArgumentError);
+        expect(db.prepareMultiple(''), isEmpty);
+      });
+
+      test('whitespace only', () {
+        expect(() => db.prepare('  '), throwsArgumentError);
+        expect(() => db.prepare('/* oh hi */'), throwsArgumentError);
+
+        expect(db.prepareMultiple('  '), isEmpty);
+        expect(db.prepareMultiple('/* oh hi */'), isEmpty);
+      });
+
+      test('leading whitespace', () {
+        final stmt =
+            db.prepare('  /*wait for it*/ SELECT 1;', checkNoTail: true);
+        expect(stmt.sql, '  /*wait for it*/ SELECT 1;');
+      });
+
+      test('trailing comment', () {
+        final stmt = db.prepare('SELECT 1; /* done! */', checkNoTail: true);
+        expect(stmt.sql, 'SELECT 1;');
+      });
+
+      test('whitespace between statements', () {
+        final stmts = db.prepareMultiple('SELECT 1; /* and */ SELECT 2;');
+        expect(stmts, hasLength(2));
+
+        expect(stmts[0].sql, 'SELECT 1;');
+        expect(stmts[1].sql, ' /* and */ SELECT 2;');
+      });
+    });
   });
 }
 
