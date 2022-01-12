@@ -216,7 +216,7 @@ class DatabaseImpl implements Database {
         return function(
           _handle,
           sqlPtr.elementAt(offset).cast(),
-          bytes.length,
+          bytes.length - offset,
           prepFlags,
           stmtOut,
           pzTail,
@@ -235,7 +235,7 @@ class DatabaseImpl implements Database {
         return function(
           _handle,
           sqlPtr.elementAt(offset).cast(),
-          bytes.length,
+          bytes.length - offset,
           stmtOut,
           pzTail,
         );

@@ -4,6 +4,7 @@
   SQL statement.
 - Fix a native null-pointer dereference when calling `prepare` with a statement
   exclusively containing whitespace or comments.
+- Fix a potential out-of-bounds read when preparing statements.
 
 ## 1.5.0
 
