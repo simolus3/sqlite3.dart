@@ -177,7 +177,8 @@ void main() {
   });
 
   test('open read-only', () async {
-    final path = join('.dart_tool', 'sqlite3', 'test', 'read_only.db');
+    final path = Directory.systemTemp.path + '/read_only.db';
+
     // Make sure the path exists
     try {
       await Directory(dirname(path)).create(recursive: true);
