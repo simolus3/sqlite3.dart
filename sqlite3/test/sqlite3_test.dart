@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:path/path.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
 
@@ -10,14 +11,13 @@ void main() {
   });
 
   test('sqlite3_temp_directory', () {
-    final dir = Directory('.dart_tool/sqlite3/tmp');
-    dir.createSync(recursive: true);
+    final newTempPath = Directory.systemTemp.path;
     final old = sqlite3.tempDirectory;
 
     try {
-      sqlite3.tempDirectory = dir.absolute.path;
+      sqlite3.tempDirectory = newTempPath;
 
-      final db = sqlite3.open('.dart_tool/tmp.db');
+      final db = sqlite3.open(join(newTempPath, 'tmp.db'));
       db
         ..execute('PRAGMA temp_store = FILE;')
         ..execute('CREATE TEMP TABLE my_tbl (foo, bar);')
