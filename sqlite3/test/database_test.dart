@@ -177,7 +177,7 @@ void main() {
   });
 
   test('open read-only', () async {
-    final path = Directory.systemTemp.path + '/read_only.db';
+    final path = join(Directory.systemTemp.path, 'read_only.db');
 
     // Make sure the path exists
     try {

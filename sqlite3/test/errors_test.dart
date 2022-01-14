@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 
 void main() {
   test('open read-only exception', () async {
-    final path = Directory.systemTemp.path + '/read_only_exception.db';
+    final path = join(Directory.systemTemp.path, 'read_only_exception.db');
 
     try {
       await Directory(dirname(path)).create(recursive: true);
@@ -77,7 +77,7 @@ void main() {
   });
 
   test('busy exception', () async {
-    final path = Directory.systemTemp.path + '/busy.db';
+    final path = join(Directory.systemTemp.path, 'busy.db');
 
     // Make sure the path exists
     try {
@@ -103,7 +103,7 @@ void main() {
   });
 
   test('invalid format', () async {
-    final path = Directory.systemTemp.path + '/invalid_format.db';
+    final path = join(Directory.systemTemp.path, 'invalid_format.db');
 
     // Make sure the path exists
     try {
