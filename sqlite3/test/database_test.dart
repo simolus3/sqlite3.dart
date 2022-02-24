@@ -227,6 +227,7 @@ void main() {
             // copy since the args become invalid as soon as this function
             // finishes.
             readArguments = List.of(args);
+            return null;
           },
         );
 
@@ -246,7 +247,7 @@ void main() {
       test('throws when using a long function name', () {
         expect(
           () => database.createFunction(
-              functionName: 'foo' * 100, function: (args) {}),
+              functionName: 'foo' * 100, function: (args) => null),
           throwsArgumentError,
         );
       });
