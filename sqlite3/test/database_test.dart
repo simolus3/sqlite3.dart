@@ -181,7 +181,9 @@ void main() {
     // Make sure the path exists
     await Directory(dirname(path)).create(recursive: true);
     // but not the db
-    await File(path).delete();
+    if (File(path).existsSync()) {
+      await File(path).delete();
+    }
 
     // Opening a non-existent database should fail
     expect(
