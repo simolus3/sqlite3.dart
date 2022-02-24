@@ -373,7 +373,7 @@ class SqlExtendedError {
 ///
 /// These bit values are intended for use in the
 /// 3rd parameter to the [sqlite3_open_v2static const int )] interface and
-/// in the 4th parameter to the [sqlite3_vfs.xOpen] method.
+/// in the 4th parameter to the `xopen` method.
 class SqlFlag {
   /// Ok for sqlite3_open_v2static const int )
   static const int SQLITE_OPEN_READONLY = 0x00000001;

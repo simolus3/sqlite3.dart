@@ -83,8 +83,8 @@ abstract class Database {
   /// Creates a collation that can be used from sql queries sent against
   /// this database.
   ///
-  /// The [collateName] defines the (case insensitive) name of the collating in
-  /// sql. The utf8 encoding of [collateName] must not exceed a length of 255
+  /// The [name] defines the (case insensitive) name of the collating in
+  /// sql. The utf8 encoding of [name] must not exceed a length of 255
   /// bytes.
   ///
   /// The [function] can be any Dart closure, it's not restricted to functions

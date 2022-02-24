@@ -9,13 +9,11 @@ void main() {
     final path =
         join('.dart_tool', 'sqlite3', 'test', 'read_only_exception.db');
 
-    try {
-      await Directory(dirname(path)).create(recursive: true);
-    } catch (_) {}
+    await Directory(dirname(path)).create(recursive: true);
     // but not the db
-    try {
+    if (File(path).existsSync()) {
       await File(path).delete();
-    } catch (_) {}
+    }
 
     // Opening a non-existent database should fail
     try {
@@ -80,13 +78,11 @@ void main() {
   test('busy exception', () async {
     final path = join('.dart_tool', 'moor_ffi', 'test', 'busy.db');
     // Make sure the path exists
-    try {
-      await Directory(dirname(path)).create(recursive: true);
-    } catch (_) {}
+    await Directory(dirname(path)).create(recursive: true);
     // but not the db
-    try {
+    if (File(path).existsSync()) {
       await File(path).delete();
-    } catch (_) {}
+    }
 
     final db1 = sqlite3.open(path);
     final db2 = sqlite3.open(path);
@@ -105,9 +101,7 @@ void main() {
   test('invalid format', () async {
     final path = join('.dart_tool', 'moor_ffi', 'test', 'invalid_format.db');
     // Make sure the path exists
-    try {
-      await Directory(dirname(path)).create(recursive: true);
-    } catch (_) {}
+    await Directory(dirname(path)).create(recursive: true);
     await File(path).writeAsString('not a database file');
 
     final db = sqlite3.open(path);

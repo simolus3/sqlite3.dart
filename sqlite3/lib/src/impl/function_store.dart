@@ -106,7 +106,7 @@ int _collatingFunctionImpl(
 
   try {
     return target(txtA, txtB);
-  } catch (e) {
+  } on Object {
     return 0;
   }
 }
@@ -123,7 +123,7 @@ void _scalarFunctionImpl(
 
   try {
     context.setResult(bindingsForStore, target(arguments));
-  } catch (e) {
+  } on Object catch (e) {
     context.setError(bindingsForStore, Error.safeToString(e));
   }
   arguments.isValid = false;
@@ -206,7 +206,7 @@ void _xFinalImpl(Pointer<sqlite3_context> context) {
 
   try {
     context.setResult(bindingsForStore, function.finalize(aggregateContext));
-  } catch (e) {
+  } on Object catch (e) {
     context.setError(bindingsForStore, Error.safeToString(e));
   }
 }

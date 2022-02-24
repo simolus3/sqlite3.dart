@@ -179,13 +179,9 @@ void main() {
   test('open read-only', () async {
     final path = join('.dart_tool', 'sqlite3', 'test', 'read_only.db');
     // Make sure the path exists
-    try {
-      await Directory(dirname(path)).create(recursive: true);
-    } catch (_) {}
+    await Directory(dirname(path)).create(recursive: true);
     // but not the db
-    try {
-      await File(path).delete();
-    } catch (_) {}
+    await File(path).delete();
 
     // Opening a non-existent database should fail
     expect(

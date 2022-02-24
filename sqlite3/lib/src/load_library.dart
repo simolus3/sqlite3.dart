@@ -25,7 +25,8 @@ DynamicLibrary _defaultOpen() {
   if (Platform.isLinux || Platform.isAndroid) {
     try {
       return DynamicLibrary.open('libsqlite3.so');
-    } catch (_) {
+      // ignore: avoid_catching_errors
+    } on ArgumentError {
       if (Platform.isAndroid) {
         // On some (especially old) Android devices, we somehow can't dlopen
         // libraries shipped with the apk. We need to find the full path of the

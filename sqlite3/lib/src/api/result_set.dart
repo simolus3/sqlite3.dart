@@ -57,8 +57,12 @@ class ResultSet extends Cursor
 /// The [columnAt] method may be used to obtain the value of a column by its
 /// index.
 class Row
-    with UnmodifiableMapMixin<String, dynamic>, MapMixin<String, dynamic>
-    implements Map<String, dynamic> {
+    with
+        // ignore: prefer_mixin
+        UnmodifiableMapMixin<String, dynamic>,
+        MapMixin<String, dynamic>
+    implements
+        Map<String, dynamic> {
   final Cursor _result;
   final List<Object?> _data;
 
