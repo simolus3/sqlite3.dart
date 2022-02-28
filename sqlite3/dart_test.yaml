@@ -1,0 +1,9 @@
+paths: ["test/ffi"]
+
+presets:
+  vm:
+    paths: ["test/ffi"]
+    platforms: ["vm"]
+  wasm:
+    paths: ["test/wasm"]
+    platforms: ["chrome"]
