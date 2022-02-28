@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 import 'package:meta/meta.dart';
 
 import 'functions.dart';
@@ -7,19 +5,13 @@ import 'result_set.dart';
 import 'statement.dart';
 
 /// An opened sqlite3 database.
-abstract class Database {
+abstract class CommonDatabase {
   /// The application defined version of this database.
   int get userVersion;
   set userVersion(int version);
 
   /// Returns the row id of the last inserted row.
   int get lastInsertRowId;
-
-  /// The native database connection handle from sqlite.
-  ///
-  /// This returns a pointer towards the opaque sqlite3 structure as defined
-  /// [here](https://www.sqlite.org/c3ref/sqlite3.html).
-  Pointer<void> get handle;
 
   /// The amount of rows affected by the last `INSERT`, `UPDATE` or `DELETE`
   /// statement.
@@ -65,7 +57,7 @@ abstract class Database {
   /// If [checkNoTail] is enabled (it defaults to `false`) and the [sql] string
   /// contains trailing data, an exception will be thrown and the statement will
   /// not be executed.
-  PreparedStatement prepare(String sql,
+  CommonPreparedStatement prepare(String sql,
       {bool persistent = false, bool vtab = true, bool checkNoTail = false});
 
   /// Compiles multiple statements from [sql] to be executed later.
@@ -77,7 +69,7 @@ abstract class Database {
   /// return `2` prepared statements.
   ///
   /// For the [persistent] and [vtab] parameters, see [prepare].
-  List<PreparedStatement> prepareMultiple(String sql,
+  List<CommonPreparedStatement> prepareMultiple(String sql,
       {bool persistent = false, bool vtab = true});
 
   /// Creates a collation that can be used from sql queries sent against
@@ -87,8 +79,8 @@ abstract class Database {
   /// sql. The utf8 encoding of [name] must not exceed a length of 255
   /// bytes.
   ///
-  /// The [function] can be any Dart closure, it's not restricted to functions
-  /// that would be supported by [Pointer.fromFunction]. For more details on how
+  /// The [function] can be any Dart closure, it's not restricted to top-level
+  /// functions supported by `Pointer.fromFunction`. For more details on how
   /// the sql function behaves, see the documentation on [CollatingFunction].
   /// As it is a compare function, the [function] must return an integer value, and
   /// receives two string parameters (**A** & **B**). [function] will return 0
@@ -129,8 +121,8 @@ abstract class Database {
   /// side-effects or if they could potentially leak sensitive information.
   /// {@endtemplate}
   ///
-  /// The [function] can be any Dart closure, it's not restricted to functions
-  /// that would be supported by [Pointer.fromFunction]. For more details on how
+  /// The [function] can be any Dart closure, it's not restricted to top-level
+  /// functions supported by `Pointer.fromFunction`. For more details on how
   /// the sql function behaves, see the documentation on [ScalarFunction].
   ///
   /// For more information, see https://www.sqlite.org/appfunc.html.
@@ -161,7 +153,8 @@ abstract class Database {
   void dispose();
 }
 
-/// The kind of an [SqliteUpdate] received through a [Database.updates] stream.
+/// The kind of an [SqliteUpdate] received through a [CommonDatabase.updates]
+/// stream.
 enum SqliteUpdateKind {
   /// Notification for a new row being inserted into the database.
   insert,

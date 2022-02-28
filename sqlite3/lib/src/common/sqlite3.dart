@@ -1,35 +1,9 @@
-import '../../open.dart';
-import '../ffi/ffi.dart';
-import '../impl/implementation.dart';
 import 'database.dart';
 
-Sqlite3? _sqlite3;
-
 /// Provides access to `sqlite3` functions, such as opening new databases.
-Sqlite3 get sqlite3 {
-  return _sqlite3 ??= Sqlite3._(open.openSqlite());
-}
-
-/// Provides access to `sqlite3` functions, such as opening new databases.
-class Sqlite3 {
-  final BindingsWithLibrary _library;
-
-  Bindings get _bindings => _library.bindings;
-
-  /// Loads `sqlite3` bindings by looking up functions in the [library].
-  ///
-  /// If application-defined functions are used, there shouldn't be multiple
-  /// [Sqlite3] objects with a different underlying [library].
-  Sqlite3._(DynamicLibrary library) : _library = BindingsWithLibrary(library);
-
+abstract class CommmonSqlite3 {
   /// The version of the sqlite3 library in used.
-  Version get version {
-    final libVersion = _bindings.sqlite3_libversion().readString();
-    final sourceId = _bindings.sqlite3_sourceid().readString();
-    final versionNumber = _bindings.sqlite3_libversion_number();
-
-    return Version._(libVersion, sourceId, versionNumber);
-  }
+  Version get version;
 
   /// Opens a database file.
   ///
@@ -42,60 +16,24 @@ class Sqlite3 {
   /// If the [mutex] parameter is set to true, the `SQLITE_OPEN_FULLMUTEX` flag
   /// will be set. If it's set to false, `SQLITE_OPEN_NOMUTEX` will be enabled.
   /// By default, neither parameter will be set.
-  Database open(
+  CommonDatabase open(
     String filename, {
     String? vfs,
     OpenMode mode = OpenMode.readWriteCreate,
     bool uri = false,
     bool? mutex,
-  }) {
-    return DatabaseImpl.open(
-      _library,
-      filename,
-      vfs: vfs,
-      mode: mode,
-      uri: uri,
-    );
-  }
-
-  /// Creates a [Database] from an opened sqlite3 database connection.
-  ///
-  /// The [database] must be a pointer towards an open sqlite3 database
-  /// connection [handle](https://www.sqlite.org/c3ref/sqlite3.html).
-  Database fromPointer(Pointer<void> database) {
-    return DatabaseImpl(_library, database.cast());
-  }
+  });
 
   /// Opens an in-memory database.
-  Database openInMemory() {
-    return DatabaseImpl.open(_library, ':memory:');
-  }
+  CommonDatabase openInMemory();
 
-  /// Reads the `sqlite3_temp_directory` variable.
-  ///
-  /// See also: https://www.sqlite.org/c3ref/temp_directory.html
-  String? get tempDirectory {
-    final charPtr = _bindings.sqlite3_temp_directory;
-    if (charPtr.isNullPointer) {
-      return null;
-    } else {
-      return charPtr.readString();
-    }
-  }
-
-  /// Overrides the `sqlite3_temp_directory` variable.
+  /// Accesses the `sqlite3_temp_directory` variable.
   ///
   /// Note that this operation might not be safe if a database connection is
   /// being used at the same time in different isolates.
   ///
   /// See also: https://www.sqlite.org/c3ref/temp_directory.html
-  set tempDirectory(String? value) {
-    if (value == null) {
-      _bindings.sqlite3_temp_directory = nullPtr();
-    } else {
-      _bindings.sqlite3_temp_directory = allocateZeroTerminated(value);
-    }
-  }
+  String? tempDirectory;
 }
 
 /// Version information about the sqlite3 library in use.
@@ -110,7 +48,8 @@ class Version {
   /// A numerical representation of [libVersion], such as `3032002`.
   final int versionNumber;
 
-  Version._(this.libVersion, this.sourceId, this.versionNumber);
+  /// Construct a version from the individual components.
+  Version(this.libVersion, this.sourceId, this.versionNumber);
 
   @override
   String toString() {

@@ -4,4 +4,4 @@ library open;
 
 import 'dart:ffi';
 
-export 'src/load_library.dart';
+export 'src/ffi/load_library.dart';

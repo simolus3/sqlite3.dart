@@ -3,13 +3,13 @@ import 'dart:convert';
 import 'dart:ffi';
 import 'dart:typed_data';
 
-import 'constants.dart';
+import '../common/constants.dart';
 import 'memory.dart';
 import 'sqlite3.g.dart';
 
 export 'dart:ffi';
 
-export 'constants.dart';
+export '../common/constants.dart';
 export 'memory.dart';
 export 'optional_functions.dart';
 export 'sqlite3.g.dart';
@@ -98,13 +98,13 @@ extension ContextUtils on Pointer<sqlite3_context> {
       final ptr = allocateBytes(bytes);
 
       bindings.sqlite3_result_text(this, ptr.cast(), bytes.length,
-          SqlSpecialDestructor.SQLITE_TRANSIENT);
+          Pointer.fromAddress(SqlSpecialDestructor.SQLITE_TRANSIENT));
       ptr.free();
     } else if (result is List<int>) {
       final ptr = allocateBytes(result);
 
       bindings.sqlite3_result_blob64(this, ptr.cast(), result.length,
-          SqlSpecialDestructor.SQLITE_TRANSIENT);
+          Pointer.fromAddress(SqlSpecialDestructor.SQLITE_TRANSIENT));
       ptr.free();
     }
   }
