@@ -98,7 +98,7 @@ class WasmBindings {
             instance.functions['sqlite3_bind_parameter_index']!,
         _sqlite3_changes = instance.functions['sqlite3_changes']!,
         _sqlite3_last_insert_rowid =
-            instance.functions['sqlite3_last_insert_row']!,
+            instance.functions['sqlite3_last_insert_rowid']!,
         _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']!;
 
   static Map<String, Map<String, Object>> _importMap(
@@ -132,6 +132,7 @@ class WasmBindings {
   factory WasmBindings.instantiate(
       Module module, SqliteEnvironment environment) {
     final memory = Memory(initial: 16);
+
     final instance =
         Instance.fromModule(module, importMap: _importMap(memory, environment));
 
@@ -141,6 +142,7 @@ class WasmBindings {
   static Future<WasmBindings> instantiateAsync(
       Module module, SqliteEnvironment environment) async {
     final memory = Memory(initial: 16);
+
     final instance = await Instance.fromModuleAsync(module,
         importMap: _importMap(memory, environment));
 

@@ -63,12 +63,12 @@ When binding parameters to queries, the supported types are `ìnt`,
 `double`, `String`, `List<int>` (for `BLOB`) and `null`.
 Result sets will use the same set of types.
 
-## WASM
+## WASM (web support)
 
 ### Compiling
 
 Note: Compiling sqlite3 to WebAssembly is not necessary for users of this package,
-just grab the `.wasm` from the latest release.
+just grab the `.wasm` from the latest release on GitHub.
 
 To compile the wasm binding, first download a recent sqlite3 amalgation
 (say to `/tmp/sqlite/`).
@@ -88,3 +88,6 @@ clang \
   -D_HAVE_SQLITE_CONFIG_H -DSQLITE_API='__attribute__((visibility("default")))' \
   -o example/web/sqlite.wasm /tmp/sqlite/sqlite3.c assets/wasm/os_web.c
 ```
+
+TODO: We can link with `--import-table --growable-table` to convert Dart functions down to
+C function pointers, which will enable user-defined functions in the future.
