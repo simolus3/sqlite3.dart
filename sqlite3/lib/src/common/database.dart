@@ -7,8 +7,18 @@ import 'statement.dart';
 /// An opened sqlite3 database.
 abstract class CommonDatabase {
   /// The application defined version of this database.
-  int get userVersion;
-  set userVersion(int version);
+  int get userVersion {
+    final stmt = prepare('PRAGMA user_version;');
+    final result = stmt.select();
+
+    final version = result.first.columnAt(0) as int;
+    stmt.dispose();
+    return version;
+  }
+
+  set userVersion(int value) {
+    execute('PRAGMA user_version = $value;');
+  }
 
   /// Returns the row id of the last inserted row.
   int get lastInsertRowId;
@@ -41,15 +51,20 @@ abstract class CommonDatabase {
 
   /// Prepares the [sql] select statement and runs it with the provided
   /// [parameters].
-  ResultSet select(String sql, [List<Object?> parameters]);
+  ResultSet select(String sql, [List<Object?> parameters = const []]) {
+    final stmt = prepare(sql);
+    final result = stmt.select(parameters);
+    stmt.dispose();
+    return result;
+  }
 
   /// Compiles the [sql] statement to execute it later.
   ///
   /// The [persistent] flag can be used as a hint to the query planner that the
   /// statement will be retained for a long time and probably reused many times.
   /// Without this flag, sqlite assumes that the prepared statement will be used
-  /// just once or at most a few times before [PreparedStatement.dispose] is
-  /// called.
+  /// just once or at most a few times before [CommonPreparedStatement.dispose]
+  /// is called.
   /// If [vtab] is disabled (it defaults to `true`) and the statement references
   /// a virtual table, [prepare] throws an exception.
   /// For more information on the optional parameters, see

@@ -1,6 +1,6 @@
 part of 'implementation.dart';
 
-class DatabaseImpl implements Database {
+class DatabaseImpl extends Database {
   final BindingsWithLibrary _library;
   final Bindings _bindings;
 
@@ -26,27 +26,7 @@ class DatabaseImpl implements Database {
     final bindings = library.bindings;
     bindingsForStore = bindings;
 
-    int flags;
-    switch (mode) {
-      case OpenMode.readOnly:
-        flags = SqlFlag.SQLITE_OPEN_READONLY;
-        break;
-      case OpenMode.readWrite:
-        flags = SqlFlag.SQLITE_OPEN_READWRITE;
-        break;
-      case OpenMode.readWriteCreate:
-        flags = SqlFlag.SQLITE_OPEN_READWRITE | SqlFlag.SQLITE_OPEN_CREATE;
-        break;
-    }
-
-    if (uri) {
-      flags |= SqlFlag.SQLITE_OPEN_URI;
-    }
-
-    if (mutex != null) {
-      flags |=
-          mutex ? SqlFlag.SQLITE_OPEN_FULLMUTEX : SqlFlag.SQLITE_OPEN_NOMUTEX;
-    }
+    final flags = flagsForOpen(mode: mode, uri: uri, mutex: mutex);
 
     final namePtr = allocateZeroTerminated(filename);
     final outDb = allocate<Pointer<sqlite3>>();
@@ -74,21 +54,6 @@ class DatabaseImpl implements Database {
   @override
   int get lastInsertRowId {
     return _bindings.sqlite3_last_insert_rowid(_handle);
-  }
-
-  @override
-  int get userVersion {
-    final stmt = prepare('PRAGMA user_version;');
-    final result = stmt.select();
-
-    final version = result.first.columnAt(0) as int;
-    stmt.dispose();
-    return version;
-  }
-
-  @override
-  set userVersion(int value) {
-    execute('PRAGMA user_version = $value;');
   }
 
   @override
@@ -136,14 +101,6 @@ class DatabaseImpl implements Database {
         stmt.dispose();
       }
     }
-  }
-
-  @override
-  ResultSet select(String sql, [List<Object?> parameters = const []]) {
-    final stmt = prepare(sql);
-    final result = stmt.select(parameters);
-    stmt.dispose();
-    return result;
   }
 
   @override

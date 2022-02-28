@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import '../../../sqlite3.dart' hide sqlite3;
+import '../../common/impl/database.dart';
 import '../ffi.dart';
-import '../sqlite3.g.dart';
 
 part 'data_change_notifications.dart';
 part 'database.dart';

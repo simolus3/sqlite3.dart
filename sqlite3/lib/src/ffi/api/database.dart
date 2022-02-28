@@ -7,7 +7,7 @@ import 'statement.dart';
 ///
 /// See [CommonDatabase] for the methods that are available on both the FFI and
 /// the WebAssembly implementation.
-abstract class Database implements CommonDatabase {
+abstract class Database extends CommonDatabase {
   /// The native database connection handle from sqlite.
   ///
   /// This returns a pointer towards the opaque sqlite3 structure as defined
