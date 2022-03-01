@@ -5,15 +5,6 @@
 #include "bridge.h"
 #include "sqlite3.h"
 
-// Interfaces we want to access in Dart
-SQLITE_API void* dart_sqlite3_malloc(size_t size) {
-  return malloc(size);
-}
-
-SQLITE_API void dart_sqlite3_free(void* ptr) {
-  return free(ptr);
-}
-
 typedef struct {} dart_vfs_file;
 
 int dartvfs_open(sqlite3_vfs* vfs, const char *zName, sqlite3_file* file, int flags, int *pOutFlags) {

@@ -6,6 +6,7 @@ import '../common/constants.dart';
 import '../common/database.dart';
 import '../common/exception.dart';
 import '../common/functions.dart';
+import '../common/impl/database.dart';
 import '../common/statement.dart';
 import 'bindings.dart';
 import 'exception.dart';
@@ -37,7 +38,21 @@ class WasmDatabase extends CommonDatabase {
       AllowedArgumentCount argumentCount = const AllowedArgumentCount.any(),
       bool deterministic = false,
       bool directOnly = true}) {
-    throw UnimplementedError();
+    final id = bindings.functions.register(function);
+    final name = _functionName(functionName);
+
+    final result = bindings.create_aggregate_function(
+      db,
+      name,
+      argumentCount.allowedArgs,
+      eTextRep(deterministic, directOnly),
+      id,
+    );
+    bindings.free(name);
+
+    if (result != SqlError.SQLITE_OK) {
+      throwException(result);
+    }
   }
 
   @override
@@ -53,7 +68,32 @@ class WasmDatabase extends CommonDatabase {
       AllowedArgumentCount argumentCount = const AllowedArgumentCount.any(),
       bool deterministic = false,
       bool directOnly = true}) {
-    throw UnimplementedError();
+    final id = bindings.functions.register(function);
+    final name = _functionName(functionName);
+
+    final result = bindings.create_scalar_function(
+      db,
+      name,
+      argumentCount.allowedArgs,
+      eTextRep(deterministic, directOnly),
+      id,
+    );
+    bindings.free(name);
+
+    if (result != SqlError.SQLITE_OK) {
+      throwException(result);
+    }
+  }
+
+  Pointer _functionName(String functionName) {
+    final functionNameBytes = utf8.encode(functionName);
+
+    if (functionNameBytes.length > 255) {
+      throw ArgumentError.value(functionName, 'functionName',
+          'Must not exceed 255 bytes when utf-8 encoded');
+    }
+
+    return bindings.allocateBytes(functionNameBytes, additionalLength: 1);
   }
 
   @override

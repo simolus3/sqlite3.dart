@@ -6,8 +6,12 @@ Future<void> main() async {
   final response = await http.get(Uri.parse('sqlite.wasm'));
   final module = await Module.fromBytesAsync(response.bodyBytes);
 
+  for (final import in module.imports) {
+    print('import ${import.module}/${import.name}');
+  }
+
   for (final export in module.exports) {
-    print(export.name);
+    print('export ${export.name}');
   }
 
   final sqlite = await WasmSqlite3.createAsync(module);
@@ -15,7 +19,13 @@ Future<void> main() async {
   print(sqlite.version);
 
   final db = sqlite.openInMemory();
-  final stmt = db.prepare('SELECT 1, 2, 3;');
+  db.createFunction(
+    functionName: 'hello_from_dart',
+    function: (args) => 'custom dart functions!',
+    argumentCount: const AllowedArgumentCount(0),
+  );
+
+  final stmt = db.prepare('SELECT random() AS r;');
 
   print(stmt.select());
 }

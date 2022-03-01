@@ -7,6 +7,7 @@ import 'package:wasm_interop/wasm_interop.dart';
 
 import 'big_int.dart';
 import 'environment.dart';
+import 'function_store.dart';
 
 typedef Pointer = int;
 
@@ -15,6 +16,7 @@ class WasmBindings {
   static const pointerSize = 4;
 
   final Instance instance;
+  late final FunctionStore functions;
   final Memory memory;
 
   Uint8List get memoryAsBytes => memory.buffer.asUint8List();
@@ -23,6 +25,8 @@ class WasmBindings {
 
   final Function _malloc,
       _free,
+      _create_scalar,
+      _create_aggregate,
       _sqlite3_libversion,
       _sqlite3_sourceid,
       _sqlite3_libversion_number,
@@ -54,13 +58,32 @@ class WasmBindings {
       _sqlite3_bind_parameter_index,
       _sqlite3_finalize,
       _sqlite3_changes,
-      _sqlite3_last_insert_rowid;
+      _sqlite3_last_insert_rowid,
+      _sqlite3_user_data,
+      _sqlite3_result_null,
+      _sqlite3_result_int64,
+      _sqlite3_result_double,
+      _sqlite3_result_text,
+      _sqlite3_result_blob64,
+      _sqlite3_result_error,
+      _sqlite3_value_type,
+      _sqlite3_value_int64,
+      _sqlite3_value_double,
+      _sqlite3_value_bytes,
+      _sqlite3_value_text,
+      _sqlite3_value_blob,
+      _sqlite3_aggregate_context;
 
   final Global _sqlite3_temp_directory;
 
-  WasmBindings(this.instance, this.memory)
-      : _malloc = instance.functions['dart_sqlite3_malloc']!,
+  WasmBindings(this.instance, _InjectedValues values)
+      : memory = values.memory,
+        _malloc = instance.functions['dart_sqlite3_malloc']!,
         _free = instance.functions['dart_sqlite3_free']!,
+        _create_scalar =
+            instance.functions['dart_sqlite3_create_scalar_function']!,
+        _create_aggregate =
+            instance.functions['dart_sqlite3_create_aggregate_function']!,
         _sqlite3_libversion = instance.functions['sqlite3_libversion']!,
         _sqlite3_sourceid = instance.functions['sqlite3_sourceid']!,
         _sqlite3_libversion_number =
@@ -99,54 +122,42 @@ class WasmBindings {
         _sqlite3_changes = instance.functions['sqlite3_changes']!,
         _sqlite3_last_insert_rowid =
             instance.functions['sqlite3_last_insert_rowid']!,
-        _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']!;
-
-  static Map<String, Map<String, Object>> _importMap(
-      Memory memory, SqliteEnvironment environment) {
-    return {
-      'env': {
-        'memory': memory,
-      },
-      'dart': {
-        // See assets/wasm/bridge.h
-        'random': allowInterop((Pointer ptr, int length) {
-          final buffer = memory.buffer.asUint8List(ptr, length);
-          final random = environment.random;
-
-          for (var i = 0; i < buffer.length; i++) {
-            buffer[i] = random.nextInt(1 << 8);
-          }
-        }),
-        'error_log': allowInterop((Pointer ptr) {
-          print('Error reported by native handler: ${memory.readString(ptr)}');
-        }),
-        'now': allowInterop((Pointer out) {
-          memory.buffer
-              .asByteData()
-              .setUint64(out, DateTime.now().millisecondsSinceEpoch);
-        }),
-      }
-    };
+        _sqlite3_user_data = instance.functions['sqlite3_user_data']!,
+        _sqlite3_result_null = instance.functions['sqlite3_result_null']!,
+        _sqlite3_result_int64 = instance.functions['sqlite3_result_int64']!,
+        _sqlite3_result_double = instance.functions['sqlite3_result_double']!,
+        _sqlite3_result_text = instance.functions['sqlite3_result_text']!,
+        _sqlite3_result_blob64 = instance.functions['sqlite3_result_blob64']!,
+        _sqlite3_result_error = instance.functions['sqlite3_result_error']!,
+        _sqlite3_value_type = instance.functions['sqlite3_value_type']!,
+        _sqlite3_value_int64 = instance.functions['sqlite3_value_int64']!,
+        _sqlite3_value_double = instance.functions['sqlite3_value_double']!,
+        _sqlite3_value_bytes = instance.functions['sqlite3_value_bytes']!,
+        _sqlite3_value_text = instance.functions['sqlite3_value_text']!,
+        _sqlite3_value_blob = instance.functions['sqlite3_value_blob']!,
+        _sqlite3_aggregate_context =
+            instance.functions['sqlite3_aggregate_context']!,
+        _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']! {
+    values.bindings = this;
+    functions = values.functions;
   }
 
   factory WasmBindings.instantiate(
       Module module, SqliteEnvironment environment) {
-    final memory = Memory(initial: 16);
-
+    final injected = _InjectedValues(environment);
     final instance =
-        Instance.fromModule(module, importMap: _importMap(memory, environment));
+        Instance.fromModule(module, importMap: injected.injectedValues);
 
-    return WasmBindings(instance, memory);
+    return WasmBindings(instance, injected);
   }
 
   static Future<WasmBindings> instantiateAsync(
       Module module, SqliteEnvironment environment) async {
-    final memory = Memory(initial: 16);
-
+    final injected = _InjectedValues(environment);
     final instance = await Instance.fromModuleAsync(module,
-        importMap: _importMap(memory, environment));
+        importMap: injected.injectedValues);
 
-    return WasmBindings(instance, memory);
+    return WasmBindings(instance, injected);
   }
 
   Pointer allocateBytes(List<int> bytes, {int additionalLength = 0}) {
@@ -170,11 +181,25 @@ class WasmBindings {
     return memoryAsWords[pointer >> 2];
   }
 
+  void setInt32Value(Pointer pointer, int value) {
+    memoryAsWords[pointer >> 2] = value;
+  }
+
   void free(Pointer pointer) {
     _free(pointer);
   }
 
   void sqlite3_free(Pointer ptr) => _sqlite3_free(ptr);
+
+  int create_scalar_function(
+      Pointer db, Pointer functionName, int nArg, int eTextRep, int id) {
+    return _create_scalar(db, functionName, nArg, eTextRep, id) as int;
+  }
+
+  int create_aggregate_function(
+      Pointer db, Pointer functionName, int nArg, int eTextRep, int id) {
+    return _create_aggregate(db, functionName, nArg, eTextRep, id) as int;
+  }
 
   int sqlite3_libversion() => _sqlite3_libversion() as int;
 
@@ -272,6 +297,64 @@ class WasmBindings {
     return _sqlite3_column_blob(stmt, index) as Pointer;
   }
 
+  int sqlite3_value_type(Pointer value) {
+    return _sqlite3_value_type(value) as int;
+  }
+
+  BigInt sqlite3_value_int64(Pointer value) {
+    return jsToBigInt(_sqlite3_value_int64(value) as Object);
+  }
+
+  double sqlite3_value_double(Pointer value) {
+    return _sqlite3_value_double(value) as double;
+  }
+
+  int sqlite3_value_bytes(Pointer value) {
+    return _sqlite3_value_bytes(value) as int;
+  }
+
+  Pointer sqlite3_value_text(Pointer value) {
+    return _sqlite3_value_text(value) as Pointer;
+  }
+
+  Pointer sqlite3_value_blob(Pointer value) {
+    return _sqlite3_value_blob(value) as Pointer;
+  }
+
+  int sqlite3_result_null(Pointer context) {
+    return _sqlite3_result_null(context) as int;
+  }
+
+  int sqlite3_result_int64(Pointer context, BigInt value) {
+    return _sqlite3_result_int64(context, bigIntToJs(value)) as int;
+  }
+
+  int sqlite3_result_double(Pointer context, double value) {
+    return _sqlite3_result_double(context, value) as int;
+  }
+
+  int sqlite3_result_text(
+      Pointer context, Pointer text, int length, Pointer a) {
+    return _sqlite3_result_text(context, text, length, a) as int;
+  }
+
+  int sqlite3_result_blob64(
+      Pointer context, Pointer blob, int length, Pointer a) {
+    return _sqlite3_result_blob64(context, blob, length, a) as int;
+  }
+
+  int sqlite3_result_error(Pointer context, Pointer text, int length) {
+    return _sqlite3_result_error(context, text, length) as int;
+  }
+
+  int sqlite3_user_data(Pointer context) {
+    return _sqlite3_user_data(context) as Pointer;
+  }
+
+  Pointer sqlite3_aggregate_context(Pointer context, int nBytes) {
+    return _sqlite3_aggregate_context(context) as Pointer;
+  }
+
   int sqlite3_step(Pointer stmt) => _sqlite3_step(stmt) as int;
 
   int sqlite3_reset(Pointer stmt) => _sqlite3_reset(stmt) as int;
@@ -311,5 +394,53 @@ extension ReadMemory on Memory {
     final list = Uint8List(length);
     list.setAll(0, buffer.asUint8List(pointer, length));
     return list;
+  }
+}
+
+class _InjectedValues {
+  late WasmBindings bindings;
+  late Map<String, Map<String, Object>> injectedValues;
+
+  late Memory memory;
+
+  late final FunctionStore functions = FunctionStore(bindings);
+
+  _InjectedValues(SqliteEnvironment environment) {
+    final memory = this.memory = Memory(initial: 16);
+
+    injectedValues = {
+      'env': {
+        'memory': memory,
+      },
+      'dart': {
+        // See assets/wasm/bridge.h
+        'random': allowInterop((Pointer ptr, int length) {
+          final buffer = memory.buffer.asUint8List(ptr, length);
+          final random = environment.random;
+
+          for (var i = 0; i < buffer.length; i++) {
+            buffer[i] = random.nextInt(1 << 8);
+          }
+        }),
+        'error_log': allowInterop((Pointer ptr) {
+          print('Error reported by native handler: ${memory.readString(ptr)}');
+        }),
+        'now': allowInterop((Pointer out) {
+          memory.buffer
+              .asByteData()
+              .setUint64(out, DateTime.now().millisecondsSinceEpoch);
+        }),
+        'function_xFunc': allowInterop((Pointer ctx, int args, Pointer value) {
+          functions.runScalarFunction(ctx, args, value);
+        }),
+        'function_xStep': allowInterop((Pointer ctx, int args, Pointer value) {
+          functions.runScalarFunction(ctx, args, value);
+        }),
+        'function_xFinal': allowInterop((Pointer ctx, int args, Pointer value) {
+          functions.runScalarFunction(ctx, args, value);
+        }),
+        'function_forget': allowInterop((Pointer ctx) => functions.forget(ctx)),
+      }
+    };
   }
 }

@@ -258,18 +258,6 @@ class DatabaseImpl extends Database {
     return createdStatements;
   }
 
-  int _eTextRep(bool deterministic, bool directOnly) {
-    var flags = SqlTextEncoding.SQLITE_UTF8;
-    if (deterministic) {
-      flags |= SqlFunctionFlag.SQLITE_DETERMINISTIC;
-    }
-    if (directOnly) {
-      flags |= SqlFunctionFlag.SQLITE_DIRECTONLY;
-    }
-
-    return flags;
-  }
-
   Pointer<Uint8> _functionName(String functionName) {
     final functionNameBytes = utf8.encode(functionName);
 
@@ -319,7 +307,7 @@ class DatabaseImpl extends Database {
       _handle,
       namePtr.cast(), // zFunctionName
       argumentCount.allowedArgs,
-      _eTextRep(deterministic, directOnly),
+      eTextRep(deterministic, directOnly),
       storedFunction.applicationData.cast(),
       storedFunction.xFunc!.cast(),
       nullPtr(),
@@ -348,7 +336,7 @@ class DatabaseImpl extends Database {
       _handle,
       namePtr.cast(),
       argumentCount.allowedArgs,
-      _eTextRep(deterministic, directOnly),
+      eTextRep(deterministic, directOnly),
       storedFunction.applicationData.cast(),
       nullPtr(),
       storedFunction.xStep!.cast(),
