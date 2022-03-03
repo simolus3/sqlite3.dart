@@ -3,7 +3,8 @@ import 'package:sqlite3/wasm.dart';
 import 'package:wasm_interop/wasm_interop.dart';
 
 Future<void> main() async {
-  final response = await http.get(Uri.parse('sqlite.wasm'));
+  final response = await http
+      .get(Uri.parse('http://localhost:37457/example/web/sqlite.wasm'));
   final module = await Module.fromBytesAsync(response.bodyBytes);
 
   for (final import in module.imports) {

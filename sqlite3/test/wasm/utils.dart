@@ -1,13 +1,17 @@
 import 'package:http/http.dart' as http;
 import 'package:sqlite3/wasm.dart';
+import 'package:test/scaffolding.dart';
 import 'package:wasm_interop/wasm_interop.dart';
 
 Future<WasmSqlite3> loadSqlite3() async {
-  // Tests appear run under `localhost:port/secret/packages/test/src/...`
-  final secret = Uri.base.pathSegments.first;
-  print(Uri.parse('/$secret/assets/test.wasm'));
+  final channel = spawnHybridUri('/test/wasm/asset_server.dart');
+  final port = await channel.stream.first as int;
 
-  final response = await http.get(Uri.parse('/$secret/assets/sqlite.wasm'));
+  final sqliteWasm =
+      Uri.parse('http://localhost:$port/example/web/sqlite.wasm');
+  print(sqliteWasm);
+
+  final response = await http.get(sqliteWasm);
   if (response.statusCode != 200) {
     throw StateError(
         'Could not load module (${response.statusCode} ${response.body})');
