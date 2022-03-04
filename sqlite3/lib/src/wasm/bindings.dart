@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:js/js.dart';
+import 'package:path/path.dart' as p show url;
 import 'package:wasm_interop/wasm_interop.dart';
 
+import '../common/constants.dart';
 import 'big_int.dart';
 import 'environment.dart';
 import 'function_store.dart';
@@ -162,10 +164,10 @@ class WasmBindings {
 
   Pointer allocateBytes(List<int> bytes, {int additionalLength = 0}) {
     final ptr = malloc(bytes.length + additionalLength);
+    memoryAsBytes
+      ..setRange(ptr, ptr + bytes.length, bytes)
+      ..fillRange(ptr + bytes.length, ptr + bytes.length + additionalLength, 0);
 
-    for (var i = 0; i < bytes.length; i++) {
-      memoryAsBytes[ptr + i] = bytes[i];
-    }
     return ptr;
   }
 
@@ -321,30 +323,30 @@ class WasmBindings {
     return _sqlite3_value_blob(value) as Pointer;
   }
 
-  int sqlite3_result_null(Pointer context) {
-    return _sqlite3_result_null(context) as int;
+  void sqlite3_result_null(Pointer context) {
+    _sqlite3_result_null(context);
   }
 
-  int sqlite3_result_int64(Pointer context, BigInt value) {
-    return _sqlite3_result_int64(context, bigIntToJs(value)) as int;
+  void sqlite3_result_int64(Pointer context, BigInt value) {
+    _sqlite3_result_int64(context, bigIntToJs(value));
   }
 
-  int sqlite3_result_double(Pointer context, double value) {
-    return _sqlite3_result_double(context, value) as int;
+  void sqlite3_result_double(Pointer context, double value) {
+    _sqlite3_result_double(context, value);
   }
 
-  int sqlite3_result_text(
+  void sqlite3_result_text(
       Pointer context, Pointer text, int length, Pointer a) {
-    return _sqlite3_result_text(context, text, length, a) as int;
+    _sqlite3_result_text(context, text, length, a);
   }
 
-  int sqlite3_result_blob64(
+  void sqlite3_result_blob64(
       Pointer context, Pointer blob, int length, Pointer a) {
-    return _sqlite3_result_blob64(context, blob, length, a) as int;
+    _sqlite3_result_blob64(context, blob, length, a);
   }
 
-  int sqlite3_result_error(Pointer context, Pointer text, int length) {
-    return _sqlite3_result_error(context, text, length) as int;
+  void sqlite3_result_error(Pointer context, Pointer text, int length) {
+    _sqlite3_result_error(context, text, length);
   }
 
   int sqlite3_user_data(Pointer context) {
@@ -430,6 +432,18 @@ class _InjectedValues {
               .asByteData()
               .setUint64(out, DateTime.now().millisecondsSinceEpoch);
         }),
+        'path_normalize':
+            allowInterop((Pointer source, Pointer dest, int length) {
+          final normalized = p.url.absolute(memory.readString(source));
+          final encoded = utf8.encode(normalized);
+
+          if (encoded.length >= length) {
+            return 1;
+          } else {
+            memory.buffer.asUint8List(dest, length).setAll(0, encoded);
+            return 0;
+          }
+        }),
         'function_xFunc': allowInterop((Pointer ctx, int args, Pointer value) {
           functions.runScalarFunction(ctx, args, value);
         }),
@@ -440,6 +454,80 @@ class _InjectedValues {
           functions.runScalarFunction(ctx, args, value);
         }),
         'function_forget': allowInterop((Pointer ctx) => functions.forget(ctx)),
+        'fs_create': allowInterop((Pointer path, int flags) {
+          final pathStr = memory.readString(path);
+          final exclusive = (flags & SqlFlag.SQLITE_OPEN_EXCLUSIVE) != 0;
+
+          try {
+            environment.fileSystem
+                .createFile(pathStr, errorIfAlreadyExists: exclusive);
+            return 0;
+          } on Object {
+            return SqlError.SQLITE_IOERR;
+          }
+        }),
+        'fs_temp_create': allowInterop(() {
+          final path = environment.fileSystem.createTemporaryFile();
+          return bindings.allocateZeroTerminated(path);
+        }),
+        'fs_size': allowInterop((Pointer path, Pointer pSize) {
+          try {
+            final size =
+                environment.fileSystem.sizeOfFile(memory.readString(path));
+
+            bindings
+              ..setInt32Value(pSize, 0)
+              ..setInt32Value(pSize + 1, size);
+            return 0;
+          } on Object {
+            return SqlError.SQLITE_IOERR;
+          }
+        }),
+        'fs_truncate': allowInterop((Pointer path, int size) {
+          try {
+            environment.fileSystem.truncateFile(memory.readString(path), size);
+            return 0;
+          } on Object {
+            return SqlError.SQLITE_IOERR;
+          }
+        }),
+        'fs_read': allowInterop(
+            (Pointer path, Pointer into, int amount, Object offset) {
+          try {
+            return environment.fileSystem.read(memory.readString(path),
+                memory.buffer.asUint8List(into, amount), jsBigIntToNum(offset));
+          } on Object {
+            return -SqlError.SQLITE_IOERR;
+          }
+        }),
+        'fs_write': allowInterop(
+            (Pointer path, Pointer from, int amount, Object offset) {
+          try {
+            environment.fileSystem.write(memory.readString(path),
+                memory.buffer.asUint8List(from, amount), jsBigIntToNum(offset));
+            return 0;
+          } on Object {
+            return SqlError.SQLITE_IOERR;
+          }
+        }),
+        'fs_delete': allowInterop((Pointer path) {
+          try {
+            environment.fileSystem.deleteFile(memory.readString(path));
+            return 0;
+          } on Object {
+            return SqlError.SQLITE_IOERR;
+          }
+        }),
+        'fs_access': allowInterop((Pointer path, int flags, Pointer pResOut) {
+          try {
+            final exists =
+                environment.fileSystem.exists(memory.readString(path));
+            bindings.setInt32Value(pResOut, exists ? 0 : SqlError.SQLITE_IOERR);
+            return 0;
+          } on Object {
+            return SqlError.SQLITE_IOERR;
+          }
+        }),
       }
     };
   }

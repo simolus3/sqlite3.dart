@@ -14,6 +14,12 @@ typedef struct {
 int dartvfs_close(sqlite3_file *file) {
   dart_vfs_file *p = (dart_vfs_file *) file;
 
+  if (p->flags & SQLITE_OPEN_MEMORY) {
+    // This flag is set for temporary files, for which we need to free
+    // the path pointer now.
+    free((char *) p->zPath);
+  }
+
   if (p->flags & SQLITE_OPEN_DELETEONCLOSE) {
     int deleteResult = dartDeleteFile(p->zPath);
 
@@ -26,7 +32,19 @@ int dartvfs_close(sqlite3_file *file) {
 }
 
 int dartvfs_read(sqlite3_file *file, void* buf, int iAmt, sqlite3_int64 iOfst) {
-  return dartRead(((dart_vfs_file *) file)->zPath, buf, iAmt, iOfst);
+  int bytesRead = dartRead(((dart_vfs_file *) file)->zPath, buf, iAmt, iOfst);
+  if (bytesRead < 0) {
+    return SQLITE_IOERR;
+  }
+
+  if (bytesRead < iAmt) {
+    // We need to fill the unread portion of the buffer with zeroes.
+    memset(buf + bytesRead, 0, iAmt - bytesRead);
+
+    return SQLITE_IOERR_SHORT_READ;
+  }
+
+  return SQLITE_OK;
 }
 
 int dartvfs_write(sqlite3_file *file, const void *buf, int iAmt, sqlite3_int64 iOfst) {
@@ -86,6 +104,8 @@ int dartvfs_open(sqlite3_vfs* vfs, const char *zName, sqlite3_file* file, int fl
     }
   } else {
     p->zPath = dartCreateTemporaryFile();
+    // Flag indicating that we need to free the path later.
+    p->flags |= SQLITE_OPEN_MEMORY;
   }
 
   static sqlite3_io_methods methods = {
@@ -146,7 +166,7 @@ int sqlite3_os_init(void) {
   static sqlite3_vfs vfs = {
     .iVersion = 3,
     .szOsFile =sizeof(dart_vfs_file),
-    .mxPathname = INT_MAX,
+    .mxPathname = 512,
     .pNext = NULL,
     .zName = "dart_wasm_bridge",
     .pAppData = NULL,

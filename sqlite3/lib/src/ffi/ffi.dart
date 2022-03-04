@@ -9,7 +9,6 @@ import 'sqlite3.g.dart';
 
 export 'dart:ffi';
 
-export '../common/constants.dart';
 export 'memory.dart';
 export 'optional_functions.dart';
 export 'sqlite3.g.dart';
