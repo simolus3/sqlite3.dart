@@ -6,13 +6,15 @@ For an example on how to use this library from Dart, see the [example](https://p
 
 ## Supported platforms
 
-You can use this library on any platform where you can obtain a `DynamicLibrary` of sqlite.
+You can use this library on any platform where you can obtain a `DynamicLibrary` with symbols
+from `sqlite3`.
+In addition, this package experimentally supports the web through WebAssembly.
 
 Here's how to use this library on the most popular platforms:
 
 - __Android__: Flutter users can depend on the `sqlite3_flutter_libs` package to ship the latest sqlite3
   version with their app
-- __iOS__: Contains a built-in version of sqlite that this package will use by default. 
+- __iOS__: Contains a built-in version of sqlite that this package will use by default.
   When using Flutter, you can also depend on `sqlite3_flutter_libs` to ship the latest
   sqlite3 version with your app.
 - __Linux__: You need to install an additional package (like `libsqlite3-dev` on Debian), or you manually
@@ -21,8 +23,9 @@ Here's how to use this library on the most popular platforms:
   Also, you can depend on `sqlite3_flutter_libs` if you want to include the latest
   sqlite3 version with your app.
 - __Windows__: You need to manually ship sqlite3 with your app (see below)
+- __Web__: See [web support](#wasm-web-support) below.
 
-On Android, iOS and macOS, you can depend on the `sqlcipher_flutter_libs` package to use 
+On Android, iOS and macOS, you can depend on the `sqlcipher_flutter_libs` package to use
 [SQLCipher](https://www.zetetic.net/sqlcipher/) instead of SQLite.
 Just be sure to never depend on both `sqlcipher_flutter_libs` and `sqlite3_flutter_libs`!
 
@@ -62,8 +65,48 @@ Just be sure to first override the behavior and then use `sqlite3`.
 When binding parameters to queries, the supported types are `ìnt`,
 `double`, `String`, `List<int>` (for `BLOB`) and `null`.
 Result sets will use the same set of types.
+On the web (but only on the web), `BigInt` is supported as well.
 
 ## WASM (web support)
+
+This package experimentally supports being used on the web with a bit of setup.
+The web version binds to a custom version of sqlite3 compiled to WebAssembly without
+Emscripten or any JavaScript glue code.
+
+### Setup
+
+First, grab a compiled wasm file from [the GitHub releases](https://github.com/simolus3/sqlite3.dart/releases)
+of this package. Note that, for this package, __sqlite3 has to be compiled in a special way__. Existing WebAssembly files from e.g sql.js will not work with
+`package:sqlite`!
+
+Put this file under the `web/` directory of your project. Then, you can open and
+use `sqlite3` like this:
+
+```dart
+import 'package:http/http.dart' as http;
+import 'package:sqlite3/common.dart';
+import 'package:sqlite3/wasm.dart';
+
+Future<WasmSqlite3> loadSqlite() async {
+  final response = await http.get(Uri.parse('sqlite.wasm'));
+  return await WasmSqlite3.load(response.bodyBytes);
+}
+```
+
+The returned `WasmSqlite3` has an interface compatible to that of the standard `sqlite3` field
+in `package:sqlite3/sqlite3.dart`, databases can be opened in similar ways.
+
+An example for such web folder is in `example/web/` of this repo.
+To view the example, run `dart run build_runner serve example:8080` and then
+visit `http://localhost:8080/web/` in a browser.
+
+### Sharing code between web and a Dart VM
+
+The `package:sqlite3/common.dart` library defines common interfaces that are implemented by both
+the FFI-based native version in `package:sqlite3/sqlite3.dart` and the experimental WASM
+version in `package:sqlite3/wasm.dart`.
+By having shared code depend on the common interfaces, it can be used for both native and web
+apps.
 
 ### Compiling
 

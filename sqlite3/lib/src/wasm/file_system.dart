@@ -7,14 +7,40 @@ import 'package:meta/meta.dart';
 abstract class FileSystem {
   factory FileSystem.inMemory() = _InMemoryFileSystem;
 
+  /// Creates an empty file at [path].
+  ///
+  /// If [errorIfAlreadyExists] is set to true, and a file already exists at
+  /// [path], a [FileSystemException] is thrown.
   void createFile(String path, {bool errorIfAlreadyExists = false});
+
+  /// Whether a file at [path] exists.
   bool exists(String path);
+
+  /// Creates a temporary file with a unique name.
   String createTemporaryFile();
+
+  /// Deletes a file at [path] if it exists.
   void deleteFile(String path);
 
+  /// Returns the size of a file at [path] if it exists.
+  ///
+  /// Otherwise throws a [FileSystemException].
   int sizeOfFile(String path);
+
+  /// Sets the size of the file at [path] to [length].
+  ///
+  /// If the file was smaller than [length] before, the rest is filled with
+  /// zeroes.
   void truncateFile(String path, int length);
+
+  /// Reads a chunk of the file at [path] and offset [offset] into the [target]
+  /// buffer.
+  ///
+  /// Returns the amount of bytes read.
   int read(String path, Uint8List target, int offset);
+
+  /// Writes a chunk from [bytes] into the file at path [path] and offset
+  /// [offset].
   void write(String path, Uint8List bytes, int offset);
 }
 
@@ -24,6 +50,7 @@ extension LogFileSystems on FileSystem {
   FileSystem get logOperations => _LoggingFileSystem(this);
 }
 
+/// An exception thrown by a [FileSystem] implementation.
 class FileSystemException implements Exception {}
 
 class _InMemoryFileSystem implements FileSystem {

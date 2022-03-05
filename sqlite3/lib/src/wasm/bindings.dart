@@ -5,13 +5,12 @@ import 'dart:typed_data';
 
 import 'package:js/js.dart';
 import 'package:path/path.dart' as p show url;
-import 'package:wasm_interop/wasm_interop.dart';
 
 import '../common/constants.dart';
 import '../common/database.dart';
-import 'big_int.dart';
 import 'environment.dart';
 import 'function_store.dart';
+import 'js_interop.dart';
 
 typedef Pointer = int;
 
@@ -19,7 +18,7 @@ class WasmBindings {
   // We're compiling to 32bit wasm
   static const pointerSize = 4;
 
-  final Instance instance;
+  final WasmInstance instance;
   late final FunctionStore functions;
   final Memory memory;
 
@@ -34,7 +33,7 @@ class WasmBindings {
   Stream<QualifiedSqliteUpdate> get allUpdates => _updates.stream;
 
   /// A counter for database ids used by [allUpdates].
-  var lastDatabaseId = 0;
+  int lastDatabaseId = 0;
 
   Uint8List get memoryAsBytes => memory.buffer.asUint8List();
 
@@ -161,34 +160,12 @@ class WasmBindings {
     functions = values.functions;
   }
 
-  factory WasmBindings.instantiate(
-      Module module, SqliteEnvironment environment) {
-    final injected = _InjectedValues(environment);
-    final instance =
-        Instance.fromModule(module, importMap: injected.injectedValues);
-
-    return WasmBindings(instance, injected);
-  }
-
   static Future<WasmBindings> instantiateAsync(
-      Module module, SqliteEnvironment environment) async {
+      Uint8List source, SqliteEnvironment environment) async {
     final injected = _InjectedValues(environment);
-    final instance = await Instance.fromModuleAsync(module,
-        importMap: injected.injectedValues);
+    final instance = await WasmInstance.load(source, injected.injectedValues);
 
     return WasmBindings(instance, injected);
-  }
-
-  Object _jsBigIntToDart(Object jsBigInt) {
-    // Convert to `int` if possible, otherwise convert to `BigInt`.
-    const maxSafeInteger = 9007199254740992;
-    const minSafeInteger = -maxSafeInteger;
-
-    if (jsLeq(minSafeInteger, jsBigInt) && jsLeq(jsBigInt, maxSafeInteger)) {
-      return jsBigIntToNum(jsBigInt);
-    } else {
-      return jsToBigInt(jsBigInt);
-    }
   }
 
   Pointer allocateBytes(List<int> bytes, {int additionalLength = 0}) {
@@ -283,7 +260,8 @@ class WasmBindings {
   }
 
   int sqlite3_bind_int64(Pointer stmt, int index, BigInt value) {
-    return _sqlite3_bind_int64(stmt, index, bigIntToJs(value)) as int;
+    return _sqlite3_bind_int64(stmt, index, JsBigInt.fromBigInt(value).jsObject)
+        as int;
   }
 
   int sqlite3_bind_double(Pointer stmt, int index, double value) {
@@ -297,8 +275,8 @@ class WasmBindings {
 
   int sqlite3_bind_blob64(
       Pointer stmt, int index, Pointer test, int length, Pointer a) {
-    return _sqlite3_bind_blob64(stmt, index, test, intToJsBigInt(length), a)
-        as int;
+    return _sqlite3_bind_blob64(
+        stmt, index, test, JsBigInt.fromInt(length).jsObject, a) as int;
   }
 
   int sqlite3_bind_parameter_index(Pointer statement, Pointer key) {
@@ -318,7 +296,7 @@ class WasmBindings {
   }
 
   Object sqlite3_column_int64(Pointer stmt, int index) {
-    return _jsBigIntToDart(_sqlite3_column_int64(stmt, index) as Object);
+    return JsBigInt(_sqlite3_column_int64(stmt, index) as Object).toDart();
   }
 
   double sqlite3_column_double(Pointer stmt, int index) {
@@ -342,7 +320,7 @@ class WasmBindings {
   }
 
   Object sqlite3_value_int64(Pointer value) {
-    return _jsBigIntToDart(_sqlite3_value_int64(value) as Object);
+    return JsBigInt(_sqlite3_value_int64(value) as Object).toDart();
   }
 
   double sqlite3_value_double(Pointer value) {
@@ -366,7 +344,7 @@ class WasmBindings {
   }
 
   void sqlite3_result_int64(Pointer context, BigInt value) {
-    _sqlite3_result_int64(context, bigIntToJs(value));
+    _sqlite3_result_int64(context, JsBigInt.fromBigInt(value).jsObject);
   }
 
   void sqlite3_result_double(Pointer context, double value) {
@@ -380,7 +358,7 @@ class WasmBindings {
 
   void sqlite3_result_blob64(
       Pointer context, Pointer blob, int length, Pointer a) {
-    _sqlite3_result_blob64(context, blob, intToJsBigInt(length), a);
+    _sqlite3_result_blob64(context, blob, JsBigInt.fromInt(length).jsObject, a);
   }
 
   void sqlite3_result_error(Pointer context, Pointer text, int length) {
@@ -404,10 +382,10 @@ class WasmBindings {
   int sqlite3_changed(Pointer db) => _sqlite3_changes(db) as int;
 
   int sqlite3_last_insert_rowid(Pointer db) =>
-      jsBigIntToNum(_sqlite3_last_insert_rowid(db) as Object);
+      JsBigInt(_sqlite3_last_insert_rowid(db) as Object).asDartInt;
 
   Pointer get sqlite3_temp_directory {
-    return (_sqlite3_temp_directory.value! as BigInt).toInt();
+    return _sqlite3_temp_directory.value;
   }
 
   set sqlite3_temp_directory(Pointer value) {
@@ -446,7 +424,7 @@ class _InjectedValues {
   late final FunctionStore functions = FunctionStore(bindings);
 
   _InjectedValues(SqliteEnvironment environment) {
-    final memory = this.memory = Memory(initial: 16);
+    final memory = this.memory = Memory(MemoryDescriptor(initial: 16));
 
     injectedValues = {
       'env': {
@@ -508,8 +486,8 @@ class _InjectedValues {
           }
 
           final tableName = memory.readString(table);
-          bindings._updates.add(QualifiedSqliteUpdate(
-              id, SqliteUpdate(kindEnum, tableName, jsBigIntToNum(rowId))));
+          bindings._updates.add(QualifiedSqliteUpdate(id,
+              SqliteUpdate(kindEnum, tableName, JsBigInt(rowId).asDartInt)));
         }),
         'fs_create': allowInterop((Pointer path, int flags) {
           final pathStr = memory.readString(path);
@@ -551,8 +529,10 @@ class _InjectedValues {
         'fs_read': allowInterop(
             (Pointer path, Pointer into, int amount, Object offset) {
           try {
-            return environment.fileSystem.read(memory.readString(path),
-                memory.buffer.asUint8List(into, amount), jsBigIntToNum(offset));
+            return environment.fileSystem.read(
+                memory.readString(path),
+                memory.buffer.asUint8List(into, amount),
+                JsBigInt(offset).asDartInt);
           } on Object {
             return -SqlError.SQLITE_IOERR;
           }
@@ -560,8 +540,10 @@ class _InjectedValues {
         'fs_write': allowInterop(
             (Pointer path, Pointer from, int amount, Object offset) {
           try {
-            environment.fileSystem.write(memory.readString(path),
-                memory.buffer.asUint8List(from, amount), jsBigIntToNum(offset));
+            environment.fileSystem.write(
+                memory.readString(path),
+                memory.buffer.asUint8List(from, amount),
+                JsBigInt(offset).asDartInt);
             return 0;
           } on Object {
             return SqlError.SQLITE_IOERR;
