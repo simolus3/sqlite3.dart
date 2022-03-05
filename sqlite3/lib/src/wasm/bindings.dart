@@ -273,7 +273,8 @@ class WasmBindings {
 
   int sqlite3_bind_blob64(
       Pointer stmt, int index, Pointer test, int length, Pointer a) {
-    return _sqlite3_bind_blob64(stmt, index, test, length, a) as int;
+    return _sqlite3_bind_blob64(stmt, index, test, intToJsBigInt(length), a)
+        as int;
   }
 
   int sqlite3_bind_parameter_index(Pointer statement, Pointer key) {
@@ -355,7 +356,7 @@ class WasmBindings {
 
   void sqlite3_result_blob64(
       Pointer context, Pointer blob, int length, Pointer a) {
-    _sqlite3_result_blob64(context, blob, length, a);
+    _sqlite3_result_blob64(context, blob, intToJsBigInt(length), a);
   }
 
   void sqlite3_result_error(Pointer context, Pointer text, int length) {
@@ -367,7 +368,7 @@ class WasmBindings {
   }
 
   Pointer sqlite3_aggregate_context(Pointer context, int nBytes) {
-    return _sqlite3_aggregate_context(context) as Pointer;
+    return _sqlite3_aggregate_context(context, nBytes) as Pointer;
   }
 
   int sqlite3_step(Pointer stmt) => _sqlite3_step(stmt) as int;
@@ -379,7 +380,7 @@ class WasmBindings {
   int sqlite3_changed(Pointer db) => _sqlite3_changes(db) as int;
 
   int sqlite3_last_insert_rowid(Pointer db) =>
-      _sqlite3_last_insert_rowid(db) as int;
+      jsBigIntToNum(_sqlite3_last_insert_rowid(db) as Object);
 
   Pointer get sqlite3_temp_directory {
     return (_sqlite3_temp_directory.value! as BigInt).toInt();
@@ -461,10 +462,10 @@ class _InjectedValues {
           functions.runScalarFunction(ctx, args, value);
         }),
         'function_xStep': allowInterop((Pointer ctx, int args, Pointer value) {
-          functions.runScalarFunction(ctx, args, value);
+          functions.runStepFunction(ctx, args, value);
         }),
-        'function_xFinal': allowInterop((Pointer ctx, int args, Pointer value) {
-          functions.runScalarFunction(ctx, args, value);
+        'function_xFinal': allowInterop((Pointer ctx) {
+          functions.runFinalFunction(ctx);
         }),
         'function_forget': allowInterop((Pointer ctx) => functions.forget(ctx)),
         'fs_create': allowInterop((Pointer path, int flags) {

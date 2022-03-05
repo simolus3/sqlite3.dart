@@ -75,7 +75,7 @@ class FunctionStore {
   }
 
   void runFinalFunction(Pointer context) {
-    final agCtxPointer = _bindings.sqlite3_aggregate_context(context, 4);
+    final agCtxPointer = _bindings.sqlite3_aggregate_context(context, 0);
     final function =
         _functions[_userDataForContext(context)] as AggregateFunction;
 
@@ -204,8 +204,9 @@ class ValueList extends ListBase<Object?> {
       return cached;
     }
 
-    final result =
-        store._valueRead(argArray + index * WasmBindings.pointerSize);
+    final valuePtr = store._bindings
+        .int32ValueOfPointer(argArray + index * WasmBindings.pointerSize);
+    final result = store._valueRead(valuePtr);
     if (result is String || result is List<int>) {
       // Cache to avoid excessive copying in case the argument is loaded
       // multiple times
