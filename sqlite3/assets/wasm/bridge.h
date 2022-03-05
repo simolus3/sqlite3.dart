@@ -17,6 +17,7 @@ import_dart("function_xFunc") extern void dartXFunc(sqlite3_context *ctx, int nA
 import_dart("function_xStep") extern void dartXStep(sqlite3_context *ctx, int nArgs, sqlite3_value **value);
 import_dart("function_xFinal") extern void dartXFinal(sqlite3_context *ctx);
 import_dart("function_forget") extern void dartForgetAboutFunction(void* ptr);
+import_dart("function_hook") extern void dartUpdateHook(void* id, int kind, const char* db, const char* table, sqlite3_int64 rowid);
 
 import_dart("fs_create") extern int dartCreateFile(const char *zPath, int flags);
 import_dart("fs_temp_create") extern const char* dartCreateTemporaryFile();

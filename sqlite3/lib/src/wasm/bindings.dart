@@ -1,6 +1,6 @@
 // ignore_for_file: avoid_dynamic_calls
+import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 import 'dart:typed_data';
 
 import 'package:js/js.dart';
@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p show url;
 import 'package:wasm_interop/wasm_interop.dart';
 
 import '../common/constants.dart';
+import '../common/database.dart';
 import 'big_int.dart';
 import 'environment.dart';
 import 'function_store.dart';
@@ -22,6 +23,19 @@ class WasmBindings {
   late final FunctionStore functions;
   final Memory memory;
 
+  // ignore: close_sinks
+  final StreamController<QualifiedSqliteUpdate> _updates =
+      StreamController.broadcast();
+
+  /// A stream of updates happening across all databases using these bindings.
+  ///
+  /// For each database, the stream handler needs to be started or stopped with
+  /// .
+  Stream<QualifiedSqliteUpdate> get allUpdates => _updates.stream;
+
+  /// A counter for database ids used by [allUpdates].
+  var lastDatabaseId = 0;
+
   Uint8List get memoryAsBytes => memory.buffer.asUint8List();
 
   Uint32List get memoryAsWords => memory.buffer.asUint32List();
@@ -30,6 +44,7 @@ class WasmBindings {
       _free,
       _create_scalar,
       _create_aggregate,
+      _update_hooks,
       _sqlite3_libversion,
       _sqlite3_sourceid,
       _sqlite3_libversion_number,
@@ -87,6 +102,7 @@ class WasmBindings {
             instance.functions['dart_sqlite3_create_scalar_function']!,
         _create_aggregate =
             instance.functions['dart_sqlite3_create_aggregate_function']!,
+        _update_hooks = instance.functions['dart_sqlite3_updates']!,
         _sqlite3_libversion = instance.functions['sqlite3_libversion']!,
         _sqlite3_sourceid = instance.functions['sqlite3_sourceid']!,
         _sqlite3_libversion_number =
@@ -237,6 +253,14 @@ class WasmBindings {
 
   int sqlite3_extended_result_codes(Pointer db, int onoff) {
     return _sqlite3_extended_result_codes(db, onoff) as int;
+  }
+
+  /// Pass a non-negative [id] to enable update tracking on the db, a negative
+  /// one to stop it.
+  ///
+  /// Updates are reported through [allUpdates].
+  void dart_sqlite3_updates(Pointer db, int id) {
+    _update_hooks(db, id);
   }
 
   int sqlite3_exec(Pointer db, Pointer sql, Pointer callback,
@@ -468,6 +492,25 @@ class _InjectedValues {
           functions.runFinalFunction(ctx);
         }),
         'function_forget': allowInterop((Pointer ctx) => functions.forget(ctx)),
+        'function_hook': allowInterop(
+            (int id, int kind, Pointer _, Pointer table, Object rowId) {
+          SqliteUpdateKind kindEnum;
+          switch (kind) {
+            case SQLITE_INSERT:
+              kindEnum = SqliteUpdateKind.insert;
+              break;
+            case SQLITE_UPDATE:
+              kindEnum = SqliteUpdateKind.update;
+              break;
+            case SQLITE_DELETE:
+            default:
+              kindEnum = SqliteUpdateKind.delete;
+          }
+
+          final tableName = memory.readString(table);
+          bindings._updates.add(QualifiedSqliteUpdate(
+              id, SqliteUpdate(kindEnum, tableName, jsBigIntToNum(rowId))));
+        }),
         'fs_create': allowInterop((Pointer path, int flags) {
           final pathStr = memory.readString(path);
           final exclusive = (flags & SqlFlag.SQLITE_OPEN_EXCLUSIVE) != 0;
@@ -545,4 +588,11 @@ class _InjectedValues {
       }
     };
   }
+}
+
+class QualifiedSqliteUpdate {
+  final int databaseId;
+  final SqliteUpdate update;
+
+  QualifiedSqliteUpdate(this.databaseId, this.update);
 }

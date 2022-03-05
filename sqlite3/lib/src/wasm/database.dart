@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:meta/meta.dart';
@@ -18,10 +19,13 @@ class WasmDatabase extends CommonDatabase {
   final Pointer db;
 
   bool _isClosed = false;
+  final int _databaseId;
+  final List<MultiStreamController<SqliteUpdate>> _updateListeners = [];
 
   final List<WasmStatement> _statements = [];
 
-  WasmDatabase(this.bindings, this.db);
+  WasmDatabase(this.bindings, this.db)
+      : _databaseId = bindings.lastDatabaseId++;
 
   SqliteException createException(int returnCode, [String? previousStatement]) {
     return createExceptionRaw(bindings, db, returnCode, previousStatement);
@@ -107,6 +111,10 @@ class WasmDatabase extends CommonDatabase {
 
     final code = bindings.sqlite3_close_v2(db);
     final exception = code != SqlError.SQLITE_OK ? createException(code) : null;
+
+    for (final listener in _updateListeners) {
+      listener.close();
+    }
 
     // We don't need to deallocate the db pointer, sqlite3 takes care of that.
     if (exception != null) {
@@ -285,7 +293,52 @@ class WasmDatabase extends CommonDatabase {
   }
 
   @override
-  Stream<SqliteUpdate> get updates => throw UnimplementedError();
+  Stream<SqliteUpdate> get updates {
+    return Stream.multi(
+      (listener) {
+        StreamSubscription<SqliteUpdate>? subscription;
+
+        void resume() {
+          if (_updateListeners.isEmpty) {
+            // Start listening for updates.
+            bindings.dart_sqlite3_updates(db, _databaseId);
+          }
+          _updateListeners.add(listener);
+          subscription?.resume();
+        }
+
+        void pause() {
+          _updateListeners.remove(listener);
+
+          if (_updateListeners.isEmpty) {
+            // Disable listening to updates for this database.
+            bindings.dart_sqlite3_updates(db, -1);
+          }
+        }
+
+        void start() {
+          resume();
+
+          subscription = bindings.allUpdates
+              .where((e) => e.databaseId == _databaseId)
+              .map((e) => e.update)
+              .listen(listener.addSync, onError: listener.addErrorSync);
+        }
+
+        void stop() {
+          pause();
+          subscription?.cancel();
+        }
+
+        start();
+        listener
+          ..onPause = pause
+          ..onResume = resume
+          ..onCancel = stop;
+      },
+      isBroadcast: true,
+    );
+  }
 
   void _ensureOpen() {
     if (_isClosed) {

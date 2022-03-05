@@ -37,3 +37,7 @@ SQLITE_API int dart_sqlite3_create_aggregate_function(sqlite3 *db, const char *z
     &dartForgetAboutFunction
   );
 }
+
+SQLITE_API void dart_sqlite3_updates(sqlite3 *db, int id) {
+  sqlite3_update_hook(db, id >= 0 ? &dartUpdateHook : NULL, (void *) id);
+}
