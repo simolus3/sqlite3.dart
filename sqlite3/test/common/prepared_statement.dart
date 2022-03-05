@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:sqlite3/common.dart';
 import 'package:test/test.dart';
 
+import 'utils.dart';
+
 void testPreparedStatements(
   FutureOr<CommmonSqlite3> Function() loadSqlite, {
   bool supportsReturning = true,
@@ -337,6 +339,61 @@ void testPreparedStatements(
       skip: supportsReturning
           ? null
           : 'RETURNING not supported by current sqlite3 version');
+
+  group('errors', () {
+    late CommonDatabase db;
+
+    setUp(() => db = sqlite3.openInMemory());
+    tearDown(() => db.dispose());
+
+    test('for syntax', () {
+      final throwsSyntaxError = throwsSqlError(1, 1);
+
+      expect(() => db.execute('DUMMY'), throwsSyntaxError);
+      expect(() => db.prepare('DUMMY'), throwsSyntaxError);
+    });
+
+    test('for missing table', () {
+      expect(() => db.execute('SELECT * FROM missing_table'),
+          throwsSqlError(1, 1));
+    });
+
+    test('for violated primary key constraint', () {
+      db
+        ..execute('CREATE TABLE Test (name TEXT PRIMARY KEY)')
+        ..execute("INSERT INTO Test(name) VALUES('test1')");
+
+      expect(
+        () => db.execute("INSERT INTO Test(name) VALUES('test1')"),
+        // SQLITE_CONSTRAINT_PRIMARYKEY (1555)
+        throwsSqlError(19, 1555),
+      );
+
+      expect(
+        () => db.prepare('INSERT INTO Test(name) VALUES(?)').execute(['test1']),
+        // SQLITE_CONSTRAINT_PRIMARYKEY (1555)
+        throwsSqlError(19, 1555),
+      );
+    });
+
+    test('for violated unique constraint', () {
+      db
+        ..execute('CREATE TABLE Test (id INT PRIMARY KEY, name TEXT UNIQUE)')
+        ..execute("INSERT INTO Test(name) VALUES('test')");
+
+      expect(
+        () => db.execute("INSERT INTO Test(name) VALUES('test')"),
+        // SQLITE_CONSTRAINT_UNIQUE (2067)
+        throwsSqlError(19, 2067),
+      );
+
+      expect(
+        () => db.prepare('INSERT INTO Test(name) VALUES(?)').execute(['test']),
+        // SQLITE_CONSTRAINT_UNIQUE (2067)
+        throwsSqlError(19, 2067),
+      );
+    });
+  });
 }
 
 class _TestIterable<T> extends Iterable<T> {

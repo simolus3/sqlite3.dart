@@ -19,7 +19,8 @@ Future<void> main() async {
 
   print(sqlite.version);
 
-  final db = sqlite.open('/var/test');
+  final db = sqlite.openInMemory();
+  print(db.userVersion);
   db.createFunction(
     functionName: 'hello_from_dart',
     function: (args) => 'custom dart functions!',

@@ -21,7 +21,6 @@ dev_dependencies:
   extra_pedantic: ^2.0.0
   ffigen: ^4.1.2
   http: ^0.13.4
-  path: ^1.8.0
   shelf: ^1.2.0
   shelf_static: ^1.1.0
   test: ^1.17.0

@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_dynamic_calls
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:typed_data';
 
 import 'package:js/js.dart';
@@ -162,6 +163,18 @@ class WasmBindings {
     return WasmBindings(instance, injected);
   }
 
+  Object _jsBigIntToDart(Object jsBigInt) {
+    // Convert to `int` if possible, otherwise convert to `BigInt`.
+    const maxSafeInteger = 9007199254740992;
+    const minSafeInteger = -maxSafeInteger;
+
+    if (jsLeq(minSafeInteger, jsBigInt) && jsLeq(jsBigInt, maxSafeInteger)) {
+      return jsBigIntToNum(jsBigInt);
+    } else {
+      return jsToBigInt(jsBigInt);
+    }
+  }
+
   Pointer allocateBytes(List<int> bytes, {int additionalLength = 0}) {
     final ptr = malloc(bytes.length + additionalLength);
     memoryAsBytes
@@ -279,8 +292,8 @@ class WasmBindings {
     return _sqlite3_column_type(stmt, index) as Pointer;
   }
 
-  BigInt sqlite3_column_int64(Pointer stmt, int index) {
-    return jsToBigInt(_sqlite3_column_int64(stmt, index) as Object);
+  Object sqlite3_column_int64(Pointer stmt, int index) {
+    return _jsBigIntToDart(_sqlite3_column_int64(stmt, index) as Object);
   }
 
   double sqlite3_column_double(Pointer stmt, int index) {
@@ -303,8 +316,8 @@ class WasmBindings {
     return _sqlite3_value_type(value) as int;
   }
 
-  BigInt sqlite3_value_int64(Pointer value) {
-    return jsToBigInt(_sqlite3_value_int64(value) as Object);
+  Object sqlite3_value_int64(Pointer value) {
+    return _jsBigIntToDart(_sqlite3_value_int64(value) as Object);
   }
 
   double sqlite3_value_double(Pointer value) {
