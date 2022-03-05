@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:html';
+import 'dart:indexed_db';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -194,5 +197,116 @@ class _LoggingFileSystem implements FileSystem {
   void write(String path, Uint8List bytes, int offset) {
     print('write($path, ${bytes.length} bytes, $offset)');
     return _logFn(() => _inner.write(path, bytes, offset));
+  }
+}
+
+class IndexedDbFileSystem implements FileSystem {
+  static const _dbName = 'sqlite3_databases';
+  static const _files = 'files';
+
+  final List<String> _persistedFiles;
+  final Database _database;
+
+  final _InMemoryFileSystem _memory = _InMemoryFileSystem();
+
+  IndexedDbFileSystem._(this._persistedFiles, this._database);
+
+  static Future<IndexedDbFileSystem> load(List<String> persistedFiles) async {
+    final database = await window.indexedDB!.open(
+      _dbName,
+      version: 1,
+      onUpgradeNeeded: (event) {
+        final database = event.target.result as Database;
+        database.createObjectStore(_files);
+      },
+    );
+    final fs = IndexedDbFileSystem._(persistedFiles, database);
+
+    // Load persisted files from IndexedDb
+    final transaction = database.transactionStore(_files, 'readonly');
+
+    for (final file in persistedFiles) {
+      final files = transaction.objectStore(_files);
+
+      final object = await files.getObject(file) as Blob?;
+      if (object == null) continue;
+
+      final reader = FileReader()..readAsArrayBuffer(object);
+      await reader.onLoad.first;
+
+      fs._memory._files[file] = reader.result! as Uint8List;
+    }
+
+    await transaction.completed;
+    return fs;
+  }
+
+  void _writeFileAsync(String path) {
+    if (_persistedFiles.contains(path)) {
+      Future.sync(() async {
+        final transaction = _database.transaction(_files, 'readwrite');
+        await transaction
+            .objectStore(_files)
+            .put(Blob(<Uint8List>[_memory._files[path] ?? Uint8List(0)]), path);
+      });
+    }
+  }
+
+  @override
+  void createFile(String path, {bool errorIfAlreadyExists = false}) {
+    final exists = _memory.exists(path);
+    _memory.createFile(path, errorIfAlreadyExists: errorIfAlreadyExists);
+
+    if (!exists) {
+      // Just created, so write
+      _writeFileAsync(path);
+    }
+  }
+
+  @override
+  String createTemporaryFile() {
+    var i = 0;
+    while (exists('/tmp/$i')) {
+      i++;
+    }
+
+    final fileName = '/tmp/$i';
+    createFile(fileName);
+    return fileName;
+  }
+
+  @override
+  void deleteFile(String path) {
+    _memory.deleteFile(path);
+
+    if (_persistedFiles.contains(path)) {
+      Future.sync(() async {
+        final transaction = _database.transactionStore(_files, 'readwrite');
+        await transaction.objectStore(_files).delete(path);
+      });
+    }
+  }
+
+  @override
+  bool exists(String path) => _memory.exists(path);
+
+  @override
+  int read(String path, Uint8List target, int offset) {
+    return _memory.read(path, target, offset);
+  }
+
+  @override
+  int sizeOfFile(String path) => _memory.sizeOfFile(path);
+
+  @override
+  void truncateFile(String path, int length) {
+    _memory.truncateFile(path, length);
+    _writeFileAsync(path);
+  }
+
+  @override
+  void write(String path, Uint8List bytes, int offset) {
+    _memory.write(path, bytes, offset);
+    _writeFileAsync(path);
   }
 }

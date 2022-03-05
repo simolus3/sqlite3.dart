@@ -1,5 +1,4 @@
 @internal
-import 'dart:developer';
 import 'dart:typed_data';
 
 import 'package:js/js.dart';
@@ -74,7 +73,6 @@ class WasmInstance {
   WasmInstance(_WasmInstance nativeInstance) {
     print('start');
     for (final key in _objectKeys(nativeInstance.exports).cast<String>()) {
-      debugger();
       final value = getProperty<Object>(nativeInstance.exports, key);
 
       if (value is Function) {

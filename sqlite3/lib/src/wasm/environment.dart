@@ -20,5 +20,5 @@ class SqliteEnvironment {
 
   SqliteEnvironment({Random? random, FileSystem? fileSystem})
       : random = random ?? Random.secure(),
-        fileSystem = fileSystem ?? FileSystem.inMemory();
+        fileSystem = fileSystem?.logOperations ?? FileSystem.inMemory();
 }
