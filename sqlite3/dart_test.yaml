@@ -1,9 +1,13 @@
-paths: ["test/ffi"]
+tags:
+  ffi:
+    test_on: vm
+  wasm:
+    test_on: browser
+
+platforms: [vm]
 
 presets:
-  vm:
-    paths: ["test/ffi"]
-    platforms: ["vm"]
-  wasm:
-    paths: ["test/wasm"]
-    platforms: ["chrome"]
+  full:
+    platforms: [vm, chrome, firefox]
+  web:
+    platforms: [chrome, firefox]

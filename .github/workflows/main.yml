@@ -64,6 +64,13 @@ jobs:
         dart test
       working-directory: sqlite3/
 
+    - name: Web tests
+      run: dart test -P web
+      # If browsers behave differently on different platforms, surely that's not our fault...
+      # So, only run browser tests on Linux to be faster.
+      if: runner.os == 'Linux'
+      working-directory: sqlite3/
+
 # The integration tests for android are currently broken (the emulator doesn't want to
 # start up...)
 #

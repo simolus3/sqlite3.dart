@@ -1,3 +1,4 @@
+@Tags(['wasm'])
 import 'package:sqlite3/wasm.dart';
 import 'package:test/test.dart';
 
