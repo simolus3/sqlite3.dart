@@ -1,11 +1,13 @@
 // ignore_for_file: avoid_dynamic_calls
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:typed_data';
 
 import 'package:js/js.dart';
 import 'package:path/path.dart' as p show url;
 
+import '../../wasm.dart';
 import '../common/constants.dart';
 import '../common/database.dart';
 import 'environment.dart';
@@ -491,14 +493,18 @@ class _InjectedValues {
         }),
         'fs_create': allowInterop((Pointer path, int flags) {
           final pathStr = memory.readString(path);
+          final createIfNotExists = (flags & SqlFlag.SQLITE_OPEN_CREATE) != 0;
           final exclusive = (flags & SqlFlag.SQLITE_OPEN_EXCLUSIVE) != 0;
 
           try {
-            environment.fileSystem
-                .createFile(pathStr, errorIfAlreadyExists: exclusive);
+            environment.fileSystem.createFile(
+              pathStr,
+              errorIfNotExists: !createIfNotExists,
+              errorIfAlreadyExists: exclusive,
+            );
             return 0;
-          } on Object {
-            return SqlError.SQLITE_IOERR;
+          } on FileSystemException catch (e) {
+            return e.errorCode;
           }
         }),
         'fs_temp_create': allowInterop(() {
@@ -514,16 +520,16 @@ class _InjectedValues {
               ..setInt32Value(pSize, 0)
               ..setInt32Value(pSize + 1, size);
             return 0;
-          } on Object {
-            return SqlError.SQLITE_IOERR;
+          } on FileSystemException catch (e) {
+            return e.errorCode;
           }
         }),
         'fs_truncate': allowInterop((Pointer path, int size) {
           try {
             environment.fileSystem.truncateFile(memory.readString(path), size);
             return 0;
-          } on Object {
-            return SqlError.SQLITE_IOERR;
+          } on FileSystemException catch (e) {
+            return e.errorCode;
           }
         }),
         'fs_read': allowInterop(
@@ -533,8 +539,8 @@ class _InjectedValues {
                 memory.readString(path),
                 memory.buffer.asUint8List(into, amount),
                 JsBigInt(offset).asDartInt);
-          } on Object {
-            return -SqlError.SQLITE_IOERR;
+          } on FileSystemException catch (e) {
+            return -e.errorCode;
           }
         }),
         'fs_write': allowInterop(
@@ -545,16 +551,16 @@ class _InjectedValues {
                 memory.buffer.asUint8List(from, amount),
                 JsBigInt(offset).asDartInt);
             return 0;
-          } on Object {
-            return SqlError.SQLITE_IOERR;
+          } on FileSystemException catch (e) {
+            return e.errorCode;
           }
         }),
         'fs_delete': allowInterop((Pointer path) {
           try {
             environment.fileSystem.deleteFile(memory.readString(path));
             return 0;
-          } on Object {
-            return SqlError.SQLITE_IOERR;
+          } on FileSystemException catch (e) {
+            return e.errorCode;
           }
         }),
         'fs_access': allowInterop((Pointer path, int flags, Pointer pResOut) {
@@ -563,8 +569,8 @@ class _InjectedValues {
                 environment.fileSystem.exists(memory.readString(path));
             bindings.setInt32Value(pResOut, exists ? 0 : SqlError.SQLITE_IOERR);
             return 0;
-          } on Object {
-            return SqlError.SQLITE_IOERR;
+          } on FileSystemException catch (e) {
+            return e.errorCode;
           }
         }),
       }

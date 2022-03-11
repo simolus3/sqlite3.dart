@@ -34,7 +34,7 @@ int dartvfs_close(sqlite3_file *file) {
 int dartvfs_read(sqlite3_file *file, void* buf, int iAmt, sqlite3_int64 iOfst) {
   int bytesRead = dartRead(((dart_vfs_file *) file)->zPath, buf, iAmt, iOfst);
   if (bytesRead < 0) {
-    return SQLITE_IOERR;
+    return -bytesRead;
   }
 
   if (bytesRead < iAmt) {

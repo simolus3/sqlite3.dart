@@ -5,6 +5,9 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
+import 'package:path/path.dart' as p show url;
+
+import '../../wasm.dart';
 
 /// A virtual file system implementation for web-based `sqlite3` databases.
 abstract class FileSystem {
@@ -14,7 +17,11 @@ abstract class FileSystem {
   ///
   /// If [errorIfAlreadyExists] is set to true, and a file already exists at
   /// [path], a [FileSystemException] is thrown.
-  void createFile(String path, {bool errorIfAlreadyExists = false});
+  void createFile(
+    String path, {
+    bool errorIfNotExists = false,
+    bool errorIfAlreadyExists = false,
+  });
 
   /// Whether a file at [path] exists.
   bool exists(String path);
@@ -22,7 +29,8 @@ abstract class FileSystem {
   /// Creates a temporary file with a unique name.
   String createTemporaryFile();
 
-  /// Deletes a file at [path] if it exists.
+  /// Deletes a file at [path] if it exists, throwing a [FileSystemException]
+  /// otherwise.
   void deleteFile(String path);
 
   /// Returns the size of a file at [path] if it exists.
@@ -54,7 +62,16 @@ extension LogFileSystems on FileSystem {
 }
 
 /// An exception thrown by a [FileSystem] implementation.
-class FileSystemException implements Exception {}
+class FileSystemException implements Exception {
+  final int errorCode;
+
+  FileSystemException([this.errorCode = SqlError.SQLITE_ERROR]);
+
+  @override
+  String toString() {
+    return 'FileSystemException($errorCode)';
+  }
+}
 
 class _InMemoryFileSystem implements FileSystem {
   final Map<String, Uint8List?> _files = {};
@@ -63,8 +80,15 @@ class _InMemoryFileSystem implements FileSystem {
   bool exists(String path) => _files.containsKey(path);
 
   @override
-  void createFile(String path, {bool errorIfAlreadyExists = false}) {
+  void createFile(
+    String path, {
+    bool errorIfNotExists = false,
+    bool errorIfAlreadyExists = false,
+  }) {
     if (errorIfAlreadyExists && _files.containsKey(path)) {
+      throw FileSystemException();
+    }
+    if (errorIfNotExists && !_files.containsKey(path)) {
       throw FileSystemException();
     }
 
@@ -85,6 +109,10 @@ class _InMemoryFileSystem implements FileSystem {
 
   @override
   void deleteFile(String path) {
+    if (!_files.containsKey(path)) {
+      throw FileSystemException(SqlExtendedError.SQLITE_IOERR_DELETE_NOENT);
+    }
+
     _files.remove(path);
   }
 
@@ -127,9 +155,11 @@ class _InMemoryFileSystem implements FileSystem {
       file.setRange(offset, offset + bytes.length, bytes);
     } else {
       // We need to grow the file first
-      _files[path] = Uint8List(file.length + increasedSize)
+      final newFile = Uint8List(file.length + increasedSize)
         ..setAll(0, file)
         ..setAll(offset, bytes);
+
+      _files[path] = newFile;
     }
   }
 }
@@ -151,8 +181,13 @@ class _LoggingFileSystem implements FileSystem {
   }
 
   @override
-  void createFile(String path, {bool errorIfAlreadyExists = false}) {
-    print('createFile($path, errorIfAlreadyExists: $errorIfAlreadyExists)');
+  void createFile(
+    String path, {
+    bool errorIfNotExists = false,
+    bool errorIfAlreadyExists = false,
+  }) {
+    print(
+        'createFile($path, errorIfAlreadyExists: $errorIfAlreadyExists, errorIfNotExists: $errorIfNotExists)');
     return _logFn(() =>
         _inner.createFile(path, errorIfAlreadyExists: errorIfAlreadyExists));
   }
@@ -204,14 +239,14 @@ class IndexedDbFileSystem implements FileSystem {
   static const _dbName = 'sqlite3_databases';
   static const _files = 'files';
 
-  final List<String> _persistedFiles;
+  final String _persistenceRoot;
   final Database _database;
 
   final _InMemoryFileSystem _memory = _InMemoryFileSystem();
 
-  IndexedDbFileSystem._(this._persistedFiles, this._database);
+  IndexedDbFileSystem._(this._persistenceRoot, this._database);
 
-  static Future<IndexedDbFileSystem> load(List<String> persistedFiles) async {
+  static Future<IndexedDbFileSystem> load(String persistenceRoot) async {
     final database = await window.indexedDB!.open(
       _dbName,
       version: 1,
@@ -220,29 +255,34 @@ class IndexedDbFileSystem implements FileSystem {
         database.createObjectStore(_files);
       },
     );
-    final fs = IndexedDbFileSystem._(persistedFiles, database);
+    final fs = IndexedDbFileSystem._(persistenceRoot, database);
 
     // Load persisted files from IndexedDb
     final transaction = database.transactionStore(_files, 'readonly');
+    final files = transaction.objectStore(_files);
 
-    for (final file in persistedFiles) {
-      final files = transaction.objectStore(_files);
+    await for (final entry in files.openCursor(autoAdvance: true)) {
+      final path = entry.primaryKey! as String;
 
-      final object = await files.getObject(file) as Blob?;
-      if (object == null) continue;
+      if (p.url.isWithin(persistenceRoot, path)) {
+        final object = await entry.value as Blob?;
+        if (object == null) continue;
 
-      final reader = FileReader()..readAsArrayBuffer(object);
-      await reader.onLoad.first;
+        final reader = FileReader()..readAsArrayBuffer(object);
+        await reader.onLoad.first;
 
-      fs._memory._files[file] = reader.result! as Uint8List;
+        fs._memory._files[path] = reader.result! as Uint8List;
+      }
     }
 
     await transaction.completed;
     return fs;
   }
 
+  bool _shouldPersist(String path) => p.url.isWithin(_persistenceRoot, path);
+
   void _writeFileAsync(String path) {
-    if (_persistedFiles.contains(path)) {
+    if (_shouldPersist(path)) {
       Future.sync(() async {
         final transaction = _database.transaction(_files, 'readwrite');
         await transaction
@@ -253,7 +293,11 @@ class IndexedDbFileSystem implements FileSystem {
   }
 
   @override
-  void createFile(String path, {bool errorIfAlreadyExists = false}) {
+  void createFile(
+    String path, {
+    bool errorIfNotExists = false,
+    bool errorIfAlreadyExists = false,
+  }) {
     final exists = _memory.exists(path);
     _memory.createFile(path, errorIfAlreadyExists: errorIfAlreadyExists);
 
@@ -279,7 +323,7 @@ class IndexedDbFileSystem implements FileSystem {
   void deleteFile(String path) {
     _memory.deleteFile(path);
 
-    if (_persistedFiles.contains(path)) {
+    if (_shouldPersist(path)) {
       Future.sync(() async {
         final transaction = _database.transactionStore(_files, 'readwrite');
         await transaction.objectStore(_files).delete(path);
@@ -308,5 +352,17 @@ class IndexedDbFileSystem implements FileSystem {
   void write(String path, Uint8List bytes, int offset) {
     _memory.write(path, bytes, offset);
     _writeFileAsync(path);
+  }
+}
+
+extension on Request {
+  Future<T> completion<T>() {
+    final completer = Completer<T>.sync();
+
+    onSuccess.listen((e) {
+      completer.complete(result as T);
+    });
+    onError.listen(completer.completeError);
+    return completer.future;
   }
 }
