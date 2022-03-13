@@ -7,7 +7,7 @@ Future<WasmSqlite3> loadSqlite3() async {
   final port = await channel.stream.first as int;
 
   final sqliteWasm =
-      Uri.parse('http://localhost:$port/example/web/sqlite.wasm');
+      Uri.parse('http://localhost:$port/example/web/sqlite3.wasm');
   print(sqliteWasm);
 
   final response = await http.get(sqliteWasm);

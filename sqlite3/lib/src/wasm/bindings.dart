@@ -1,7 +1,6 @@
 // ignore_for_file: avoid_dynamic_calls
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 import 'dart:typed_data';
 
 import 'package:js/js.dart';
@@ -9,8 +8,6 @@ import 'package:path/path.dart' as p show url;
 
 import '../../wasm.dart';
 import '../common/constants.dart';
-import '../common/database.dart';
-import 'environment.dart';
 import 'function_store.dart';
 import 'js_interop.dart';
 

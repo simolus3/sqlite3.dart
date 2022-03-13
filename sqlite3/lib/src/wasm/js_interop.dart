@@ -18,9 +18,6 @@ external Object _eval(String s);
 @JS('Object.keys')
 external List<Object> _objectKeys(Object value);
 
-@JS('Promise')
-external Object _promise;
-
 bool Function(Object, Object) _leq =
     _eval('(a,b)=>a<=b') as bool Function(Object, Object);
 

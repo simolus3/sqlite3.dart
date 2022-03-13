@@ -65,7 +65,9 @@ jobs:
       working-directory: sqlite3/
 
     - name: Web tests
-      run: dart test -P web
+      run: |
+        curl https://storage.googleapis.com/simon-public-euw3/assets/sqlite3.wasm -o example/web/sqlite3.wasm
+        dart test -P web
       # If browsers behave differently on different platforms, surely that's not our fault...
       # So, only run browser tests on Linux to be faster.
       if: runner.os == 'Linux'
