@@ -6,6 +6,11 @@ tags:
 
 platforms: [vm]
 
+override_platforms:
+  firefox:
+    settings:
+      arguments: "-headless"
+
 presets:
   full:
     platforms: [vm, chrome, firefox]

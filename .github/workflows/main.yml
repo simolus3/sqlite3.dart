@@ -104,6 +104,7 @@ jobs:
 
   # Shamelessly stolen from https://medium.com/flutter-community/run-flutter-driver-tests-on-github-actions-13c639c7e4ab
   integration_test_ios:
+    needs: [test]
     runs-on: macos-latest
     steps:
       - name: List simulators
@@ -131,6 +132,7 @@ jobs:
         working-directory: integration_tests/sqlcipher_flutter
 
   integration_test_macos:
+    needs: [test]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
