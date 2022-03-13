@@ -493,6 +493,7 @@ class _InjectedValues {
         }),
         'fs_create': allowInterop((Pointer path, int flags) {
           final pathStr = memory.readString(path);
+
           final createIfNotExists = (flags & SqlFlag.SQLITE_OPEN_CREATE) != 0;
           final exclusive = (flags & SqlFlag.SQLITE_OPEN_EXCLUSIVE) != 0;
 
@@ -567,7 +568,7 @@ class _InjectedValues {
           try {
             final exists =
                 environment.fileSystem.exists(memory.readString(path));
-            bindings.setInt32Value(pResOut, exists ? 0 : SqlError.SQLITE_IOERR);
+            bindings.setInt32Value(pResOut, exists ? 1 : 0);
             return 0;
           } on FileSystemException catch (e) {
             return e.errorCode;

@@ -4,10 +4,10 @@ import 'dart:indexed_db';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p show url;
 
 import '../../wasm.dart';
+import 'js_interop.dart';
 
 /// A virtual file system implementation for web-based `sqlite3` databases.
 abstract class FileSystem {
@@ -53,12 +53,6 @@ abstract class FileSystem {
   /// Writes a chunk from [bytes] into the file at path [path] and offset
   /// [offset].
   void write(String path, Uint8List bytes, int offset);
-}
-
-@internal
-extension LogFileSystems on FileSystem {
-  /// A wrapping file system that [print]s requests and responses.
-  FileSystem get logOperations => _LoggingFileSystem(this);
 }
 
 /// An exception thrown by a [FileSystem] implementation.
@@ -119,7 +113,7 @@ class _InMemoryFileSystem implements FileSystem {
   @override
   int read(String path, Uint8List target, int offset) {
     final file = _files[path];
-    if (file == null) return 0;
+    if (file == null || file.length <= offset) return 0;
 
     final available = min(target.length, file.length - offset);
     target.setRange(0, available, file, offset);
@@ -164,77 +158,6 @@ class _InMemoryFileSystem implements FileSystem {
   }
 }
 
-class _LoggingFileSystem implements FileSystem {
-  final FileSystem _inner;
-
-  _LoggingFileSystem(this._inner);
-
-  T _logFn<T>(T Function() inner) {
-    try {
-      final result = inner();
-      print(' <= $result');
-      return result;
-    } on Object catch (e) {
-      print(' <=! $e');
-      rethrow;
-    }
-  }
-
-  @override
-  void createFile(
-    String path, {
-    bool errorIfNotExists = false,
-    bool errorIfAlreadyExists = false,
-  }) {
-    print(
-        'createFile($path, errorIfAlreadyExists: $errorIfAlreadyExists, errorIfNotExists: $errorIfNotExists)');
-    return _logFn(() =>
-        _inner.createFile(path, errorIfAlreadyExists: errorIfAlreadyExists));
-  }
-
-  @override
-  String createTemporaryFile() {
-    print('createTemporaryFile()');
-    return _logFn(() => _inner.createTemporaryFile());
-  }
-
-  @override
-  void deleteFile(String path) {
-    print('deleteFile($path)');
-    return _logFn(() => _inner.deleteFile(path));
-  }
-
-  @override
-  bool exists(String path) {
-    print('exists($path)');
-    return _logFn(() => _inner.exists(path));
-  }
-
-  @override
-  int read(String path, Uint8List target, int offset) {
-    print('read($path, ${target.length} bytes, $offset)');
-    return _logFn(() => _inner.read(path, target, offset));
-  }
-
-  @override
-  int sizeOfFile(String path) {
-    print('sizeOfFile($path)');
-    return _logFn(() => _inner.sizeOfFile(path));
-  }
-
-  @override
-  void truncateFile(String path, int length) {
-    print('truncateFile($path, $length)');
-    return _logFn(() => _inner.truncateFile(path, length));
-  }
-
-  @override
-  void write(String path, Uint8List bytes, int offset) {
-    print('write($path, ${bytes.length} bytes, $offset)');
-    return _logFn(() => _inner.write(path, bytes, offset));
-  }
-}
-
 class IndexedDbFileSystem implements FileSystem {
   static const _dbName = 'sqlite3_databases';
   static const _files = 'files';
@@ -268,14 +191,10 @@ class IndexedDbFileSystem implements FileSystem {
         final object = await entry.value as Blob?;
         if (object == null) continue;
 
-        final reader = FileReader()..readAsArrayBuffer(object);
-        await reader.onLoad.first;
-
-        fs._memory._files[path] = reader.result! as Uint8List;
+        fs._memory._files[path] = await object.arrayBuffer();
       }
     }
 
-    await transaction.completed;
     return fs;
   }
 
@@ -352,17 +271,5 @@ class IndexedDbFileSystem implements FileSystem {
   void write(String path, Uint8List bytes, int offset) {
     _memory.write(path, bytes, offset);
     _writeFileAsync(path);
-  }
-}
-
-extension on Request {
-  Future<T> completion<T>() {
-    final completer = Completer<T>.sync();
-
-    onSuccess.listen((e) {
-      completer.complete(result as T);
-    });
-    onError.listen(completer.completeError);
-    return completer.future;
   }
 }

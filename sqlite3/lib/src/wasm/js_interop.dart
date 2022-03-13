@@ -1,4 +1,5 @@
 @internal
+import 'dart:html';
 import 'dart:typed_data';
 
 import 'package:js/js.dart';
@@ -16,6 +17,9 @@ external Object _eval(String s);
 
 @JS('Object.keys')
 external List<Object> _objectKeys(Object value);
+
+@JS('Promise')
+external Object _promise;
 
 bool Function(Object, Object) _leq =
     _eval('(a,b)=>a<=b') as bool Function(Object, Object);
@@ -71,7 +75,6 @@ class WasmInstance {
   final Map<String, Global> globals = {};
 
   WasmInstance(_WasmInstance nativeInstance) {
-    print('start');
     for (final key in _objectKeys(nativeInstance.exports).cast<String>()) {
       final value = getProperty<Object>(nativeInstance.exports, key);
 
@@ -81,8 +84,6 @@ class WasmInstance {
         globals[key] = value;
       }
     }
-
-    print('done');
   }
 
   static Future<WasmInstance> load(
@@ -141,4 +142,12 @@ class Response {
   external Response(
       Object /* Blob|BufferSource|FormData|ReadableStream|URLSearchParams|UVString */ body,
       ResponseInit init);
+}
+
+extension ReadBlob on Blob {
+  Future<Uint8List> arrayBuffer() async {
+    final buffer = await promiseToFuture<ByteBuffer>(
+        callMethod(this, 'arrayBuffer', const []));
+    return buffer.asUint8List();
+  }
 }
