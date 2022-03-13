@@ -28,7 +28,7 @@ jobs:
       working-directory: ${{ matrix.package }}
 
     - name: Format native
-      run: clang-format --Werror --dry-run --style=google assets/sqlite3.h
+      run: clang-format --Werror --dry-run --style=google assets/sqlite3.h assets/wasm/*
       if: ${{ matrix.package == 'sqlite3' }}
       working-directory: sqlite3
 
@@ -64,6 +64,15 @@ jobs:
         dart test
       working-directory: sqlite3/
 
+    - name: Web tests
+      run: |
+        curl https://storage.googleapis.com/simon-public-euw3/assets/sqlite3.wasm -o example/web/sqlite3.wasm
+        dart test -P web
+      # If browsers behave differently on different platforms, surely that's not our fault...
+      # So, only run browser tests on Linux to be faster.
+      if: runner.os == 'Linux'
+      working-directory: sqlite3/
+
 # The integration tests for android are currently broken (the emulator doesn't want to
 # start up...)
 #
@@ -95,6 +104,7 @@ jobs:
 
   # Shamelessly stolen from https://medium.com/flutter-community/run-flutter-driver-tests-on-github-actions-13c639c7e4ab
   integration_test_ios:
+    needs: [test]
     runs-on: macos-latest
     steps:
       - name: List simulators
@@ -122,6 +132,7 @@ jobs:
         working-directory: integration_tests/sqlcipher_flutter
 
   integration_test_macos:
+    needs: [test]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2

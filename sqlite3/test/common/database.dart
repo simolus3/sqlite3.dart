@@ -1,14 +1,19 @@
-import 'dart:io';
+import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:path/path.dart';
-import 'package:sqlite3/open.dart';
-import 'package:sqlite3/sqlite3.dart';
+import 'package:sqlite3/common.dart';
 import 'package:test/test.dart';
 
-void main() {
-  late Database database;
+import 'utils.dart';
 
+void testDatabase(
+  FutureOr<CommmonSqlite3> Function() loadSqlite, {
+  bool hasColumnMetadata = false,
+}) {
+  late CommmonSqlite3 sqlite3;
+  late CommonDatabase database;
+
+  setUpAll(() async => sqlite3 = await loadSqlite());
   setUp(() => database = sqlite3.openInMemory());
   tearDown(() => database.dispose());
 
@@ -46,16 +51,6 @@ void main() {
     }
   });
 
-  test('can bind and retrieve 64 bit ints', () {
-    const value = 1 << 63;
-
-    final stmt = database.prepare('SELECT ?');
-    final result = stmt.select(<int>[value]);
-    expect(result, [
-      {'?': value}
-    ]);
-  });
-
   group('execute', () {
     test('can run multiple statements at once', () {
       database.execute('CREATE TABLE foo (a); CREATE TABLE bar (b);');
@@ -83,9 +78,6 @@ void main() {
               'INSERT INTO foo VALUES (?); INSERT INTO foo VALUES (?);', [123]),
           throwsArgumentError);
     });
-
-    final hasColumnMeta =
-        open.openSqlite().providesSymbol('sqlite3_column_table_name');
 
     test('inner join with toTableColumnMap and computed column', () {
       database.execute('''
@@ -125,7 +117,7 @@ void main() {
         },
       ]);
     },
-        skip: hasColumnMeta
+        skip: hasColumnMetadata
             ? null
             : 'sqlite3 was compiled without column metadata');
   });
@@ -167,6 +159,10 @@ void main() {
   test('open shared in-memory instances', () {
     final db1 = sqlite3.open('file:test?mode=memory&cache=shared', uri: true);
     final db2 = sqlite3.open('file:test?mode=memory&cache=shared', uri: true);
+    addTearDown(() {
+      db1.dispose();
+      db2.dispose();
+    });
 
     db1
       ..execute('CREATE TABLE tbl (a INTEGER NOT NULL);')
@@ -176,40 +172,17 @@ void main() {
     expect(result, hasLength(3));
   });
 
-  test('open read-only', () async {
-    final path = join('.dart_tool', 'sqlite3', 'test', 'read_only.db');
-    // Make sure the path exists
-    await Directory(dirname(path)).create(recursive: true);
-    // but not the db
-    if (File(path).existsSync()) {
-      await File(path).delete();
-    }
+  test('locked exceptions', () {
+    final db1 = sqlite3.open('file:busy?mode=memory&cache=shared', uri: true);
+    final db2 = sqlite3.open('file:busy?mode=memory&cache=shared', uri: true);
+    addTearDown(() {
+      db1.dispose();
+      db2.dispose();
+    });
 
-    // Opening a non-existent database should fail
-    expect(
-      () => sqlite3.open(path, mode: OpenMode.readOnly),
-      throwsA(isA<SqliteException>()),
-    );
-
-    // Open in read-write mode to create the database
-    var db = sqlite3.open(path);
-    // Change the user version to test read-write access
-    db.userVersion = 1;
-    db.dispose();
-
-    // Open in read-only
-    db = sqlite3.open(path, mode: OpenMode.readOnly);
-
-    // Change the user version to test read-only mode
-    expect(
-      () => db.userVersion = 2,
-      throwsA(isA<SqliteException>()),
-    );
-
-    // Check that it has not changed
-    expect(db.userVersion, 1);
-
-    db.dispose();
+    db1.execute('BEGIN EXCLUSIVE TRANSACTION');
+    expect(() => db2.execute('BEGIN EXCLUSIVE TRANSACTION'),
+        throwsSqlError(SqlError.SQLITE_LOCKED, 262));
   });
 
   group(
@@ -345,19 +318,77 @@ void main() {
       });
     },
     onPlatform: const <String, dynamic>{
-      'mac-os': Skip('TODO: User-defined functions cause a sigkill on MacOS')
+      'mac-os && !browser':
+          Skip('TODO: User-defined functions cause a sigkill on MacOS')
     },
   );
 
-  group('update stream', () {
-    late Database database;
+  test('prepare does not throw for multiple statements by default', () {
+    final stmt = database.prepare('SELECT 1; SELECT 2');
+    expect(stmt.sql, 'SELECT 1;');
+  });
 
-    setUp(() {
-      database = sqlite3.openInMemory()
-        ..execute('CREATE TABLE tbl (a TEXT, b INT);');
+  test('prepare throws with checkNoTail', () {
+    expect(() => database.prepare('SELECT 1; SELECT 2', checkNoTail: true),
+        throwsArgumentError);
+  });
+
+  group('prepareMultiple', () {
+    test('can prepare multiple statements', () {
+      final statements = database.prepareMultiple('SELECT 1; SELECT 2;');
+      expect(statements, [_statement('SELECT 1;'), _statement(' SELECT 2;')]);
     });
 
-    tearDown(() => database.dispose());
+    test('fails for trailing syntax error', () {
+      expect(() => database.prepareMultiple('SELECT 1; error here '),
+          throwsA(isA<SqliteException>()));
+    });
+
+    test('fails for syntax error in the middle', () {
+      expect(() => database.prepareMultiple('SELECT 1; error here; SELECT 2;'),
+          throwsA(isA<SqliteException>()));
+    });
+
+    group('edge-cases', () {
+      test('empty string', () {
+        expect(() => database.prepare(''), throwsArgumentError);
+        expect(database.prepareMultiple(''), isEmpty);
+      });
+
+      test('whitespace only', () {
+        expect(() => database.prepare('  '), throwsArgumentError);
+        expect(() => database.prepare('/* oh hi */'), throwsArgumentError);
+
+        expect(database.prepareMultiple('  '), isEmpty);
+        expect(database.prepareMultiple('/* oh hi */'), isEmpty);
+      });
+
+      test('leading whitespace', () {
+        final stmt =
+            database.prepare('  /*wait for it*/ SELECT 1;', checkNoTail: true);
+        expect(stmt.sql, '  /*wait for it*/ SELECT 1;');
+      });
+
+      test('trailing comment', () {
+        final stmt =
+            database.prepare('SELECT 1; /* done! */', checkNoTail: true);
+        expect(stmt.sql, 'SELECT 1;');
+      });
+
+      test('whitespace between statements', () {
+        final stmts = database.prepareMultiple('SELECT 1; /* and */ SELECT 2;');
+        expect(stmts, hasLength(2));
+
+        expect(stmts[0].sql, 'SELECT 1;');
+        expect(stmts[1].sql, ' /* and */ SELECT 2;');
+      });
+    });
+  });
+
+  group('update stream', () {
+    setUp(() {
+      database.execute('CREATE TABLE tbl (a TEXT, b INT);');
+    });
 
     test('emits event after insert', () {
       expect(database.updates,
@@ -405,89 +436,6 @@ void main() {
       database.dispose();
     });
   });
-
-  test('prepare does not throw for multiple statements by default', () {
-    final db = sqlite3.openInMemory();
-    addTearDown(db.dispose);
-
-    final stmt = db.prepare('SELECT 1; SELECT 2');
-    expect(stmt.sql, 'SELECT 1;');
-  });
-
-  test('prepare throws with checkNoTail', () {
-    final db = sqlite3.openInMemory();
-    addTearDown(db.dispose);
-
-    expect(() => db.prepare('SELECT 1; SELECT 2', checkNoTail: true),
-        throwsArgumentError);
-  });
-
-  group('prepareMultiple', () {
-    late Database db;
-
-    setUp(() => db = sqlite3.openInMemory());
-    tearDown(() => db.dispose());
-
-    test('can prepare multiple statements', () {
-      final statements = db.prepareMultiple('SELECT 1; SELECT 2;');
-      expect(statements, [_statement('SELECT 1;'), _statement(' SELECT 2;')]);
-    });
-
-    test('fails for trailing syntax error', () {
-      expect(() => db.prepareMultiple('SELECT 1; error here '),
-          throwsA(isA<SqliteException>()));
-    });
-
-    test('fails for syntax error in the middle', () {
-      expect(() => db.prepareMultiple('SELECT 1; error here; SELECT 2;'),
-          throwsA(isA<SqliteException>()));
-    });
-
-    group('edge-cases', () {
-      test('empty string', () {
-        expect(() => db.prepare(''), throwsArgumentError);
-        expect(db.prepareMultiple(''), isEmpty);
-      });
-
-      test('whitespace only', () {
-        expect(() => db.prepare('  '), throwsArgumentError);
-        expect(() => db.prepare('/* oh hi */'), throwsArgumentError);
-
-        expect(db.prepareMultiple('  '), isEmpty);
-        expect(db.prepareMultiple('/* oh hi */'), isEmpty);
-      });
-
-      test('leading whitespace', () {
-        final stmt =
-            db.prepare('  /*wait for it*/ SELECT 1;', checkNoTail: true);
-        expect(stmt.sql, '  /*wait for it*/ SELECT 1;');
-      });
-
-      test('trailing comment', () {
-        final stmt = db.prepare('SELECT 1; /* done! */', checkNoTail: true);
-        expect(stmt.sql, 'SELECT 1;');
-      });
-
-      test('whitespace between statements', () {
-        final stmts = db.prepareMultiple('SELECT 1; /* and */ SELECT 2;');
-        expect(stmts, hasLength(2));
-
-        expect(stmts[0].sql, 'SELECT 1;');
-        expect(stmts[1].sql, ' /* and */ SELECT 2;');
-      });
-    });
-  });
-}
-
-Matcher _update(SqliteUpdate update) {
-  return isA<SqliteUpdate>()
-      .having((e) => e.kind, 'kind', update.kind)
-      .having((e) => e.tableName, 'tableName', update.tableName)
-      .having((e) => e.rowId, 'rowId', update.rowId);
-}
-
-Matcher _statement(String sql) {
-  return isA<PreparedStatement>().having((e) => e.sql, 'sql', sql);
 }
 
 /// Aggregate function that counts the length of all string parameters it
@@ -512,4 +460,15 @@ class _SummedStringLength implements AggregateFunction<int> {
 
   @override
   Object finalize(AggregateContext<int> context) => context.value;
+}
+
+Matcher _statement(String sql) {
+  return isA<CommonPreparedStatement>().having((e) => e.sql, 'sql', sql);
+}
+
+Matcher _update(SqliteUpdate update) {
+  return isA<SqliteUpdate>()
+      .having((e) => e.kind, 'kind', update.kind)
+      .having((e) => e.tableName, 'tableName', update.tableName)
+      .having((e) => e.rowId, 'rowId', update.rowId);
 }

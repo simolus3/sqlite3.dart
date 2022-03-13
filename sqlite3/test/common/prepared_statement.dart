@@ -1,9 +1,19 @@
+import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:sqlite3/sqlite3.dart';
+import 'package:sqlite3/common.dart';
 import 'package:test/test.dart';
 
-void main() {
+import 'utils.dart';
+
+void testPreparedStatements(
+  FutureOr<CommmonSqlite3> Function() loadSqlite, {
+  bool supportsReturning = true,
+}) {
+  late CommmonSqlite3 sqlite3;
+
+  setUpAll(() async => sqlite3 = await loadSqlite());
+
   test('prepared statements can be used multiple times', () {
     final opened = sqlite3.openInMemory();
     opened.execute('CREATE TABLE tbl (a TEXT);');
@@ -144,9 +154,10 @@ void main() {
   });
 
   group('checks that the amount of parameters are correct', () {
-    final db = sqlite3.openInMemory();
+    late CommonDatabase db;
 
-    tearDownAll(db.dispose);
+    setUp(() => db = sqlite3.openInMemory());
+    tearDown(() => db.dispose());
 
     test('when no parameters are set', () {
       final stmt = db.prepare('SELECT ?');
@@ -196,7 +207,7 @@ void main() {
   });
 
   group('cursors', () {
-    late Database database;
+    late CommonDatabase database;
 
     setUp(() => database = sqlite3.openInMemory());
 
@@ -297,12 +308,9 @@ void main() {
     });
   });
 
-  final version = sqlite3.version;
-  final hasReturning = version.versionNumber > 3035000;
-
   group('returning', () {
-    late Database database;
-    late PreparedStatement statement;
+    late CommonDatabase database;
+    late CommonPreparedStatement statement;
 
     setUp(() {
       database = sqlite3.openInMemory()
@@ -328,9 +336,64 @@ void main() {
       expect(row, {'foo': null});
     });
   },
-      skip: hasReturning
+      skip: supportsReturning
           ? null
           : 'RETURNING not supported by current sqlite3 version');
+
+  group('errors', () {
+    late CommonDatabase db;
+
+    setUp(() => db = sqlite3.openInMemory());
+    tearDown(() => db.dispose());
+
+    test('for syntax', () {
+      final throwsSyntaxError = throwsSqlError(1, 1);
+
+      expect(() => db.execute('DUMMY'), throwsSyntaxError);
+      expect(() => db.prepare('DUMMY'), throwsSyntaxError);
+    });
+
+    test('for missing table', () {
+      expect(() => db.execute('SELECT * FROM missing_table'),
+          throwsSqlError(1, 1));
+    });
+
+    test('for violated primary key constraint', () {
+      db
+        ..execute('CREATE TABLE Test (name TEXT PRIMARY KEY)')
+        ..execute("INSERT INTO Test(name) VALUES('test1')");
+
+      expect(
+        () => db.execute("INSERT INTO Test(name) VALUES('test1')"),
+        // SQLITE_CONSTRAINT_PRIMARYKEY (1555)
+        throwsSqlError(19, 1555),
+      );
+
+      expect(
+        () => db.prepare('INSERT INTO Test(name) VALUES(?)').execute(['test1']),
+        // SQLITE_CONSTRAINT_PRIMARYKEY (1555)
+        throwsSqlError(19, 1555),
+      );
+    });
+
+    test('for violated unique constraint', () {
+      db
+        ..execute('CREATE TABLE Test (id INT PRIMARY KEY, name TEXT UNIQUE)')
+        ..execute("INSERT INTO Test(name) VALUES('test')");
+
+      expect(
+        () => db.execute("INSERT INTO Test(name) VALUES('test')"),
+        // SQLITE_CONSTRAINT_UNIQUE (2067)
+        throwsSqlError(19, 2067),
+      );
+
+      expect(
+        () => db.prepare('INSERT INTO Test(name) VALUES(?)').execute(['test']),
+        // SQLITE_CONSTRAINT_UNIQUE (2067)
+        throwsSqlError(19, 2067),
+      );
+    });
+  });
 }
 
 class _TestIterable<T> extends Iterable<T> {

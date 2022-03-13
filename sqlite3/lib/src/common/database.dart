@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 import 'package:meta/meta.dart';
 
 import 'functions.dart';
@@ -7,19 +5,23 @@ import 'result_set.dart';
 import 'statement.dart';
 
 /// An opened sqlite3 database.
-abstract class Database {
+abstract class CommonDatabase {
   /// The application defined version of this database.
-  int get userVersion;
-  set userVersion(int version);
+  int get userVersion {
+    final stmt = prepare('PRAGMA user_version;');
+    final result = stmt.select();
+
+    final version = result.first.columnAt(0) as int;
+    stmt.dispose();
+    return version;
+  }
+
+  set userVersion(int value) {
+    execute('PRAGMA user_version = $value;');
+  }
 
   /// Returns the row id of the last inserted row.
   int get lastInsertRowId;
-
-  /// The native database connection handle from sqlite.
-  ///
-  /// This returns a pointer towards the opaque sqlite3 structure as defined
-  /// [here](https://www.sqlite.org/c3ref/sqlite3.html).
-  Pointer<void> get handle;
 
   /// The amount of rows affected by the last `INSERT`, `UPDATE` or `DELETE`
   /// statement.
@@ -49,15 +51,20 @@ abstract class Database {
 
   /// Prepares the [sql] select statement and runs it with the provided
   /// [parameters].
-  ResultSet select(String sql, [List<Object?> parameters]);
+  ResultSet select(String sql, [List<Object?> parameters = const []]) {
+    final stmt = prepare(sql);
+    final result = stmt.select(parameters);
+    stmt.dispose();
+    return result;
+  }
 
   /// Compiles the [sql] statement to execute it later.
   ///
   /// The [persistent] flag can be used as a hint to the query planner that the
   /// statement will be retained for a long time and probably reused many times.
   /// Without this flag, sqlite assumes that the prepared statement will be used
-  /// just once or at most a few times before [PreparedStatement.dispose] is
-  /// called.
+  /// just once or at most a few times before [CommonPreparedStatement.dispose]
+  /// is called.
   /// If [vtab] is disabled (it defaults to `true`) and the statement references
   /// a virtual table, [prepare] throws an exception.
   /// For more information on the optional parameters, see
@@ -65,7 +72,7 @@ abstract class Database {
   /// If [checkNoTail] is enabled (it defaults to `false`) and the [sql] string
   /// contains trailing data, an exception will be thrown and the statement will
   /// not be executed.
-  PreparedStatement prepare(String sql,
+  CommonPreparedStatement prepare(String sql,
       {bool persistent = false, bool vtab = true, bool checkNoTail = false});
 
   /// Compiles multiple statements from [sql] to be executed later.
@@ -77,7 +84,7 @@ abstract class Database {
   /// return `2` prepared statements.
   ///
   /// For the [persistent] and [vtab] parameters, see [prepare].
-  List<PreparedStatement> prepareMultiple(String sql,
+  List<CommonPreparedStatement> prepareMultiple(String sql,
       {bool persistent = false, bool vtab = true});
 
   /// Creates a collation that can be used from sql queries sent against
@@ -87,8 +94,8 @@ abstract class Database {
   /// sql. The utf8 encoding of [name] must not exceed a length of 255
   /// bytes.
   ///
-  /// The [function] can be any Dart closure, it's not restricted to functions
-  /// that would be supported by [Pointer.fromFunction]. For more details on how
+  /// The [function] can be any Dart closure, it's not restricted to top-level
+  /// functions supported by `Pointer.fromFunction`. For more details on how
   /// the sql function behaves, see the documentation on [CollatingFunction].
   /// As it is a compare function, the [function] must return an integer value, and
   /// receives two string parameters (**A** & **B**). [function] will return 0
@@ -129,8 +136,8 @@ abstract class Database {
   /// side-effects or if they could potentially leak sensitive information.
   /// {@endtemplate}
   ///
-  /// The [function] can be any Dart closure, it's not restricted to functions
-  /// that would be supported by [Pointer.fromFunction]. For more details on how
+  /// The [function] can be any Dart closure, it's not restricted to top-level
+  /// functions supported by `Pointer.fromFunction`. For more details on how
   /// the sql function behaves, see the documentation on [ScalarFunction].
   ///
   /// For more information, see https://www.sqlite.org/appfunc.html.
@@ -161,7 +168,8 @@ abstract class Database {
   void dispose();
 }
 
-/// The kind of an [SqliteUpdate] received through a [Database.updates] stream.
+/// The kind of an [SqliteUpdate] received through a [CommonDatabase.updates]
+/// stream.
 enum SqliteUpdateKind {
   /// Notification for a new row being inserted into the database.
   insert,

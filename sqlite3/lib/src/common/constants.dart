@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 /// Common result codes, https://www.sqlite.org/rescode.html
 /// Result Codes
 ///
@@ -486,11 +484,11 @@ class SqlTextEncoding {
 /// Special destructors, https://www.sqlite.org/c3ref/c_static.html
 class SqlSpecialDestructor {
   /// it means that the content pointer is constant and will never change, It does not need to be destroyed
-  static Pointer<Void> SQLITE_STATIC = Pointer.fromAddress(0);
+  static const SQLITE_STATIC = 0;
 
   ///The SQLITE_TRANSIENT value means that the content will likely change in the near future
   /// and that SQLite should make its own private copy of the content before returning.
-  static Pointer<Void> SQLITE_TRANSIENT = Pointer.fromAddress(-1);
+  static const SQLITE_TRANSIENT = -1;
 }
 
 /// Function flags, https://www.sqlite.org/c3ref/c_deterministic.html

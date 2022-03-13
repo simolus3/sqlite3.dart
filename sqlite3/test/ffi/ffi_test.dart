@@ -1,3 +1,4 @@
+@Tags(['ffi'])
 import 'package:sqlite3/src/ffi/ffi.dart';
 import 'package:test/test.dart';
 

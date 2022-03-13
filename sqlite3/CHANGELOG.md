@@ -1,3 +1,7 @@
+## 1.6.0
+
+- Experimental web support, based on compiling sqlite3 to web assembly.
+
 ## 1.5.1
 
 - Fix `checkNoTail` throwing for harmless whitespace or comments following a
