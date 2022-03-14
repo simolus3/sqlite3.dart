@@ -75,12 +75,17 @@ Emscripten or any JavaScript glue code.
 
 ### Setup
 
-First, grab a compiled wasm file from [the GitHub releases](https://github.com/simolus3/sqlite3.dart/releases)
-of this package. Note that, for this package, __sqlite3 has to be compiled in a special way__. Existing WebAssembly files from e.g sql.js will not work with
-`package:sqlite`!
+To use this package on the web, you need:
 
-Put this file under the `web/` directory of your project. Then, you can open and
-use `sqlite3` like this:
+- The sqlite3 library compiled as a WebAssembly module, available from the
+  [GitHub releases](https://github.com/simolus3/sqlite3.dart/releases) of this package.
+  Note thaat, for this package, __sqlite3 has to be compiled in a special way__.
+  Existing WebAssembly files from e.g. sql.js will not work with `package:sqlite3/wasm.dart`.
+- A file system implementation, since websites can't by default access the host's file system.
+ This package provides `FileSystem.inMemory()` and an `IndexedDbFileSystem` implementation.
+
+After putting `sqlite3.wasm` under the `web/` directory of your project, you can
+open and use `sqlite3` like this:
 
 ```dart
 import 'package:http/http.dart' as http;
@@ -89,7 +94,10 @@ import 'package:sqlite3/wasm.dart';
 
 Future<WasmSqlite3> loadSqlite() async {
   final response = await http.get(Uri.parse('sqlite.wasm'));
-  return await WasmSqlite3.load(response.bodyBytes);
+  final fs = await IndexedDbFileSystem.load('/');
+
+  return await WasmSqlite3.load(
+      response.bodyBytes, SqliteEnvironment(fileSystem: fs));
 }
 ```
 

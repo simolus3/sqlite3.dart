@@ -2,6 +2,15 @@
 ///
 /// Using this library requires additional setup, see the readme of the
 /// `sqlite3` package for details.
+///
+/// Also, please note that this library is not production-ready at the moment
+/// and should be used with caution.
+/// In particular, the implementation of the virtual file system used to store
+/// persistent databases may change in a way that requires migration work in the
+/// future.
+///
+/// As long as this library is marked as experimental, it is not subject to
+/// semantic versioning.
 @experimental
 library sqlite3.wasm;
 

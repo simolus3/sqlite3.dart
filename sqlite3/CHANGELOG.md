@@ -1,6 +1,7 @@
 ## 1.6.0
 
-- Experimental web support, based on compiling sqlite3 to web assembly.
+- Very experimental web support, based on compiling sqlite3 to web assembly
+  with a custom file system implementation.
 
 ## 1.5.1
 

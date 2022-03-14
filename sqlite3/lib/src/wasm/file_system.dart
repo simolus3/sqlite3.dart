@@ -11,6 +11,8 @@ import 'js_interop.dart';
 
 /// A virtual file system implementation for web-based `sqlite3` databases.
 abstract class FileSystem {
+  /// Creates an in-memory file system that deletes data when the tab is
+  /// closed.
   factory FileSystem.inMemory() = _InMemoryFileSystem;
 
   /// Creates an empty file at [path].
@@ -158,6 +160,14 @@ class _InMemoryFileSystem implements FileSystem {
   }
 }
 
+/// A file system storing whole files in an IndexedDB database.
+///
+/// As sqlite3's file system is synchronous and IndexedDB isn't, no guarantees
+/// on durability can be made. Instead, file changes are written at some point
+/// after the database is changed.
+///
+/// In the future, we may want to store individual blocks instead.
+
 class IndexedDbFileSystem implements FileSystem {
   static const _dbName = 'sqlite3_databases';
   static const _files = 'files';
@@ -169,6 +179,15 @@ class IndexedDbFileSystem implements FileSystem {
 
   IndexedDbFileSystem._(this._persistenceRoot, this._database);
 
+  /// Loads an IndexedDB file system that will consider files in
+  /// [persistenceRoot].
+  ///
+  /// When one application needs to support different database files, putting
+  /// them into different folders and setting the persistence root to ensure
+  /// that one [IndexedDbFileSystem] will only see one of them decreases memory
+  /// usage.
+  ///
+  /// The persistence root can be set to `/` to make all files available.
   static Future<IndexedDbFileSystem> load(String persistenceRoot) async {
     final database = await window.indexedDB!.open(
       _dbName,
