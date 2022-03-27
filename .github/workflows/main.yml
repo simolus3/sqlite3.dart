@@ -110,6 +110,10 @@ jobs:
       - uses: subosito/flutter-action@v1
         with:
           channel: dev
+      - name: Setup Flutter
+        run: |
+          flutter config --enable-linux-desktop
+          flutter --version
       - name: sqlite3 driver tests
         run: "flutter pub get && flutter pub run test_driver/integration_test.dart linux"
         working-directory: integration_tests/flutter_libs
