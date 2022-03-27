@@ -1,9 +1,9 @@
 # sqlite3_flutter_libs
 
 This package intentionally contains no Dart code. Flutter apps depending on this package will
-contain native `sqlite3` libraries on Android, iOS and macOS.
+contain native `sqlite3` libraries on Android, iOS, macOS and Linux.
 
-For more details on how to actually use this package in a Flutter app, see 
+For more details on how to actually use this package in a Flutter app, see
 [sqlite3](https://pub.dev/packages/sqlite3).
 
 ## Notes on Android
@@ -17,7 +17,7 @@ Note that, on Android, this library will bundle sqlite3 for all of the following
 - `x86`
 - `x86_64`
 
-If you don't intend to release to 32-bit `x86` devices, you'll need to apply a 
+If you don't intend to release to 32-bit `x86` devices, you'll need to apply a
 [filter](https://developer.android.com/ndk/guides/abis#gc) in your `build.gradle`:
 
 ```gradle

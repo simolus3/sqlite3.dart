@@ -13,12 +13,15 @@ In addition, this package experimentally supports the web through WebAssembly.
 Here's how to use this library on the most popular platforms:
 
 - __Android__: Flutter users can depend on the `sqlite3_flutter_libs` package to ship the latest sqlite3
-  version with their app
+  version with their app.
 - __iOS__: Contains a built-in version of sqlite that this package will use by default.
   When using Flutter, you can also depend on `sqlite3_flutter_libs` to ship the latest
   sqlite3 version with your app.
-- __Linux__: You need to install an additional package (like `libsqlite3-dev` on Debian), or you manually
-  ship sqlite3 with your app (see below)
+- __Linux__: Flutter users can depend on `sqlite3_flutter_libs` to ship the latest sqlite3
+  version with their app.
+  Alternatively, or when not using Flutter, you can install sqlite3 as a package from your
+  distributions package manager (like `libsqlite3-dev` on Debian), or you can manually ship
+  sqlite3 with your app (see below).
 - __macOS__: Contains a built-in version of sqlite that this package will use by default.
   Also, you can depend on `sqlite3_flutter_libs` if you want to include the latest
   sqlite3 version with your app.

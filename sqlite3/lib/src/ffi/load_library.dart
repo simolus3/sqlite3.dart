@@ -22,29 +22,35 @@ enum OperatingSystem {
 final OpenDynamicLibrary open = OpenDynamicLibrary._();
 
 DynamicLibrary _defaultOpen() {
-  if (Platform.isLinux || Platform.isAndroid) {
+  if (Platform.isAndroid) {
     try {
       return DynamicLibrary.open('libsqlite3.so');
       // ignore: avoid_catching_errors
     } on ArgumentError {
-      if (Platform.isAndroid) {
-        // On some (especially old) Android devices, we somehow can't dlopen
-        // libraries shipped with the apk. We need to find the full path of the
-        // library (/data/data/<id>/lib/libsqlite3.so) and open that one.
-        // For details, see https://github.com/simolus3/moor/issues/420
-        final appIdAsBytes = File('/proc/self/cmdline').readAsBytesSync();
+      // On some (especially old) Android devices, we somehow can't dlopen
+      // libraries shipped with the apk. We need to find the full path of the
+      // library (/data/data/<id>/lib/libsqlite3.so) and open that one.
+      // For details, see https://github.com/simolus3/moor/issues/420
+      final appIdAsBytes = File('/proc/self/cmdline').readAsBytesSync();
 
-        // app id ends with the first \0 character in here.
-        final endOfAppId = max(appIdAsBytes.indexOf(0), 0);
-        final appId = String.fromCharCodes(appIdAsBytes.sublist(0, endOfAppId));
+      // app id ends with the first \0 character in here.
+      final endOfAppId = max(appIdAsBytes.indexOf(0), 0);
+      final appId = String.fromCharCodes(appIdAsBytes.sublist(0, endOfAppId));
 
-        return DynamicLibrary.open('/data/data/$appId/lib/libsqlite3.so');
-      }
-
-      rethrow;
+      return DynamicLibrary.open('/data/data/$appId/lib/libsqlite3.so');
     }
-  }
-  if (Platform.isIOS) {
+  } else if (Platform.isLinux) {
+    // Recent versions of the `sqlite3_flutter_libs` package bundle sqlite3 with
+    // the app, let's see if that's the case here.
+    final self = DynamicLibrary.executable();
+    if (self.providesSymbol(
+        'sqlite3_flutter_libs_plugin_register_with_registrar')) {
+      return self;
+    }
+
+    // Fall-back to system's libsqlite3 otherwise.
+    return DynamicLibrary.open('libsqlite3.so');
+  } else if (Platform.isIOS) {
     try {
       return DynamicLibrary.open('sqlite3.framework/sqlite3');
       // Ignoring the error because its the only way to know if it was sucessful
@@ -57,8 +63,7 @@ DynamicLibrary _defaultOpen() {
       // When using sqlcipher_flutter_libs this falls back to the version provided by the SQLCipher pod.
       return DynamicLibrary.process();
     }
-  }
-  if (Platform.isMacOS) {
+  } else if (Platform.isMacOS) {
     DynamicLibrary result;
 
     // First, try to load embed library with Pod
@@ -72,8 +77,7 @@ DynamicLibrary _defaultOpen() {
       result = DynamicLibrary.open('/usr/lib/libsqlite3.dylib');
     }
     return result;
-  }
-  if (Platform.isWindows) {
+  } else if (Platform.isWindows) {
     return DynamicLibrary.open('sqlite3.dll');
   }
 

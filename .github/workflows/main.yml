@@ -102,6 +102,18 @@ jobs:
 #          script: flutter pub run test_driver/integration_test.dart
 #          working-directory: "integration_tests/${{ matrix.test }}"
 
+  integration_test_linux:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: subosito/flutter-action@v1
+        with:
+          channel: dev
+      - name: sqlite3 driver tests
+        run: "flutter pub get && flutter pub run test_driver/integration_test.dart linux"
+        working-directory: integration_tests/flutter_libs
+
   # Shamelessly stolen from https://medium.com/flutter-community/run-flutter-driver-tests-on-github-actions-13c639c7e4ab
   integration_test_ios:
     needs: [test]
