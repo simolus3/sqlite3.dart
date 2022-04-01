@@ -2,6 +2,7 @@
 
 - Update sqlite to version `3.38.2`
 - Linux is now supported without additional setup.
+- Windows is now supported without additional setup.
 
 ## 0.5.4
 
