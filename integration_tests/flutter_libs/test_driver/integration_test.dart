@@ -7,6 +7,7 @@ Future<void> main(List<String> args) async {
     'run',
     '--target=test_driver/integration.dart',
     if (args.contains('linux')) ...['-d', 'linux'],
+    if (args.contains('windows')) ...['-d', 'windows'],
   ];
   print('Running flutter $flutterArgs');
   final process = await Process.start('flutter', flutterArgs);

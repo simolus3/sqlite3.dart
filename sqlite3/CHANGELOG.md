@@ -1,3 +1,7 @@
+## 1.6.1
+
+- Better support loading sqlite3 on Linux when using `sqlite3_flutter_libs`.
+
 ## 1.6.0
 
 - Very experimental web support, based on compiling sqlite3 to web assembly
