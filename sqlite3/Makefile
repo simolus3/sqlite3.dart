@@ -2,8 +2,8 @@ CC=clang
 WASI_SYSROOT=/usr/share/wasi-sysroot
 BUILD_DIR=.dart_tool/native_build
 
-SQLITE_AMALGAMATION = sqlite-amalgamation-3380100
-SQLITE_URL=https://www.sqlite.org/2022/sqlite-amalgamation-3380100.zip
+SQLITE_AMALGAMATION = sqlite-amalgamation-3380200
+SQLITE_URL=https://www.sqlite.org/2022/sqlite-amalgamation-3380200.zip
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -32,7 +32,7 @@ example/web/sqlite3.wasm: $(BUILD_DIR)/$(SQLITE_AMALGAMATION) assets/wasm/os_web
 example/web/sqlite3.debug.wasm: $(BUILD_DIR)/$(SQLITE_AMALGAMATION) $(BUILD_DIR)/$(SQLITE_AMALGAMATION)/test_vfstrace.c assets/wasm/os_web.c
 	$(CC) --target=wasm32-unknown-wasi \
 	--sysroot $(WASI_SYSROOT) \
-	-Iassets/wasm -I/tmp/sqlite/ \
+	-Iassets/wasm -I$(BUILD_DIR)/$(SQLITE_AMALGAMATION) \
 	-nostartfiles \
 	-g \
 	-Wl,--import-memory -Wl,--no-entry -Wl,--export-dynamic \

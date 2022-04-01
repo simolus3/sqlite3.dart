@@ -31,7 +31,7 @@ target_include_directories(${PLUGIN_NAME} INTERFACE
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter)
 
 # Note: Keep in sync with https://github.com/simolus3/sqlite-native-libraries/blob/master/sqlite3-native-library/cpp/CMakeLists.txt
-target_compile_definitions(${PLUGIN_NAME} PUBLIC
+target_compile_definitions(${PLUGIN_NAME} PRIVATE
   SQLITE_DQS=0
   SQLITE_THREADSAFE=2
   SQLITE_DEFAULT_MEMSTATUS=0
