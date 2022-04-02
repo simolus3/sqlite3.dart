@@ -189,7 +189,8 @@ class IndexedDbFileSystem implements FileSystem {
   ///
   /// The persistence root can be set to `/` to make all files available.
   static Future<IndexedDbFileSystem> load(String persistenceRoot) async {
-    final database = await window.indexedDB!.open(
+    // Not using window.indexedDB because we want to support workers too.
+    final database = await self.indexedDB!.open(
       _dbName,
       version: 1,
       onUpgradeNeeded: (event) {
