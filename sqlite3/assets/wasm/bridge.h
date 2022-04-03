@@ -11,7 +11,7 @@
 
 import_dart("random") extern void dartRandom(char *buf, size_t length);
 import_dart("error_log") extern void dartLogError(const char *msg);
-import_dart("now") extern void dartCurrentTimeMillis(int64_t *out);
+import_dart("now") extern int64_t dartUnixMillis();
 import_dart("path_normalize") extern int dartNormalizePath(const char *zPath,
                                                            char *zOut,
                                                            int nOut);

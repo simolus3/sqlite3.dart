@@ -17,4 +17,15 @@ void main() {
           .having((e) => e.libVersion, 'libVersion', startsWith('3.38')),
     );
   });
+
+  test('can use current date', () {
+    final db = sqlite3.openInMemory();
+    addTearDown(db.dispose);
+
+    final results = db.select("SELECT strftime('%s', CURRENT_TIMESTAMP) AS r");
+    final row = results.single['r'] as String;
+
+    expect(int.parse(row),
+        closeTo(DateTime.now().millisecondsSinceEpoch ~/ 1000, 5));
+  });
 }

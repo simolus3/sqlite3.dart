@@ -171,14 +171,12 @@ int dartvfs_random(sqlite3_vfs *vfs, int nByte, char *zOut) {
 
 int dartvfs_sleep(sqlite3_vfs *vfs, int microseconds) { return SQLITE_OK; }
 
-int dartvfs_currentTime(sqlite3_vfs *vfs, double *dbl) {
-  return SQLITE_IOERR;  // Use currentTimeInt64
-}
-
 int getLastError(sqlite3_vfs *vfs, int i, char *ptr) { return SQLITE_OK; }
 
 int dartvfs_currentTime64(sqlite3_vfs *vfs, sqlite3_int64 *out) {
-  dartCurrentTimeMillis(out);
+  // https://github.com/sqlite/sqlite/blob/8ee75f7c3ac1456b8d941781857be27bfddb57d6/src/os_unix.c#L6757
+  static const int64_t unixEpoch = 24405875*(int64_t)8640000;
+  *out = unixEpoch + dartUnixMillis();
   return SQLITE_OK;
 }
 
@@ -209,7 +207,7 @@ int sqlite3_os_init(void) {
     .xDlClose = NULL,
     .xRandomness = &dartvfs_random,
     .xSleep = &dartvfs_sleep,
-    .xCurrentTime = &dartvfs_currentTime,
+    .xCurrentTime = NULL, // Should use the 64-bit variant
     .xGetLastError = NULL,
     .xCurrentTimeInt64 = &dartvfs_currentTime64,
     .xSetSystemCall = NULL,

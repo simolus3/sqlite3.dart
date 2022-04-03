@@ -442,10 +442,8 @@ class _InjectedValues {
         'error_log': allowInterop((Pointer ptr) {
           print('Error reported by native handler: ${memory.readString(ptr)}');
         }),
-        'now': allowInterop((Pointer out) {
-          memory.buffer
-              .asByteData()
-              .setUint64(out, DateTime.now().millisecondsSinceEpoch);
+        'now': allowInterop(() {
+          return JsBigInt.fromInt(DateTime.now().millisecondsSinceEpoch);
         }),
         'path_normalize':
             allowInterop((Pointer source, Pointer dest, int length) {
