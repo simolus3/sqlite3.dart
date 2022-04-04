@@ -1,3 +1,7 @@
+## 1.6.2
+
+- Fix `CURRENT_TIMESTAMP` not working with the WebAssembly backend.
+
 ## 1.6.1
 
 - Better support loading sqlite3 on Linux when using `sqlite3_flutter_libs`.
