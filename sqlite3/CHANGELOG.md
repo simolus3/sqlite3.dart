@@ -1,3 +1,7 @@
+## 1.6.3
+
+- Support running `sqlite3/wasm.dart` in web workers.
+
 ## 1.6.2
 
 - Fix `CURRENT_TIMESTAMP` not working with the WebAssembly backend.
