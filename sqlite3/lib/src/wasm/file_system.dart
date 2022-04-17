@@ -35,6 +35,9 @@ abstract class FileSystem {
   /// otherwise.
   void deleteFile(String path);
 
+  /// List all files stored in this file system.
+  List<String> listFiles();
+
   /// Returns the size of a file at [path] if it exists.
   ///
   /// Otherwise throws a [FileSystemException].
@@ -74,6 +77,9 @@ class _InMemoryFileSystem implements FileSystem {
 
   @override
   bool exists(String path) => _files.containsKey(path);
+
+  @override
+  List<String> listFiles() => _files.keys.toList(growable: false);
 
   @override
   void createFile(
@@ -272,6 +278,9 @@ class IndexedDbFileSystem implements FileSystem {
 
   @override
   bool exists(String path) => _memory.exists(path);
+
+  @override
+  List<String> listFiles() => _memory.listFiles();
 
   @override
   int read(String path, Uint8List target, int offset) {
