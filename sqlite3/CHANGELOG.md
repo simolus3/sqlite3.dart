@@ -1,3 +1,7 @@
+## 1.6.4-dev
+
+- Add `FileSystem.listFiles()` to list all files in a virtual WASM file system.
+
 ## 1.6.3
 
 - Support running `sqlite3/wasm.dart` in web workers.

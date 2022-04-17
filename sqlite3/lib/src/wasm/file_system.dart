@@ -35,7 +35,7 @@ abstract class FileSystem {
   /// otherwise.
   void deleteFile(String path);
 
-  /// List all files
+  /// List all files stored in this file system.
   List<String> listFiles();
 
   /// Returns the size of a file at [path] if it exists.
