@@ -24,10 +24,29 @@ void _testWith(FutureOr<FileSystem> Function() open) {
 
   test('can create files', () {
     expect(fs.exists('$_fsRoot/foo.txt'), isFalse);
-    fs.createFile('$_fsRoot/foo.txt');
-    addTearDown(() => fs.deleteFile('$_fsRoot/foo.txt'));
+    expect(fs.listFiles().length, 0);
 
+    fs.createFile('$_fsRoot/foo.txt');
     expect(fs.exists('$_fsRoot/foo.txt'), isTrue);
+    expect(fs.listFiles().length, 1);
+    expect(fs.listFiles().first, '$_fsRoot/foo.txt');
+
+    fs.deleteFile('$_fsRoot/foo.txt');
+    expect(fs.listFiles().length, 0);
+  });
+
+  test('can create and delete multiple files', () {
+    for (var i = 1; i <= 10; i++) {
+      fs.createFile('$_fsRoot/foo$i.txt');
+    }
+
+    expect(fs.listFiles().length, 10);
+
+    for (final f in fs.listFiles()) {
+      fs.deleteFile(f);
+    }
+
+    expect(fs.listFiles().length, 0);
   });
 
   test('reads and writes', () {
