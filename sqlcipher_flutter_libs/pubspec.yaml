@@ -24,3 +24,5 @@ flutter:
         pluginClass: Sqlite3FlutterLibsPlugin
       macos:
         pluginClass: Sqlite3FlutterLibsPlugin
+      linux:
+        pluginClass: Sqlite3FlutterLibsPlugin

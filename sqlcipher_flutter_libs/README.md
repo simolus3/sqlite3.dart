@@ -1,7 +1,7 @@
 # sqlcipher_flutter_libs
 
 Flutter apps depending on this package will contain native `SQLCipher` libraries
-on Android, iOS and macOS.
+on Android, iOS, macOS and Linux.
 
 As `SQLCipher` has an ABI compatible to the regular `sqlite3` library, it can be used
 with an unmodified `sqlite3` package.
@@ -13,6 +13,7 @@ how to open `sqlcipher` since it will attempt to open the regular
 `sqlite3` binary by default:
 
 ```dart
+import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 import 'package:sqlite3/open.dart';
 
 // Do this before using any sqlite3 api
@@ -21,11 +22,15 @@ open.overrideFor(
 ```
 
 You will also need to do this when using a package wrapping the `sqlite3`
-package like `moor` or `sqflite_common_ffi`!
+package like `drift` or `sqflite_common_ffi`!
 
 __No changes are necessary for iOS and MacOS__
 
-For more details on how to actually use this package in a Flutter app, see 
+When building Linux Flutter apps, _static_ libraries for OpenSSL need to be
+available. When this Flutter plugin is built, OpenSSL will be statically
+linked.
+
+For more details on how to actually use this package in a Flutter app, see
 [sqlite3](https://pub.dev/packages/sqlite3).
 
 ## Incompatibilities with `sqlite3` on iOS and macOS
