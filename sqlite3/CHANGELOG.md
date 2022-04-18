@@ -1,4 +1,4 @@
-## 1.6.4-dev
+## 1.6.4
 
 - Add `FileSystem.listFiles()` to list all files in a virtual WASM file system.
 

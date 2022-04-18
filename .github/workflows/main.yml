@@ -124,6 +124,7 @@ jobs:
 
   # Shamelessly stolen from https://medium.com/flutter-community/run-flutter-driver-tests-on-github-actions-13c639c7e4ab
   integration_test_ios:
+    if: "${{ false }}" # Currently broken: https://github.com/subosito/flutter-action/issues/146
     needs: [test]
     runs-on: macos-latest
     steps:
@@ -152,6 +153,7 @@ jobs:
         working-directory: integration_tests/sqlcipher_flutter
 
   integration_test_macos:
+    if: "${{ false }}" # Currently broken: https://github.com/subosito/flutter-action/issues/146
     needs: [test]
     runs-on: macos-latest
     steps:
