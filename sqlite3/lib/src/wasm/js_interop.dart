@@ -45,12 +45,12 @@ extension IdbFactoryExt on IdbFactory {
     if (!hasProperty(this, 'databases')) {
       return null;
     }
-    final jsList = await promiseToFuture<List<dynamic>>(_jsDatabases());
-    final databases = jsList
+    final jsDatabases = await promiseToFuture<List<dynamic>>(_jsDatabases());
+    return jsDatabases
         .map((dynamic object) => convertNativeToDart_Dictionary(object))
         .map((map) =>
-            DatabaseName(map!['name'] as String, map['version'] as int));
-    return databases.toList();
+            DatabaseName(map!['name'] as String, map['version'] as int))
+        .toList();
   }
 }
 
