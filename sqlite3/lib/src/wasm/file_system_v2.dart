@@ -82,12 +82,8 @@ class IndexedDbFileSystemV2 implements FileSystem {
   /// Returns all database
   /// Returns null if 'IndexedDB.databases()' function is not supported in the
   /// JS engine
-  static Future<List<DatabaseName>?> databases() async {
-    try {
-      return await self.indexedDB!.databases();
-    } on Exception catch (_) {
-      return null;
-    }
+  static Future<List<DatabaseName>?> databases() {
+    return self.indexedDB!.databases();
   }
 
   static Future<void> deleteDatabase(

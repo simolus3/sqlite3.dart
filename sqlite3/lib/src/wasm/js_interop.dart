@@ -35,7 +35,10 @@ extension JsContext on _JsContext {
 }
 
 extension IdbFactoryExt on IdbFactory {
-  Future<List<DatabaseName>> databases() async {
+  Future<List<DatabaseName>?> databases() async {
+    if (!hasProperty(this, 'databases')) {
+      return null;
+    }
     final jsDatabases = await promiseToFutureAsMap(
         callMethod<Object>(this, 'databases', const []));
     return jsDatabases!.values.whereType<Map<String, dynamic>>().map((jsMap) {
