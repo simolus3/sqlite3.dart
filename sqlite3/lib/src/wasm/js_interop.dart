@@ -34,6 +34,24 @@ extension JsContext on _JsContext {
   external IdbFactory? get indexedDB;
 }
 
+extension IdbFactoryExt on IdbFactory {
+  Future<List<DatabaseName>> databases() async {
+    final jsDatabases = await promiseToFutureAsMap(
+        callMethod<Object>(this, 'databases', const []));
+    return jsDatabases!.values.whereType<Map<String, dynamic>>().map((jsMap) {
+      final value = jsMap.values.toList();
+      return DatabaseName(value[0] as String, value[1] as int);
+    }).toList();
+  }
+}
+
+class DatabaseName {
+  final String name;
+  final int version;
+
+  DatabaseName(this.name, this.version);
+}
+
 class JsBigInt {
   /// The BigInt literal as a raw JS value.
   final Object _jsBigInt;

@@ -4,10 +4,12 @@ import 'dart:indexed_db';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:path/path.dart' as p show url;
+import 'package:path/path.dart' as p;
 
 import '../../wasm.dart';
 import 'js_interop.dart';
+
+part 'file_system_v2.dart';
 
 /// A virtual file system implementation for web-based `sqlite3` databases.
 abstract class FileSystem {
@@ -35,8 +37,15 @@ abstract class FileSystem {
   /// otherwise.
   void deleteFile(String path);
 
-  /// List all files stored in this file system.
+  /// Lists all files stored in this file system.
+  @Deprecated('Use files() instead')
   List<String> listFiles();
+
+  /// Lists all files stored in this file system.
+  List<String> files();
+
+  /// Deletes all file
+  FutureOr<void> clear();
 
   /// Returns the size of a file at [path] if it exists.
   ///
@@ -63,13 +72,23 @@ abstract class FileSystem {
 /// An exception thrown by a [FileSystem] implementation.
 class FileSystemException implements Exception {
   final int errorCode;
+  final String message;
 
-  FileSystemException([this.errorCode = SqlError.SQLITE_ERROR]);
+  FileSystemException(
+      [this.errorCode = SqlError.SQLITE_ERROR, this.message = 'SQLITE_ERROR']);
 
   @override
   String toString() {
-    return 'FileSystemException($errorCode)';
+    return 'FileSystemException: ($errorCode) $message';
   }
+}
+
+/// An exception thrown by a [FileSystem] implementation when try to access file
+/// outside of persistence root
+class FileSystemAccessException extends FileSystemException {
+  FileSystemAccessException()
+      : super(SqlExtendedError.SQLITE_IOERR_ACCESS,
+            'Path is not within persistence root');
 }
 
 class _InMemoryFileSystem implements FileSystem {
@@ -79,7 +98,14 @@ class _InMemoryFileSystem implements FileSystem {
   bool exists(String path) => _files.containsKey(path);
 
   @override
-  List<String> listFiles() => _files.keys.toList(growable: false);
+  @Deprecated('Use files() instead')
+  List<String> listFiles() => files();
+
+  @override
+  List<String> files() => _files.keys.toList(growable: false);
+
+  @override
+  void clear() => _files.clear();
 
   @override
   void createFile(
@@ -88,10 +114,10 @@ class _InMemoryFileSystem implements FileSystem {
     bool errorIfAlreadyExists = false,
   }) {
     if (errorIfAlreadyExists && _files.containsKey(path)) {
-      throw FileSystemException();
+      throw FileSystemException(SqlError.SQLITE_IOERR, 'File already exists');
     }
     if (errorIfNotExists && !_files.containsKey(path)) {
-      throw FileSystemException();
+      throw FileSystemException(SqlError.SQLITE_IOERR, 'File not exists');
     }
 
     _files.putIfAbsent(path, () => null);
@@ -130,7 +156,9 @@ class _InMemoryFileSystem implements FileSystem {
 
   @override
   int sizeOfFile(String path) {
-    if (!_files.containsKey(path)) throw FileSystemException();
+    if (!_files.containsKey(path)) {
+      throw FileSystemException(SqlError.SQLITE_IOERR, 'File not exists');
+    }
 
     return _files[path]?.length ?? 0;
   }
@@ -194,6 +222,15 @@ class IndexedDbFileSystem implements FileSystem {
   /// usage.
   ///
   /// The persistence root can be set to `/` to make all files available.
+  /// Be careful not to use the same or nested [persistenceRoot] for
+  /// different instances. These can overwrite each other and undefined behavior
+  /// can occur.
+  ///
+  /// IndexedDbFileSystem doesn't prepend [persistenceRoot] to filenames.
+  /// Rather works more like a guard. If you create/delete file you must prefix
+  /// the path with [persistenceRoot], otherwise saving to IndexedDD will fail
+  /// silently.
+  @Deprecated('Use IndexedDbFileSystemV2 instead')
   static Future<IndexedDbFileSystem> load(String persistenceRoot) async {
     // Not using window.indexedDB because we want to support workers too.
     final database = await self.indexedDB!.open(
@@ -224,7 +261,14 @@ class IndexedDbFileSystem implements FileSystem {
     return fs;
   }
 
-  bool _shouldPersist(String path) => p.url.isWithin(_persistenceRoot, path);
+  bool _shouldPersist(String path) =>
+      path.startsWith('/tmp/') || p.url.isWithin(_persistenceRoot, path);
+
+  void _canPersist(String path) {
+    if (!_shouldPersist(path)) {
+      throw FileSystemAccessException();
+    }
+  }
 
   void _writeFileAsync(String path) {
     if (_shouldPersist(path)) {
@@ -243,6 +287,7 @@ class IndexedDbFileSystem implements FileSystem {
     bool errorIfNotExists = false,
     bool errorIfAlreadyExists = false,
   }) {
+    _canPersist(path);
     final exists = _memory.exists(path);
     _memory.createFile(path, errorIfAlreadyExists: errorIfAlreadyExists);
 
@@ -266,6 +311,7 @@ class IndexedDbFileSystem implements FileSystem {
 
   @override
   void deleteFile(String path) {
+    _canPersist(path);
     _memory.deleteFile(path);
 
     if (_shouldPersist(path)) {
@@ -276,28 +322,53 @@ class IndexedDbFileSystem implements FileSystem {
     }
   }
 
+  /// Deletes all file
   @override
-  bool exists(String path) => _memory.exists(path);
+  void clear() {
+    final dbFiles = files();
+    _memory.clear();
+    Future.sync(() async {
+      final transaction = _database.transactionStore(_files, 'readwrite');
+      for (final file in dbFiles) {
+        await transaction.objectStore(_files).delete(file);
+      }
+    });
+  }
 
   @override
-  List<String> listFiles() => _memory.listFiles();
+  bool exists(String path) {
+    _canPersist(path);
+    return _memory.exists(path);
+  }
+
+  @override
+  List<String> listFiles() => files();
+
+  @override
+  List<String> files() => _memory.files();
 
   @override
   int read(String path, Uint8List target, int offset) {
+    _canPersist(path);
     return _memory.read(path, target, offset);
   }
 
   @override
-  int sizeOfFile(String path) => _memory.sizeOfFile(path);
+  int sizeOfFile(String path) {
+    _canPersist(path);
+    return _memory.sizeOfFile(path);
+  }
 
   @override
   void truncateFile(String path, int length) {
+    _canPersist(path);
     _memory.truncateFile(path, length);
     _writeFileAsync(path);
   }
 
   @override
   void write(String path, Uint8List bytes, int offset) {
+    _canPersist(path);
     _memory.write(path, bytes, offset);
     _writeFileAsync(path);
   }
