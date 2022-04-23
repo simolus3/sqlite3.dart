@@ -28,7 +28,7 @@ jobs:
       working-directory: ${{ matrix.package }}
 
     - name: Format native
-      run: clang-format --Werror --dry-run --style=google assets/sqlite3.h assets/wasm/*
+      run: clang-format --Werror --dry-run --style=google assets/sqlite3.h assets/wasm/*.{c,h}
       if: ${{ matrix.package == 'sqlite3' }}
       working-directory: sqlite3
 
