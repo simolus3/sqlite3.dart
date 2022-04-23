@@ -6,34 +6,15 @@ project(${PROJECT_NAME} LANGUAGES C CXX)
 # not be changed
 set(PLUGIN_NAME "sqlcipher_flutter_libs_plugin")
 
-include(FetchContent)
-FetchContent_Declare(
-  sqlcipher
-  GIT_REPOSITORY https://github.com/sqlcipher/sqlcipher.git
-  GIT_TAG v4.5.1
-)
-FetchContent_MakeAvailable(sqlcipher)
-
 set(OPENSSL_USE_STATIC_LIBS TRUE)
 find_package(OpenSSL REQUIRED)
 
-add_custom_command(
-  OUTPUT "${sqlcipher_SOURCE_DIR}/Makefile"
-  COMMAND ./configure
-  WORKING_DIRECTORY "${sqlcipher_SOURCE_DIR}"
-)
-
-add_custom_command(
-  OUTPUT "${sqlcipher_SOURCE_DIR}/sqlite3.c"
-  OUTPUT "${sqlcipher_SOURCE_DIR}/sqlite3.h"
-  DEPENDS "${sqlcipher_SOURCE_DIR}/Makefile"
-  COMMAND make sqlite3.c sqlite3.h
-  WORKING_DIRECTORY "${sqlcipher_SOURCE_DIR}"
-)
+# Using a prebuilt sqlcipher amalgation because building it requires TCL/TK which no one has.
+file(DOWNLOAD "https://storage.googleapis.com/simon-public-euw3/assets/sqlcipher/v4_5_1.c" "${CMAKE_CURRENT_BINARY_DIR}/sqlcipher.c" EXPECTED_HASH SHA512=69ed34101657eda56b8903abc6b1abee577ab0f04d11a91c45bfcf439ab30372cccf62d709b8e4d6c3e2fb219fe30170791a1be5e679bac5a8242840e3469060)
 
 add_library(${PLUGIN_NAME} SHARED
   "sqlite3_flutter_libs_plugin.cc"
-  "${sqlcipher_SOURCE_DIR}/sqlite3.c"
+  "${CMAKE_CURRENT_BINARY_DIR}/sqlcipher.c"
 )
 
 # Not applying the standard settings because we compile sqlite3
