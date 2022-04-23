@@ -196,9 +196,9 @@ void _testV2Persistence() {
     await expectLater(
       () async {
         final databases = (await IndexedDbFileSystemV2.databases())
-            .map((e) => e.name)
+            ?.map((e) => e.name)
             .toList();
-        return !databases.contains(dbName);
+        return databases == null ? true : !databases.contains(dbName);
       }(),
       completion(true),
       reason: 'There must be no database named dbName at the beginning',
@@ -239,9 +239,9 @@ void _testV2Persistence() {
     await expectLater(
       () async {
         final databases = (await IndexedDbFileSystemV2.databases())
-            .map((e) => e.name)
+            ?.map((e) => e.name)
             .toList();
-        return !databases.contains(dbName);
+        return databases == null ? true : !databases.contains(dbName);
       }(),
       completion(true),
       reason: 'There can be no database named dbName at the end',

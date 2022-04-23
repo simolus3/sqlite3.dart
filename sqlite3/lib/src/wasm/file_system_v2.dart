@@ -79,8 +79,15 @@ class IndexedDbFileSystemV2 implements FileSystem {
     return fs;
   }
 
-  static Future<List<DatabaseName>> databases() {
-    return self.indexedDB!.databases();
+  /// Returns all database
+  /// Returns null if 'IndexedDB.databases()' function is not supported in the
+  /// JS engine
+  static Future<List<DatabaseName>?> databases() async {
+    try {
+      return await self.indexedDB!.databases();
+    } on Exception catch (_) {
+      return null;
+    }
   }
 
   static Future<void> deleteDatabase(
@@ -239,7 +246,6 @@ class IndexedDbFileSystemV2 implements FileSystem {
         final f = absolutePath(file);
         await transaction.objectStore(_objectName).delete(f);
       }
-      await Future<void>.delayed(Duration(milliseconds: 1000));
     });
   }
 
