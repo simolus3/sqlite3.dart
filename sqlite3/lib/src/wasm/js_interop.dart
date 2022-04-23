@@ -1,5 +1,7 @@
 @internal
+import 'dart:async';
 import 'dart:html';
+import 'dart:html_common';
 import 'dart:indexed_db';
 import 'dart:typed_data';
 
@@ -34,17 +36,21 @@ extension JsContext on _JsContext {
   external IdbFactory? get indexedDB;
 }
 
+@JS()
 extension IdbFactoryExt on IdbFactory {
+  @JS('databases')
+  external Object _jsDatabases();
+
   Future<List<DatabaseName>?> databases() async {
     if (!hasProperty(this, 'databases')) {
       return null;
     }
-    final jsDatabases = await promiseToFutureAsMap(
-        callMethod<Object>(this, 'databases', const []));
-    return jsDatabases!.values.whereType<Map<String, dynamic>>().map((jsMap) {
-      final value = jsMap.values.toList();
-      return DatabaseName(value[0] as String, value[1] as int);
-    }).toList();
+    final jsList = await promiseToFuture<List<dynamic>>(_jsDatabases());
+    final databases = jsList
+        .map((dynamic object) => convertNativeToDart_Dictionary(object))
+        .map((map) =>
+            DatabaseName(map!['name'] as String, map['version'] as int));
+    return databases.toList();
   }
 }
 
