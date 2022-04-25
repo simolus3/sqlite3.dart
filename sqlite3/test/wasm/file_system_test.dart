@@ -9,15 +9,17 @@ import 'package:test/test.dart';
 
 const _fsRoot = '/test';
 const _listEquality = DeepCollectionEquality();
+const _blockSize = 32;
+const _debugLog = false;
 
 Future<void> main() async {
   group('in memory', () {
-    _testWith(FileSystem.inMemory);
+    _testWith(() => FileSystem.inMemory(blockSize: _blockSize));
   });
 
   group('indexed db', () {
     _testWith(() => IndexedDbFileSystem.init(
-        persistenceRoot: _fsRoot, dbName: _randomName()));
+        dbName: _randomName(), blockSize: _blockSize, debugLog: _debugLog));
     _testPersistence();
   });
 
@@ -34,16 +36,14 @@ Future<void> _disposeFileSystem(FileSystem fs) async {
     await fs.close();
     await IndexedDbFileSystem.deleteDatabase(fs.dbName);
   } else {
-    fs.clear();
+    await fs.clear();
   }
 }
 
 Future<void> _runPathTest(String root, String path, String resolved) async {
   final fs = await IndexedDbFileSystem.init(
-      persistenceRoot: root, dbName: _randomName());
+      dbName: _randomName(), blockSize: _blockSize, debugLog: _debugLog);
   fs.createFile(path);
-  final absPath = fs.absolutePath(fs.files.first);
-  expect(absPath, resolved);
   await _disposeFileSystem(fs);
 }
 
@@ -86,6 +86,7 @@ Future<void> _testWith(FutureOr<FileSystem> Function() open) async {
   setUp(() async {
     fs = await open();
   });
+
   tearDown(() => _disposeFileSystem(fs));
 
   test('can create files', () {
@@ -109,15 +110,6 @@ Future<void> _testWith(FutureOr<FileSystem> Function() open) async {
     expect(fs.files, isEmpty);
   });
 
-  test('can create files and clear fs', () {
-    for (var i = 1; i <= 10; i++) {
-      fs.createFile('$_fsRoot/foo$i.txt');
-    }
-    expect(fs.files, hasLength(10));
-    fs.clear();
-    expect(fs.files, isEmpty);
-  });
-
   test('reads and writes', () {
     expect(fs.exists('$_fsRoot/foo.txt'), isFalse);
     fs.createFile('$_fsRoot/foo.txt');
@@ -125,16 +117,30 @@ Future<void> _testWith(FutureOr<FileSystem> Function() open) async {
 
     expect(fs.sizeOfFile('$_fsRoot/foo.txt'), isZero);
 
-    fs.truncateFile('$_fsRoot/foo.txt', 123);
-    expect(fs.sizeOfFile('$_fsRoot/foo.txt'), 123);
+    fs.truncateFile('$_fsRoot/foo.txt', 1024);
+    expect(fs.sizeOfFile('$_fsRoot/foo.txt'), 1024);
+
+    fs.truncateFile('$_fsRoot/foo.txt', 600);
+    expect(fs.sizeOfFile('$_fsRoot/foo.txt'), 600);
 
     fs.truncateFile('$_fsRoot/foo.txt', 0);
+    expect(fs.sizeOfFile('$_fsRoot/foo.txt'), 0);
+
     fs.write('$_fsRoot/foo.txt', Uint8List.fromList([1, 2, 3]), 0);
     expect(fs.sizeOfFile('$_fsRoot/foo.txt'), 3);
 
     final target = Uint8List(3);
     expect(fs.read('$_fsRoot/foo.txt', target, 0), 3);
     expect(target, [1, 2, 3]);
+  });
+
+  test('can create files and clear fs', () async {
+    for (var i = 1; i <= 10; i++) {
+      fs.createFile('$_fsRoot/foo$i.txt');
+    }
+    expect(fs.files, hasLength(10));
+    await fs.clear();
+    expect(fs.files, isEmpty);
   });
 }
 
@@ -154,7 +160,8 @@ void _testPersistence() {
       reason: 'There must be no database named dbName at the beginning',
     );
 
-    final db1 = await IndexedDbFileSystem.init(dbName: dbName);
+    final db1 = await IndexedDbFileSystem.init(
+        dbName: dbName, blockSize: _blockSize, debugLog: _debugLog);
     expect(db1.files.length, 0, reason: 'db1 is not empty');
 
     db1.createFile('test');
@@ -162,8 +169,10 @@ void _testPersistence() {
     await db1.flush();
     expect(db1.files.length, 1, reason: 'There must be only one file in db1');
     expect(db1.exists('test'), true, reason: 'The test file must exist in db1');
+    await db1.close();
 
-    final db2 = await IndexedDbFileSystem.init(dbName: dbName);
+    final db2 = await IndexedDbFileSystem.init(
+        dbName: dbName, blockSize: _blockSize, debugLog: _debugLog);
     expect(db2.files.length, 1, reason: 'There must be only one file in db2');
     expect(db2.exists('test'), true, reason: 'The test file must exist in db2');
 
@@ -174,18 +183,11 @@ void _testPersistence() {
 
     await db2.clear();
     expect(db2.files.length, 0, reason: 'There must be no files in db2');
-    expect(db1.files.length, 1, reason: 'There must be only one file in db1');
-    await db1.sync();
-    expect(db1.files.length, 0, reason: 'There must be no files in db1');
 
-    await db1.close();
     await db2.close();
-
-    await expectLater(() => db1.sync(), throwsA(isA<FileSystemException>()));
-    await expectLater(() => db2.sync(), throwsA(isA<FileSystemException>()));
+    await expectLater(() => db2.clear(), throwsA(isA<FileSystemException>()));
 
     await IndexedDbFileSystem.deleteDatabase(dbName);
-
     await expectLater(
       () async {
         final databases = (await IndexedDbFileSystem.databases())

@@ -1,4 +1,3 @@
-@internal
 import 'dart:async';
 import 'dart:html';
 import 'dart:html_common';
@@ -7,7 +6,6 @@ import 'dart:typed_data';
 
 import 'package:js/js.dart';
 import 'package:js/js_util.dart';
-import 'package:meta/meta.dart';
 
 @JS('BigInt')
 external Object _bigInt(Object s);
@@ -31,12 +29,45 @@ bool Function(Object, Object) _leq =
 @staticInterop
 class _JsContext {}
 
+extension ObjectStoreExt on ObjectStore {
+  @JS("put")
+  external Request _put_1(dynamic value, dynamic key);
+
+  @JS("put")
+  external Request _put_2(dynamic value);
+
+  Request putSync(dynamic value, [dynamic key]) {
+    if (key != null) {
+      final dynamic value_1 = convertDartToNative_SerializedScriptValue(value);
+      final dynamic key_2 = convertDartToNative_SerializedScriptValue(key);
+      return _put_1(value_1, key_2);
+    }
+    final dynamic value_1 = convertDartToNative_SerializedScriptValue(value);
+    return _put_2(value_1);
+  }
+
+  @JS('openCursor')
+  external Request openCursor2(Object? range, [String? direction]);
+}
+
+Future<void> completeRequest(Request? request) {
+  if (request != null) {
+    final completer = Completer<void>.sync();
+    request.onSuccess.listen((e) {
+      completer.complete();
+    });
+    request.onError.listen(completer.completeError);
+    return completer.future;
+  } else {
+    return Future.value();
+  }
+}
+
 extension JsContext on _JsContext {
   @JS()
   external IdbFactory? get indexedDB;
 }
 
-@JS()
 extension IdbFactoryExt on IdbFactory {
   @JS('databases')
   external Object _jsDatabases();
@@ -52,6 +83,10 @@ extension IdbFactoryExt on IdbFactory {
             DatabaseName(map!['name'] as String, map['version'] as int))
         .toList();
   }
+}
+
+extension TransactionCommit on Transaction {
+  external void commit();
 }
 
 class DatabaseName {

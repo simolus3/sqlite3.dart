@@ -2,7 +2,7 @@ import 'package:http/http.dart' as http;
 import 'package:sqlite3/wasm.dart';
 
 Future<void> main() async {
-  final fs = await IndexedDbFileSystem.init(persistenceRoot: '/db/');
+  final fs = await IndexedDbFileSystem.init(dbName: 'test');
   print('loaded fs');
 
   final response = await http.get(Uri.parse('sqlite3.wasm'));
