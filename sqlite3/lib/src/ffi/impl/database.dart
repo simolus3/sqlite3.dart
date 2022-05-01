@@ -329,20 +329,39 @@ class DatabaseImpl extends Database {
     bool deterministic = false,
     bool directOnly = true,
   }) {
-    final storedFunction = functionStore.registerAggregate(function);
     final namePtr = _functionName(functionName);
+    int result;
 
-    final result = _bindings.sqlite3_create_function_v2(
-      _handle,
-      namePtr.cast(),
-      argumentCount.allowedArgs,
-      eTextRep(deterministic, directOnly),
-      storedFunction.applicationData.cast(),
-      nullPtr(),
-      storedFunction.xStep!.cast(),
-      storedFunction.xFinal!.cast(),
-      storedFunction.xDestroy.cast(),
-    );
+    if (function is WindowFunction<V>) {
+      final storedFunction = functionStore.registerWindow(function);
+
+      result = _bindings.sqlite3_create_window_function(
+        _handle,
+        namePtr.cast(),
+        argumentCount.allowedArgs,
+        eTextRep(deterministic, directOnly),
+        storedFunction.applicationData.cast(),
+        storedFunction.xStep!.cast(),
+        storedFunction.xFinal!.cast(),
+        storedFunction.xValue!.cast(),
+        storedFunction.xInverse!.cast(),
+        storedFunction.xDestroy.cast(),
+      );
+    } else {
+      final storedFunction = functionStore.registerAggregate(function);
+      result = _bindings.sqlite3_create_function_v2(
+        _handle,
+        namePtr.cast(),
+        argumentCount.allowedArgs,
+        eTextRep(deterministic, directOnly),
+        storedFunction.applicationData.cast(),
+        nullPtr(),
+        storedFunction.xStep!.cast(),
+        storedFunction.xFinal!.cast(),
+        storedFunction.xDestroy.cast(),
+      );
+    }
+
     namePtr.free();
 
     if (result != SqlError.SQLITE_OK) {

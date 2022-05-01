@@ -67,8 +67,63 @@ abstract class AggregateFunction<V> {
 
   /// Computes the final value from a populated [context].
   ///
+  /// This is the last call made with the given [context], so this function may
+  /// also choose to clean up resources associated with the aggregate context.
+  ///
   /// {@macro sqlite3_function_behavior}
   Object? finalize(AggregateContext<V> context);
+}
+
+/// A window function for sqlite3.
+///
+/// In addition to [AggregateFunction]s, which run over an entire query, window
+/// functions can run over a subset of rows as defined in an `OVER` clause.
+///
+/// This example defines a window function taking a single argument, which must
+/// be an int. The result of the window function is the sum of all arguments
+/// in the current window.
+///
+/// ```dart
+/// class _SumInt implements WindowFunction<int> {
+///  @override
+///  AggregateContext<int> createContext() => AggregateContext(0);
+///
+///  @override
+///  Object? finalize(AggregateContext<int> context) {
+///    // There's nothing to finalize, if our [createContext] had side-effects
+///    // we'd have to undo them here.
+///    return value(context);
+///  }
+///
+///  int _argument(List<Object?> arguments) {
+///    return arguments.single! as int;
+///  }
+///
+///  @override
+///  void inverse(List<Object?> arguments, AggregateContext<int> context) {
+///    context.value -= _argument(arguments);
+///  }
+///
+///  @override
+///  void step(List<Object?> arguments, AggregateContext<int> context) {
+///    context.value += _argument(arguments);
+///  }
+///
+///  @override
+///  Object? value(AggregateContext<int> context) => context.value;
+///}
+/// ```
+
+@immutable
+abstract class WindowFunction<V> implements AggregateFunction<V> {
+  /// Obtain the current aggregate in the window.
+  ///
+  /// This is similar to [finalize], but shouldn't be used to clean up resources
+  /// as subsequent calls may happen with the same [context].
+  Object? value(AggregateContext<V> context);
+
+  /// Removes the row of [arguments] from this window.
+  void inverse(List<Object?> arguments, AggregateContext<V> context);
 }
 
 /// Application-defined context used to compute results in aggregate functions.

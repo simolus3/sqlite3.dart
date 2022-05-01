@@ -75,6 +75,10 @@ typedef struct sqlite3_context sqlite3_context;
 int sqlite3_create_function_v2(sqlite3 *db, sqlite3_char *zFunctionName,
                                int nArg, int eTextRep, void *pApp, void *xFunc,
                                void *xStep, void *xFinal, void *xDestroy);
+int sqlite3_create_window_function(sqlite3 *db, sqlite3_char *zFunctionName,
+                                   int nArg, int eTextRep, void *pApp,
+                                   void *xStep, void *xFinal, void *xValue,
+                                   void *xInverse, void *xDestroy);
 
 void *sqlite3_aggregate_context(sqlite3_context *ctx, int nBytes);
 

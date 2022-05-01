@@ -48,12 +48,28 @@ class FunctionStore {
   }
 
   FunctionPointerAndData registerAggregate<V>(AggregateFunction<V> f) {
+    assert(f is! WindowFunction<V>, 'Use registerWindow for window functions');
+
     final id = _idCounter++;
     _functions[id] = f;
 
     return FunctionPointerAndData(
       xStep: _xStep,
       xFinal: _xFinal,
+      xDestroy: _xDestroy,
+      applicationData: Pointer.fromAddress(id),
+    );
+  }
+
+  FunctionPointerAndData registerWindow<V>(WindowFunction<V> f) {
+    final id = _idCounter++;
+    _functions[id] = f;
+
+    return FunctionPointerAndData(
+      xStep: _xStep,
+      xFinal: _xFinal,
+      xValue: _xValue,
+      xInverse: _xInverse,
       xDestroy: _xDestroy,
       applicationData: Pointer.fromAddress(id),
     );
@@ -70,6 +86,10 @@ class FunctionStore {
   AggregateFunction<dynamic> readAggregate(int id) {
     return _functions[id] as AggregateFunction;
   }
+
+  WindowFunction<dynamic> readWindow(int id) {
+    return _functions[id] as WindowFunction;
+  }
 }
 
 class FunctionPointerAndData {
@@ -77,6 +97,8 @@ class FunctionPointerAndData {
   final Pointer<NativeType>? xFunc;
   final Pointer<NativeType>? xStep;
   final Pointer<NativeType>? xFinal;
+  final Pointer<NativeType>? xValue;
+  final Pointer<NativeType>? xInverse;
   final Pointer<NativeType> xDestroy;
 
   final Pointer<NativeType> applicationData;
@@ -87,6 +109,8 @@ class FunctionPointerAndData {
     this.xFunc,
     this.xStep,
     this.xFinal,
+    this.xValue,
+    this.xInverse,
     this.xCompare,
   });
 }
@@ -146,10 +170,14 @@ void _xDestroyImpl(Pointer<Void> data) {
 Pointer<Void> _xDestroy =
     Pointer.fromFunction<Void Function(Pointer<Void>)>(_xDestroyImpl).cast();
 
-void _xStepImpl(
+/// Reads or registers a Dart-managed [AggregateContext] for a given native
+/// [context].
+///
+/// This will return null only if sqlite3 can't allocate the context, in which
+/// case an error will be set on the [context] as well.
+AggregateContext<dynamic>? _obtainOrCreateContext(
   Pointer<sqlite3_context> context,
-  int argCount,
-  Pointer<Pointer<sqlite3_value>> args,
+  AggregateFunction<dynamic> function,
 ) {
   final agCtxPtr =
       context.aggregateContext(bindingsForStore, sizeOf<Int64>()).cast<Int64>();
@@ -157,11 +185,8 @@ void _xStepImpl(
   if (agCtxPtr.isNullPointer) {
     // We can't run without our 8 bytes! This indicates an out-of-memory error
     context.setError(bindingsForStore, 'internal error (OOM?)');
-    return;
+    return null;
   }
-
-  final functionId = context.getUserData(bindingsForStore).address;
-  final function = functionStore.readAggregate(functionId);
 
   // Ok, we have a pointer (that sqlite3 zeroes out for us). Our state counter
   // starts at one, so if it's still zero we don't have a Dart context yet.
@@ -175,6 +200,22 @@ void _xStepImpl(
   } else {
     dartContext = functionStore._activeContexts[agCtxPtr.value]!;
   }
+  return dartContext;
+}
+
+void _xStepImpl(
+  Pointer<sqlite3_context> context,
+  int argCount,
+  Pointer<Pointer<sqlite3_value>> args,
+) {
+  final functionId = context.getUserData(bindingsForStore).address;
+  final function = functionStore.readAggregate(functionId);
+
+  final dartContext = _obtainOrCreateContext(context, function);
+  if (dartContext == null) {
+    // Internal error, handled by _obtainOrCreateContext
+    return;
+  }
 
   final arguments = ValueList(argCount, args, bindingsForStore);
   function.step(arguments, dartContext);
@@ -184,6 +225,44 @@ void _xStepImpl(
 Pointer<Void> _xStep = Pointer.fromFunction<
         Void Function(Pointer<sqlite3_context>, Int32,
             Pointer<Pointer<sqlite3_value>>)>(_xStepImpl)
+    .cast();
+
+void _xValueImpl(Pointer<sqlite3_context> context) {
+  final functionId = context.getUserData(bindingsForStore).address;
+  final function = functionStore.readWindow(functionId);
+
+  final dartContext = _obtainOrCreateContext(context, function);
+  if (dartContext == null) {
+    // Internal error, handled by _obtainOrCreateContext
+    return;
+  }
+
+  context.setResultOf(() => function.value(dartContext));
+}
+
+Pointer<Void> _xValue =
+    Pointer.fromFunction<Void Function(Pointer<sqlite3_context>)>(_xValueImpl)
+        .cast();
+
+void _xInverseImpl(Pointer<sqlite3_context> context, int nArgs,
+    Pointer<Pointer<sqlite3_value>> args) {
+  final functionId = context.getUserData(bindingsForStore).address;
+  final function = functionStore.readWindow(functionId);
+
+  final dartContext = _obtainOrCreateContext(context, function);
+  if (dartContext == null) {
+    // Internal error, handled by _obtainOrCreateContext
+    return;
+  }
+
+  final arguments = ValueList(nArgs, args, bindingsForStore);
+  function.inverse(arguments, dartContext);
+  arguments.isValid = false;
+}
+
+Pointer<Void> _xInverse = Pointer.fromFunction<
+        Void Function(Pointer<sqlite3_context>, Int32,
+            Pointer<Pointer<sqlite3_value>>)>(_xInverseImpl)
     .cast();
 
 void _xFinalImpl(Pointer<sqlite3_context> context) {
@@ -204,13 +283,19 @@ void _xFinalImpl(Pointer<sqlite3_context> context) {
     aggregateContext = function.createContext();
   }
 
-  try {
-    context.setResult(bindingsForStore, function.finalize(aggregateContext));
-  } on Object catch (e) {
-    context.setError(bindingsForStore, Error.safeToString(e));
-  }
+  context.setResultOf(() => function.finalize(aggregateContext));
 }
 
 Pointer<Void> _xFinal =
     Pointer.fromFunction<Void Function(Pointer<sqlite3_context>)>(_xFinalImpl)
         .cast();
+
+extension on Pointer<sqlite3_context> {
+  void setResultOf(Object? Function() function) {
+    try {
+      setResult(bindingsForStore, function());
+    } on Object catch (e) {
+      setError(bindingsForStore, Error.safeToString(e));
+    }
+  }
+}
