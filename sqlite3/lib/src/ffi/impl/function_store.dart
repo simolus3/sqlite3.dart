@@ -277,8 +277,7 @@ void _xFinalImpl(Pointer<sqlite3_context> context) {
   // xStep allocated memory before, that pointer would be returned, and it would
   // point to an existing context.
   if (!agCtxPtr.isNullPointer) {
-    aggregateContext = functionStore._activeContexts[agCtxPtr.value]!;
-    functionStore._activeContexts.remove(agCtxPtr.value);
+    aggregateContext = functionStore._activeContexts.remove(agCtxPtr.value)!;
   } else {
     aggregateContext = function.createContext();
   }

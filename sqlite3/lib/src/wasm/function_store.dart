@@ -43,17 +43,19 @@ class FunctionStore {
     }
   }
 
-  void runStepFunction(Pointer context, int argCount, Pointer args) {
+  /// Attempts to obtain a Dart function context from the raw sql [context].
+  ///
+  /// Will return null and set an error on the context if the 4 byte necessary
+  /// to identify the context number can't be allocated.
+  AggregateContext<Object?>? _obtainOrCreateContext(
+      Pointer context, AggregateFunction<Object?> function) {
     final agCtxPointer = _bindings.sqlite3_aggregate_context(context, 4);
 
     if (agCtxPointer == 0) {
       // Couldn't allocate memory for aggregate context => fail
       _contextSetError(context, 'internal error (OOM?)');
-      return;
+      return null;
     }
-
-    final function =
-        _functions[_userDataForContext(context)] as AggregateFunction;
 
     // We have an aggregate context pointer, which is going to point to a value
     // of zero if no context has been created yet.
@@ -69,9 +71,56 @@ class FunctionStore {
       dartContext = _contexts[value]!;
     }
 
+    return dartContext;
+  }
+
+  void runStepFunction(Pointer context, int argCount, Pointer args) {
+    final function =
+        _functions[_userDataForContext(context)] as AggregateFunction;
+
+    final dartContext = _obtainOrCreateContext(context, function);
+    if (dartContext == null) {
+      // Error response is nset in _obtainOrCreateContext
+      return;
+    }
+
     final arguments = ValueList(argCount, args, this);
     function.step(arguments, dartContext);
     arguments.isValid = false;
+  }
+
+  void runInverseFunction(Pointer context, int argCount, Pointer args) {
+    final function = _functions[_userDataForContext(context)] as WindowFunction;
+
+    final dartContext = _obtainOrCreateContext(context, function);
+    if (dartContext == null) {
+      // Error response is nset in _obtainOrCreateContext
+      return;
+    }
+
+    final arguments = ValueList(argCount, args, this);
+    function.inverse(arguments, dartContext);
+    arguments.isValid = false;
+  }
+
+  void _setResultOrError(Pointer context, Object? Function() body) {
+    try {
+      _contextSetResult(context, body());
+    } on Object catch (e) {
+      _contextSetError(context, Error.safeToString(e));
+    }
+  }
+
+  void runValueFunction(Pointer context) {
+    final function = _functions[_userDataForContext(context)] as WindowFunction;
+
+    final dartContext = _obtainOrCreateContext(context, function);
+    if (dartContext == null) {
+      // Error response is nset in _obtainOrCreateContext
+      return;
+    }
+
+    _setResultOrError(context, () => function.value(dartContext));
   }
 
   void runFinalFunction(Pointer context) {
@@ -87,16 +136,12 @@ class FunctionStore {
     // point to an existing context.
     if (agCtxPointer != 0) {
       aggregateContext =
-          _contexts[_bindings.int32ValueOfPointer(agCtxPointer)]!;
+          _contexts.remove(_bindings.int32ValueOfPointer(agCtxPointer))!;
     } else {
       aggregateContext = function.createContext();
     }
 
-    try {
-      _contextSetResult(context, function.finalize(aggregateContext));
-    } on Object catch (e) {
-      _contextSetError(context, Error.safeToString(e));
-    }
+    _setResultOrError(context, () => function.finalize(aggregateContext));
   }
 
   int _userDataForContext(Pointer context) {

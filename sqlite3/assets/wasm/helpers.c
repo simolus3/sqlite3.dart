@@ -24,6 +24,15 @@ SQLITE_API int dart_sqlite3_create_aggregate_function(sqlite3 *db,
                                     &dartForgetAboutFunction);
 }
 
+SQLITE_API int dart_sqlite3_create_window_function(sqlite3 *db,
+                                                   const char *zFunctionName,
+                                                   int nArg, int eTextRep,
+                                                   int id) {
+  return sqlite3_create_window_function(
+      db, zFunctionName, nArg, eTextRep, (void *)id, &dartXStep, &dartXFinal,
+      &dartXValue, &dartXInverse, &dartForgetAboutFunction);
+}
+
 SQLITE_API void dart_sqlite3_updates(sqlite3 *db, int id) {
   sqlite3_update_hook(db, id >= 0 ? &dartUpdateHook : NULL, (void *)id);
 }

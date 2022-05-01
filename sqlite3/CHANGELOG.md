@@ -1,3 +1,9 @@
+## 1.7.0-dev
+
+- Add support for application-defined window functions. To register a custom
+  window function, implement `WindowFunction` and register your function with
+  `database.registerAggregateFunction`.
+
 ## 1.6.4
 
 - Add `FileSystem.listFiles()` to list all files in a virtual WASM file system.

@@ -140,6 +140,8 @@ abstract class CommonDatabase {
   /// functions supported by `Pointer.fromFunction`. For more details on how
   /// the sql function behaves, see the documentation on [ScalarFunction].
   ///
+  /// To register aggregate or window functions, see [createAggregateFunction].
+  ///
   /// For more information, see https://www.sqlite.org/appfunc.html.
   void createFunction({
     required String functionName,
