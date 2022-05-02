@@ -140,6 +140,8 @@ abstract class CommonDatabase {
   /// functions supported by `Pointer.fromFunction`. For more details on how
   /// the sql function behaves, see the documentation on [ScalarFunction].
   ///
+  /// To register aggregate or window functions, see [createAggregateFunction].
+  ///
   /// For more information, see https://www.sqlite.org/appfunc.html.
   void createFunction({
     required String functionName,
@@ -156,6 +158,13 @@ abstract class CommonDatabase {
   ///
   /// For more details on how to write aggregate functions (including an
   /// example), see the documentation of [AggregateFunction].
+  ///
+  /// If the given [function] implements the [WindowFunction] interface, a
+  /// window function is registered internally. Window functions support being
+  /// used in `OVER` expressions in sqlite3. For more information on writing
+  /// window functions in Dart, see the [WindowFunction] class. For details
+  /// on user-defined window functions in general, see sqlite3's documentation:
+  /// https://www.sqlite.org/windowfunctions.html#udfwinfunc
   void createAggregateFunction<V>({
     required String functionName,
     required AggregateFunction<V> function,

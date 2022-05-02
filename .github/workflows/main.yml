@@ -28,7 +28,7 @@ jobs:
       working-directory: ${{ matrix.package }}
 
     - name: Format native
-      run: clang-format --Werror --dry-run --style=google assets/sqlite3.h assets/wasm/*
+      run: clang-format --Werror --dry-run --style=google assets/sqlite3.h assets/wasm/*.{c,h}
       if: ${{ matrix.package == 'sqlite3' }}
       working-directory: sqlite3
 
@@ -124,7 +124,6 @@ jobs:
 
   # Shamelessly stolen from https://medium.com/flutter-community/run-flutter-driver-tests-on-github-actions-13c639c7e4ab
   integration_test_ios:
-    if: "${{ false }}" # Currently broken: https://github.com/subosito/flutter-action/issues/146
     needs: [test]
     runs-on: macos-latest
     steps:
@@ -137,7 +136,7 @@ jobs:
           xcrun simctl boot $IPHONE12
 
       - uses: actions/checkout@v2
-      - uses: subosito/flutter-action@v1
+      - uses: subosito/flutter-action@v2.4.0
         with:
           channel: dev
 
@@ -153,12 +152,11 @@ jobs:
         working-directory: integration_tests/sqlcipher_flutter
 
   integration_test_macos:
-    if: "${{ false }}" # Currently broken: https://github.com/subosito/flutter-action/issues/146
     needs: [test]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: subosito/flutter-action@v1
+      - uses: subosito/flutter-action@v2.4.0
         with:
           channel: dev
       - name: Setup Flutter

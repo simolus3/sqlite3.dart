@@ -110,8 +110,8 @@ The returned `WasmSqlite3` has an interface compatible to that of the standard `
 in `package:sqlite3/sqlite3.dart`, databases can be opened in similar ways.
 
 An example for such web folder is in `example/web/` of this repo.
-To view the example, run `dart run build_runner serve example:8080` and then
-visit `http://localhost:8080/web/` in a browser.
+To view the example, copy a compiled `sqlite3.wasm` file to `web/sqlite3.wasm` in this directory.
+Then, run `dart run build_runner serve example:8080` and  visit `http://localhost:8080/web/` in a browser.
 
 ### Sharing code between web and a Dart VM
 
@@ -129,4 +129,8 @@ just grab the `.wasm` from the latest release on GitHub.
 You'll need a clang toolchain capable of compiling to WebAssembly and a libc
 suitable for it (I use wasi in `/usr/share/wasi-sysroot`).
 
-Then, run `make wasm` to compile sqlite into a wasm file.
+Create a build directory, then run
+```
+cmake <path/to/clone>/sqlite3/assets/wasm --toolchain <path/to/clone>/sqlite3/assets/wasm/toolchain.cmake
+make -j output
+```

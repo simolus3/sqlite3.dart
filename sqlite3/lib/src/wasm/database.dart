@@ -45,7 +45,11 @@ class WasmDatabase extends CommonDatabase {
     final id = bindings.functions.register(function);
     final name = _functionName(functionName);
 
-    final result = bindings.create_aggregate_function(
+    final add = function is WindowFunction<V>
+        ? bindings.create_window_function
+        : bindings.create_aggregate_function;
+
+    final result = add(
       db,
       name,
       argumentCount.allowedArgs,

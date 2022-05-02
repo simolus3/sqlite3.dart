@@ -725,6 +725,59 @@ class Bindings {
               ffi.Pointer<ffi.Void>,
               ffi.Pointer<ffi.Void>)>();
 
+  int sqlite3_create_window_function(
+    ffi.Pointer<sqlite3> db,
+    ffi.Pointer<sqlite3_char> zFunctionName,
+    int nArg,
+    int eTextRep,
+    ffi.Pointer<ffi.Void> pApp,
+    ffi.Pointer<ffi.Void> xStep,
+    ffi.Pointer<ffi.Void> xFinal,
+    ffi.Pointer<ffi.Void> xValue,
+    ffi.Pointer<ffi.Void> xInverse,
+    ffi.Pointer<ffi.Void> xDestroy,
+  ) {
+    return _sqlite3_create_window_function(
+      db,
+      zFunctionName,
+      nArg,
+      eTextRep,
+      pApp,
+      xStep,
+      xFinal,
+      xValue,
+      xInverse,
+      xDestroy,
+    );
+  }
+
+  late final _sqlite3_create_window_functionPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int32 Function(
+              ffi.Pointer<sqlite3>,
+              ffi.Pointer<sqlite3_char>,
+              ffi.Int32,
+              ffi.Int32,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3_create_window_function');
+  late final _sqlite3_create_window_function =
+      _sqlite3_create_window_functionPtr.asFunction<
+          int Function(
+              ffi.Pointer<sqlite3>,
+              ffi.Pointer<sqlite3_char>,
+              int,
+              int,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Void>)>();
+
   ffi.Pointer<ffi.Void> sqlite3_aggregate_context(
     ffi.Pointer<sqlite3_context> ctx,
     int nBytes,

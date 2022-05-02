@@ -42,6 +42,7 @@ class WasmBindings {
       _free,
       _create_scalar,
       _create_aggregate,
+      _create_window,
       _update_hooks,
       _sqlite3_libversion,
       _sqlite3_sourceid,
@@ -100,6 +101,8 @@ class WasmBindings {
             instance.functions['dart_sqlite3_create_scalar_function']!,
         _create_aggregate =
             instance.functions['dart_sqlite3_create_aggregate_function']!,
+        _create_window =
+            instance.functions['dart_sqlite3_create_window_function']!,
         _update_hooks = instance.functions['dart_sqlite3_updates']!,
         _sqlite3_libversion = instance.functions['sqlite3_libversion']!,
         _sqlite3_sourceid = instance.functions['sqlite3_sourceid']!,
@@ -206,6 +209,11 @@ class WasmBindings {
   int create_aggregate_function(
       Pointer db, Pointer functionName, int nArg, int eTextRep, int id) {
     return _create_aggregate(db, functionName, nArg, eTextRep, id) as int;
+  }
+
+  int create_window_function(
+      Pointer db, Pointer functionName, int nArg, int eTextRep, int id) {
+    return _create_window(db, functionName, nArg, eTextRep, id) as int;
   }
 
   int sqlite3_libversion() => _sqlite3_libversion() as int;
@@ -463,8 +471,15 @@ class _InjectedValues {
         'function_xStep': allowInterop((Pointer ctx, int args, Pointer value) {
           functions.runStepFunction(ctx, args, value);
         }),
+        'function_xInverse':
+            allowInterop((Pointer ctx, int args, Pointer value) {
+          functions.runInverseFunction(ctx, args, value);
+        }),
         'function_xFinal': allowInterop((Pointer ctx) {
           functions.runFinalFunction(ctx);
+        }),
+        'function_xValue': allowInterop((Pointer ctx) {
+          functions.runValueFunction(ctx);
         }),
         'function_forget': allowInterop((Pointer ctx) => functions.forget(ctx)),
         'function_hook': allowInterop(

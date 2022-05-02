@@ -316,6 +316,37 @@ void testDatabase(
           ],
         );
       });
+
+      test('window functions', () {
+        // Dart port of https://www.sqlite.org/windowfunctions.html#udfwinfunc
+        database
+          ..execute('CREATE TABLE t3 (x, y);')
+          ..execute('INSERT INTO t3 VALUES '
+              "('a', 4), "
+              "('b', 5), "
+              "('c', 3), "
+              "('d', 8), "
+              "('e', 1)");
+
+        database.createAggregateFunction(
+          functionName: 'sumint',
+          function: _SumInt(),
+          argumentCount: const AllowedArgumentCount(1),
+        );
+
+        expect(
+          database.select('SELECT x, sumint(y) OVER ('
+              '  ORDER BY x ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING'
+              ') AS sum_y FROM t3 ORDER BY x'),
+          [
+            {'x': 'a', 'sum_y': 9},
+            {'x': 'b', 'sum_y': 12},
+            {'x': 'c', 'sum_y': 16},
+            {'x': 'd', 'sum_y': 12},
+            {'x': 'e', 'sum_y': 9},
+          ],
+        );
+      });
     },
     onPlatform: const <String, dynamic>{
       'mac-os && !browser':
@@ -460,6 +491,34 @@ class _SummedStringLength implements AggregateFunction<int> {
 
   @override
   Object finalize(AggregateContext<int> context) => context.value;
+}
+
+class _SumInt implements WindowFunction<int> {
+  @override
+  AggregateContext<int> createContext() => AggregateContext(0);
+
+  @override
+  Object? finalize(AggregateContext<int> context) {
+    // There's nothing to finalize
+    return value(context);
+  }
+
+  int _argument(List<Object?> arguments) {
+    return arguments.single! as int;
+  }
+
+  @override
+  void inverse(List<Object?> arguments, AggregateContext<int> context) {
+    context.value -= _argument(arguments);
+  }
+
+  @override
+  void step(List<Object?> arguments, AggregateContext<int> context) {
+    context.value += _argument(arguments);
+  }
+
+  @override
+  Object? value(AggregateContext<int> context) => context.value;
 }
 
 Matcher _statement(String sql) {
