@@ -20,7 +20,49 @@ Future<void> main() async {
   group('indexed db', () {
     _testWith(() => IndexedDbFileSystem.init(
         dbName: _randomName(), blockSize: _blockSize, debugLog: _debugLog));
-    _testPersistence();
+
+    test('Properly persist into IndexedDB', () async {
+      final data = Uint8List.fromList(List.generate(255, (i) => i));
+      final dbName = _randomName();
+
+      await expectLater(IndexedDbFileSystem.databases(),
+          completion(anyOf(isNull, isNot(contains(dbName)))),
+          reason: 'Database $dbName should not exist');
+
+      final db1 = await IndexedDbFileSystem.init(
+          dbName: dbName, blockSize: _blockSize, debugLog: _debugLog);
+      expect(db1.files.length, 0, reason: 'db1 is not empty');
+
+      db1.createFile('test');
+      db1.write('test', data, 0);
+      await db1.flush();
+      expect(db1.files.length, 1, reason: 'There must be only one file in db1');
+      expect(db1.exists('test'), true,
+          reason: 'The test file must exist in db1');
+      await db1.close();
+
+      final db2 = await IndexedDbFileSystem.init(
+          dbName: dbName, blockSize: _blockSize, debugLog: _debugLog);
+      expect(db2.files.length, 1, reason: 'There must be only one file in db2');
+      expect(db2.exists('test'), true,
+          reason: 'The test file must exist in db2');
+
+      final read = Uint8List(255);
+      db2.read('test', read, 0);
+      expect(_listEquality.equals(read, data), true,
+          reason: 'The data written and read do not match');
+
+      await db2.clear();
+      expect(db2.files.length, 0, reason: 'There must be no files in db2');
+
+      await db2.close();
+      await expectLater(() => db2.clear(), throwsA(isA<FileSystemException>()));
+
+      await IndexedDbFileSystem.deleteDatabase(dbName);
+      await expectLater(IndexedDbFileSystem.databases(),
+          completion(anyOf(isNull, isNot(contains(dbName)))),
+          reason: 'Database $dbName should not exist in the end');
+    });
   });
 
   group('path normalization', () {
@@ -141,62 +183,5 @@ Future<void> _testWith(FutureOr<FileSystem> Function() open) async {
     expect(fs.files, hasLength(10));
     await fs.clear();
     expect(fs.files, isEmpty);
-  });
-}
-
-void _testPersistence() {
-  test('Properly persist into IndexedDB', () async {
-    final data = Uint8List.fromList([for (var i = 0; i < 255; i++) i]);
-    final dbName = _randomName();
-
-    await expectLater(
-      () async {
-        final databases = (await IndexedDbFileSystem.databases())
-            ?.map((e) => e.name)
-            .toList();
-        return databases == null ? true : !databases.contains(dbName);
-      }(),
-      completion(true),
-      reason: 'There must be no database named dbName at the beginning',
-    );
-
-    final db1 = await IndexedDbFileSystem.init(
-        dbName: dbName, blockSize: _blockSize, debugLog: _debugLog);
-    expect(db1.files.length, 0, reason: 'db1 is not empty');
-
-    db1.createFile('test');
-    db1.write('test', data, 0);
-    await db1.flush();
-    expect(db1.files.length, 1, reason: 'There must be only one file in db1');
-    expect(db1.exists('test'), true, reason: 'The test file must exist in db1');
-    await db1.close();
-
-    final db2 = await IndexedDbFileSystem.init(
-        dbName: dbName, blockSize: _blockSize, debugLog: _debugLog);
-    expect(db2.files.length, 1, reason: 'There must be only one file in db2');
-    expect(db2.exists('test'), true, reason: 'The test file must exist in db2');
-
-    final read = Uint8List(255);
-    db2.read('test', read, 0);
-    expect(_listEquality.equals(read, data), true,
-        reason: 'The data written and read do not match');
-
-    await db2.clear();
-    expect(db2.files.length, 0, reason: 'There must be no files in db2');
-
-    await db2.close();
-    await expectLater(() => db2.clear(), throwsA(isA<FileSystemException>()));
-
-    await IndexedDbFileSystem.deleteDatabase(dbName);
-    await expectLater(
-      () async {
-        final databases = (await IndexedDbFileSystem.databases())
-            ?.map((e) => e.name)
-            .toList();
-        return databases == null ? true : !databases.contains(dbName);
-      }(),
-      completion(true),
-      reason: 'There can be no database named dbName at the end',
-    );
   });
 }

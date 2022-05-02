@@ -80,11 +80,6 @@ class FileSystemException implements Exception {
   }
 }
 
-extension _ListEx<T> on List<T> {
-  T? getOrNull(int index) => 0 <= index && index < length ? this[index] : null;
-  T? get lastOrNull => getOrNull(length - 1);
-}
-
 class _InMemoryFileSystem implements FileSystem {
   final Map<String, List<Uint8List>> _files = {};
   final IndexedDbFileSystem? _persistent;
@@ -422,11 +417,12 @@ class IndexedDbFileSystem implements FileSystem {
                 0, "Failed to open database. Database blocked"));
   }
 
-  /// Returns all database
-  /// Returns null if 'IndexedDB.databases()' function is not supported in the
-  /// JS engine
-  static Future<List<DatabaseName>?> databases() {
-    return self.indexedDB!.databases();
+  /// Returns all IndexedDB database names accessible from the current context.
+  ///
+  /// This may return `null` if `IDBFactory.databases()` is not supported by the
+  /// current browser.
+  static Future<List<String>?> databases() async {
+    return (await self.indexedDB!.databases())?.map((e) => e.name).toList();
   }
 
   static Future<void> deleteDatabase(

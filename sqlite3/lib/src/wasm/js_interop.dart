@@ -50,19 +50,6 @@ extension ObjectStoreExt on ObjectStore {
   external Request openCursor2(Object? range, [String? direction]);
 }
 
-Future<void> completeRequest(Request? request) {
-  if (request != null) {
-    final completer = Completer<void>.sync();
-    request.onSuccess.listen((e) {
-      completer.complete();
-    });
-    request.onError.listen(completer.completeError);
-    return completer.future;
-  } else {
-    return Future.value();
-  }
-}
-
 extension JsContext on _JsContext {
   @JS()
   external IdbFactory? get indexedDB;
@@ -77,11 +64,7 @@ extension IdbFactoryExt on IdbFactory {
       return null;
     }
     final jsDatabases = await promiseToFuture<List<dynamic>>(_jsDatabases());
-    return jsDatabases
-        .map((dynamic object) => convertNativeToDart_Dictionary(object))
-        .map((map) =>
-            DatabaseName(map!['name'] as String, map['version'] as int))
-        .toList();
+    return jsDatabases.cast<DatabaseName>();
   }
 }
 
@@ -89,11 +72,11 @@ extension TransactionCommit on Transaction {
   external void commit();
 }
 
+@JS()
+@anonymous
 class DatabaseName {
-  final String name;
-  final int version;
-
-  DatabaseName(this.name, this.version);
+  external String get name;
+  external int get version;
 }
 
 class JsBigInt {
