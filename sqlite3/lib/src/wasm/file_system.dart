@@ -574,8 +574,8 @@ class IndexedDbFileSystem implements FileSystem {
         }
         if (offset != null) {
           for (var i = 0; i < modifiedBlocks.length; i++) {
-            final dynamic value = Blob(<Uint8List>[modifiedBlocks[i]]);
-            store.putSync(value, offset + i);
+            final value = Blob(<Uint8List>[modifiedBlocks[i]]);
+            store.putRequestUnsafe(value, offset + i);
           }
         }
         transaction.commit();

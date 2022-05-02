@@ -36,14 +36,14 @@ extension ObjectStoreExt on ObjectStore {
   @JS("put")
   external Request _put_2(dynamic value);
 
-  Request putSync(dynamic value, [dynamic key]) {
+  /// Creates a request to add a value to this object store.
+  ///
+  /// This must only be called with native JavaScript objects.
+  Request putRequestUnsafe(dynamic value, [dynamic key]) {
     if (key != null) {
-      final dynamic value_1 = convertDartToNative_SerializedScriptValue(value);
-      final dynamic key_2 = convertDartToNative_SerializedScriptValue(key);
-      return _put_1(value_1, key_2);
+      return _put_1(value, key);
     }
-    final dynamic value_1 = convertDartToNative_SerializedScriptValue(value);
-    return _put_2(value_1);
+    return _put_2(value);
   }
 
   @JS('openCursor')
