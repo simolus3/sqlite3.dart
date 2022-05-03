@@ -1,3 +1,7 @@
+## 0.5.6
+
+- Update sqlite to version `3.38.3`
+
 ## 0.5.5
 
 - Update sqlite to version `3.38.2`
