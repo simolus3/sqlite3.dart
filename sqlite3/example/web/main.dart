@@ -2,7 +2,7 @@ import 'package:http/http.dart' as http;
 import 'package:sqlite3/wasm.dart';
 
 Future<void> main() async {
-  final fs = await IndexedDbFileSystem.load('/db/');
+  final fs = await IndexedDbFileSystem.open(dbName: 'test');
   print('loaded fs');
 
   final response = await http.get(Uri.parse('sqlite3.wasm'));
@@ -12,7 +12,7 @@ Future<void> main() async {
   print('Version of sqlite used is ${sqlite.version}');
 
   print('opening a persistent database');
-  var db = sqlite.open('/db/test.db');
+  var db = sqlite.open('test.db');
 
   if (db.userVersion == 0) {
     db
@@ -22,8 +22,9 @@ Future<void> main() async {
   }
 
   print(db.select('SELECT * FROM foo'));
+  await fs.flush();
 
-  print('re-opening dataabse');
-  db = sqlite.open('/db/test.db');
+  print('re-opening database');
+  db = sqlite.open('test.db');
   print(db.select('SELECT * FROM foo'));
 }
