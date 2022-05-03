@@ -555,16 +555,11 @@ class IndexedDbFileSystem implements FileSystem {
       : _asynchronous = AsynchronousIndexedDbFileSystem(dbName),
         _memory = _InMemoryFileSystem();
 
-  /// Loads an IndexedDB file system that will consider files in
-  /// [dbName] database.
+  /// Loads an IndexedDB file system identified by the [dbName].
   ///
-  /// When one application needs to support different database files, putting
-  /// them into different folders and setting the persistence root to ensure
-  /// that one [IndexedDbFileSystem] will only see one of them decreases memory
-  /// usage.
-  ///
-  /// With [dbName] you can set IndexedDB database name
-  static Future<IndexedDbFileSystem> init({required String dbName}) async {
+  /// Each file system with a different name will store an independent file
+  /// system.
+  static Future<IndexedDbFileSystem> open({required String dbName}) async {
     final fs = IndexedDbFileSystem._(dbName);
     await fs._asynchronous.open();
     await fs._readFiles();

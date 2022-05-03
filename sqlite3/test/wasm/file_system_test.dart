@@ -3,12 +3,10 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:collection/collection.dart';
 import 'package:sqlite3/wasm.dart';
 import 'package:test/test.dart';
 
 const _fsRoot = '/test';
-const _listEquality = DeepCollectionEquality();
 
 Future<void> main() async {
   group('in memory', () {
@@ -16,7 +14,7 @@ Future<void> main() async {
   });
 
   group('indexed db', () {
-    _testWith(() => IndexedDbFileSystem.init(dbName: _randomName()));
+    _testWith(() => IndexedDbFileSystem.open(dbName: _randomName()));
 
     test('with proper persistence', () async {
       final data = Uint8List.fromList(List.generate(255, (i) => i));
@@ -26,7 +24,7 @@ Future<void> main() async {
           completion(anyOf(isNull, isNot(contains(dbName)))),
           reason: 'Database $dbName should not exist');
 
-      final db1 = await IndexedDbFileSystem.init(dbName: dbName);
+      final db1 = await IndexedDbFileSystem.open(dbName: dbName);
       expect(db1.files.length, 0, reason: 'db1 is not empty');
 
       db1.createFile('test');
@@ -36,7 +34,7 @@ Future<void> main() async {
       expect(db1.files, ['test'], reason: 'File must exist');
       await db1.close();
 
-      final db2 = await IndexedDbFileSystem.init(dbName: dbName);
+      final db2 = await IndexedDbFileSystem.open(dbName: dbName);
       expect(db2.files, ['test'], reason: 'Single file must be in db2 as well');
 
       final read = Uint8List(128);
