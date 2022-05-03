@@ -31,6 +31,7 @@ Future<void> main() async {
 
       db1.createFile('test');
       db1.write('test', data, 0);
+      db1.truncateFile('test', 128);
       await db1.flush();
       expect(db1.files, ['test'], reason: 'File must exist');
       await db1.close();
@@ -38,9 +39,10 @@ Future<void> main() async {
       final db2 = await IndexedDbFileSystem.init(dbName: dbName);
       expect(db2.files, ['test'], reason: 'Single file must be in db2 as well');
 
-      final read = Uint8List(255);
-      expect(db2.read('test', read, 0), 255, reason: 'Should read 255 bytes');
-      expect(read, data, reason: 'The data written and read do not match');
+      final read = Uint8List(128);
+      expect(db2.read('test', read, 0), 128, reason: 'Should read 128 bytes');
+      expect(read, List.generate(128, (i) => i),
+          reason: 'The data written and read do not match');
 
       await db2.clear();
       expect(db2.files, isEmpty, reason: 'There must be no files in db2');

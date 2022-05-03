@@ -8,7 +8,6 @@ import 'dart:typed_data';
 
 import 'package:js/js.dart';
 import 'package:meta/meta.dart';
-import 'package:path/path.dart' as p show url;
 
 import '../../wasm.dart';
 import 'js_interop.dart';
@@ -190,11 +189,18 @@ class _InMemoryFileSystem implements FileSystem {
   }
 }
 
+/// An (asynchronous) file system implementation backed by IndexedDB.
+///
+/// For a synchronous variant of this that implements [FileSystem], use
+/// [IndexedDbFileSystem]. It uses an in-memory cache to synchronously wrap this
+/// file system (at the loss of durability).
 @internal
 class AsynchronousIndexedDbFileSystem {
+  // Format of the files store: `{name: <path>, length: <size>}`. See also
+  // [_FileEntry], which is the actual object that we're storing in the
+  // database.
   static const _filesStore = 'files';
   static const _fileName = 'name';
-  static const _fileLength = 'length';
   static const _fileNameIndex = 'fileName';
 
   // Format of blocks store: Key is a (file id, offset) pair, value is a blob.
@@ -202,6 +208,8 @@ class AsynchronousIndexedDbFileSystem {
   // this length, we set the "length" attribute on the file instead of storing
   // shorter blobs. This simplifies the implementation.
   static const _blocksStore = 'blocks';
+
+  static const _stores = [_filesStore, _blocksStore];
 
   static const _blockSize = 4096;
   static const _maxFileSize = 9007199254740992;
@@ -215,6 +223,9 @@ class AsynchronousIndexedDbFileSystem {
 
   KeyRange _rangeOverFile(int fileId,
       {int startOffset = 0, int endOffsetInclusive = _maxFileSize}) {
+    // The key of blocks is an array, [fileId, offset]. So if we want to iterate
+    // through a fixed file, we use `[fileId, 0]` as a lower and `[fileId, max]`
+    // as a higher bound.
     return KeyRange.bound([fileId, startOffset], [fileId, endOffsetInclusive]);
   }
 
@@ -248,14 +259,14 @@ class AsynchronousIndexedDbFileSystem {
   }
 
   Future<void> clear() {
-    const stores = [_filesStore, _blocksStore];
-    final transaction = _database!.transactionList(stores, 'readwrite');
+    final transaction = _database!.transactionList(_stores, 'readwrite');
 
     return Future.wait<void>([
-      for (final name in stores) transaction.objectStore(name).clear(),
+      for (final name in _stores) transaction.objectStore(name).clear(),
     ]);
   }
 
+  /// Loads all file paths and their ids.
   Future<Map<String, int>> listFiles() async {
     final transaction = _database!.transactionStore(_filesStore, 'readonly');
     final result = <String, int>{};
@@ -294,6 +305,8 @@ class AsynchronousIndexedDbFileSystem {
     final files = transaction.objectStore(_filesStore);
     return files
         .getValue(fileId)
+        // Not converting to Dart because _FileEntry is an anonymous JS class,
+        // we don't want the object to be turned into a map.
         .completed<_FileEntry?>(convertResultToDart: false)
         .then((value) {
       if (value == null) {
@@ -306,8 +319,7 @@ class AsynchronousIndexedDbFileSystem {
   }
 
   Future<Uint8List> readFully(int fileId) async {
-    final transaction = _database!
-        .transactionList(const [_filesStore, _blocksStore], 'readonly');
+    final transaction = _database!.transactionList(_stores, 'readonly');
     final blocks = transaction.objectStore(_blocksStore);
 
     final file = await _readFile(transaction, fileId);
@@ -336,8 +348,7 @@ class AsynchronousIndexedDbFileSystem {
   }
 
   Future<int> read(int fileId, int offset, Uint8List target) async {
-    final transaction = _database!
-        .transactionList(const [_filesStore, _blocksStore], 'readonly');
+    final transaction = _database!.transactionList(_stores, 'readonly');
     final blocks = transaction.objectStore(_blocksStore);
 
     final file = await _readFile(transaction, fileId);
@@ -358,10 +369,14 @@ class AsynchronousIndexedDbFileSystem {
       final dataLength = min(blob.size, file.length - rowOffset);
 
       if (rowOffset < offset) {
+        // This block starts before the section that we're interested in, so cut
+        // off the initial bytes.
         final startInRow = offset - rowOffset;
         final lengthToCopy = min(dataLength, target.length);
         bytesRead += lengthToCopy;
 
+        // Do the reading async because we loose the transaction on the first
+        // suspension.
         readOperations.add(Future.sync(() async {
           final data = await blob.arrayBuffer();
 
@@ -403,13 +418,13 @@ class AsynchronousIndexedDbFileSystem {
   }
 
   Future<void> write(int fileId, int offset, Uint8List data) async {
-    final transaction = _database!
-        .transactionList(const [_filesStore, _blocksStore], 'readwrite');
+    final transaction = _database!.transactionList(_stores, 'readwrite');
     final blocks = transaction.objectStore(_blocksStore);
     final file = await _readFile(transaction, fileId);
 
     Future<int> writeChunk(
         int blockStart, int offsetInBlock, int dataOffset) async {
+      // Check if we're overriding (parts of) an existing block
       final cursor = await blocks
           .openCursorNative(KeyRange.only([fileId, blockStart]))
           .completed<idb.CursorWithValue?>();
@@ -467,26 +482,8 @@ class AsynchronousIndexedDbFileSystem {
         .update(_FileEntry(name: file.name, length: updatedFileLength));
   }
 
-  Future<void> writeFullBlocks(int fileId, int offset, Uint8List data) async {
-    assert(data.length % _blockSize == 0,
-        'Length should be a multiple of a full block');
-
-    final transaction = _database!.transactionStore(_blocksStore, 'readwrite');
-    final blocks = transaction.objectStore(_blocksStore);
-
-    final blocksToWrite = data.length ~/ _blockSize;
-    for (var i = 0; i < blocksToWrite; i++) {
-      final block = data.buffer
-          .asUint8List(data.offsetInBytes + i * _blockSize, _blockSize);
-
-      await blocks
-          .put(Blob(<Uint8List>[block]), [fileId, offset + i * _blockSize]);
-    }
-  }
-
   Future<void> truncate(int fileId, int length) async {
-    final transaction = _database!
-        .transactionList(const [_filesStore, _blocksStore], 'readwrite');
+    final transaction = _database!.transactionList(_stores, 'readwrite');
     final files = transaction.objectStore(_filesStore);
     final blocks = transaction.objectStore(_blocksStore);
 
@@ -504,10 +501,7 @@ class AsynchronousIndexedDbFileSystem {
     // Update the file length as recorded in the database
     final fileCursor = await files.openCursor(key: fileId).first;
 
-    await fileCursor.update(<String, Object?>{
-      ...(fileCursor.value as Map).cast(),
-      _fileLength: length,
-    });
+    await fileCursor.update(_FileEntry(name: file.name, length: length));
   }
 
   Future<void> deleteFile(int id) async {
@@ -522,6 +516,10 @@ class AsynchronousIndexedDbFileSystem {
   }
 }
 
+/// An object that we store in IndexedDB to keep track of files.
+///
+/// Using a `@JS` is easier than dealing with JavaScript objects exported as
+/// maps.
 @JS()
 @anonymous
 class _FileEntry {
@@ -581,6 +579,7 @@ class IndexedDbFileSystem implements FileSystem {
     return (await self.indexedDB!.databases())?.map((e) => e.name).toList();
   }
 
+  /// Deletes an IndexedDB database.
   static Future<void> deleteDatabase(
       [String dbName = 'sqlite3_databases']) async {
     // A bug in Dart SDK can cause deadlock here. Timeout added as workaround
@@ -591,6 +590,9 @@ class IndexedDbFileSystem implements FileSystem {
             0, "Failed to delete database. Database is still open"));
   }
 
+  /// Whether this file system is closing or closed.
+  ///
+  /// To await a full close operation, call and await [close].
   bool get isClosed => _isClosing || _asynchronous._isClosed;
 
   Future<void> _submitWork(FutureOr<void> Function() work) {
@@ -623,6 +625,10 @@ class IndexedDbFileSystem implements FileSystem {
       final result = _submitWork(_asynchronous.close);
       _isClosing = true;
       return result;
+    } else if (_pendingWork.isNotEmpty) {
+      // Already closing, await all pending operations then.
+      final op = _pendingWork.last;
+      return op.completer.future;
     }
   }
 

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:html';
-import 'dart:html_common';
 import 'dart:indexed_db';
 import 'dart:typed_data';
 
@@ -41,7 +40,8 @@ extension ObjectStoreExt on ObjectStore {
 
   /// Creates a request to add a value to this object store.
   ///
-  /// This must only be called with native JavaScript objects.
+  /// This must only be called with native JavaScript objects, as complex Dart
+  /// objects aren't serialized here.
   Request putRequestUnsafe(dynamic value, [dynamic key]) {
     if (key != null) {
       return _put_1(value, key);
@@ -61,7 +61,7 @@ extension IndexExt on Index {
   external Request openKeyCursorNative();
 }
 
-extension RequestExtt on Request {
+extension RequestExt on Request {
   @JS('result')
   external dynamic get _rawResult;
 
@@ -79,6 +79,14 @@ extension RequestExtt on Request {
     return _CursorReader(this);
   }
 
+  /// Await this request.
+  ///
+  /// Unlike the request-to-future API from `dart:indexeddb`, this method
+  /// reports a proper error if one occurs. Further, there's the option of not
+  /// deserializing IndexedDB objects. When [convertResultToDart] (which
+  /// defaults to true) is set to false, the direct JS object stored in an
+  /// object store will be loaded. It will not be deserialized into a Dart [Map]
+  /// in that case.
   Future<T> completed<T>({bool convertResultToDart = true}) {
     final completer = Completer<T>.sync();
 
