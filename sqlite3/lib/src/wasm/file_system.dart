@@ -1,22 +1,26 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:html';
 import 'dart:indexed_db';
+import 'dart:indexed_db' as idb;
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:collection/collection.dart';
-import 'package:mutex/mutex.dart';
-import 'package:path/path.dart' as p show url, posix;
+import 'package:js/js.dart';
+import 'package:meta/meta.dart';
+import 'package:path/path.dart' as p show url;
 
 import '../../wasm.dart';
 import 'js_interop.dart';
+
+const _debugFileSystem =
+    bool.fromEnvironment('sqlite3.wasm.fs.debug', defaultValue: false);
 
 /// A virtual file system implementation for web-based `sqlite3` databases.
 abstract class FileSystem {
   /// Creates an in-memory file system that deletes data when the tab is
   /// closed.
-  factory FileSystem.inMemory({int blockSize = 32, bool debugLog = false}) =>
-      _InMemoryFileSystem(null, blockSize, debugLog);
+  factory FileSystem.inMemory() => _InMemoryFileSystem();
 
   /// Creates an empty file at [path].
   ///
@@ -41,8 +45,8 @@ abstract class FileSystem {
   /// Lists all files stored in this file system.
   List<String> get files;
 
-  /// Deletes all file
-  Future<void> clear();
+  /// Deletes all files stored in this file system.
+  void clear();
 
   /// Returns the size of a file at [path] if it exists.
   ///
@@ -81,12 +85,7 @@ class FileSystemException implements Exception {
 }
 
 class _InMemoryFileSystem implements FileSystem {
-  final Map<String, List<Uint8List>> _files = {};
-  final IndexedDbFileSystem? _persistent;
-  final int _blockSize;
-  final bool _debugLog;
-
-  _InMemoryFileSystem(this._persistent, this._blockSize, this._debugLog);
+  final Map<String, Uint8List?> _files = {};
 
   @override
   bool exists(String path) => _files.containsKey(path);
@@ -95,7 +94,7 @@ class _InMemoryFileSystem implements FileSystem {
   List<String> get files => _files.keys.toList(growable: false);
 
   @override
-  Future<void> clear() async => _files.clear();
+  void clear() => _files.clear();
 
   @override
   void createFile(
@@ -111,10 +110,9 @@ class _InMemoryFileSystem implements FileSystem {
       throw FileSystemException(SqlError.SQLITE_IOERR, 'File not exists');
     }
 
-    _files.putIfAbsent(path, () => []);
+    _files.putIfAbsent(path, () => null);
     if (!_exists) {
       _log('Add file: $path');
-      unawaitedSafe(_persistent?._persistFile(path, newFile: true));
     }
   }
 
@@ -136,207 +134,401 @@ class _InMemoryFileSystem implements FileSystem {
     }
     _log('Delete file: $path');
     _files.remove(path);
-    unawaitedSafe(_persistent?._deleteFileFromDb(path));
   }
 
   @override
   int read(String path, Uint8List target, int offset) {
     final file = _files[path];
-    if (file == null) {
-      throw FileSystemException(
-          SqlExtendedError.SQLITE_IOERR_READ, 'File not exists');
-    }
+    if (file == null || file.length <= offset) return 0;
 
-    final fileLength = _calculateSize(file);
-    final available = min(target.length, fileLength - offset);
-    if (available == 0 || fileLength <= offset) {
-      return 0;
-    }
-
-    int? firstBlock;
-    int? lastBlock;
-    for (var i = 0; i < available; i++) {
-      final position = offset + i;
-      final blockId = position ~/ _blockSize;
-      final byteId = position - blockId * _blockSize;
-      target[i] = file[blockId][byteId];
-      firstBlock ??= blockId;
-      lastBlock = blockId;
-    }
-
-    _log('Read [${available}b from ${lastBlock! - firstBlock! + 1} blocks '
-        '@ #$firstBlock-$lastBlock] $path');
+    final available = min(target.length, file.length - offset);
+    target.setRange(0, available, file, offset);
     return available;
-  }
-
-  int _calculateSize(List<Uint8List> file) {
-    return file.fold(0, (v, e) => v + e.length);
   }
 
   @override
   int sizeOfFile(String path) {
-    final file = _files[path];
-    if (file == null) {
-      throw FileSystemException(SqlError.SQLITE_IOERR, 'File not exists');
-    } else {
-      return _calculateSize(file);
-    }
+    if (!_files.containsKey(path)) throw FileSystemException();
+
+    return _files[path]?.length ?? 0;
   }
 
   @override
-  void truncateFile(String path, int newSize) {
+  void truncateFile(String path, int length) {
     final file = _files[path];
-    if (file == null) {
-      throw FileSystemException(SqlError.SQLITE_IOERR, 'File not exists');
+
+    final result = Uint8List(length);
+    if (file != null) {
+      result.setRange(0, min(length, file.length), file);
     }
 
-    if (newSize < 0) {
-      throw FileSystemException(
-          SqlError.SQLITE_IOERR, 'newLength must be >= 0');
-    }
-
-    final oldBlockCount = file.length;
-    final fileSize = _calculateSize(file);
-    if (fileSize == newSize) {
-      // Skip if size not changes
-      return;
-    }
-
-    if (fileSize < newSize) {
-      // Expand by simply write zeros
-      final diff = newSize - fileSize;
-      write(path, Uint8List(diff), fileSize);
-      return;
-    }
-
-    int? modifiedIndex;
-    if (newSize == 0) {
-      file.clear();
-    } else if (fileSize > newSize) {
-      // Shrink
-      var diff = fileSize - newSize;
-      while (diff > 0) {
-        final block = file.lastOrNull!;
-        final remove = min(diff, block.length);
-
-        if (remove == block.length) {
-          // Remove whole blocks
-          file.removeLast();
-          diff -= remove;
-          continue;
-        }
-
-        // Shrink block
-        final newBlock = Uint8List(block.length - remove);
-        newBlock.setRange(0, newBlock.length, block);
-        modifiedIndex = file.length - 1;
-        file[modifiedIndex] = newBlock;
-        break;
-      }
-    }
-
-    // Collect modified blocks
-    final blocks = modifiedIndex != null
-        ? [Uint8List.fromList(file[modifiedIndex])]
-        : <Uint8List>[];
-
-    final diff = file.length - oldBlockCount;
-    final modifiedSize = newSize - fileSize;
-    final modified = blocks.firstOrNull?.length ?? 0;
-
-    _log('Truncate '
-        '[${modifiedSize >= 0 ? '+${modifiedSize}b' : '${modifiedSize}b'}'
-        ', ${diff >= 0 ? '+$diff block' : '$diff block'}'
-        '${modified > 0 ? ', modified: ${modified}b in 1 block' : ''}] '
-        '$path');
-
-    unawaitedSafe(_persistent?._persistFile(path,
-        modifiedBlocks: blocks,
-        newBlockCount: file.length,
-        offset: modifiedIndex));
+    _files[path] = result;
   }
 
   @override
   void write(String path, Uint8List bytes, int offset) {
-    final file = _files[path];
-    if (file == null) {
-      throw FileSystemException(
-          SqlExtendedError.SQLITE_IOERR_WRITE, 'File not exists');
-    }
-    if (bytes.isEmpty) {
-      return;
-    }
+    final file = _files[path] ?? Uint8List(0);
+    final increasedSize = offset + bytes.length - file.length;
 
-    final blockCount = file.length;
-    final fileSize = _calculateSize(file);
-    final end = bytes.length + offset;
+    if (increasedSize <= 0) {
+      // Can write directy
+      file.setRange(offset, offset + bytes.length, bytes);
+    } else {
+      // We need to grow the file first
+      final newFile = Uint8List(file.length + increasedSize)
+        ..setAll(0, file)
+        ..setAll(offset, bytes);
 
-    // Expand file
-    if (fileSize < end) {
-      var remain = end - fileSize;
-      while (remain > 0) {
-        final block = file.lastOrNull;
-        final add = min(remain, _blockSize);
-        final newBlock = Uint8List(add);
-        if (block != null && block.length < _blockSize) {
-          // Expand a partial block
-          newBlock.setRange(0, block.length, block);
-          file[file.length - 1] = newBlock;
-          remain -= add - block.length;
-        } else {
-          // Expand whole blocks
-          file.add(newBlock);
-          remain -= add;
+      _files[path] = newFile;
+    }
+  }
+
+  void _log(String message) {
+    if (_debugFileSystem) {
+      print('VFS: $message');
+    }
+  }
+}
+
+@internal
+class AsynchronousIndexedDbFileSystem {
+  static const _filesStore = 'files';
+  static const _fileName = 'name';
+  static const _fileLength = 'length';
+  static const _fileNameIndex = 'fileName';
+
+  // Format of blocks store: Key is a (file id, offset) pair, value is a blob.
+  // Each blob is 4096 bytes large. If we have a file that isn't a multiple of
+  // this length, we set the "length" attribute on the file instead of storing
+  // shorter blobs. This simplifies the implementation.
+  static const _blocksStore = 'blocks';
+
+  static const _blockSize = 4096;
+  static const _maxFileSize = 9007199254740992;
+
+  Database? _database;
+  final String _dbName;
+
+  AsynchronousIndexedDbFileSystem(this._dbName);
+
+  bool get _isClosed => _database == null;
+
+  KeyRange _rangeOverFile(int fileId,
+      {int startOffset = 0, int endOffsetInclusive = _maxFileSize}) {
+    return KeyRange.bound([fileId, startOffset], [fileId, endOffsetInclusive]);
+  }
+
+  Future<void> open() async {
+    // We need to wrap the open call in a completer. Otherwise the `open()`
+    // future never completes if we're blocked.
+    final completer = Completer<Database>.sync();
+    final openFuture = self.indexedDB!.open(
+      _dbName,
+      version: 1,
+      onUpgradeNeeded: (change) {
+        final database = change.target.result as Database;
+
+        if (change.oldVersion == null || change.oldVersion == 0) {
+          final files =
+              database.createObjectStore(_filesStore, autoIncrement: true);
+          files.createIndex(_fileNameIndex, _fileName, unique: true);
+
+          database.createObjectStore(_blocksStore);
+        }
+      },
+      onBlocked: (e) => completer.completeError('Opening database blocked: $e'),
+    );
+    completer.complete(openFuture);
+
+    _database = await completer.future;
+  }
+
+  void close() {
+    _database?.close();
+  }
+
+  Future<void> clear() {
+    const stores = [_filesStore, _blocksStore];
+    final transaction = _database!.transactionList(stores, 'readwrite');
+
+    return Future.wait<void>([
+      for (final name in stores) transaction.objectStore(name).clear(),
+    ]);
+  }
+
+  Future<Map<String, int>> listFiles() async {
+    final transaction = _database!.transactionStore(_filesStore, 'readonly');
+    final result = <String, int>{};
+
+    final iterator = transaction
+        .objectStore(_filesStore)
+        .index(_fileNameIndex)
+        .openKeyCursorNative()
+        .cursorIterator();
+
+    while (await iterator.moveNext()) {
+      final row = iterator.current;
+
+      result[row.key! as String] = row.primaryKey! as int;
+    }
+    return result;
+  }
+
+  Future<int?> fileIdForPath(String path) async {
+    final transaction = _database!.transactionStore(_filesStore, 'readonly');
+    final index = transaction.objectStore(_filesStore).index(_fileNameIndex);
+
+    return await index.getKey(path) as int?;
+  }
+
+  Future<int> createFile(String path) {
+    final transaction = _database!.transactionStore(_filesStore, 'readwrite');
+    final store = transaction.objectStore(_filesStore);
+
+    return store
+        .putRequestUnsafe(_FileEntry(name: path, length: 0))
+        .completed<int>();
+  }
+
+  Future<_FileEntry> _readFile(Transaction transaction, int fileId) {
+    final files = transaction.objectStore(_filesStore);
+    return files
+        .getValue(fileId)
+        .completed<_FileEntry?>(convertResultToDart: false)
+        .then((value) {
+      if (value == null) {
+        throw ArgumentError.value(
+            fileId, 'fileId', 'File not found in database');
+      } else {
+        return value;
+      }
+    });
+  }
+
+  Future<Uint8List> readFully(int fileId) async {
+    final transaction = _database!
+        .transactionList(const [_filesStore, _blocksStore], 'readonly');
+    final blocks = transaction.objectStore(_blocksStore);
+
+    final file = await _readFile(transaction, fileId);
+    final result = Uint8List(file.length);
+
+    final readOperations = <Future<void>>[];
+
+    final reader = blocks
+        .openCursorNative(_rangeOverFile(fileId))
+        .cursorIterator<CursorWithValue>();
+    while (await reader.moveNext()) {
+      final row = reader.current;
+      final rowOffset = (row.key! as List)[1] as int;
+      final length = min(_blockSize, file.length - rowOffset);
+
+      // We can't have an async suspension in here because that would close the
+      // transaction. Launch the reader now and wait for all reads later.
+      readOperations.add(Future.sync(() async {
+        final data = await (row.value as Blob).arrayBuffer();
+        result.setAll(rowOffset, data.buffer.asUint8List(0, length));
+      }));
+    }
+    await Future.wait(readOperations);
+
+    return result;
+  }
+
+  Future<int> read(int fileId, int offset, Uint8List target) async {
+    final transaction = _database!
+        .transactionList(const [_filesStore, _blocksStore], 'readonly');
+    final blocks = transaction.objectStore(_blocksStore);
+
+    final file = await _readFile(transaction, fileId);
+
+    final previousBlockStart = (offset ~/ _blockSize) * _blockSize;
+    final range = _rangeOverFile(fileId, startOffset: previousBlockStart);
+    var bytesRead = 0;
+
+    final readOperations = <Future<void>>[];
+
+    final iterator =
+        blocks.openCursorNative(range).cursorIterator<CursorWithValue>();
+    while (await iterator.moveNext()) {
+      final row = iterator.current;
+
+      final rowOffset = (row.key! as List)[1] as int;
+      final blob = row.value as Blob;
+      final dataLength = min(blob.size, file.length - rowOffset);
+
+      if (rowOffset < offset) {
+        final startInRow = offset - rowOffset;
+        final lengthToCopy = min(dataLength, target.length);
+        bytesRead += lengthToCopy;
+
+        readOperations.add(Future.sync(() async {
+          final data = await blob.arrayBuffer();
+
+          target.setRange(
+            0,
+            lengthToCopy,
+            data.buffer
+                .asUint8List(data.offsetInBytes + startInRow, lengthToCopy),
+          );
+        }));
+
+        if (lengthToCopy >= target.length) {
+          break;
+        }
+      } else {
+        final startInTarget = rowOffset - offset;
+        final lengthToCopy = min(dataLength, target.length - startInTarget);
+        if (lengthToCopy < 0) {
+          // This row starts past the end of the section we're interested in.
+          break;
+        }
+
+        bytesRead += lengthToCopy;
+        readOperations.add(Future.sync(() async {
+          final data = await blob.arrayBuffer();
+
+          target.setAll(startInTarget,
+              data.buffer.asUint8List(data.offsetInBytes, lengthToCopy));
+        }));
+
+        if (lengthToCopy >= target.length - startInTarget) {
+          break;
         }
       }
     }
 
-    // Write blocks
-    int? firstBlock;
-    int? lastBlock;
-    for (var i = 0; i < bytes.length; i++) {
-      final position = offset + i;
-      final blockId = position ~/ _blockSize;
-      final byteId = position - blockId * _blockSize;
-      file[blockId][byteId] = bytes[i];
-      firstBlock ??= blockId;
-      lastBlock = blockId;
-    }
-
-    // Get modified blocks
-    final blocks = file
-        .getRange(firstBlock!, lastBlock! + 1)
-        .map((e) => Uint8List.fromList(e))
-        .toList();
-
-    final diff = file.length - blockCount;
-    _log('Write [${bytes.length}b in ${blocks.length} block'
-        '${diff > 0 ? ' (+$diff block)' : ''} @ '
-        '#$firstBlock-${firstBlock + blocks.length - 1}] '
-        '$path');
-
-    unawaitedSafe(_persistent?._persistFile(path,
-        modifiedBlocks: blocks,
-        newBlockCount: file.length,
-        offset: firstBlock));
+    await Future.wait(readOperations);
+    return bytesRead;
   }
 
-  void unawaitedSafe(Future<void>? body) {
-    unawaited(Future.sync(() async {
-      try {
-        await body;
-      } on Exception catch (e, s) {
-        print(e);
-        print(s);
+  Future<void> write(int fileId, int offset, Uint8List data) async {
+    final transaction = _database!
+        .transactionList(const [_filesStore, _blocksStore], 'readwrite');
+    final blocks = transaction.objectStore(_blocksStore);
+    final file = await _readFile(transaction, fileId);
+
+    Future<int> writeChunk(
+        int blockStart, int offsetInBlock, int dataOffset) async {
+      final cursor = await blocks
+          .openCursorNative(KeyRange.only([fileId, blockStart]))
+          .completed<idb.CursorWithValue?>();
+
+      final length = min(data.length - dataOffset, _blockSize - offsetInBlock);
+
+      if (cursor == null) {
+        final chunk = Uint8List(_blockSize);
+        chunk.setAll(offsetInBlock,
+            data.buffer.asUint8List(data.offsetInBytes + dataOffset, length));
+
+        // There isn't, let's write a new block
+        await blocks.put(Blob(<Uint8List>[chunk]), [fileId, blockStart]);
+      } else {
+        final oldBlob = cursor.value as Blob;
+        assert(
+            oldBlob.size == _blockSize,
+            'Invalid blob in database with length ${oldBlob.size}, '
+            'key ${cursor.key}');
+
+        final newBlob = Blob(<Object?>[
+          // Previous parts of the block left unchanged
+          if (offsetInBlock != 0) oldBlob.slice(0, offsetInBlock),
+          // Followed by the updated data
+          data.buffer.asUint8List(data.offsetInBytes + dataOffset, length),
+          // Followed by next parts of the block left unchanged
+          if (offsetInBlock + length < _blockSize)
+            oldBlob.slice(offsetInBlock + length),
+        ]);
+
+        await cursor.update(newBlob);
       }
-    }));
+
+      return length;
+    }
+
+    var offsetInData = 0;
+    while (offsetInData < data.length) {
+      final offsetInFile = offset + offsetInData;
+      final blockStart = offsetInFile ~/ _blockSize * _blockSize;
+
+      if (offsetInFile % _blockSize != 0) {
+        offsetInData += await writeChunk(
+            blockStart, (offset + offsetInData) % _blockSize, offsetInData);
+      } else {
+        offsetInData += await writeChunk(blockStart, 0, offsetInData);
+      }
+    }
+
+    final files = transaction.objectStore(_filesStore);
+    final updatedFileLength = max(file.length, offset + data.length);
+    final fileCursor = await files.openCursor(key: fileId).first;
+    // Update the file length as recorded in the database
+    await fileCursor
+        .update(_FileEntry(name: file.name, length: updatedFileLength));
   }
 
-  void _log(String message) {
-    if (_debugLog) {
-      print('VFS[${_persistent?.dbName ?? 'in-memory'}] $message');
+  Future<void> writeFullBlocks(int fileId, int offset, Uint8List data) async {
+    assert(data.length % _blockSize == 0,
+        'Length should be a multiple of a full block');
+
+    final transaction = _database!.transactionStore(_blocksStore, 'readwrite');
+    final blocks = transaction.objectStore(_blocksStore);
+
+    final blocksToWrite = data.length ~/ _blockSize;
+    for (var i = 0; i < blocksToWrite; i++) {
+      final block = data.buffer
+          .asUint8List(data.offsetInBytes + i * _blockSize, _blockSize);
+
+      await blocks
+          .put(Blob(<Uint8List>[block]), [fileId, offset + i * _blockSize]);
     }
   }
+
+  Future<void> truncate(int fileId, int length) async {
+    final transaction = _database!
+        .transactionList(const [_filesStore, _blocksStore], 'readwrite');
+    final files = transaction.objectStore(_filesStore);
+    final blocks = transaction.objectStore(_blocksStore);
+
+    // First, let's find the size of the file
+    final file = await _readFile(transaction, fileId);
+    final fileLength = file.length;
+
+    if (fileLength > length) {
+      final lastBlock = (length ~/ _blockSize) * _blockSize;
+
+      // Delete all higher blocks
+      await blocks.delete(_rangeOverFile(fileId, startOffset: lastBlock + 1));
+    } else if (fileLength < length) {}
+
+    // Update the file length as recorded in the database
+    final fileCursor = await files.openCursor(key: fileId).first;
+
+    await fileCursor.update(<String, Object?>{
+      ...(fileCursor.value as Map).cast(),
+      _fileLength: length,
+    });
+  }
+
+  Future<void> deleteFile(int id) async {
+    final transaction = _database!
+        .transactionList(const [_filesStore, _blocksStore], 'readwrite');
+
+    final blocksRange = KeyRange.bound([id, 0], [id, _maxFileSize]);
+    await Future.wait<void>([
+      transaction.objectStore(_blocksStore).delete(blocksRange),
+      transaction.objectStore(_filesStore).delete(id),
+    ]);
+  }
+}
+
+@JS()
+@anonymous
+class _FileEntry {
+  external String get name;
+  external int get length;
+
+  external factory _FileEntry({required String name, required int length});
 }
 
 /// A file system storing files divided into blocks in an IndexedDB database.
@@ -349,17 +541,21 @@ class _InMemoryFileSystem implements FileSystem {
 /// In the future, we may want to store individual blocks instead.
 
 class IndexedDbFileSystem implements FileSystem {
-  Database? _database;
-  final String dbName;
+  final AsynchronousIndexedDbFileSystem _asynchronous;
 
-  late final _InMemoryFileSystem _memory;
-  final ReadWriteMutex _mutex = ReadWriteMutex();
+  var _isClosing = false;
+  var _isWorking = false;
 
-  static final _instances = <String>{};
+  // A cache so that synchronous changes are visible right away
+  final _InMemoryFileSystem _memory;
+  final LinkedList<_IndexedDbWorkItem> _pendingWork = LinkedList();
 
-  IndexedDbFileSystem._(this.dbName, int blockSize, bool debugLog) {
-    _memory = _InMemoryFileSystem(this, blockSize, debugLog);
-  }
+  final Set<String> _inMemoryOnlyFiles = {};
+  final Map<String, int> _knownFileIds = {};
+
+  IndexedDbFileSystem._(String dbName)
+      : _asynchronous = AsynchronousIndexedDbFileSystem(dbName),
+        _memory = _InMemoryFileSystem();
 
   /// Loads an IndexedDB file system that will consider files in
   /// [dbName] database.
@@ -369,52 +565,12 @@ class IndexedDbFileSystem implements FileSystem {
   /// that one [IndexedDbFileSystem] will only see one of them decreases memory
   /// usage.
   ///
-  ///
   /// With [dbName] you can set IndexedDB database name
-  static Future<IndexedDbFileSystem> init({
-    required String dbName,
-    int blockSize = 32,
-    bool debugLog = false,
-  }) async {
-    if (_instances.contains(dbName)) {
-      throw FileSystemException(0, "A '$dbName' database already opened");
-    }
-    _instances.add(dbName);
-    final fs = IndexedDbFileSystem._(dbName, blockSize, debugLog);
-    await fs._sync();
+  static Future<IndexedDbFileSystem> init({required String dbName}) async {
+    final fs = IndexedDbFileSystem._(dbName);
+    await fs._asynchronous.open();
+    await fs._readFiles();
     return fs;
-  }
-
-  Future<void> _openDatabase(
-      {String? addFile, List<String>? deleteFiles}) async {
-    //
-    void onUpgrade(VersionChangeEvent event) {
-      final database = event.target.result as Database;
-      if (addFile != null) {
-        database.createObjectStore(addFile);
-      }
-      if (deleteFiles != null) {
-        for (final file in deleteFiles) {
-          database.deleteObjectStore(file);
-        }
-      }
-    }
-
-    int? version;
-    void Function(VersionChangeEvent)? onUpgradeNeeded;
-    if (addFile != null || deleteFiles != null) {
-      version = (_database!.version ?? 1) + 1;
-      onUpgradeNeeded = onUpgrade;
-    }
-
-    _database?.close();
-    _database = await self.indexedDB!
-        .open(dbName, version: version, onUpgradeNeeded: onUpgradeNeeded)
-        // A bug in Dart SDK can cause deadlock here. Timeout added as workaround
-        // https://github.com/dart-lang/sdk/issues/48854
-        .timeout(const Duration(milliseconds: 30000),
-            onTimeout: () => throw FileSystemException(
-                0, "Failed to open database. Database blocked"));
   }
 
   /// Returns all IndexedDB database names accessible from the current context.
@@ -435,169 +591,74 @@ class IndexedDbFileSystem implements FileSystem {
             0, "Failed to delete database. Database is still open"));
   }
 
-  bool get isClosed => _database == null;
+  bool get isClosed => _isClosing || _asynchronous._isClosed;
+
+  Future<void> _submitWork(FutureOr<void> Function() work) {
+    _checkClosed();
+    final item = _IndexedDbWorkItem(work);
+    _pendingWork.add(item);
+    _startWorkingIfNeeded();
+
+    return item.completer.future;
+  }
+
+  void _startWorkingIfNeeded() {
+    if (!_isWorking && _pendingWork.isNotEmpty) {
+      _isWorking = true;
+
+      final item = _pendingWork.first;
+      _pendingWork.remove(item);
+
+      item.execute().whenComplete(() {
+        _isWorking = false;
+
+        // In case there's another item in the waiting list
+        _startWorkingIfNeeded();
+      });
+    }
+  }
 
   Future<void> close() async {
-    await protectWrite(() async {
-      if (_database != null) {
-        _memory._log('Close database');
-        await _memory.clear();
-        _database!.close();
-        _database = null;
-        _instances.remove(dbName);
-      }
-    });
+    if (!_isClosing) {
+      final result = _submitWork(_asynchronous.close);
+      _isClosing = true;
+      return result;
+    }
   }
 
   void _checkClosed() {
-    if (_database == null) {
+    if (isClosed) {
       throw FileSystemException(SqlError.SQLITE_IOERR, 'FileSystem closed');
     }
   }
 
-  Future<void> protectWrite(Future<void> Function() criticalSection) async {
-    await _mutex.acquireWrite();
-    try {
-      return await criticalSection();
-    } on Exception catch (e, s) {
-      print(e);
-      print(s);
-      rethrow;
-    } finally {
-      _mutex.release();
+  Future<int> _fileId(String path) async {
+    if (_knownFileIds.containsKey(path)) {
+      return _knownFileIds[path]!;
+    } else {
+      return _knownFileIds[path] = (await _asynchronous.fileIdForPath(path))!;
     }
   }
 
-  Future<T> completed<T>(Request req) {
-    final completer = Completer<T>();
+  Future<void> _readFiles() async {
+    final rawFiles = await _asynchronous.listFiles();
+    _knownFileIds.addAll(rawFiles);
 
-    req.onSuccess.first.then((_) {
-      completer.complete(req.result as T);
-    });
+    for (final entry in rawFiles.entries) {
+      final name = entry.key;
+      final fileId = entry.value;
 
-    req.onError.first.then((e) {
-      completer.completeError(e);
-    });
-
-    return completer.future;
-  }
-
-  Future<void> _sync() async {
-    Future<List<Uint8List>> readFile(String fileName) async {
-      final transaction = _database!.transactionStore(fileName, 'readonly');
-      final store = transaction.objectStore(fileName);
-
-      final keys = await completed<List<dynamic>>(store.getAllKeys(null));
-      if (keys.isEmpty) {
-        return [];
-      }
-      if (keys.cast<int>().max != keys.length - 1) {
-        throw Exception('File integrity exception');
-      }
-
-      final blocks = await completed<List<dynamic>>(store.getAll(null));
-      if (blocks.length != keys.length) {
-        throw Exception('File integrity exception');
-      }
-
-      return Future.wait(blocks.cast<Blob>().map((b) => b.arrayBuffer()));
+      _memory._files[name] = await _asynchronous.readFully(fileId);
     }
-
-    await protectWrite(() async {
-      _memory._log('Open database (block size: ${_memory._blockSize})');
-      await _memory.clear();
-      await _openDatabase();
-
-      for (final path in _database!.objectStoreNames!) {
-        try {
-          final file = await readFile(path);
-          if (file.isNotEmpty) {
-            _memory._files[path] = file;
-            _memory._log(
-                '-- loaded: $path [${_memory.sizeOfFile(path) ~/ 1024}KB]');
-          } else {
-            _memory._log('-- skipped: $path (empty file)');
-          }
-        } on Exception catch (e) {
-          _memory._log('-- failed: $path');
-          print(e);
-        }
-      }
-    });
   }
 
-  String _normalize(String path) {
-    if (path.endsWith('/') || path.endsWith('.')) {
-      throw FileSystemException(
-          SqlExtendedError.SQLITE_CANTOPEN_ISDIR, 'Path is a directory');
-    }
-    return p.posix.normalize('/${path}');
-  }
-
+  /// Waits for all pending operations to finish, then completes the future.
+  ///
+  /// Each call to [flush] will await pending operations made _before_ the call.
+  /// Operations started after this [flush] call will not be awaited by the
+  /// returned future.
   Future<void> flush() async {
-    _checkClosed();
-    await _mutex.acquireWrite();
-    _mutex.release();
-  }
-
-  Future<void> _clearStore(String path) async {
-    await protectWrite(() async {
-      final transaction = _database!.transaction(path, 'readwrite');
-      try {
-        final store = transaction.objectStore(path);
-        await store.clear();
-        transaction.commit();
-      } on Exception catch (_) {
-        transaction.abort();
-        rethrow;
-      }
-    });
-  }
-
-  Future<void> _persistFile(
-    String path, {
-    List<Uint8List> modifiedBlocks = const [],
-    int newBlockCount = 0,
-    int? offset,
-    bool newFile = false,
-  }) async {
-    Future<void> writeFile() async {
-      final transaction = _database!.transaction(path, 'readwrite');
-      final store = transaction.objectStore(path);
-      try {
-        final currentBlockCount = await store.count();
-
-        if (currentBlockCount > newBlockCount) {
-          for (var i = currentBlockCount - 1; i >= newBlockCount; i--) {
-            await store.delete(i);
-          }
-        }
-        if (offset != null) {
-          for (var i = 0; i < modifiedBlocks.length; i++) {
-            final value = Blob(<Uint8List>[modifiedBlocks[i]]);
-            store.putRequestUnsafe(value, offset + i);
-          }
-        }
-        transaction.commit();
-      } on Exception catch (_) {
-        transaction.abort();
-        rethrow;
-      }
-    }
-
-    Future<void> addFile() async {
-      if (!_database!.objectStoreNames!.contains(path)) {
-        await _openDatabase(addFile: path);
-      }
-    }
-
-    await protectWrite(() async {
-      if (newFile) {
-        await addFile();
-      } else {
-        await writeFile();
-      }
-    });
+    return _submitWork(() {});
   }
 
   @override
@@ -607,48 +668,45 @@ class IndexedDbFileSystem implements FileSystem {
     bool errorIfAlreadyExists = false,
   }) {
     _checkClosed();
-    final _path = _normalize(path);
+    final existsBefore = _memory.exists(path);
     _memory.createFile(
-      _path,
+      path,
       errorIfAlreadyExists: errorIfAlreadyExists,
       errorIfNotExists: errorIfNotExists,
     );
+
+    if (!existsBefore) {
+      _submitWork(() => _asynchronous.createFile(path));
+    }
   }
 
   @override
   String createTemporaryFile() {
     _checkClosed();
     final path = _memory.createTemporaryFile();
+    _inMemoryOnlyFiles.add(path);
     return path;
   }
 
   @override
   void deleteFile(String path) {
-    _checkClosed();
-    final _path = _normalize(path);
-    _memory.deleteFile(_path);
-  }
+    _memory.deleteFile(path);
 
-  Future<void> _deleteFileFromDb(String path) async {
-    // Soft delete
-    await _clearStore(path);
+    if (!_inMemoryOnlyFiles.remove(path)) {
+      _submitWork(() async => _asynchronous.deleteFile(await _fileId(path)));
+    }
   }
 
   @override
   Future<void> clear() async {
-    _checkClosed();
-    await protectWrite(() async {
-      final _files = _memory.files;
-      await _memory.clear();
-      await _openDatabase(deleteFiles: _files);
-    });
+    _memory.clear();
+    await _submitWork(_asynchronous.clear);
   }
 
   @override
   bool exists(String path) {
     _checkClosed();
-    final _path = _normalize(path);
-    return _memory.exists(_path);
+    return _memory.exists(path);
   }
 
   @override
@@ -660,28 +718,51 @@ class IndexedDbFileSystem implements FileSystem {
   @override
   int read(String path, Uint8List target, int offset) {
     _checkClosed();
-    final _path = _normalize(path);
-    return _memory.read(_path, target, offset);
+    return _memory.read(path, target, offset);
   }
 
   @override
   int sizeOfFile(String path) {
     _checkClosed();
-    final _path = _normalize(path);
-    return _memory.sizeOfFile(_path);
+    return _memory.sizeOfFile(path);
   }
 
   @override
   void truncateFile(String path, int length) {
     _checkClosed();
-    final _path = _normalize(path);
-    _memory.truncateFile(_path, length);
+    _memory.truncateFile(path, length);
+
+    if (!_inMemoryOnlyFiles.contains(path)) {
+      _submitWork(
+          () async => _asynchronous.truncate(await _fileId(path), length));
+    }
   }
 
   @override
   void write(String path, Uint8List bytes, int offset) {
     _checkClosed();
-    final _path = _normalize(path);
-    _memory.write(_path, bytes, offset);
+    _memory.write(path, bytes, offset);
+
+    if (!_inMemoryOnlyFiles.contains(path)) {
+      _submitWork(
+          () async => _asynchronous.write(await _fileId(path), offset, bytes));
+    }
+  }
+}
+
+class _IndexedDbWorkItem extends LinkedListEntry<_IndexedDbWorkItem> {
+  bool workDidStart = false;
+  final Completer<void> completer = Completer();
+
+  final FutureOr<void> Function() work;
+
+  _IndexedDbWorkItem(this.work);
+
+  Future<void> execute() {
+    assert(workDidStart == false, 'Should only call execute once');
+    workDidStart = true;
+
+    completer.complete(Future.sync(work));
+    return completer.future;
   }
 }

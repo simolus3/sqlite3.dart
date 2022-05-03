@@ -19,5 +19,5 @@ import 'package:meta/meta.dart';
 export 'common.dart' hide CommmonSqlite3;
 
 export 'src/wasm/environment.dart';
-export 'src/wasm/file_system.dart';
+export 'src/wasm/file_system.dart' hide AsynchronousIndexedDbFileSystem;
 export 'src/wasm/sqlite3.dart';

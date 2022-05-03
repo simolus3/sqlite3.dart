@@ -9,19 +9,16 @@ import 'package:test/test.dart';
 
 const _fsRoot = '/test';
 const _listEquality = DeepCollectionEquality();
-const _blockSize = 32;
-const _debugLog = false;
 
 Future<void> main() async {
   group('in memory', () {
-    _testWith(() => FileSystem.inMemory(blockSize: _blockSize));
+    _testWith(() => FileSystem.inMemory());
   });
 
   group('indexed db', () {
-    _testWith(() => IndexedDbFileSystem.init(
-        dbName: _randomName(), blockSize: _blockSize, debugLog: _debugLog));
+    _testWith(() => IndexedDbFileSystem.init(dbName: _randomName()));
 
-    test('Properly persist into IndexedDB', () async {
+    test('with proper persistence', () async {
       final data = Uint8List.fromList(List.generate(255, (i) => i));
       final dbName = _randomName();
 
@@ -29,34 +26,28 @@ Future<void> main() async {
           completion(anyOf(isNull, isNot(contains(dbName)))),
           reason: 'Database $dbName should not exist');
 
-      final db1 = await IndexedDbFileSystem.init(
-          dbName: dbName, blockSize: _blockSize, debugLog: _debugLog);
+      final db1 = await IndexedDbFileSystem.init(dbName: dbName);
       expect(db1.files.length, 0, reason: 'db1 is not empty');
 
       db1.createFile('test');
       db1.write('test', data, 0);
       await db1.flush();
-      expect(db1.files.length, 1, reason: 'There must be only one file in db1');
-      expect(db1.exists('test'), true,
-          reason: 'The test file must exist in db1');
+      expect(db1.files, ['test'], reason: 'File must exist');
       await db1.close();
 
-      final db2 = await IndexedDbFileSystem.init(
-          dbName: dbName, blockSize: _blockSize, debugLog: _debugLog);
-      expect(db2.files.length, 1, reason: 'There must be only one file in db2');
-      expect(db2.exists('test'), true,
-          reason: 'The test file must exist in db2');
+      final db2 = await IndexedDbFileSystem.init(dbName: dbName);
+      expect(db2.files, ['test'], reason: 'Single file must be in db2 as well');
 
       final read = Uint8List(255);
-      db2.read('test', read, 0);
-      expect(_listEquality.equals(read, data), true,
-          reason: 'The data written and read do not match');
+      expect(db2.read('test', read, 0), 255, reason: 'Should read 255 bytes');
+      expect(read, data, reason: 'The data written and read do not match');
 
       await db2.clear();
-      expect(db2.files.length, 0, reason: 'There must be no files in db2');
+      expect(db2.files, isEmpty, reason: 'There must be no files in db2');
 
       await db2.close();
-      await expectLater(() => db2.clear(), throwsA(isA<FileSystemException>()));
+      await expectLater(
+          Future.sync(db2.clear), throwsA(isA<FileSystemException>()));
 
       await IndexedDbFileSystem.deleteDatabase(dbName);
       await expectLater(IndexedDbFileSystem.databases(),
@@ -64,62 +55,18 @@ Future<void> main() async {
           reason: 'Database $dbName should not exist in the end');
     });
   });
-
-  group('path normalization', () {
-    _testPathNormalization();
-  });
 }
 
 final _random = Random(DateTime.now().millisecond);
 String _randomName() => _random.nextInt(0x7fffffff).toString();
 
-Future<void> _disposeFileSystem(FileSystem fs) async {
+Future<void> _disposeFileSystem(FileSystem fs, [String? name]) async {
   if (fs is IndexedDbFileSystem) {
     await fs.close();
-    await IndexedDbFileSystem.deleteDatabase(fs.dbName);
+    if (name != null) await IndexedDbFileSystem.deleteDatabase(name);
   } else {
-    await fs.clear();
+    await Future.sync(fs.clear);
   }
-}
-
-Future<void> _runPathTest(String root, String path, String resolved) async {
-  final fs = await IndexedDbFileSystem.init(
-      dbName: _randomName(), blockSize: _blockSize, debugLog: _debugLog);
-  fs.createFile(path);
-  await _disposeFileSystem(fs);
-}
-
-Future<void> _testPathNormalization() async {
-  test('persistenceRoot', () async {
-    await _runPathTest('', 'test', '/test');
-    await _runPathTest('/', 'test', '/test');
-    await _runPathTest('//', 'test', '/test');
-    await _runPathTest('./', 'test', '/test');
-    await _runPathTest('././', 'test', '/test');
-    await _runPathTest('../', 'test', '/test');
-  });
-
-  test('path', () async {
-    await _runPathTest('', 'test', '/test');
-    await _runPathTest('/', '../test', '/test');
-    await _runPathTest('/', '../test/../../test', '/test');
-    await _runPathTest('/', '/test1/test2', '/test1/test2');
-    await _runPathTest('/', '/test1/../test2', '/test2');
-    await _runPathTest('/', '/test1/../../test2', '/test2');
-  });
-
-  test('is directory', () async {
-    await expectLater(_runPathTest('/', 'test/', '/test'),
-        throwsA(isA<FileSystemException>()));
-    await expectLater(_runPathTest('/', 'test//', '/test'),
-        throwsA(isA<FileSystemException>()));
-    await expectLater(_runPathTest('/', '/test//', '/test'),
-        throwsA(isA<FileSystemException>()));
-    await expectLater(_runPathTest('/', 'test/.', '/test'),
-        throwsA(isA<FileSystemException>()));
-    await expectLater(_runPathTest('/', 'test/..', '/test'),
-        throwsA(isA<FileSystemException>()));
-  });
 }
 
 Future<void> _testWith(FutureOr<FileSystem> Function() open) async {
@@ -181,7 +128,7 @@ Future<void> _testWith(FutureOr<FileSystem> Function() open) async {
       fs.createFile('$_fsRoot/foo$i.txt');
     }
     expect(fs.files, hasLength(10));
-    await fs.clear();
+    await Future.sync(fs.clear);
     expect(fs.files, isEmpty);
   });
 }

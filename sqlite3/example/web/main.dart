@@ -22,6 +22,7 @@ Future<void> main() async {
   }
 
   print(db.select('SELECT * FROM foo'));
+  await fs.flush();
 
   print('re-opening database');
   db = sqlite.open('test.db');
