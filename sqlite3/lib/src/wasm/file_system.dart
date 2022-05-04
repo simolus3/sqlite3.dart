@@ -226,7 +226,7 @@ class AsynchronousIndexedDbFileSystem {
     // The key of blocks is an array, [fileId, offset]. So if we want to iterate
     // through a fixed file, we use `[fileId, 0]` as a lower and `[fileId, max]`
     // as a higher bound.
-    return KeyRange.bound([fileId, startOffset], [fileId, endOffsetInclusive]);
+    return keyRangeBound([fileId, startOffset], [fileId, endOffsetInclusive]);
   }
 
   Future<void> open() async {
@@ -426,7 +426,7 @@ class AsynchronousIndexedDbFileSystem {
         int blockStart, int offsetInBlock, int dataOffset) async {
       // Check if we're overriding (parts of) an existing block
       final cursor = await blocks
-          .openCursorNative(KeyRange.only([fileId, blockStart]))
+          .openCursorNative(keyRangeOnly([fileId, blockStart]))
           .completed<idb.CursorWithValue?>();
 
       final length = min(data.length - dataOffset, _blockSize - offsetInBlock);
@@ -508,7 +508,7 @@ class AsynchronousIndexedDbFileSystem {
     final transaction = _database!
         .transactionList(const [_filesStore, _blocksStore], 'readwrite');
 
-    final blocksRange = KeyRange.bound([id, 0], [id, _maxFileSize]);
+    final blocksRange = keyRangeBound([id, 0], [id, _maxFileSize]);
     await Future.wait<void>([
       transaction.objectStore(_blocksStore).delete(blocksRange),
       transaction.objectStore(_filesStore).delete(id),
@@ -677,7 +677,10 @@ class IndexedDbFileSystem implements FileSystem {
     );
 
     if (!existsBefore) {
-      _submitWork(() => _asynchronous.createFile(path));
+      _submitWork(() async {
+        final id = await _asynchronous.createFile(path);
+        _knownFileIds[path] = id;
+      });
     }
   }
 
@@ -694,7 +697,11 @@ class IndexedDbFileSystem implements FileSystem {
     _memory.deleteFile(path);
 
     if (!_inMemoryOnlyFiles.remove(path)) {
-      _submitWork(() async => _asynchronous.deleteFile(await _fileId(path)));
+      _submitWork(() async {
+        final id = await _fileId(path);
+        _knownFileIds.remove(path);
+        await _asynchronous.deleteFile(id);
+      });
     }
   }
 

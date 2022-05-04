@@ -54,6 +54,30 @@ Future<void> main() async {
           completion(anyOf(isNull, isNot(contains(dbName)))),
           reason: 'Database $dbName should not exist in the end');
     });
+
+    test('can delete and re-create files', () async {
+      final dbName = _randomName();
+      final fs = await IndexedDbFileSystem.open(dbName: dbName);
+      addTearDown(() async {
+        await fs.close();
+        return IndexedDbFileSystem.deleteDatabase(dbName);
+      });
+
+      fs.createFile('foo');
+      fs.write('foo', Uint8List.fromList([1, 2, 3]), 0);
+      await fs.flush();
+
+      fs.deleteFile('foo');
+      await fs.flush();
+
+      fs.createFile('foo');
+      fs.write('foo', Uint8List.fromList([4, 5, 6]), 0);
+      await fs.flush();
+
+      final target = Uint8List(3);
+      fs.read('foo', target, 0);
+      expect(target, [4, 5, 6]);
+    });
   });
 }
 

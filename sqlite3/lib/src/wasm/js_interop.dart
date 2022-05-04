@@ -28,6 +28,14 @@ bool Function(Object, Object) _leq =
 @staticInterop
 class _JsContext {}
 
+// Doing KeyRange.only / KeyRange.bound in Dart will look up the factory from
+// `window`, but we want to look it up from `self` to support workers.
+@JS('IDBKeyRange.only')
+external KeyRange keyRangeOnly(dynamic vaue);
+
+@JS('IDBKeyRange.bound')
+external KeyRange keyRangeBound(dynamic lower, dynamic higher);
+
 extension ObjectStoreExt on ObjectStore {
   @JS("put")
   external Request _put_1(dynamic value, dynamic key);
@@ -90,11 +98,24 @@ extension RequestExt on Request {
   Future<T> completed<T>({bool convertResultToDart = true}) {
     final completer = Completer<T>.sync();
 
-    onSuccess.first.then((_) {
-      completer.complete((convertResultToDart ? result : _rawResult) as T);
+    StreamSubscription<void>? success, error;
+
+    void cancel() {
+      success?.cancel();
+      error?.cancel();
+    }
+
+    success = onSuccess.listen((_) {
+      cancel();
+
+      // Wrapping with Future.sync in case the cast fails
+      completer.complete(
+          Future.sync(() => (convertResultToDart ? result : _rawResult) as T));
     });
-    onError.first.then((e) {
-      completer.completeError(error ?? e);
+
+    error = onError.listen((event) {
+      cancel();
+      completer.completeError(error ?? event);
     });
 
     return completer.future;
@@ -130,13 +151,8 @@ class _CursorReader<T extends Cursor> implements StreamIterator<T> {
     _onSuccess = _cursorRequest.onSuccess.listen((event) {
       cancel();
 
-      final cursor = _cursorRequest._rawResult as T?;
-      if (cursor == null) {
-        completer.complete(false);
-      } else {
-        _cursor = cursor;
-        completer.complete(true);
-      }
+      _cursor = _cursorRequest._rawResult as T?;
+      completer.complete(_cursor != null);
     });
 
     _onError = _cursorRequest.onSuccess.listen((event) {

@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:js/js.dart';
-import 'package:path/path.dart' as p show url;
+import 'package:path/path.dart' as p;
 
 import '../../wasm.dart';
 import '../common/constants.dart';
@@ -12,6 +12,8 @@ import 'function_store.dart';
 import 'js_interop.dart';
 
 typedef Pointer = int;
+
+final _context = p.Context(style: p.Style.url, current: '/');
 
 class WasmBindings {
   // We're compiling to 32bit wasm
@@ -455,7 +457,7 @@ class _InjectedValues {
         }),
         'path_normalize':
             allowInterop((Pointer source, Pointer dest, int length) {
-          final normalized = p.url.absolute(memory.readString(source));
+          final normalized = _context.absolute(memory.readString(source));
           final encoded = utf8.encode(normalized);
 
           if (encoded.length >= length) {
