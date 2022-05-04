@@ -606,12 +606,13 @@ class IndexedDbFileSystem implements FileSystem {
       final item = _pendingWork.first;
       _pendingWork.remove(item);
 
-      item.execute().whenComplete(() {
+      final workUnit = Future(item.work).whenComplete(() {
         _isWorking = false;
 
         // In case there's another item in the waiting list
         _startWorkingIfNeeded();
       });
+      item.completer.complete(workUnit);
     }
   }
 
@@ -759,18 +760,9 @@ class IndexedDbFileSystem implements FileSystem {
 }
 
 class _IndexedDbWorkItem extends LinkedListEntry<_IndexedDbWorkItem> {
-  bool workDidStart = false;
-  final Completer<void> completer = Completer();
+  final Completer<void> completer = Completer.sync();
 
   final FutureOr<void> Function() work;
 
   _IndexedDbWorkItem(this.work);
-
-  Future<void> execute() {
-    assert(workDidStart == false, 'Should only call execute once');
-    workDidStart = true;
-
-    completer.complete(Future.sync(work));
-    return completer.future;
-  }
 }
