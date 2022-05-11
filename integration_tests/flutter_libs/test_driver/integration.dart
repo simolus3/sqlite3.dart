@@ -44,6 +44,7 @@ void main() {
 
   test('can open databases', () {
     final db = sqlite3.openInMemory()
+      ..closeWhenDone()
       ..execute('CREATE TABLE foo (bar)')
       ..execute('INSERT INTO foo VALUES (1), (2)');
 
@@ -53,8 +54,18 @@ void main() {
     ]);
   });
 
+  test('has json support', () {
+    final db = sqlite3.openInMemory()..closeWhenDone();
+    expect(db.select("SELECT json('[1,  2, 3]') AS r;"), [
+      {'r': '[1,2,3]'},
+    ]);
+  });
+
+  test('has fts5 support', () {});
+
   test('can create collation', () {
     final db = sqlite3.openInMemory()
+      ..closeWhenDone()
       ..execute('CREATE TABLE foo2 (bar)')
       ..execute(
           "INSERT INTO foo2 VALUES ('AaAaaaAA'), ('BBBbBb'),('cCCCcc    '), ('  dD   ')");
@@ -107,4 +118,8 @@ void main() {
     expect(db.select("SELECT * FROM foo2 WHERE bar = 'dd' COLLATE RTRIMNOCASE"),
         []);
   });
+}
+
+extension on Database {
+  void closeWhenDone() => addTearDown(dispose);
 }

@@ -1,11 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
 
-Future<void> main() async {
+Future<void> main(List<String> args) async {
   // Regular test driver isn't working, so this is what we do.
-
-  final process = await Process.start(
-      'flutter', ['run', '--target=test_driver/integration.dart']);
+  final flutterArgs = [
+    'run',
+    '--target=test_driver/integration.dart',
+    if (args.contains('linux')) ...['-d', 'linux'],
+    if (args.contains('windows')) ...['-d', 'windows'],
+  ];
+  print('Running flutter $flutterArgs');
+  final process = await Process.start('flutter', flutterArgs);
 
   var isSuccessful = false;
 

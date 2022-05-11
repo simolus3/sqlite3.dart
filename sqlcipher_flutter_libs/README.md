@@ -1,18 +1,34 @@
 # sqlcipher_flutter_libs
 
 Flutter apps depending on this package will contain native `SQLCipher` libraries
-on Android, iOS and macOS.
+on Android, iOS, macOS, Linux and Windows.
 
 As `SQLCipher` has an ABI compatible to the regular `sqlite3` library, it can be used
 with an unmodified `sqlite3` package.
 
 ## Using this package
 
+Depending on your platform, a bit of setup work and precautions are necessary:
+
+### Compilation
+
+Depending on your target platform, additional dependencies may be needed:
+
+- Android: Uses a precompiled library, no additional setup is needed.
+- macOS and iOS: Depends on the [SQLCipher](https://www.zetetic.net/sqlcipher/ios-tutorial/#option-2-cocoapod-integration) pod.
+  __IMPORTANT NOTE__: Bad things will happen if you depend on any other package linking the regular sqlite3 library.
+  Please be sure to read the [advisory](https://discuss.zetetic.net/t/important-advisory-sqlcipher-with-xcode-8-and-new-sdks/1688) before using this package.
+- Linux: SQLCipher is compiled and linked against a static OpenSSL library that you need to install manually (e.g. `apt install libssl-dev` on Debian).
+  OpenSSL is linked into the generated `.so`, so your users don't have to have OpenSSL installed.
+- Windows: SQLCipher is compiled and linked against a static OpenSSL library that you need to install manually (`choco install openssl` works with Chocolatey).
+  OpenSSL is linked into the generated `.dll`, so your users don't have to have OpenSSL installed.
+
 When using this package on Android, you need to tell the `sqlite3` package
 how to open `sqlcipher` since it will attempt to open the regular
 `sqlite3` binary by default:
 
 ```dart
+import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 import 'package:sqlite3/open.dart';
 
 // Do this before using any sqlite3 api
@@ -21,11 +37,12 @@ open.overrideFor(
 ```
 
 You will also need to do this when using a package wrapping the `sqlite3`
-package like `moor` or `sqflite_common_ffi`!
+package like `drift` or `sqflite_common_ffi`!
+No Dart code changes are necessary for other platforms.
+When using `package:sqlite3` in a background isolate (even if just indirectly through
+say `package:drift`), `overrideFor` should also be called on that isolate before interacting with sqlite.
 
-__No changes are necessary for iOS and MacOS__
-
-For more details on how to actually use this package in a Flutter app, see 
+For more details on how to actually use this package in a Flutter app, see
 [sqlite3](https://pub.dev/packages/sqlite3).
 
 ## Incompatibilities with `sqlite3` on iOS and macOS
@@ -41,6 +58,10 @@ For more details on this, see
 
 - [Important Advisory: SQLCipher with Xcode 8 and new SDKs](https://discuss.zetetic.net/t/important-advisory-sqlcipher-with-xcode-8-and-new-sdks/1688)
 - [Cannot open encrypted database with SQLCipher 4](https://discuss.zetetic.net/t/cannot-open-encrypted-database-with-sqlcipher-4/3654/3)
+
+To catch these errors early, I recommend selecting `PRAGMA cipher_version` after opening a database
+and throwing an exception if you get an empty string back, as you're not running with SQLCipher in
+that case.
 
 ## Problems on Android 6
 

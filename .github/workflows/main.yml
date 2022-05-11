@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   analyze:
@@ -28,7 +28,7 @@ jobs:
       working-directory: ${{ matrix.package }}
 
     - name: Format native
-      run: clang-format --Werror --dry-run --style=google assets/sqlite3.h
+      run: clang-format --Werror --dry-run --style=google assets/sqlite3.h assets/wasm/*.{c,h}
       if: ${{ matrix.package == 'sqlite3' }}
       working-directory: sqlite3
 
@@ -64,6 +64,15 @@ jobs:
         dart test
       working-directory: sqlite3/
 
+    - name: Web tests
+      run: |
+        curl https://storage.googleapis.com/simon-public-euw3/assets/sqlite3.wasm -o example/web/sqlite3.wasm
+        dart test -P web
+      # If browsers behave differently on different platforms, surely that's not our fault...
+      # So, only run browser tests on Linux to be faster.
+      if: runner.os == 'Linux'
+      working-directory: sqlite3/
+
 # The integration tests for android are currently broken (the emulator doesn't want to
 # start up...)
 #
@@ -93,8 +102,29 @@ jobs:
 #          script: flutter pub run test_driver/integration_test.dart
 #          working-directory: "integration_tests/${{ matrix.test }}"
 
+  # Linux integration tests don't work because there's no display on GitHub actions
+  # I don't know if this can be faked easily to get `flutter run -d linux` to work.
+#  integration_test_linux:
+#    needs: [test]
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v2
+#      - uses: subosito/flutter-action@v1
+#        with:
+#          channel: dev
+#      - name: Setup Flutter
+#        run: |
+#          flutter config --enable-linux-desktop
+#          sudo apt-get update -y
+#          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+#          flutter --version
+#      - name: sqlite3 driver tests
+#        run: "flutter pub get && flutter pub run test_driver/integration_test.dart linux"
+#        working-directory: integration_tests/flutter_libs
+
   # Shamelessly stolen from https://medium.com/flutter-community/run-flutter-driver-tests-on-github-actions-13c639c7e4ab
   integration_test_ios:
+    needs: [test]
     runs-on: macos-latest
     steps:
       - name: List simulators
@@ -106,7 +136,7 @@ jobs:
           xcrun simctl boot $IPHONE12
 
       - uses: actions/checkout@v2
-      - uses: subosito/flutter-action@v1
+      - uses: subosito/flutter-action@v2.4.0
         with:
           channel: dev
 
@@ -122,10 +152,11 @@ jobs:
         working-directory: integration_tests/sqlcipher_flutter
 
   integration_test_macos:
+    needs: [test]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: subosito/flutter-action@v1
+      - uses: subosito/flutter-action@v2.4.0
         with:
           channel: dev
       - name: Setup Flutter

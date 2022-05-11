@@ -1,3 +1,37 @@
+## 1.7.0
+
+- Add support for application-defined window functions. To register a custom
+  window function, implement `WindowFunction` and register your function with
+  `database.registerAggregateFunction`.
+- __Breaking__ (For the experimental `package:sqlite3/wasm.dart` library):
+  - The IndexedDB implementation now stores data in 4k blocks instead of full files.
+  - Removed `IndexedDbFileSystem.load`. Use `IndexedDbFileSystem.open` instead.
+  - An `IndexedDbFileSystem` now stores all files, the concept of a persistence
+    root has been removed.
+    To access independent databases, use two `IndexedDbFileSystem`s with a different
+    database name.
+
+## 1.6.4
+
+- Add `FileSystem.listFiles()` to list all files in a virtual WASM file system.
+
+## 1.6.3
+
+- Support running `sqlite3/wasm.dart` in web workers.
+
+## 1.6.2
+
+- Fix `CURRENT_TIMESTAMP` not working with the WebAssembly backend.
+
+## 1.6.1
+
+- Better support loading sqlite3 on Linux when using `sqlite3_flutter_libs`.
+
+## 1.6.0
+
+- Very experimental web support, based on compiling sqlite3 to web assembly
+  with a custom file system implementation.
+
 ## 1.5.1
 
 - Fix `checkNoTail` throwing for harmless whitespace or comments following a

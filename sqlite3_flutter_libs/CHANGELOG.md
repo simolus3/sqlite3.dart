@@ -1,3 +1,17 @@
+## 0.5.6
+
+- Update sqlite to version `3.38.3`
+
+## 0.5.5
+
+- Update sqlite to version `3.38.2`
+- Linux is now supported without additional setup.
+- Windows is now supported without additional setup.
+
+## 0.5.4
+
+- Update sqlite to version `3.38.0`
+
 ## 0.5.3
 
 - Update sqlite to version `3.37.2`
