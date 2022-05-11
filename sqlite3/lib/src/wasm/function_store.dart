@@ -151,6 +151,8 @@ class FunctionStore {
   void _contextSetResult(Pointer context, Object? result) {
     if (result == null) {
       _bindings.sqlite3_result_null(context);
+    } else if (result is int) {
+      _bindings.sqlite3_result_int64(context, BigInt.from(result));
     } else if (result is BigInt) {
       _bindings.sqlite3_result_int64(context, result);
     } else if (result is double) {

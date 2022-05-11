@@ -88,6 +88,8 @@ extension ContextUtils on Pointer<sqlite3_context> {
       bindings.sqlite3_result_null(this);
     } else if (result is int) {
       bindings.sqlite3_result_int64(this, result);
+    } else if (result is BigInt) {
+      bindings.sqlite3_result_int64(this, result.toInt());
     } else if (result is double) {
       bindings.sqlite3_result_double(this, result);
     } else if (result is bool) {
