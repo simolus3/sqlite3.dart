@@ -758,11 +758,11 @@ class Bindings {
 
   late final _sqlite3_create_window_functionPtr = _lookup<
       ffi.NativeFunction<
-          ffi.Int32 Function(
+          pkg_ffi.Int Function(
               ffi.Pointer<sqlite3>,
               ffi.Pointer<sqlite3_char>,
-              ffi.Int32,
-              ffi.Int32,
+              pkg_ffi.Int,
+              pkg_ffi.Int,
               ffi.Pointer<ffi.Void>,
               ffi.Pointer<ffi.Void>,
               ffi.Pointer<ffi.Void>,
