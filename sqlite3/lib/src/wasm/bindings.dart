@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 
 import '../../wasm.dart';
 import '../common/constants.dart';
+import '../common/impl/utils.dart';
 import 'function_store.dart';
 import 'js_interop.dart';
 
@@ -269,8 +270,8 @@ class WasmBindings {
   }
 
   int sqlite3_bind_int64(Pointer stmt, int index, BigInt value) {
-    return _sqlite3_bind_int64(stmt, index, JsBigInt.fromBigInt(value).jsObject)
-        as int;
+    return _sqlite3_bind_int64(
+        stmt, index, JsBigInt.fromBigInt(value.checkRange).jsObject) as int;
   }
 
   int sqlite3_bind_double(Pointer stmt, int index, double value) {
@@ -353,7 +354,8 @@ class WasmBindings {
   }
 
   void sqlite3_result_int64(Pointer context, BigInt value) {
-    _sqlite3_result_int64(context, JsBigInt.fromBigInt(value).jsObject);
+    _sqlite3_result_int64(
+        context, JsBigInt.fromBigInt(value.checkRange).jsObject);
   }
 
   void sqlite3_result_double(Pointer context, double value) {

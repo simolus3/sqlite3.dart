@@ -161,6 +161,8 @@ class WasmStatement extends CommonPreparedStatement {
   void _bindParam(Object? param, int i) {
     if (param == null) {
       bindings.sqlite3_bind_null(statement, i);
+    } else if (param is int) {
+      bindings.sqlite3_bind_int64(statement, i, BigInt.from(param));
     } else if (param is BigInt) {
       bindings.sqlite3_bind_int64(statement, i, param);
     } else if (param is bool) {

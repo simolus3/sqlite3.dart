@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import '../common/constants.dart';
 import '../common/database.dart';
-import '../common/impl/database.dart';
+import '../common/impl/utils.dart';
 import '../common/sqlite3.dart';
 import 'bindings.dart';
 import 'database.dart';
