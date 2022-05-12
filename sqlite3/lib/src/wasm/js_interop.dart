@@ -6,8 +6,6 @@ import 'dart:typed_data';
 import 'package:js/js.dart';
 import 'package:js/js_util.dart';
 
-import '../common/functions.dart' show BigIntRangeCheck;
-
 @JS('BigInt')
 external Object _bigInt(Object s);
 
@@ -199,8 +197,7 @@ class JsBigInt {
 
   factory JsBigInt.parse(String s) => JsBigInt(_bigInt(s));
   factory JsBigInt.fromInt(int i) => JsBigInt(_bigInt(i));
-  factory JsBigInt.fromBigInt(BigInt i) =>
-      JsBigInt.parse(i.checkRange.toString());
+  factory JsBigInt.fromBigInt(BigInt i) => JsBigInt.parse(i.toString());
 
   int get asDartInt => _number(_jsBigInt);
 

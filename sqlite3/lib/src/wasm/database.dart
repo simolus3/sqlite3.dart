@@ -7,7 +7,7 @@ import '../common/constants.dart';
 import '../common/database.dart';
 import '../common/exception.dart';
 import '../common/functions.dart';
-import '../common/impl/database.dart';
+import '../common/impl/utils.dart';
 import '../common/statement.dart';
 import 'bindings.dart';
 import 'exception.dart';

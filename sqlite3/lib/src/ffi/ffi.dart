@@ -4,7 +4,7 @@ import 'dart:ffi';
 import 'dart:typed_data';
 
 import '../common/constants.dart';
-import '../common/functions.dart' show BigIntRangeCheck;
+import '../common/impl/utils.dart';
 import 'memory.dart';
 import 'sqlite3.g.dart';
 
