@@ -190,6 +190,9 @@ class DatabaseName {
 }
 
 class JsBigInt {
+  static final minValue = BigInt.parse('-9223372036854775808');
+  static final maxValue = BigInt.parse('9223372036854775807');
+
   /// The BigInt literal as a raw JS value.
   final Object _jsBigInt;
 
@@ -197,7 +200,12 @@ class JsBigInt {
 
   factory JsBigInt.parse(String s) => JsBigInt(_bigInt(s));
   factory JsBigInt.fromInt(int i) => JsBigInt(_bigInt(i));
-  factory JsBigInt.fromBigInt(BigInt i) => JsBigInt.parse(i.toString());
+  factory JsBigInt.fromBigInt(BigInt i) {
+    if (i < minValue || i > maxValue) {
+      throw Exception('Value out of bounds');
+    }
+    return JsBigInt.parse(i.toString());
+  }
 
   int get asDartInt => _number(_jsBigInt);
 
