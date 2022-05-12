@@ -185,6 +185,19 @@ void testDatabase(
         throwsSqlError(SqlError.SQLITE_LOCKED, 262));
   });
 
+  test('result sets are lists', () {
+    final result = database.select('SELECT 1, 2 UNION ALL SELECT 3, 4;');
+    expect(result, isA<List<Row>>());
+
+    expect(result[0], {'1': 1, '2': 2});
+    expect(result[1], {'1': 3, '2': 4});
+
+    expect(result[0][0], 1);
+    expect(result[0]['1'], 1);
+    expect(result[0][1], 2);
+    expect(result[0]['2'], 2);
+  });
+
   group(
     'user-defined functions',
     () {
