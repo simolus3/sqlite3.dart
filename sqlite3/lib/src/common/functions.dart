@@ -1,22 +1,18 @@
 import 'package:meta/meta.dart';
 
-import 'constants.dart';
-
 /// A collating function provided to a sql collation.
 ///
-/// {@template sqlite3_function_behavior}
 /// The function must return a `int`.
 ///
 /// If invoking the function throws a Dart exception, the sql function will
 /// result with an error result as well.
-/// {@endtemplate}
 typedef CollatingFunction = int Function(String? textA, String? textB);
 
 /// A scalar function exposed to sql.
 ///
 /// {@template sqlite3_function_behavior}
-/// The function must either return a `bool`, `num`, `String`, `List<int>` or
-/// `null`.
+/// The function must either return a `bool`, `num`, `String`, `List<int>`,
+/// `BigInt` or `null`.
 ///
 /// If invoking the function throws a Dart exception, the sql function will
 /// result with an error result as well.

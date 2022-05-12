@@ -250,6 +250,19 @@ void testDatabase(
           ]);
         });
 
+        test('big int', () {
+          database.createFunction(
+            functionName: 'test_int',
+            function: (args) => BigInt.from(12),
+            argumentCount: const AllowedArgumentCount(0),
+          );
+          final stmt = database.prepare('SELECT test_int() AS result');
+
+          expect(stmt.select(), [
+            {'result': 12}
+          ]);
+        });
+
         test('doubles', () {
           database.createFunction(
             functionName: 'test_double',
