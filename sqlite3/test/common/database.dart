@@ -424,8 +424,8 @@ void testDatabase(
 
         final result = database.select('SELECT * FROM foo');
         expect(result, hasLength(2));
-        expect(result.rows[0][0], BigInt.parse('-9223372036854775808'));
-        expect(result.rows[1][0], BigInt.parse('9223372036854775807'));
+        expect(result.rows[0][0].toString(), '-9223372036854775808');
+        expect(result.rows[1][0].toString(), '9223372036854775807');
 
         expect(
           () => database.execute('INSERT INTO foo VALUES (?)',

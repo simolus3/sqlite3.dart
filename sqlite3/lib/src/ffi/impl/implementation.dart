@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import '../../../sqlite3.dart' hide sqlite3;
 import '../../common/constants.dart';
+import '../../common/functions.dart' show BigIntBoundCheck;
 import '../../common/impl/database.dart';
 import '../ffi.dart';
 

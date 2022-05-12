@@ -510,3 +510,6 @@ class SqlFunctionFlag {
 const SQLITE_DELETE = 9;
 const SQLITE_INSERT = 18;
 const SQLITE_UPDATE = 23;
+
+final bigIntMinValue64 = BigInt.parse('-9223372036854775808');
+final bigIntMaxValue64 = BigInt.parse('9223372036854775807');

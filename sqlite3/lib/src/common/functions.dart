@@ -1,5 +1,7 @@
 import 'package:meta/meta.dart';
 
+import 'constants.dart';
+
 /// A collating function provided to a sql collation.
 ///
 /// {@template sqlite3_function_behavior}
@@ -141,4 +143,13 @@ class AllowedArgumentCount {
 
   const AllowedArgumentCount(this.allowedArgs);
   const AllowedArgumentCount.any() : allowedArgs = -1;
+}
+
+extension BigIntBoundCheck on BigInt {
+  BigInt get checkBounds64 {
+    if (this < bigIntMinValue64 || this > bigIntMaxValue64) {
+      throw Exception('Value out of bounds');
+    }
+    return this;
+  }
 }
