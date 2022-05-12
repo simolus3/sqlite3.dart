@@ -431,14 +431,18 @@ void testDatabase(
           () => database.execute('INSERT INTO foo VALUES (?)',
               [BigInt.parse('-9223372036854775809')]),
           throwsA(const TypeMatcher<Exception>().having(
-              (e) => e.toString(), 'message', contains('Value out of bounds'))),
+              (e) => e.toString(),
+              'message',
+              contains('BigInt value exceeds the range of 64 bits'))),
         );
 
         expect(
           () => database.execute('INSERT INTO foo VALUES (?)',
               [BigInt.parse('9223372036854775808')]),
           throwsA(const TypeMatcher<Exception>().having(
-              (e) => e.toString(), 'message', contains('Value out of bounds'))),
+              (e) => e.toString(),
+              'message',
+              contains('BigInt value exceeds the range of 64 bits'))),
         );
       });
     });

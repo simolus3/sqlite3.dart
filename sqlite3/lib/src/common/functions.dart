@@ -145,10 +145,10 @@ class AllowedArgumentCount {
   const AllowedArgumentCount.any() : allowedArgs = -1;
 }
 
-extension BigIntBoundCheck on BigInt {
-  BigInt get checkBounds64 {
+extension BigIntRangeCheck on BigInt {
+  BigInt get checkRange {
     if (this < bigIntMinValue64 || this > bigIntMaxValue64) {
-      throw Exception('Value out of bounds');
+      throw Exception('BigInt value exceeds the range of 64 bits');
     }
     return this;
   }

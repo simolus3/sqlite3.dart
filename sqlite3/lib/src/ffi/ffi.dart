@@ -4,7 +4,7 @@ import 'dart:ffi';
 import 'dart:typed_data';
 
 import '../common/constants.dart';
-import '../common/functions.dart' show BigIntBoundCheck;
+import '../common/functions.dart' show BigIntRangeCheck;
 import 'memory.dart';
 import 'sqlite3.g.dart';
 
@@ -90,7 +90,7 @@ extension ContextUtils on Pointer<sqlite3_context> {
     } else if (result is int) {
       bindings.sqlite3_result_int64(this, result);
     } else if (result is BigInt) {
-      bindings.sqlite3_result_int64(this, result.checkBounds64.toInt());
+      bindings.sqlite3_result_int64(this, result.checkRange.toInt());
     } else if (result is double) {
       bindings.sqlite3_result_double(this, result);
     } else if (result is bool) {
