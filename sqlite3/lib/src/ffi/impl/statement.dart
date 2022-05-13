@@ -214,6 +214,8 @@ class PreparedStatementImpl implements PreparedStatement {
       _bindings.sqlite3_bind_null(_stmt, i);
     } else if (param is int) {
       _bindings.sqlite3_bind_int64(_stmt, i, param);
+    } else if (param is BigInt) {
+      _bindings.sqlite3_bind_int64(_stmt, i, param.checkRange.toInt());
     } else if (param is bool) {
       _bindings.sqlite3_bind_int64(_stmt, i, param ? 1 : 0);
     } else if (param is double) {

@@ -38,8 +38,11 @@ abstract class IteratingCursor extends Cursor implements Iterator<Row> {
 
 /// Stores the full result of a select statement.
 class ResultSet extends Cursor
-    with IterableMixin<Row>
-    implements Iterable<Row> {
+    with
+        ListMixin<Row>,
+        NonGrowableListMixin<Row> // ignore: prefer_mixin
+    implements
+        Iterable<Row> {
   /// The raw row data.
   final List<List<Object?>> rows;
 
@@ -48,6 +51,17 @@ class ResultSet extends Cursor
 
   @override
   Iterator<Row> get iterator => _ResultIterator(this);
+
+  @override
+  Row operator [](int index) => Row(this, rows[index]);
+
+  @override
+  void operator []=(int index, Row value) {
+    throw UnsupportedError("Can't change rows from a result set");
+  }
+
+  @override
+  int get length => rows.length;
 }
 
 /// A single row in the result of a select statement.
@@ -75,7 +89,12 @@ class Row
 
   @override
   dynamic operator [](Object? key) {
-    if (key is! String) return null;
+    if (key is! String) {
+      if (key is int) {
+        return _data[key];
+      }
+      return null;
+    }
 
     final index = _result._calculatedIndexes[key];
     if (index == null) return null;

@@ -185,6 +185,19 @@ void testDatabase(
         throwsSqlError(SqlError.SQLITE_LOCKED, 262));
   });
 
+  test('result sets are lists', () {
+    final result = database.select('SELECT 1, 2 UNION ALL SELECT 3, 4;');
+    expect(result, isA<List<Row>>());
+
+    expect(result[0], {'1': 1, '2': 2});
+    expect(result[1], {'1': 3, '2': 4});
+
+    expect(result[0][0], 1);
+    expect(result[0]['1'], 1);
+    expect(result[0][1], 2);
+    expect(result[0]['2'], 2);
+  });
+
   group(
     'user-defined functions',
     () {
@@ -247,6 +260,19 @@ void testDatabase(
 
           expect(stmt.select(), [
             {'result': 420}
+          ]);
+        });
+
+        test('big int', () {
+          database.createFunction(
+            functionName: 'test_int',
+            function: (args) => BigInt.from(12),
+            argumentCount: const AllowedArgumentCount(0),
+          );
+          final stmt = database.prepare('SELECT test_int() AS result');
+
+          expect(stmt.select(), [
+            {'result': 12}
           ]);
         });
 
@@ -412,6 +438,38 @@ void testDatabase(
 
         expect(stmts[0].sql, 'SELECT 1;');
         expect(stmts[1].sql, ' /* and */ SELECT 2;');
+      });
+
+      test('BigInt bounds', () {
+        database.execute('CREATE TABLE foo (a INTEGER);');
+
+        database.execute('INSERT INTO foo VALUES (?)',
+            [BigInt.parse('-9223372036854775808')]);
+        database.execute('INSERT INTO foo VALUES (?)',
+            [BigInt.parse('9223372036854775807')]);
+
+        final result = database.select('SELECT * FROM foo');
+        expect(result, hasLength(2));
+        expect(result.rows[0][0].toString(), '-9223372036854775808');
+        expect(result.rows[1][0].toString(), '9223372036854775807');
+
+        expect(
+          () => database.execute('INSERT INTO foo VALUES (?)',
+              [BigInt.parse('-9223372036854775809')]),
+          throwsA(const TypeMatcher<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('BigInt value exceeds the range of 64 bits'))),
+        );
+
+        expect(
+          () => database.execute('INSERT INTO foo VALUES (?)',
+              [BigInt.parse('9223372036854775808')]),
+          throwsA(const TypeMatcher<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('BigInt value exceeds the range of 64 bits'))),
+        );
       });
     });
   });

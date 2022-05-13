@@ -1,3 +1,9 @@
+## 1.7.1-dev
+
+- Allow binding `BigInt`s to statements and functions. They must still be
+  representable as a 64-bit int, but this closes a compatibility gap between
+  the web and the native implementations.
+
 ## 1.7.0
 
 - Add support for application-defined window functions. To register a custom
