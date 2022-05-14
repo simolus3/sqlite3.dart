@@ -5,7 +5,7 @@ project(${PROJECT_NAME} LANGUAGES C)
 include(FetchContent)
 FetchContent_Declare(
   sqlite3
-  URL https://sqlite.org/2022/sqlite-autoconf-3380300.tar.gz
+  URL https://sqlite.org/2022/sqlite-autoconf-3380500.tar.gz
 )
 FetchContent_MakeAvailable(sqlite3)
 

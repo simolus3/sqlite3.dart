@@ -3,7 +3,7 @@
 - Allow binding `BigInt`s to statements and functions. They must still be
   representable as a 64-bit int, but this closes a compatibility gap between
   the web and the native implementations.
-- Use ABI-specific integer types internally
+- Use ABI-specific integer types internally.
 
 ## 1.7.0
 
