@@ -3,11 +3,11 @@ import 'ffi.dart';
 // Some old sqlite versions don't support sqlite3_prepare_v3, we fall back to
 // sqlite3_prepare_v2 in those cases.
 
-typedef sqlite3_prepare_v3_native = Int32 Function(
+typedef sqlite3_prepare_v3_native = Int Function(
     Pointer<sqlite3>,
     Pointer<Void>,
-    Int32,
-    Uint32,
+    Int,
+    UnsignedInt,
     Pointer<Pointer<sqlite3_stmt>>,
     Pointer<Pointer<sqlite3_char>>);
 typedef sqlite3_prepare_v3_dart = int Function(
@@ -18,10 +18,10 @@ typedef sqlite3_prepare_v3_dart = int Function(
     Pointer<Pointer<sqlite3_stmt>> ppStmt,
     Pointer<Pointer<sqlite3_char>> pzTail);
 
-typedef sqlite3_prepare_v2_native = Int32 Function(
+typedef sqlite3_prepare_v2_native = Int Function(
     Pointer<sqlite3>,
     Pointer<Void>,
-    Int32,
+    Int,
     Pointer<Pointer<sqlite3_stmt>>,
     Pointer<Pointer<sqlite3_char>>);
 typedef sqlite3_prepare_v2_dart = int Function(
