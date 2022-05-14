@@ -1,4 +1,4 @@
-## 1.7.1-dev
+## 1.7.1
 
 - Allow binding `BigInt`s to statements and functions. They must still be
   representable as a 64-bit int, but this closes a compatibility gap between
