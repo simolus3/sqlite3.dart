@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:developer';
 import 'dart:html';
 import 'dart:indexed_db';
 import 'dart:indexed_db' as idb;
@@ -417,69 +418,80 @@ class AsynchronousIndexedDbFileSystem {
     return bytesRead;
   }
 
-  Future<void> write(int fileId, int offset, Uint8List data) async {
+  Future<void> write(int fileId, List<_FileWriteRequest> writes) async {
     final transaction = _database!.transactionList(_stores, 'readwrite');
     final blocks = transaction.objectStore(_blocksStore);
     final file = await _readFile(transaction, fileId);
+    var fileLength = file.length;
 
-    Future<int> writeChunk(
-        int blockStart, int offsetInBlock, int dataOffset) async {
-      // Check if we're overriding (parts of) an existing block
-      final cursor = await blocks
-          .openCursorNative(keyRangeOnly([fileId, blockStart]))
-          .completed<idb.CursorWithValue?>();
+    Future<void> writeRequest(_FileWriteRequest request) async {
+      final data = request.data;
+      final offset = request.offset;
 
-      final length = min(data.length - dataOffset, _blockSize - offsetInBlock);
+      Future<int> writeChunk(
+          int blockStart, int offsetInBlock, int dataOffset) async {
+        // Check if we're overriding (parts of) an existing block
+        final cursor = await blocks
+            .openCursorNative(keyRangeOnly([fileId, blockStart]))
+            .completed<idb.CursorWithValue?>();
 
-      if (cursor == null) {
-        final chunk = Uint8List(_blockSize);
-        chunk.setAll(offsetInBlock,
-            data.buffer.asUint8List(data.offsetInBytes + dataOffset, length));
+        final length =
+            min(data.length - dataOffset, _blockSize - offsetInBlock);
 
-        // There isn't, let's write a new block
-        await blocks.put(Blob(<Uint8List>[chunk]), [fileId, blockStart]);
-      } else {
-        final oldBlob = cursor.value as Blob;
-        assert(
-            oldBlob.size == _blockSize,
-            'Invalid blob in database with length ${oldBlob.size}, '
-            'key ${cursor.key}');
+        if (cursor == null) {
+          final chunk = Uint8List(_blockSize);
+          chunk.setAll(offsetInBlock,
+              data.buffer.asUint8List(data.offsetInBytes + dataOffset, length));
 
-        final newBlob = Blob(<Object?>[
-          // Previous parts of the block left unchanged
-          if (offsetInBlock != 0) oldBlob.slice(0, offsetInBlock),
-          // Followed by the updated data
-          data.buffer.asUint8List(data.offsetInBytes + dataOffset, length),
-          // Followed by next parts of the block left unchanged
-          if (offsetInBlock + length < _blockSize)
-            oldBlob.slice(offsetInBlock + length),
-        ]);
+          // There isn't, let's write a new block
+          await blocks.put(Blob(<Uint8List>[chunk]), [fileId, blockStart]);
+        } else {
+          final oldBlob = cursor.value as Blob;
+          assert(
+              oldBlob.size == _blockSize,
+              'Invalid blob in database with length ${oldBlob.size}, '
+              'key ${cursor.key}');
 
-        await cursor.update(newBlob);
+          final newBlob = Blob(<Object?>[
+            // Previous parts of the block left unchanged
+            if (offsetInBlock != 0) oldBlob.slice(0, offsetInBlock),
+            // Followed by the updated data
+            data.buffer.asUint8List(data.offsetInBytes + dataOffset, length),
+            // Followed by next parts of the block left unchanged
+            if (offsetInBlock + length < _blockSize)
+              oldBlob.slice(offsetInBlock + length),
+          ]);
+
+          await cursor.update(newBlob);
+        }
+
+        return length;
       }
 
-      return length;
-    }
+      var offsetInData = 0;
+      while (offsetInData < data.length) {
+        final offsetInFile = offset + offsetInData;
+        final blockStart = offsetInFile ~/ _blockSize * _blockSize;
 
-    var offsetInData = 0;
-    while (offsetInData < data.length) {
-      final offsetInFile = offset + offsetInData;
-      final blockStart = offsetInFile ~/ _blockSize * _blockSize;
-
-      if (offsetInFile % _blockSize != 0) {
-        offsetInData += await writeChunk(
-            blockStart, (offset + offsetInData) % _blockSize, offsetInData);
-      } else {
-        offsetInData += await writeChunk(blockStart, 0, offsetInData);
+        if (offsetInFile % _blockSize != 0) {
+          offsetInData += await writeChunk(
+              blockStart, (offset + offsetInData) % _blockSize, offsetInData);
+        } else {
+          offsetInData += await writeChunk(blockStart, 0, offsetInData);
+        }
       }
+
+      fileLength = max(fileLength, offset + data.length);
     }
 
-    final files = transaction.objectStore(_filesStore);
-    final updatedFileLength = max(file.length, offset + data.length);
-    final fileCursor = await files.openCursor(key: fileId).first;
-    // Update the file length as recorded in the database
-    await fileCursor
-        .update(_FileEntry(name: file.name, length: updatedFileLength));
+    await Future.forEach(writes, writeRequest);
+
+    if (fileLength != file.length) {
+      final files = transaction.objectStore(_filesStore);
+      final fileCursor = await files.openCursor(key: fileId).first;
+      // Update the file length as recorded in the database
+      await fileCursor.update(_FileEntry(name: file.name, length: fileLength));
+    }
   }
 
   Future<void> truncate(int fileId, int length) async {
@@ -529,6 +541,13 @@ class _FileEntry {
   external factory _FileEntry({required String name, required int length});
 }
 
+class _FileWriteRequest {
+  final Uint8List data;
+  final int offset;
+
+  _FileWriteRequest(this.data, this.offset);
+}
+
 /// A file system storing files divided into blocks in an IndexedDB database.
 ///
 /// As sqlite3's file system is synchronous and IndexedDB isn't, no guarantees
@@ -542,7 +561,7 @@ class IndexedDbFileSystem implements FileSystem {
   final AsynchronousIndexedDbFileSystem _asynchronous;
 
   var _isClosing = false;
-  var _isWorking = false;
+  _IndexedDbWorkItem? _currentWorkItem;
 
   // A cache so that synchronous changes are visible right away
   final _InMemoryFileSystem _memory;
@@ -551,9 +570,17 @@ class IndexedDbFileSystem implements FileSystem {
   final Set<String> _inMemoryOnlyFiles = {};
   final Map<String, int> _knownFileIds = {};
 
+  var _amountOfWork = 0;
+  var _workCompleted = 0;
+
   IndexedDbFileSystem._(String dbName)
       : _asynchronous = AsynchronousIndexedDbFileSystem(dbName),
         _memory = _InMemoryFileSystem();
+
+  void printState() {
+    print(
+        'Remaining work entries: ${_pendingWork.length}. Started: $_amountOfWork, completed: $_workCompleted');
+  }
 
   /// Loads an IndexedDB file system identified by the [dbName].
   ///
@@ -590,24 +617,52 @@ class IndexedDbFileSystem implements FileSystem {
   /// To await a full close operation, call and await [close].
   bool get isClosed => _isClosing || _asynchronous._isClosed;
 
-  Future<void> _submitWork(FutureOr<void> Function() work) {
+  Future<void> _submitWork(_IndexedDbWorkItem work) {
     _checkClosed();
-    final item = _IndexedDbWorkItem(work);
-    _pendingWork.add(item);
+
+    // See if this unit of work can be combined with scheduled work units.
+    if (_pendingWork.isNotEmpty) {
+      _IndexedDbWorkItem? compareWith = _pendingWork.last;
+      assert(_currentWorkItem != compareWith,
+          'Current work item should be removed from queue');
+
+      while (compareWith != null) {
+        switch (work.mergeWith(compareWith)) {
+          case _WorkSimplicationResult.mergedInto:
+            return compareWith.completer.future;
+          case _WorkSimplicationResult.cannotSimplify:
+            compareWith = null;
+            break;
+          case _WorkSimplicationResult.lookFurther:
+            compareWith = compareWith.previous;
+            break;
+          case _WorkSimplicationResult.deletePrevious:
+            final next = compareWith.previous;
+            compareWith.unlink();
+            compareWith = next;
+        }
+      }
+    }
+
+    _pendingWork.add(work);
+    _amountOfWork++;
     _startWorkingIfNeeded();
 
-    return item.completer.future;
+    return work.completer.future;
+  }
+
+  Future<void> _submitWorkFunction(FutureOr<void> Function() work) {
+    return _submitWork(_FunctionWorkItem(work));
   }
 
   void _startWorkingIfNeeded() {
-    if (!_isWorking && _pendingWork.isNotEmpty) {
-      _isWorking = true;
-
-      final item = _pendingWork.first;
+    if (_currentWorkItem == null && _pendingWork.isNotEmpty) {
+      final item = _currentWorkItem = _pendingWork.first;
       _pendingWork.remove(item);
 
-      final workUnit = Future(item.work).whenComplete(() {
-        _isWorking = false;
+      final workUnit = Future(item.run).whenComplete(() {
+        _workCompleted++;
+        _currentWorkItem = null;
 
         // In case there's another item in the waiting list
         _startWorkingIfNeeded();
@@ -618,7 +673,7 @@ class IndexedDbFileSystem implements FileSystem {
 
   Future<void> close() async {
     if (!_isClosing) {
-      final result = _submitWork(_asynchronous.close);
+      final result = _submitWorkFunction(_asynchronous.close);
       _isClosing = true;
       return result;
     } else if (_pendingWork.isNotEmpty) {
@@ -659,8 +714,8 @@ class IndexedDbFileSystem implements FileSystem {
   /// Each call to [flush] will await pending operations made _before_ the call.
   /// Operations started after this [flush] call will not be awaited by the
   /// returned future.
-  Future<void> flush() async {
-    return _submitWork(() {});
+  Future<void> flush() {
+    return _submitWorkFunction(() {});
   }
 
   @override
@@ -678,7 +733,7 @@ class IndexedDbFileSystem implements FileSystem {
     );
 
     if (!existsBefore) {
-      _submitWork(() async {
+      _submitWorkFunction(() async {
         final id = await _asynchronous.createFile(path);
         _knownFileIds[path] = id;
       });
@@ -698,18 +753,14 @@ class IndexedDbFileSystem implements FileSystem {
     _memory.deleteFile(path);
 
     if (!_inMemoryOnlyFiles.remove(path)) {
-      _submitWork(() async {
-        final id = await _fileId(path);
-        _knownFileIds.remove(path);
-        await _asynchronous.deleteFile(id);
-      });
+      _submitWork(_DeleteFileWorkItem(this, path));
     }
   }
 
   @override
   Future<void> clear() async {
     _memory.clear();
-    await _submitWork(_asynchronous.clear);
+    await _submitWorkFunction(_asynchronous.clear);
   }
 
   @override
@@ -742,7 +793,7 @@ class IndexedDbFileSystem implements FileSystem {
     _memory.truncateFile(path, length);
 
     if (!_inMemoryOnlyFiles.contains(path)) {
-      _submitWork(
+      _submitWorkFunction(
           () async => _asynchronous.truncate(await _fileId(path), length));
     }
   }
@@ -753,16 +804,91 @@ class IndexedDbFileSystem implements FileSystem {
     _memory.write(path, bytes, offset);
 
     if (!_inMemoryOnlyFiles.contains(path)) {
-      _submitWork(
-          () async => _asynchronous.write(await _fileId(path), offset, bytes));
+      _submitWork(_WriteFileWorkItem(this, path)
+        ..pendingWrites.add(_FileWriteRequest(bytes, offset)));
     }
   }
 }
 
-class _IndexedDbWorkItem extends LinkedListEntry<_IndexedDbWorkItem> {
+enum _WorkSimplicationResult {
+  cannotSimplify,
+  lookFurther,
+  deletePrevious,
+  mergedInto,
+}
+
+abstract class _IndexedDbWorkItem extends LinkedListEntry<_IndexedDbWorkItem> {
   final Completer<void> completer = Completer.sync();
 
+  _WorkSimplicationResult mergeWith(_IndexedDbWorkItem other) =>
+      _WorkSimplicationResult.cannotSimplify;
+
+  FutureOr<void> run();
+}
+
+class _FunctionWorkItem extends _IndexedDbWorkItem {
   final FutureOr<void> Function() work;
 
-  _IndexedDbWorkItem(this.work);
+  _FunctionWorkItem(this.work);
+
+  @override
+  FutureOr<void> run() => work();
+}
+
+class _DeleteFileWorkItem extends _IndexedDbWorkItem {
+  final IndexedDbFileSystem fileSystem;
+  final String path;
+
+  _DeleteFileWorkItem(this.fileSystem, this.path);
+
+  @override
+  _WorkSimplicationResult mergeWith(_IndexedDbWorkItem other) {
+    if (other is _DeleteFileWorkItem) {
+      // If there already is a pending "delete" request available, we don't have
+      // to run a new one.
+      return other.path == path
+          ? _WorkSimplicationResult.mergedInto
+          : _WorkSimplicationResult.lookFurther;
+    } else if (other is _WriteFileWorkItem) {
+      return other.path == path
+          ? _WorkSimplicationResult.deletePrevious
+          : _WorkSimplicationResult.lookFurther;
+    }
+
+    return _WorkSimplicationResult.cannotSimplify;
+  }
+
+  @override
+  Future<void> run() async {
+    final id = await fileSystem._fileId(path);
+    fileSystem._knownFileIds.remove(path);
+    await fileSystem._asynchronous.deleteFile(id);
+  }
+}
+
+class _WriteFileWorkItem extends _IndexedDbWorkItem {
+  final IndexedDbFileSystem fileSystem;
+  final String path;
+
+  final List<_FileWriteRequest> pendingWrites = [];
+
+  _WriteFileWorkItem(this.fileSystem, this.path);
+
+  @override
+  _WorkSimplicationResult mergeWith(_IndexedDbWorkItem other) {
+    if (other is _WriteFileWorkItem) {
+      if (other.path == path) {
+        other.pendingWrites.addAll(pendingWrites);
+        return _WorkSimplicationResult.mergedInto;
+      }
+    }
+
+    return _WorkSimplicationResult.cannotSimplify;
+  }
+
+  @override
+  Future<void> run() async {
+    await fileSystem._asynchronous
+        .write(await fileSystem._fileId(path), pendingWrites);
+  }
 }
