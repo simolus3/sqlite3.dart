@@ -2,7 +2,7 @@ import 'package:http/http.dart' as http;
 import 'package:sqlite3/wasm.dart';
 import 'package:test/scaffolding.dart';
 
-Future<WasmSqlite3> loadSqlite3() async {
+Future<WasmSqlite3> loadSqlite3([SqliteEnvironment? environment]) async {
   final channel = spawnHybridUri('/test/wasm/asset_server.dart');
   final port = await channel.stream.first as int;
 
@@ -16,5 +16,5 @@ Future<WasmSqlite3> loadSqlite3() async {
         'Could not load module (${response.statusCode} ${response.body})');
   }
 
-  return WasmSqlite3.load(response.bodyBytes);
+  return WasmSqlite3.load(response.bodyBytes, environment);
 }

@@ -1,3 +1,7 @@
+## 1.7.2-dev
+
+- Drastically optimize the wasm filesystem.
+
 ## 1.7.1
 
 - Allow binding `BigInt`s to statements and functions. They must still be

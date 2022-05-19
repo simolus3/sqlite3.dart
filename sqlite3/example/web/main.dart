@@ -40,8 +40,7 @@ Future<void> main() async {
 
   database.dispose();
   //await fileSystem.close();
-  await Future<void>.delayed(const Duration(milliseconds: 10000));
-  fileSystem.printState();
+  await Future<void>.delayed(const Duration(milliseconds: 5000));
 
   final fileSystem2 = await IndexedDbFileSystem.open(dbName: 'test');
   final sqlite32 = await WasmSqlite3.load(
