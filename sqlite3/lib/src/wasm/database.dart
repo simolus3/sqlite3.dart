@@ -344,6 +344,11 @@ class WasmDatabase extends CommonDatabase {
     );
   }
 
+  @override
+  Future<void> flush() async {
+    await bindings.persistentStorage?.flush();
+  }
+
   void _ensureOpen() {
     if (_isClosed) {
       throw StateError('This database has already been closed');

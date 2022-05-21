@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:collection';
-import 'dart:developer';
 import 'dart:html';
 import 'dart:indexed_db';
 import 'dart:indexed_db' as idb;
@@ -68,6 +67,10 @@ abstract class FileSystem {
   /// Writes a chunk from [bytes] into the file at path [path] and offset
   /// [offset].
   void write(String path, Uint8List bytes, int offset);
+}
+
+abstract class PersistentStorage {
+  Future<void> flush();
 }
 
 /// An exception thrown by a [FileSystem] implementation.
@@ -576,7 +579,7 @@ class _OffsetAndBuffer {
 ///
 /// In the future, we may want to store individual blocks instead.
 
-class IndexedDbFileSystem implements FileSystem {
+class IndexedDbFileSystem implements FileSystem, PersistentStorage {
   final AsynchronousIndexedDbFileSystem _asynchronous;
 
   var _isClosing = false;
@@ -730,6 +733,7 @@ class IndexedDbFileSystem implements FileSystem {
   /// Each call to [flush] will await pending operations made _before_ the call.
   /// Operations started after this [flush] call will not be awaited by the
   /// returned future.
+  @override
   Future<void> flush() {
     return _submitWorkFunction(() {}, 'flush');
   }

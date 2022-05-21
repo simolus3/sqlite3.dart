@@ -23,6 +23,7 @@ class WasmBindings {
   final WasmInstance instance;
   late final FunctionStore functions;
   final Memory memory;
+  final PersistentStorage? persistentStorage;
 
   // ignore: close_sinks
   final StreamController<QualifiedSqliteUpdate> _updates =
@@ -96,7 +97,7 @@ class WasmBindings {
 
   final Global _sqlite3_temp_directory;
 
-  WasmBindings(this.instance, _InjectedValues values)
+  WasmBindings(this.instance, _InjectedValues values, {this.persistentStorage})
       : memory = values.memory,
         _malloc = instance.functions['dart_sqlite3_malloc']!,
         _free = instance.functions['dart_sqlite3_free']!,
@@ -169,8 +170,10 @@ class WasmBindings {
       Uint8List source, SqliteEnvironment environment) async {
     final injected = _InjectedValues(environment);
     final instance = await WasmInstance.load(source, injected.injectedValues);
-
-    return WasmBindings(instance, injected);
+    final storage = environment.fileSystem is PersistentStorage
+        ? environment.fileSystem as PersistentStorage
+        : null;
+    return WasmBindings(instance, injected, persistentStorage: storage);
   }
 
   Pointer allocateBytes(List<int> bytes, {int additionalLength = 0}) {

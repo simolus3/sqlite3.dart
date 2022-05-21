@@ -395,6 +395,9 @@ class DatabaseImpl extends Database {
     }
   }
 
+  @override
+  Future<void> flush() async {}
+
   void _ensureOpen() {
     if (_isClosed) {
       throw StateError('This database has already been closed');

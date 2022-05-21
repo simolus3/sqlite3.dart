@@ -173,6 +173,9 @@ abstract class CommonDatabase {
     bool directOnly = true,
   });
 
+  /// Waits for the data to be written to persistent storage
+  Future<void> flush();
+
   /// Closes this database and releases associated resources.
   void dispose();
 }
