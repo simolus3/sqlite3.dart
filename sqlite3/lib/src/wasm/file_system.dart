@@ -632,39 +632,14 @@ class IndexedDbFileSystem implements FileSystem {
     _checkClosed();
 
     // See if this unit of work can be combined with scheduled work units.
-    if (_pendingWork.isNotEmpty) {
-      _IndexedDbWorkItem? compareWith = _pendingWork.last;
-      assert(_currentWorkItem != compareWith,
-          'Current work item should be removed from queue');
-
-      while (compareWith != null) {
-        final result = work.mergeWith(compareWith);
-        switch (result) {
-          case _WorkSimplicationResult.mergedInto:
-            return compareWith.completer.future;
-          case _WorkSimplicationResult.cannotSimplify:
-            compareWith = null;
-            break;
-          case _WorkSimplicationResult.lookFurther:
-            compareWith = compareWith.previous;
-            break;
-          case _WorkSimplicationResult.deletePreviousAndContinue:
-          case _WorkSimplicationResult.deletePreviousAndMergedWith:
-            final next = compareWith.previous;
-            compareWith.unlink();
-            compareWith = next;
-
-            if (result == _WorkSimplicationResult.deletePreviousAndMergedWith) {
-              return next?.completer.future ?? Future.value();
-            }
-        }
-      }
+    if (work.insertInto(_pendingWork)) {
+      _startWorkingIfNeeded();
+      return work.completer.future;
+    } else {
+      // This item determined that it doesn't need to do any work at its place
+      // in the queue, so just skip it.
+      return Future.value();
     }
-
-    _pendingWork.add(work);
-    _startWorkingIfNeeded();
-
-    return work.completer.future;
   }
 
   Future<void> _submitWorkFunction(
@@ -827,19 +802,23 @@ class IndexedDbFileSystem implements FileSystem {
   }
 }
 
-enum _WorkSimplicationResult {
-  cannotSimplify,
-  lookFurther,
-  deletePreviousAndContinue,
-  deletePreviousAndMergedWith,
-  mergedInto,
-}
-
 abstract class _IndexedDbWorkItem extends LinkedListEntry<_IndexedDbWorkItem> {
   final Completer<void> completer = Completer.sync();
 
-  _WorkSimplicationResult mergeWith(_IndexedDbWorkItem other) =>
-      _WorkSimplicationResult.cannotSimplify;
+  /// Insert this item into the [pending] list, returning whether the item was
+  /// actually added.
+  ///
+  /// Some items may want to look at the current state of the work queue for
+  /// optimization purposes. For instance:
+  ///
+  ///  - if two writes to the same file are scheduled, they can be merged into
+  ///    a single transaction for efficiency.
+  ///  - if a file creation or writes are followed by inserting a delete request
+  ///    to the same file, previous items can be deleted from the queue.
+  bool insertInto(LinkedList<_IndexedDbWorkItem> pending) {
+    pending.add(this);
+    return true;
+  }
 
   FutureOr<void> run();
 }
@@ -861,24 +840,52 @@ class _DeleteFileWorkItem extends _IndexedDbWorkItem {
   _DeleteFileWorkItem(this.fileSystem, this.path);
 
   @override
-  _WorkSimplicationResult mergeWith(_IndexedDbWorkItem other) {
-    if (other is _DeleteFileWorkItem) {
-      // If there already is a pending "delete" request available, we don't have
-      // to run a new one.
-      return other.path == path
-          ? _WorkSimplicationResult.mergedInto
-          : _WorkSimplicationResult.lookFurther;
-    } else if (other is _WriteFileWorkItem) {
-      return other.path == path
-          ? _WorkSimplicationResult.deletePreviousAndContinue
-          : _WorkSimplicationResult.lookFurther;
-    } else if (other is _CreateFileWorkItem) {
-      return other.path == path
-          ? _WorkSimplicationResult.deletePreviousAndMergedWith
-          : _WorkSimplicationResult.lookFurther;
+  bool insertInto(LinkedList<_IndexedDbWorkItem> pending) {
+    if (pending.isNotEmpty) {
+      // Check queue from back to front and see if this delete can be merged
+      // into an existing operation or if it cancels out a creation operation
+      // that is pending.
+      _IndexedDbWorkItem? current = pending.last;
+
+      while (current != null) {
+        if (current is _DeleteFileWorkItem) {
+          // If there already is a pending "delete" request available, we don't
+          // have to run a new one.
+          if (current.path == path) {
+            // File is already getting deleted, no need to do that again.
+            return false;
+          } else {
+            // Unrelated delete request, look further
+            current = current.previous;
+          }
+        } else if (current is _WriteFileWorkItem) {
+          final previous = current.previous;
+          if (current.path == path) {
+            // There's a pending write to a file that we're deleting now, that
+            // can be unscheduled now.
+            current.unlink();
+          }
+
+          current = previous;
+        } else if (current is _CreateFileWorkItem) {
+          if (current.path == path) {
+            // The creation of this file is pending. Since we're now enqueuing
+            // its deletion, those two just cancel each other out.
+            current.unlink();
+            return false;
+          }
+
+          current = current.previous;
+        } else {
+          // Can't simplify further, we don't know what this general item is
+          // doing.
+          break;
+        }
+      }
     }
 
-    return _WorkSimplicationResult.cannotSimplify;
+    pending.add(this);
+    return true;
   }
 
   @override
@@ -912,21 +919,33 @@ class _WriteFileWorkItem extends _IndexedDbWorkItem {
   _WriteFileWorkItem(this.fileSystem, this.path, this.originalContent);
 
   @override
-  _WorkSimplicationResult mergeWith(_IndexedDbWorkItem other) {
-    if (other is _WriteFileWorkItem) {
-      if (other.path == path) {
-        other.writes.addAll(writes);
-        return _WorkSimplicationResult.mergedInto;
+  bool insertInto(LinkedList<_IndexedDbWorkItem> pending) {
+    var current = pending.isEmpty ? null : pending.last;
+
+    while (current != null) {
+      if (current is _WriteFileWorkItem) {
+        if (current.path == path) {
+          // Merge the two pending writes into one transaction.
+          current.writes.addAll(writes);
+          return false;
+        } else {
+          current = current.previous;
+        }
+      } else if (current is _CreateFileWorkItem) {
+        if (current.path == path) {
+          // Don't look further than the item that created this file, who knows
+          // what happened before that.
+          break;
+        }
+
+        current = current.previous;
       } else {
-        return _WorkSimplicationResult.lookFurther;
+        break;
       }
-    } else if (other is _CreateFileWorkItem) {
-      return other.path == path
-          ? _WorkSimplicationResult.cannotSimplify
-          : _WorkSimplicationResult.lookFurther;
     }
 
-    return _WorkSimplicationResult.cannotSimplify;
+    pending.add(this);
+    return true;
   }
 
   @override
