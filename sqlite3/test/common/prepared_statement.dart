@@ -127,9 +127,6 @@ void testPreparedStatements(
             .having((e) => e.message, 'message', contains('was two'))),
       );
     },
-    onPlatform: const <String, dynamic>{
-      'mac-os': Skip('TODO: User-defined functions cause a sigkill on MacOS')
-    },
   );
 
   test('can bind booleans', () {

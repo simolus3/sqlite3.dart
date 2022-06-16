@@ -374,10 +374,6 @@ void testDatabase(
         );
       });
     },
-    onPlatform: const <String, dynamic>{
-      'mac-os && !browser':
-          Skip('TODO: User-defined functions cause a sigkill on MacOS')
-    },
   );
 
   test('prepare does not throw for multiple statements by default', () {
