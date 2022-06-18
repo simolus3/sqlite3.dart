@@ -7,17 +7,82 @@ on:
     branches: [ main ]
 
 jobs:
+  compile_sqlite3:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    name: Compile sqlite3 for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    env:
+      SQLITE_YEAR: "2022"
+      SQLITE_VERSION: "3380500"
+
+    steps:
+    - uses: actions/cache@v3
+      id: cache_sqlite_build
+      with:
+        path: sqlite/out
+        key: sqlite-${{ runner.os }}-${{ env.SQLITE_VERSION }}
+    - name: Compile sqlite3 on Linux
+      if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Linux'
+      run: |
+        mkdir sqlite
+        cd sqlite
+        curl https://sqlite.org/$SQLITE_YEAR/sqlite-autoconf-$SQLITE_VERSION.tar.gz --output sqlite.tar.gz
+        tar zxvf sqlite.tar.gz
+        cd sqlite-autoconf-$SQLITE_VERSION
+        ./configure
+        make -j
+        mkdir ../out
+        cp sqlite3 ../out
+        cp .libs/libsqlite3.so ../out
+    - uses: ilammy/msvc-dev-cmd@v1
+      if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Windows'
+    - name: Compile sqlite3 on Windows
+      if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Windows'
+      run: |
+        mkdir sqlite
+        cd sqlite
+        curl https://sqlite.org/$Env:SQLITE_YEAR/sqlite-autoconf-$Env:SQLITE_VERSION.tar.gz --output sqlite.tar.gz
+        tar zxvf sqlite.tar.gz
+        cd sqlite-autoconf-$Env:SQLITE_VERSION
+        ./configure
+        nmake /f Makefile.msc sqlite3.c
+        "#define SQLITE_API __declspec(dllexport)" | Out-File -FilePath sqlite3e.c
+        '#include "sqlite3.c"' | Out-File -FilePath sqlite3e.c -Append
+        cl sqlite3e.c -link -dll -out:sqlite3.dll
+        mkdir ../out
+        cp sqlite3.dll ../out
+    - name: Upload built sqlite3 binaries
+      uses: actions/upload-artifact@v3
+      with:
+        name: sqlite3-${{ runner.os }}
+        path: sqlite/out
+        if-no-files-found: error
+        retention-days: 1
+
   analyze:
+    needs: [compile_sqlite3]
     strategy:
       matrix:
         package: [sqlite3]
+        dart: [stable, dev]
 
+    name: Analyze on Dart ${{ matrix.dart }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - uses: dart-lang/setup-dart@v1
       with:
-        sdk: dev
+        sdk: ${{ matrix.dart }}
+    - uses: actions/cache@v3
+      with:
+        path: "${{ env.PUB_CACHE }}"
+        key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
+        restore-keys: |
+          dart-dependencies-${{ matrix.dart }}-
+          dart-dependencies-
 
     - name: Pub get
       run: dart pub get
@@ -37,25 +102,47 @@ jobs:
       working-directory: ${{ matrix.package }}
 
   test:
+    needs: [analyze]
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [ubuntu-latest, windows-latest, macos-10.15, macos-11, macos-12]
+        dart: [stable, dev]
 
+    name: Unit tests with Dart ${{ matrix.dart }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v2
     - uses: dart-lang/setup-dart@v1
       with:
-        sdk: dev
+        sdk: ${{ matrix.dart }}
 
-    - name: install sqlite (Linux)
+    - name: Download compiled sqlite3
+      if: runner.os == 'Linux' || runner.os == 'Windows'
+      uses: actions/download-artifact@v3
+      with:
+        name: sqlite3-${{ runner.os }}
+        path: sqlite/out
+
+    - name: Install compiled sqlite3 (Linux)
       if: runner.os == 'Linux'
-      run: sudo apt-get install -y libsqlite3-dev
-
-    - name: install sqlite (Windows)
+      run: |
+        chmod a+x sqlite/out/sqlite3
+        realpath sqlite/out >> $GITHUB_PATH
+        echo "LD_LIBRARY_PATH=$(realpath sqlite/out)" >> $GITHUB_ENV
+    - name: Install compiled sqlite3 (Windows)
       if: runner.os == 'Windows'
-      run: choco install sqlite
+      run: |
+        echo $env:path
+        Resolve-Path -Path "sqlite/out" >> $env:GITHUB_PATH
+
+    - uses: actions/cache@v3
+      with:
+        path: "${{ env.PUB_CACHE }}"
+        key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
+        restore-keys: |
+          dart-dependencies-${{ matrix.dart }}-
+          dart-dependencies-
 
     - name: Test
       run: |
@@ -122,6 +209,7 @@ jobs:
 #        working-directory: integration_tests/flutter_libs
 
   # Shamelessly stolen from https://medium.com/flutter-community/run-flutter-driver-tests-on-github-actions-13c639c7e4ab
+
   integration_test_ios:
     needs: [test]
     runs-on: macos-latest
