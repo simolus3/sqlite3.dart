@@ -47,6 +47,7 @@ class Sqlite3 implements CommmonSqlite3 {
       vfs: vfs,
       mode: mode,
       uri: uri,
+      mutex: mutex,
     );
   }
 
