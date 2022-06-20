@@ -1,6 +1,7 @@
-## 1.7.2-dev
+## 1.7.2
 
-- Drastically optimize the wasm filesystem.
+- Optimizations in the wasm-based file system.
+- Fix the `mutex` parameter not doing anything in the FFI-based implementation.
 
 ## 1.7.1
 
