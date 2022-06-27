@@ -25,7 +25,7 @@ target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
 include(FetchContent)
 FetchContent_Declare(
   sqlite3
-  URL https://sqlite.org/2022/sqlite-autoconf-3380500.tar.gz
+  URL https://www.sqlite.org/2022/sqlite-autoconf-3390000.tar.gz
 )
 FetchContent_MakeAvailable(sqlite3)
 
