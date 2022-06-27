@@ -16,7 +16,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       SQLITE_YEAR: "2022"
-      SQLITE_VERSION: "3380500"
+      SQLITE_VERSION: "3390000"
 
     steps:
     - uses: actions/cache@v3
@@ -98,7 +98,7 @@ jobs:
       working-directory: sqlite3
 
     - name: Analyze
-      run: dart analyze
+      run: dart analyze --fatal-infos
       working-directory: ${{ matrix.package }}
 
   test:
