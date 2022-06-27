@@ -12,10 +12,10 @@ dependencies:
     path: ../../sqlite3_flutter_libs
   flutter:
     sdk: flutter
+  integration_test:
+    sdk: flutter
 
 dev_dependencies:
   sqlite3:
     path: ../../sqlite3
-  flutter_driver:
-    sdk: flutter
-  test: ^1.16.0-nullsafety
+  test: ^1.18.0

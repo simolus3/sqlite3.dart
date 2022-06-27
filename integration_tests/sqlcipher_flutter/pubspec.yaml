@@ -13,10 +13,8 @@ dependencies:
     path: ../../sqlcipher_flutter_libs
   flutter:
     sdk: flutter
-
-dev_dependencies:
+  integration_test:
+    sdk: flutter
   sqlite3:
     path: ../../sqlite3
-  flutter_driver:
-    sdk: flutter
   test:

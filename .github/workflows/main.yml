@@ -229,11 +229,11 @@ jobs:
         run: flutter --version
 
       - name: sqlite3 driver tests
-        run: "flutter pub get && flutter pub run test_driver/integration_test.dart"
+        run: "flutter pub get && flutter test integration_test"
         working-directory: integration_tests/flutter_libs
 
       - name: sqlcipher driver tests
-        run: "flutter pub get && flutter pub run test_driver/integration_test.dart"
+        run: "flutter pub get && flutter test integration_test"
         working-directory: integration_tests/sqlcipher_flutter
 
   integration_test_macos:
@@ -248,9 +248,9 @@ jobs:
           flutter --version
 
       - name: sqlite3 driver tests
-        run: "flutter pub get && flutter pub run test_driver/integration_test.dart"
+        run: "flutter pub get && flutter test integration_test"
         working-directory: integration_tests/flutter_libs
 
       - name: sqlcipher driver tests
-        run: "flutter pub get && flutter pub run test_driver/integration_test.dart"
+        run: "flutter pub get && flutter test integration_test"
         working-directory: integration_tests/sqlcipher_flutter
