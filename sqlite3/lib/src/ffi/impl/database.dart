@@ -1,19 +1,57 @@
 part of 'implementation.dart';
 
+/// Contains the state of a database needed for finalization.
+///
+/// This is extracted into separate object so that it can be used as a
+/// finalization token. It will get disposed when the main database is no longer
+/// reachable without being closed.
+class _FinalizableDatabase extends FinalizablePart {
+  final Bindings _bindings;
+  final Pointer<sqlite3> _handle;
+  final List<_FinalizableStatement> _statements = [];
+  final List<Pointer<Void>> _furtherAllocations = [];
+
+  _FinalizableDatabase(this._bindings, this._handle);
+
+  @override
+  void dispose() {
+    for (final stmt in _statements) {
+      stmt.dispose();
+    }
+
+    final code = _bindings.sqlite3_close_v2(_handle);
+    SqliteException? exception;
+    if (code != SqlError.SQLITE_OK) {
+      exception = createExceptionRaw(_bindings, _handle, code);
+    }
+
+    for (final additional in _furtherAllocations) {
+      additional.free();
+    }
+
+    // we don't need to deallocate the _db pointer, sqlite takes care of that
+    if (exception != null) {
+      throw exception;
+    }
+  }
+}
+
 class DatabaseImpl extends Database {
   final BindingsWithLibrary _library;
   final Bindings _bindings;
 
-  final Pointer<sqlite3> _handle;
-  final List<PreparedStatementImpl> _statements = [];
-  final List<Pointer<Void>> _furtherAllocations = [];
+  final _FinalizableDatabase _finalizable;
+  final Finalizer<FinalizablePart> _finalizer = disposeFinalizer;
 
   late final _DatabaseUpdates _updates = _DatabaseUpdates(this);
 
   bool _isClosed = false;
 
-  DatabaseImpl(this._library, this._handle)
-      : this._bindings = _library.bindings;
+  DatabaseImpl(this._library, Pointer<sqlite3> handle)
+      : _finalizable = _FinalizableDatabase(_library.bindings, handle),
+        this._bindings = _library.bindings {
+    _finalizer.attach(this, _finalizable, detach: this);
+  }
 
   factory DatabaseImpl.open(
     BindingsWithLibrary library,
@@ -58,6 +96,8 @@ class DatabaseImpl extends Database {
 
   @override
   Stream<SqliteUpdate> get updates => _updates.updates;
+
+  Pointer<sqlite3> get _handle => _finalizable._handle;
 
   @override
   Pointer<void> get handle => _handle;
@@ -159,7 +199,7 @@ class DatabaseImpl extends Database {
       pzTail.free();
 
       for (final stmt in createdStatements) {
-        _bindings.sqlite3_finalize(stmt.handle.cast());
+        stmt.dispose();
       }
     }
 
@@ -254,7 +294,10 @@ class DatabaseImpl extends Database {
     sqlPtr.free();
     pzTail.free();
 
-    _statements.addAll(createdStatements);
+    for (final created in createdStatements) {
+      _finalizable._statements.add(created._finalizable);
+    }
+
     return createdStatements;
   }
 
@@ -373,26 +416,11 @@ class DatabaseImpl extends Database {
   void dispose() {
     if (_isClosed) return;
 
+    _finalizer.detach(this);
     _isClosed = true;
     _updates.close();
-    for (final stmt in _statements) {
-      stmt.dispose();
-    }
 
-    final code = _bindings.sqlite3_close_v2(_handle);
-    SqliteException? exception;
-    if (code != SqlError.SQLITE_OK) {
-      exception = createException(this, code);
-    }
-
-    for (final additional in _furtherAllocations) {
-      additional.free();
-    }
-
-    // we don't need to deallocate the _db pointer, sqlite takes care of that
-    if (exception != null) {
-      throw exception;
-    }
+    _finalizable.dispose();
   }
 
   void _ensureOpen() {
@@ -403,7 +431,7 @@ class DatabaseImpl extends Database {
 
   void _handleFinalized(PreparedStatementImpl stmt) {
     if (!_isClosed) {
-      _statements.remove(stmt);
+      _finalizable._statements.remove(stmt._finalizable);
     }
   }
 }

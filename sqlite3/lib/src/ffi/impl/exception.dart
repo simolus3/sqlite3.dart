@@ -24,7 +24,7 @@ SqliteException createExceptionRaw(
 SqliteException createException(DatabaseImpl db, int returnCode,
     [String? previousStatement]) {
   final bindings = db._bindings;
-  final handle = db._handle;
+  final handle = db._finalizable._handle;
 
   return createExceptionRaw(bindings, handle, returnCode, previousStatement);
 }

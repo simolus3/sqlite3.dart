@@ -1,20 +1,54 @@
 part of 'implementation.dart';
 
+class _FinalizableStatement extends FinalizablePart {
+  final Bindings _bindings;
+  final Pointer<sqlite3_stmt> _stmt;
+
+  bool _variablesBound = false;
+  bool _closed = false;
+  final List<Pointer> _allocatedWhileBinding = [];
+
+  _FinalizableStatement(this._bindings, this._stmt);
+
+  @override
+  void dispose() {
+    if (!_closed) {
+      _closed = true;
+      _reset();
+      _bindings.sqlite3_finalize(_stmt);
+    }
+  }
+
+  void _reset() {
+    if (_variablesBound) {
+      _bindings.sqlite3_reset(_stmt);
+      _variablesBound = false;
+    }
+
+    for (final pointer in _allocatedWhileBinding) {
+      pointer.free();
+    }
+    _allocatedWhileBinding.clear();
+  }
+}
+
 class PreparedStatementImpl implements PreparedStatement {
   @override
   final String sql;
   final Pointer<sqlite3_stmt> _stmt;
   final DatabaseImpl _db;
 
-  bool _closed = false;
-  _ActiveCursorIterator? _currentCursor;
+  final _FinalizableStatement _finalizable;
+  final Finalizer<FinalizablePart> _finalizer = disposeFinalizer;
 
-  bool _variablesBound = false;
-  final List<Pointer> _allocatedWhileBinding = [];
+  _ActiveCursorIterator? _currentCursor;
 
   Bindings get _bindings => _db._bindings;
 
-  PreparedStatementImpl(this.sql, this._stmt, this._db);
+  PreparedStatementImpl(this.sql, this._stmt, this._db)
+      : _finalizable = _FinalizableStatement(_db._bindings, _stmt) {
+    _finalizer.attach(this, _finalizable, detach: this);
+  }
 
   @override
   int get parameterCount {
@@ -135,25 +169,17 @@ class PreparedStatementImpl implements PreparedStatement {
 
   @override
   void dispose() {
-    if (!_closed) {
-      _closed = true;
+    if (!_finalizable._closed) {
+      _finalizer.detach(this);
+      _finalizable.dispose();
+      _currentCursor = null;
 
-      _reset();
-      _bindings.sqlite3_finalize(_stmt);
       _db._handleFinalized(this);
     }
   }
 
   void _reset() {
-    if (_variablesBound) {
-      _bindings.sqlite3_reset(_stmt);
-      _variablesBound = false;
-    }
-
-    for (final pointer in _allocatedWhileBinding) {
-      pointer.free();
-    }
-    _allocatedWhileBinding.clear();
+    _finalizable._reset();
     _currentCursor = null;
   }
 
@@ -168,7 +194,7 @@ class PreparedStatementImpl implements PreparedStatement {
       _bindParam(param, i);
     }
 
-    _variablesBound = true;
+    _finalizable._variablesBound = true;
   }
 
   void _bindMapParams(Map<String, Object?> params) {
@@ -187,7 +213,7 @@ class PreparedStatementImpl implements PreparedStatement {
 
       final keyBytes = utf8.encode(key);
       final keyPtr = allocateBytes(keyBytes, additionalLength: 1);
-      _allocatedWhileBinding.add(keyPtr);
+      _finalizable._allocatedWhileBinding.add(keyPtr);
       final i = _bindings.sqlite3_bind_parameter_index(_stmt, keyPtr.cast());
 
       // SQL parameters are 1-indexed, so 0 indicates that no parameter with
@@ -206,7 +232,7 @@ class PreparedStatementImpl implements PreparedStatement {
           params, 'params', 'Expected $expectedLength parameters');
     }
 
-    _variablesBound = true;
+    _finalizable._variablesBound = true;
   }
 
   void _bindParam(Object? param, int i) {
@@ -223,7 +249,7 @@ class PreparedStatementImpl implements PreparedStatement {
     } else if (param is String) {
       final bytes = utf8.encode(param);
       final ptr = allocateBytes(bytes);
-      _allocatedWhileBinding.add(ptr);
+      _finalizable._allocatedWhileBinding.add(ptr);
 
       _bindings.sqlite3_bind_text(
           _stmt, i, ptr.cast(), bytes.length, nullPtr());
@@ -239,7 +265,7 @@ class PreparedStatementImpl implements PreparedStatement {
         final ptr = allocateBytes(param).cast<Void>();
 
         _bindings.sqlite3_bind_blob64(_stmt, i, ptr, param.length, nullPtr());
-        _allocatedWhileBinding.add(ptr);
+        _finalizable._allocatedWhileBinding.add(ptr);
       }
     } else {
       throw ArgumentError.value(
@@ -279,7 +305,7 @@ class PreparedStatementImpl implements PreparedStatement {
   int _step() => _bindings.sqlite3_step(_stmt);
 
   void _ensureNotFinalized() {
-    if (_closed) {
+    if (_finalizable._closed) {
       throw StateError('Tried to operate on a released prepared statement');
     }
   }
@@ -311,7 +337,9 @@ class _ActiveCursorIterator extends IteratingCursor {
 
   @override
   bool moveNext() {
-    if (statement._closed || statement._currentCursor != this) return false;
+    if (statement._finalizable._closed || statement._currentCursor != this) {
+      return false;
+    }
 
     final result = statement._step();
 

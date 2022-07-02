@@ -1,3 +1,9 @@
+## 1.8.0-dev
+
+- Use a `Finalizer` to automatically dispose databases and statements. As
+  finalizers in Dart aren't reliable, you should still make sure to call
+  `dispose` manually after you're done with a database or a statement.
+
 ## 1.7.2
 
 - Optimizations in the wasm-based file system.

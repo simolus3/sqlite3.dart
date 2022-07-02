@@ -7,25 +7,59 @@ import '../common/constants.dart';
 import '../common/database.dart';
 import '../common/exception.dart';
 import '../common/functions.dart';
+import '../common/impl/finalizer.dart';
 import '../common/impl/utils.dart';
 import '../common/statement.dart';
 import 'bindings.dart';
 import 'exception.dart';
 import 'statement.dart';
 
+/// Extracted parts of a wasm database needed for disposing it natively.
+///
+/// This is extracted from the main class so that this can be used as a
+/// finalization token.
+class _FinalizableDatabase extends FinalizablePart {
+  final WasmBindings bindings;
+  final Pointer db;
+  final List<WasmFinalizableStatement> _statements = [];
+
+  _FinalizableDatabase(this.bindings, this.db);
+
+  @override
+  void dispose() {
+    for (final stmt in _statements) {
+      stmt.dispose();
+    }
+
+    final code = bindings.sqlite3_close_v2(db);
+    final exception = code != SqlError.SQLITE_OK
+        ? createExceptionRaw(bindings, db, code)
+        : null;
+
+    // We don't need to deallocate the db pointer, sqlite3 takes care of that.
+    if (exception != null) {
+      throw exception;
+    }
+  }
+}
+
 @internal
 class WasmDatabase extends CommonDatabase {
   final WasmBindings bindings;
   final Pointer db;
 
+  final _FinalizableDatabase _finalizable;
+  final Finalizer<FinalizablePart> _finalizer = disposeFinalizer;
+
   bool _isClosed = false;
   final int _databaseId;
   final List<MultiStreamController<SqliteUpdate>> _updateListeners = [];
 
-  final List<WasmStatement> _statements = [];
-
   WasmDatabase(this.bindings, this.db)
-      : _databaseId = bindings.lastDatabaseId++;
+      : _finalizable = _FinalizableDatabase(bindings, db),
+        _databaseId = bindings.lastDatabaseId++ {
+    _finalizer.attach(this, _finalizable, detach: this);
+  }
 
   SqliteException createException(int returnCode, [String? previousStatement]) {
     return createExceptionRaw(bindings, db, returnCode, previousStatement);
@@ -109,20 +143,11 @@ class WasmDatabase extends CommonDatabase {
     if (_isClosed) return;
 
     _isClosed = true;
-    for (final stmt in _statements) {
-      stmt.dispose();
-    }
-
-    final code = bindings.sqlite3_close_v2(db);
-    final exception = code != SqlError.SQLITE_OK ? createException(code) : null;
+    _finalizer.detach(this);
+    _finalizable.dispose();
 
     for (final listener in _updateListeners) {
       listener.close();
-    }
-
-    // We don't need to deallocate the db pointer, sqlite3 takes care of that.
-    if (exception != null) {
-      throw exception;
     }
   }
 
@@ -292,7 +317,9 @@ class WasmDatabase extends CommonDatabase {
       ..free(sqlPtr)
       ..free(pzTail);
 
-    _statements.addAll(createdStatements);
+    for (final created in createdStatements) {
+      _finalizable._statements.add(created.finalizable);
+    }
     return createdStatements;
   }
 
@@ -352,7 +379,7 @@ class WasmDatabase extends CommonDatabase {
 
   void handleFinalized(WasmStatement stmt) {
     if (!_isClosed) {
-      _statements.remove(stmt);
+      _finalizable._statements.remove(stmt.finalizable);
     }
   }
 }
