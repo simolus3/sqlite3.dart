@@ -16,7 +16,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       SQLITE_YEAR: "2022"
-      SQLITE_VERSION: "3390000"
+      SQLITE_VERSION: "3390200"
 
     steps:
     - uses: actions/cache@v3

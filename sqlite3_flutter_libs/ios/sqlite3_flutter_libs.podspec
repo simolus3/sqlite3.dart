@@ -17,7 +17,7 @@ A new flutter plugin project.
   s.public_header_files = 'Classes/**/*.h'
   s.dependency 'Flutter'
 
-  s.dependency 'sqlite3', '~> 3.39.0'
+  s.dependency 'sqlite3', '~> 3.39.2'
   s.dependency 'sqlite3/fts5'
   s.dependency 'sqlite3/json1'
   s.dependency 'sqlite3/perf-threadsafe'
