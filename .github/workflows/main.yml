@@ -67,8 +67,7 @@ jobs:
     strategy:
       matrix:
         package: [sqlite3]
-        # todo: Re-enable analysis on dev SDK after https://github.com/modulovalue/extra_pedantic/issues/13
-        dart: [stable] #, dev]
+        dart: [stable, dev]
 
     name: Analyze on Dart ${{ matrix.dart }}
     runs-on: ubuntu-latest
