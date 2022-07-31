@@ -3,6 +3,7 @@ version '1.0'
 
 buildscript {
     repositories {
+        mavenLocal()
         google()
         mavenCentral()
     }
@@ -15,7 +16,7 @@ buildscript {
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 28
+    compileSdkVersion 32
 
     defaultConfig {
         minSdkVersion 16
@@ -26,5 +27,5 @@ android {
 }
 
 dependencies {
-    implementation 'eu.simonbinder:sqlite3-native-library:3.39.2'
+    implementation 'me.movenext:sqlite3-native-library:3.39.2'
 }
