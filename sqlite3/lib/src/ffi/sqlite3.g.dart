@@ -961,6 +961,20 @@ class Bindings {
               ffi.Pointer<ffi.Void>,
               ffi.Pointer<ffi.Int>,
               ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3_auto_extension(
+    ffi.Pointer<ffi.Void> xEntryPoint,
+  ) {
+    return _sqlite3_auto_extension(
+      xEntryPoint,
+    );
+  }
+
+  late final _sqlite3_auto_extensionPtr =
+      _lookup<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>>(
+          'sqlite3_auto_extension');
+  late final _sqlite3_auto_extension = _sqlite3_auto_extensionPtr
+      .asFunction<int Function(ffi.Pointer<ffi.Void>)>();
 }
 
 class sqlite3_char extends ffi.Opaque {}
@@ -968,6 +982,8 @@ class sqlite3_char extends ffi.Opaque {}
 class sqlite3 extends ffi.Opaque {}
 
 class sqlite3_stmt extends ffi.Opaque {}
+
+class sqlite3_api_routines extends ffi.Opaque {}
 
 class sqlite3_value extends ffi.Opaque {}
 

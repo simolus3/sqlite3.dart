@@ -3,6 +3,7 @@
 typedef struct sqlite3_char sqlite3_char;
 typedef struct sqlite3 sqlite3;
 typedef struct sqlite3_stmt sqlite3_stmt;
+typedef struct sqlite3_api_routines sqlite3_api_routines;
 
 sqlite3_char *sqlite3_temp_directory;
 
@@ -95,3 +96,6 @@ void sqlite3_result_text(sqlite3_context *ctx, sqlite3_char *data, int length,
 // Collations
 int sqlite3_create_collation_v2(sqlite3 *, sqlite3_char *zName, int eTextRep,
                                 void *pArg, int *xCompare, void *xDestroy);
+
+// Extensions
+int sqlite3_auto_extension(void *xEntryPoint);
