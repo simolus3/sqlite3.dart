@@ -304,7 +304,7 @@ class ResponseInit {
 @JS()
 @staticInterop
 class Response {
-  external Response(
+  external factory Response(
       Object /* Blob|BufferSource|FormData|ReadableStream|URLSearchParams|UVString */ body,
       ResponseInit init);
 }
