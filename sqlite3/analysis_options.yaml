@@ -1,4 +1,4 @@
-include: package:extra_pedantic/analysis_options.2.0.0.yaml
+include: package:extra_pedantic/analysis_options.3.0.0.yaml
 
 analyzer:
   strong-mode:

@@ -1,8 +1,9 @@
-## 1.8.0-dev
+## 1.8.0
 
 - Use a `Finalizer` to automatically dispose databases and statements. As
   finalizers in Dart aren't reliable, you should still make sure to call
   `dispose` manually after you're done with a database or a statement.
+- Avoid using generative constructors on `@staticInterop` classes.
 
 ## 1.7.2
 
