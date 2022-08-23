@@ -27,5 +27,5 @@ android {
 }
 
 dependencies {
-    implementation 'me.movenext:sqlite3-native-library:3.39.2'
+    implementation 'eu.simonbinder:sqlite3-native-library:3.39.2'
 }
