@@ -507,9 +507,11 @@ class SqlFunctionFlag {
   static const SQLITE_INNOCUOUS = 0x000200000;
 }
 
-class LoadableExtension {
-  static const spellfix1 = 'sqlite3_spellfix_init';
-}
+enum LoadableExtension { spellfix1 }
+
+const loadableExtensionEntrypoints = {
+  LoadableExtension.spellfix1: 'sqlite3_spellfix_init'
+};
 
 const SQLITE_DELETE = 9;
 const SQLITE_INSERT = 18;

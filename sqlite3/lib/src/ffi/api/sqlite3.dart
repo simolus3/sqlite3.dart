@@ -33,16 +33,6 @@ class Sqlite3 implements CommmonSqlite3 {
     return Version(libVersion, sourceId, versionNumber);
   }
 
-  /// Load statically linked extension
-  void autoLoadExtension(String extensionEntrypoint) {
-    final extensionPtr = _library.library.lookup<Void>(extensionEntrypoint);
-    final result = _bindings.sqlite3_auto_extension(extensionPtr);
-    if (result != SqlError.SQLITE_OK) {
-      throw SqliteException(result,
-          'Could not load extension with entrypoint "$extensionEntrypoint"');
-    }
-  }
-
   @override
   Database open(
     String filename, {
