@@ -99,12 +99,8 @@ int sqlite3_create_collation_v2(sqlite3 *, sqlite3_char *zName, int eTextRep,
                                 void *pArg, int *xCompare, void *xDestroy);
 
 // Backup
-sqlite3_backup *
-sqlite3_backup_init(sqlite3 *pDestDb,      /* Database to write to */
-                    sqlite3_char *zDestDb, /* Name of database within pDestDb */
-                    sqlite3 *pSrcDb,     /* Database connection to read from */
-                    sqlite3_char *zSrcDb /* Name of database within pSrcDb */
-);
+sqlite3_backup *sqlite3_backup_init(sqlite3 *pDestDb, sqlite3_char *zDestDb,
+                                    sqlite3 *pSrcDb, sqlite3_char *zSrcDb);
 int sqlite3_backup_step(sqlite3_backup *p, int nPage);
 int sqlite3_backup_finish(sqlite3_backup *p);
 int sqlite3_backup_remaining(sqlite3_backup *p);
