@@ -131,7 +131,7 @@ jobs:
         sdk: ${{ matrix.dart }}
 
     - name: Download compiled sqlite3
-      if: runner.os == 'Linux' || runner.os == 'Windows'
+      if: runner.os == 'Linux' || runner.os == 'Windows' || runner.os == 'macOS'
       uses: actions/download-artifact@v3
       with:
         name: sqlite3-${{ runner.os }}
