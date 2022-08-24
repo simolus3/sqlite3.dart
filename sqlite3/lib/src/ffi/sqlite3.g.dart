@@ -84,18 +84,6 @@ class Bindings {
       ffi.Pointer<sqlite3_char> Function(
           ffi.Pointer<sqlite3>, ffi.Pointer<sqlite3_char>)>();
 
-  int sqlite3_sleep(
-    int ms,
-  ) {
-    return _sqlite3_sleep(
-      ms,
-    );
-  }
-
-  late final _sqlite3_sleepPtr =
-      _lookup<ffi.NativeFunction<ffi.Int Function(ffi.Int)>>('sqlite3_sleep');
-  late final _sqlite3_sleep = _sqlite3_sleepPtr.asFunction<int Function(int)>();
-
   int sqlite3_extended_result_codes(
     ffi.Pointer<sqlite3> db,
     int onoff,

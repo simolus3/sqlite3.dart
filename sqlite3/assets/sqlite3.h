@@ -12,8 +12,6 @@ int sqlite3_open_v2(sqlite3_char *filename, sqlite3 **ppDb, int flags,
 int sqlite3_close_v2(sqlite3 *db);
 sqlite3_char *sqlite3_db_filename(sqlite3 *db, sqlite3_char *zDbName);
 
-int sqlite3_sleep(int ms);
-
 // Error handling
 int sqlite3_extended_result_codes(sqlite3 *db, int onoff);
 int sqlite3_extended_errcode(sqlite3 *db);
