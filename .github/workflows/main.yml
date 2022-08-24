@@ -142,13 +142,13 @@ jobs:
       run: |
         chmod a+x sqlite/out/sqlite3
         realpath sqlite/out >> $GITHUB_PATH
-        echo "LD_LIBRARY_PATH=$(realpath sqlite/out)" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=$(realpath)/sqlite/out" >> $GITHUB_ENV
     - name: Install compiled sqlite3 (macOS)
       if: runner.os == 'macOS'
       run: |
         chmod a+x sqlite/out/sqlite3
-        realpath sqlite/out >> $GITHUB_PATH
-        echo "DYLD_LIBRARY_PATH=$(realpath sqlite/out)" >> $GITHUB_ENV
+        echo "$(pwd)/sqlite/out" >> $GITHUB_PATH
+        echo "DYLD_LIBRARY_PATH=$(pwd)/sqlite/out" >> $GITHUB_ENV
     - name: Install compiled sqlite3 (Windows)
       if: runner.os == 'Windows'
       run: |
