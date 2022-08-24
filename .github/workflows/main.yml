@@ -49,8 +49,7 @@ jobs:
         make -j
         mkdir ../out
         cp sqlite3 ../out
-        ls .libs
-        cp .libs/sqlite3.dylib ../out
+        cp .libs/libsqlite3.dylib ../out
     - uses: ilammy/msvc-dev-cmd@v1
       if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Windows'
     - name: Compile sqlite3 on Windows
@@ -144,6 +143,12 @@ jobs:
         chmod a+x sqlite/out/sqlite3
         realpath sqlite/out >> $GITHUB_PATH
         echo "LD_LIBRARY_PATH=$(realpath sqlite/out)" >> $GITHUB_ENV
+    - name: Install compiled sqlite3 (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        chmod a+x sqlite/out/sqlite3
+        realpath sqlite/out >> $GITHUB_PATH
+        echo "DYLD_LIBRARY_PATH=$(realpath sqlite/out)" >> $GITHUB_ENV
     - name: Install compiled sqlite3 (Windows)
       if: runner.os == 'Windows'
       run: |
