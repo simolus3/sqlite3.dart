@@ -10,7 +10,7 @@ jobs:
   compile_sqlite3:
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest, macos-latest]
 
     name: Compile sqlite3 for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -37,6 +37,20 @@ jobs:
         mkdir ../out
         cp sqlite3 ../out
         cp .libs/libsqlite3.so ../out
+    - name: Compile sqlite3 on macOS
+      if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'macOS'
+      run: |
+        mkdir sqlite
+        cd sqlite
+        curl https://sqlite.org/$SQLITE_YEAR/sqlite-autoconf-$SQLITE_VERSION.tar.gz --output sqlite.tar.gz
+        tar zxvf sqlite.tar.gz
+        cd sqlite-autoconf-$SQLITE_VERSION
+        ./configure
+        make -j
+        mkdir ../out
+        cp sqlite3 ../out
+        ls .libs
+        cp .libs/sqlite3.dylib ../out
     - uses: ilammy/msvc-dev-cmd@v1
       if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Windows'
     - name: Compile sqlite3 on Windows
