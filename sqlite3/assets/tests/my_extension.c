@@ -10,7 +10,7 @@ static void my_function(sqlite3_context *context, int argc,
 __declspec(dllexport)
 #endif
     int sqlite3_myextension_init(sqlite3 *db, char **pzErrMsg,
-                                  const sqlite3_api_routines *pApi) {
+                                 const sqlite3_api_routines *pApi) {
   int rc = SQLITE_OK;
   SQLITE_EXTENSION_INIT2(pApi);
 
