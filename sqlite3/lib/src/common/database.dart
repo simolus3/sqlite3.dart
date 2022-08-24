@@ -13,7 +13,6 @@ abstract class CommonDatabase {
       final result = stmt.select();
 
       final version = result.first.columnAt(0) as int;
-      stmt.dispose();
       return version;
     } finally {
       stmt.dispose();

@@ -156,7 +156,8 @@ jobs:
         dart test -P web -r expanded
       # If browsers behave differently on different platforms, surely that's not our fault...
       # So, only run browser tests on Linux to be faster.
-      if: runner.os == 'Linux'
+      # todo: Web tests are currently broken with dart dev
+      if: runner.os == 'Linux' && ${{ matrix.dart }} == 'stable'
       working-directory: sqlite3/
 
 # The integration tests for android are currently broken (the emulator doesn't want to
