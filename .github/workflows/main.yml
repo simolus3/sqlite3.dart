@@ -93,7 +93,7 @@ jobs:
       working-directory: ${{ matrix.package }}
 
     - name: Format native
-      run: clang-format --Werror --dry-run --style=google assets/sqlite3.h assets/wasm/*.{c,h}
+      run: clang-format --Werror --dry-run --style=google assets/sqlite3.h assets/wasm/*.{c,h} assets/tests/my_extension.c
       if: ${{ matrix.package == 'sqlite3' }}
       working-directory: sqlite3
 
@@ -147,7 +147,7 @@ jobs:
     - name: Test
       run: |
         dart pub get
-        dart test
+        dart test -P ci
       working-directory: sqlite3/
 
     - name: Web tests

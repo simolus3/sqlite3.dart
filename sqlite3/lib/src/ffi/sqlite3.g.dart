@@ -271,6 +271,48 @@ class Bindings {
                       ffi.Int64)>>,
           ffi.Pointer<ffi.Void>)>();
 
+  int sqlite3_enable_load_extension(
+    ffi.Pointer<sqlite3> db,
+    int onoff,
+  ) {
+    return _sqlite3_enable_load_extension(
+      db,
+      onoff,
+    );
+  }
+
+  late final _sqlite3_enable_load_extensionPtr = _lookup<
+          ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3>, ffi.Int)>>(
+      'sqlite3_enable_load_extension');
+  late final _sqlite3_enable_load_extension = _sqlite3_enable_load_extensionPtr
+      .asFunction<int Function(ffi.Pointer<sqlite3>, int)>();
+
+  int sqlite3_load_extension(
+    ffi.Pointer<sqlite3> db,
+    ffi.Pointer<sqlite3_char> zFile,
+    ffi.Pointer<sqlite3_char> zProc,
+    ffi.Pointer<ffi.Pointer<sqlite3_char>> pzErrMsg,
+  ) {
+    return _sqlite3_load_extension(
+      db,
+      zFile,
+      zProc,
+      pzErrMsg,
+    );
+  }
+
+  late final _sqlite3_load_extensionPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(
+                  ffi.Pointer<sqlite3>,
+                  ffi.Pointer<sqlite3_char>,
+                  ffi.Pointer<sqlite3_char>,
+                  ffi.Pointer<ffi.Pointer<sqlite3_char>>)>>(
+      'sqlite3_load_extension');
+  late final _sqlite3_load_extension = _sqlite3_load_extensionPtr.asFunction<
+      int Function(ffi.Pointer<sqlite3>, ffi.Pointer<sqlite3_char>,
+          ffi.Pointer<sqlite3_char>, ffi.Pointer<ffi.Pointer<sqlite3_char>>)>();
+
   int sqlite3_finalize(
     ffi.Pointer<sqlite3_stmt> pStmt,
   ) {

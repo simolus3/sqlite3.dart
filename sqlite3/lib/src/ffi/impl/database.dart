@@ -103,6 +103,33 @@ class DatabaseImpl extends Database {
   Pointer<void> get handle => _handle;
 
   @override
+  void loadExtension(String sharedLibrary, [String? entrypoint]) {
+    try {
+      _bindings.sqlite3_enable_load_extension(_handle, 1);
+
+      final errorPtr = allocate<Pointer<sqlite3_char>>();
+      final zFile = allocateZeroTerminated(sharedLibrary);
+      final zProc = entrypoint != null
+          ? allocateZeroTerminated(entrypoint)
+          : nullPtr<sqlite3_char>();
+
+      final result =
+          _bindings.sqlite3_load_extension(_handle, zFile, zProc, errorPtr);
+      final message =
+          errorPtr.value.isNullPointer ? null : errorPtr.value.readString();
+      errorPtr.free();
+      zFile.free();
+      if (entrypoint != null) zProc.free();
+
+      if (result != 0) {
+        throw SqliteException(result, message ?? 'Unknown error');
+      }
+    } finally {
+      _bindings.sqlite3_enable_load_extension(_handle, 0);
+    }
+  }
+
+  @override
   int getUpdatedRows() {
     return _bindings.sqlite3_changes(_handle);
   }

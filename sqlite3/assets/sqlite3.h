@@ -31,6 +31,9 @@ void *sqlite3_update_hook(sqlite3 *,
                           void (*)(void *, int, char const *, char const *,
                                    int64_t),
                           void *);
+int sqlite3_enable_load_extension(sqlite3 *db, int onoff);
+int sqlite3_load_extension(sqlite3 *db, sqlite3_char *zFile,
+                           sqlite3_char *zProc, sqlite3_char **pzErrMsg);
 
 // Statements
 int sqlite3_finalize(sqlite3_stmt *pStmt);
