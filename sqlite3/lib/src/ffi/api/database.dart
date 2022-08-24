@@ -3,6 +3,8 @@ import 'dart:ffi';
 import '../../common/database.dart';
 import 'statement.dart';
 
+typedef BackupProgressCallback = void Function(double progress);
+
 /// An opened sqlite3 database with `dart:ffi`.
 ///
 /// See [CommonDatabase] for the methods that are available on both the FFI and
@@ -22,4 +24,9 @@ abstract class Database extends CommonDatabase {
   @override
   List<PreparedStatement> prepareMultiple(String sql,
       {bool persistent = false, bool vtab = true});
+
+  /// Create a backup of the current database into another database
+  /// on memory or disk
+  /// See https://www.sqlite.org/c3ref/backup_finish.html
+  void backup(Database toDatabase, {BackupProgressCallback? progressCallback});
 }
