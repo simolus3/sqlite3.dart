@@ -67,7 +67,7 @@ jobs:
     strategy:
       matrix:
         package: [sqlite3]
-        dart: [stable, dev]
+        dart: [stable]
 
     name: Analyze on Dart ${{ matrix.dart }}
     runs-on: ubuntu-latest
