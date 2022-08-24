@@ -478,8 +478,7 @@ class DatabaseImpl extends Database {
   }
 
   /// Ported from https://www.sqlite.org/backup.html Example 2
-  void _backupDatabase(
-      Database toDatabase, BackupProgressCallback? progressCallback) {
+  Stream<double> _backupDatabase(Database toDatabase) async* {
     final zDestDb = allocateZeroTerminated('main');
     final zSrcDb = allocateZeroTerminated('main');
 
@@ -494,12 +493,13 @@ class DatabaseImpl extends Database {
         final remaining = _bindings.sqlite3_backup_remaining(pBackup);
         final count = _bindings.sqlite3_backup_pagecount(pBackup);
 
-        progressCallback?.call(100 * (count - remaining) / count);
+        yield 100 * (count - remaining) / count;
 
         if (returnCode == SqlError.SQLITE_OK ||
             returnCode == SqlError.SQLITE_BUSY ||
             returnCode == SqlError.SQLITE_LOCKED) {
-          _bindings.sqlite3_sleep(250);
+          //Give other threads the chance to work with the database
+          await Future<void>.delayed(const Duration(milliseconds: 250));
         }
       } while (returnCode == SqlError.SQLITE_OK ||
           returnCode == SqlError.SQLITE_BUSY ||
@@ -533,13 +533,13 @@ class DatabaseImpl extends Database {
   }
 
   @override
-  void backup(Database toDatabase, {BackupProgressCallback? progressCallback}) {
+  Stream<double> backup(Database toDatabase) async* {
     if (isInMemory()) {
-      progressCallback?.call(0);
+      yield 0;
       _loadOrSaveInMemoryDatabase(toDatabase, true);
-      progressCallback?.call(100);
+      yield 100;
     } else {
-      _backupDatabase(toDatabase, progressCallback);
+      yield* _backupDatabase(toDatabase);
     }
   }
 }

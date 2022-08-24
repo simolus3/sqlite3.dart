@@ -122,16 +122,15 @@ void main() {
       db2.dispose();
     });
 
-    test('backup memory to disk', () {
+    test('backup memory to disk', () async {
       final db1 = sqlite3.openInMemory();
       db1.execute('CREATE TABLE a(b INTEGER);');
       db1.execute('INSERT INTO a VALUES (1);');
 
       final db2 = sqlite3.open(path);
 
-      final progress = <double>[];
-      db1.backup(db2, progressCallback: progress.add);
-      expect(progress, containsAllInOrder(<double>[0, 100]));
+      final progressStream = db1.backup(db2);
+      await expectLater(progressStream, emitsInOrder(<double>[0, 100]));
 
       //Should not be included in backup
       db1.execute('INSERT INTO a VALUES (2);');
@@ -146,7 +145,7 @@ void main() {
       db3.dispose();
     });
 
-    test('backup disk to disk', () {
+    test('backup disk to disk', () async {
       final pathFrom = join('.dart_tool', 'sqlite3', 'test', 'test_from.db');
       Directory(dirname(pathFrom)).createSync(recursive: true);
 
@@ -161,9 +160,8 @@ void main() {
 
       final db2 = sqlite3.open(path);
 
-      final progress = <double>[];
-      db1.backup(db2, progressCallback: progress.add);
-      expect(progress, containsAllInOrder(<double>[100]));
+      final progressStream = db1.backup(db2);
+      await expectLater(progressStream, emitsAnyOf(<double>[100]));
 
       //Should not be included in backup
       db1.execute('INSERT INTO a VALUES (2);');
