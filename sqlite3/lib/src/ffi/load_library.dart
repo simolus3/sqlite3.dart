@@ -72,9 +72,9 @@ DynamicLibrary _defaultOpen() {
     // Check if the process includes sqlite3. If it doesn't, fallback to the
     // library from the system.
     if (!result.providesSymbol('sqlite3_version')) {
-      //No embed Sqlite3 library found with sqlite3_version function
-      //Load pre installed library on MacOS
-      result = DynamicLibrary.open('/usr/lib/libsqlite3.dylib');
+      // No embed Sqlite3 library found with sqlite3_version function
+      // Load pre installed library on MacOS
+      result = DynamicLibrary.open('libsqlite3.dylib');
     }
     return result;
   } else if (Platform.isWindows) {
