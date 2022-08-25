@@ -1,5 +1,6 @@
 import '../../../common.dart';
 import '../../../open.dart';
+import '../../common/constants.dart';
 import '../ffi.dart';
 import '../impl/implementation.dart';
 import 'database.dart';
@@ -82,4 +83,17 @@ class Sqlite3 implements CommmonSqlite3 {
       _bindings.sqlite3_temp_directory = allocateZeroTerminated(value);
     }
   }
+
+  /// Load statically linked extension
+  void _autoLoadExtension(String extensionEntrypoint) {
+    final extensionPtr = _library.library.lookup<Void>(extensionEntrypoint);
+    final result = _bindings.sqlite3_auto_extension(extensionPtr);
+    if (result != SqlError.SQLITE_OK) {
+      throw SqliteException(result,
+          'Could not load extension with entrypoint "$extensionEntrypoint"');
+    }
+  }
+
+  void ensureExtensionLoaded(LoadableExtension extension) =>
+      _autoLoadExtension(loadableExtensionEntrypoints[extension]!);
 }

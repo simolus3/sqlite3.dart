@@ -1,6 +1,5 @@
 import 'dart:ffi';
 
-import '../../common/constants.dart';
 import '../../common/database.dart';
 import 'statement.dart';
 
@@ -23,6 +22,4 @@ abstract class Database extends CommonDatabase {
   @override
   List<PreparedStatement> prepareMultiple(String sql,
       {bool persistent = false, bool vtab = true});
-
-  void ensureExtensionLoaded(LoadableExtension extension);
 }
