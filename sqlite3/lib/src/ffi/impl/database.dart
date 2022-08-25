@@ -493,7 +493,7 @@ class DatabaseImpl extends Database {
         final remaining = _bindings.sqlite3_backup_remaining(pBackup);
         final count = _bindings.sqlite3_backup_pagecount(pBackup);
 
-        yield 100 * (count - remaining) / count;
+        yield (count - remaining) / count;
 
         if (returnCode == SqlError.SQLITE_OK ||
             returnCode == SqlError.SQLITE_BUSY ||
@@ -523,6 +523,7 @@ class DatabaseImpl extends Database {
 
   /// Impl only, this should be only called right after opening a new in-memory
   /// database
+  @internal
   void restore(Database fromDatabase) {
     if (!isInMemory()) {
       throw ArgumentError(
@@ -533,13 +534,12 @@ class DatabaseImpl extends Database {
   }
 
   @override
-  Stream<double> backup(Database toDatabase) async* {
+  Stream<double> backup(Database toDatabase) {
     if (isInMemory()) {
-      yield 0;
       _loadOrSaveInMemoryDatabase(toDatabase, true);
-      yield 100;
+      return const Stream.empty();
     } else {
-      yield* _backupDatabase(toDatabase);
+      return _backupDatabase(toDatabase);
     }
   }
 }

@@ -3,11 +3,11 @@ part of 'implementation.dart';
 SqliteException createExceptionRaw(
     Bindings bindings, Pointer<sqlite3> db, int returnCode,
     [String? previousStatement]) {
-// Getting hold of more explanatory error code as SQLITE_IOERR error group
-  // has an extensive list of extended error codes
+  // Getting hold of more explanatory error code as SQLITE_IOERR error group has
+  // an extensive list of extended error codes
   final extendedCode = bindings.sqlite3_extended_errcode(db);
   return createExceptionFromExtendedCode(
-      bindings, db, returnCode, extendedCode);
+      bindings, db, returnCode, extendedCode, previousStatement);
 }
 
 SqliteException createExceptionFromExtendedCode(Bindings bindings,

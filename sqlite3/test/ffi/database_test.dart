@@ -130,7 +130,7 @@ void main() {
       final db2 = sqlite3.open(path);
 
       final progressStream = db1.backup(db2);
-      await expectLater(progressStream, emitsInOrder(<double>[0, 100]));
+      await expectLater(progressStream, emitsDone);
 
       //Should not be included in backup
       db1.execute('INSERT INTO a VALUES (2);');
@@ -161,7 +161,8 @@ void main() {
       final db2 = sqlite3.open(path);
 
       final progressStream = db1.backup(db2);
-      await expectLater(progressStream, emitsAnyOf(<double>[100]));
+      await expectLater(
+          progressStream, emitsInOrder(<Matcher>[emitsThrough(1), emitsDone]));
 
       //Should not be included in backup
       db1.execute('INSERT INTO a VALUES (2);');

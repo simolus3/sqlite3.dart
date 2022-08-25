@@ -1,3 +1,7 @@
+## 1.9.0-dev
+
+- Add an API for sqlite3's backup API via `Database.backup()`.
+
 ## 1.8.0
 
 - Use a `Finalizer` to automatically dispose databases and statements. As

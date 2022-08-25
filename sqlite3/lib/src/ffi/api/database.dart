@@ -23,8 +23,16 @@ abstract class Database extends CommonDatabase {
   List<PreparedStatement> prepareMultiple(String sql,
       {bool persistent = false, bool vtab = true});
 
-  /// Create a backup of the current database into another database
-  /// on memory or disk
+  /// Create a backup of the current database (this) into another database
+  /// ([toDatabase]) on memory or disk.
+  ///
+  /// The returned stream returns a rough estimate on the progress of the
+  /// backup, as a fraction between `0` and `1`. No progress is reported if
+  /// either this or [toDatabase] is an in-memory database.
+  ///
+  /// To simply await the backup operation as a future, call [Stream.drain] on
+  /// the returned stream.
+  ///
   /// See https://www.sqlite.org/c3ref/backup_finish.html
   Stream<double> backup(Database toDatabase);
 }
