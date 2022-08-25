@@ -5,6 +5,7 @@ import 'package:path/path.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:sqlite3/src/ffi/impl/implementation.dart';
 import 'package:test/test.dart';
+import 'package:test_descriptor/test_descriptor.dart' as d;
 
 /// Additional tests to `common_database_test.dart` that aren't supported on
 /// the web.
@@ -25,13 +26,7 @@ void main() {
   });
 
   test('open read-only', () async {
-    final path = join('.dart_tool', 'sqlite3', 'test', 'read_only.db');
-    // Make sure the path exists
-    await Directory(dirname(path)).create(recursive: true);
-    // but not the db
-    if (File(path).existsSync()) {
-      await File(path).delete();
-    }
+    final path = d.path('read_only.db');
 
     // Opening a non-existent database should fail
     expect(
@@ -61,20 +56,10 @@ void main() {
   });
 
   group('backup', () {
-    final path = join('.dart_tool', 'sqlite3', 'test', 'test.db');
+    late String path;
 
     setUp(() {
-      Directory(dirname(path)).createSync(recursive: true);
-
-      if (File(path).existsSync()) {
-        File(path).deleteSync();
-      }
-    });
-
-    tearDown(() {
-      if (File(path).existsSync()) {
-        File(path).deleteSync();
-      }
+      path = d.path('test.db');
     });
 
     test('detects if is in-memory database', () {
@@ -146,7 +131,7 @@ void main() {
     });
 
     test('backup disk to disk', () async {
-      final pathFrom = join('.dart_tool', 'sqlite3', 'test', 'test_from.db');
+      final pathFrom = d.path('test_from.db');
       Directory(dirname(pathFrom)).createSync(recursive: true);
 
       if (File(pathFrom).existsSync()) {

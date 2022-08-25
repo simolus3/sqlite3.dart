@@ -24,6 +24,7 @@ dev_dependencies:
   shelf_static: ^1.1.0
   stream_channel: ^2.1.0
   test: ^1.17.0
+  test_descriptor: ^2.0.0
 
 dependency_overrides:
   # Only incompatibility is from ffigen
