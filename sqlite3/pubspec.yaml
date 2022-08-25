@@ -1,6 +1,6 @@
 name: sqlite3
 description: Provides lightweight yet convenient bindings to SQLite by using dart:ffi
-version: 1.8.0
+version: 1.9.0-dev
 homepage: https://github.com/simolus3/sqlite3.dart/tree/master/sqlite3
 issue_tracker: https://github.com/simolus3/sqlite3.dart/issues
 
@@ -24,6 +24,7 @@ dev_dependencies:
   shelf_static: ^1.1.0
   stream_channel: ^2.1.0
   test: ^1.17.0
+  test_descriptor: ^2.0.0
 
 dependency_overrides:
   # Only incompatibility is from ffigen

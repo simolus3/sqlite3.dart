@@ -66,6 +66,24 @@ class Bindings {
   late final _sqlite3_close_v2 =
       _sqlite3_close_v2Ptr.asFunction<int Function(ffi.Pointer<sqlite3>)>();
 
+  ffi.Pointer<sqlite3_char> sqlite3_db_filename(
+    ffi.Pointer<sqlite3> db,
+    ffi.Pointer<sqlite3_char> zDbName,
+  ) {
+    return _sqlite3_db_filename(
+      db,
+      zDbName,
+    );
+  }
+
+  late final _sqlite3_db_filenamePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3>,
+              ffi.Pointer<sqlite3_char>)>>('sqlite3_db_filename');
+  late final _sqlite3_db_filename = _sqlite3_db_filenamePtr.asFunction<
+      ffi.Pointer<sqlite3_char> Function(
+          ffi.Pointer<sqlite3>, ffi.Pointer<sqlite3_char>)>();
+
   int sqlite3_extended_result_codes(
     ffi.Pointer<sqlite3> db,
     int onoff,
@@ -961,6 +979,93 @@ class Bindings {
               ffi.Pointer<ffi.Void>,
               ffi.Pointer<ffi.Int>,
               ffi.Pointer<ffi.Void>)>();
+
+  ffi.Pointer<sqlite3_backup> sqlite3_backup_init(
+    ffi.Pointer<sqlite3> pDestDb,
+    ffi.Pointer<sqlite3_char> zDestDb,
+    ffi.Pointer<sqlite3> pSrcDb,
+    ffi.Pointer<sqlite3_char> zSrcDb,
+  ) {
+    return _sqlite3_backup_init(
+      pDestDb,
+      zDestDb,
+      pSrcDb,
+      zSrcDb,
+    );
+  }
+
+  late final _sqlite3_backup_initPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<sqlite3_backup> Function(
+              ffi.Pointer<sqlite3>,
+              ffi.Pointer<sqlite3_char>,
+              ffi.Pointer<sqlite3>,
+              ffi.Pointer<sqlite3_char>)>>('sqlite3_backup_init');
+  late final _sqlite3_backup_init = _sqlite3_backup_initPtr.asFunction<
+      ffi.Pointer<sqlite3_backup> Function(
+          ffi.Pointer<sqlite3>,
+          ffi.Pointer<sqlite3_char>,
+          ffi.Pointer<sqlite3>,
+          ffi.Pointer<sqlite3_char>)>();
+
+  int sqlite3_backup_step(
+    ffi.Pointer<sqlite3_backup> p,
+    int nPage,
+  ) {
+    return _sqlite3_backup_step(
+      p,
+      nPage,
+    );
+  }
+
+  late final _sqlite3_backup_stepPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<sqlite3_backup>, ffi.Int)>>('sqlite3_backup_step');
+  late final _sqlite3_backup_step = _sqlite3_backup_stepPtr
+      .asFunction<int Function(ffi.Pointer<sqlite3_backup>, int)>();
+
+  int sqlite3_backup_finish(
+    ffi.Pointer<sqlite3_backup> p,
+  ) {
+    return _sqlite3_backup_finish(
+      p,
+    );
+  }
+
+  late final _sqlite3_backup_finishPtr = _lookup<
+          ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_backup>)>>(
+      'sqlite3_backup_finish');
+  late final _sqlite3_backup_finish = _sqlite3_backup_finishPtr
+      .asFunction<int Function(ffi.Pointer<sqlite3_backup>)>();
+
+  int sqlite3_backup_remaining(
+    ffi.Pointer<sqlite3_backup> p,
+  ) {
+    return _sqlite3_backup_remaining(
+      p,
+    );
+  }
+
+  late final _sqlite3_backup_remainingPtr = _lookup<
+          ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_backup>)>>(
+      'sqlite3_backup_remaining');
+  late final _sqlite3_backup_remaining = _sqlite3_backup_remainingPtr
+      .asFunction<int Function(ffi.Pointer<sqlite3_backup>)>();
+
+  int sqlite3_backup_pagecount(
+    ffi.Pointer<sqlite3_backup> p,
+  ) {
+    return _sqlite3_backup_pagecount(
+      p,
+    );
+  }
+
+  late final _sqlite3_backup_pagecountPtr = _lookup<
+          ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_backup>)>>(
+      'sqlite3_backup_pagecount');
+  late final _sqlite3_backup_pagecount = _sqlite3_backup_pagecountPtr
+      .asFunction<int Function(ffi.Pointer<sqlite3_backup>)>();
 }
 
 class sqlite3_char extends ffi.Opaque {}
@@ -968,6 +1073,8 @@ class sqlite3_char extends ffi.Opaque {}
 class sqlite3 extends ffi.Opaque {}
 
 class sqlite3_stmt extends ffi.Opaque {}
+
+class sqlite3_backup extends ffi.Opaque {}
 
 class sqlite3_value extends ffi.Opaque {}
 
