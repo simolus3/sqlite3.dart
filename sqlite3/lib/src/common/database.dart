@@ -9,11 +9,14 @@ abstract class CommonDatabase {
   /// The application defined version of this database.
   int get userVersion {
     final stmt = prepare('PRAGMA user_version;');
-    final result = stmt.select();
+    try {
+      final result = stmt.select();
 
-    final version = result.first.columnAt(0) as int;
-    stmt.dispose();
-    return version;
+      final version = result.first.columnAt(0) as int;
+      return version;
+    } finally {
+      stmt.dispose();
+    }
   }
 
   set userVersion(int value) {
