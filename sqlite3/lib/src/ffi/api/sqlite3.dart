@@ -65,6 +65,12 @@ class Sqlite3 implements CommmonSqlite3 {
     return DatabaseImpl.open(_library, ':memory:');
   }
 
+  /// Opens a new in-memory database and copies another database into it
+  /// https://www.sqlite.org/c3ref/backup_finish.html
+  Database copyIntoMemory(Database restoreFrom) {
+    return (openInMemory() as DatabaseImpl)..restore(restoreFrom);
+  }
+
   @override
   String? get tempDirectory {
     final charPtr = _bindings.sqlite3_temp_directory;

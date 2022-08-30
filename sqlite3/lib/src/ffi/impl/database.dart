@@ -434,4 +434,112 @@ class DatabaseImpl extends Database {
       _finalizable._statements.remove(stmt._finalizable);
     }
   }
+
+  /// check if this is a in-memory database
+  @visibleForTesting
+  bool isInMemory() {
+    final zDbName = allocateZeroTerminated('main');
+    final pFileName = _bindings.sqlite3_db_filename(_handle, zDbName);
+
+    zDbName.free();
+
+    return pFileName.isNullPointer || pFileName.readString().isEmpty;
+  }
+
+  /// Ported from https://www.sqlite.org/backup.html Example 1
+  void _loadOrSaveInMemoryDatabase(Database other, bool isSave) {
+    final fromDatabase = isSave ? this : other;
+    final toDatabase = isSave ? other : this;
+
+    final zDestDb = allocateZeroTerminated('main');
+    final zSrcDb = allocateZeroTerminated('main');
+
+    final pBackup = _bindings.sqlite3_backup_init(
+        toDatabase.handle.cast(), zDestDb, fromDatabase.handle.cast(), zSrcDb);
+
+    if (!pBackup.isNullPointer) {
+      _bindings.sqlite3_backup_step(pBackup, -1);
+      _bindings.sqlite3_backup_finish(pBackup);
+    }
+
+    final extendedErrorCode =
+        _bindings.sqlite3_extended_errcode(toDatabase.handle.cast());
+    final errorCode = extendedErrorCode & 0xFF;
+
+    zDestDb.free();
+    zSrcDb.free();
+
+    if (errorCode != SqlError.SQLITE_OK) {
+      if (errorCode != SqlError.SQLITE_OK) {
+        throw createExceptionFromExtendedCode(
+            _bindings, _handle, errorCode, extendedErrorCode);
+      }
+    }
+  }
+
+  /// Ported from https://www.sqlite.org/backup.html Example 2
+  Stream<double> _backupDatabase(Database toDatabase) async* {
+    final zDestDb = allocateZeroTerminated('main');
+    final zSrcDb = allocateZeroTerminated('main');
+
+    final pBackup = _bindings.sqlite3_backup_init(
+        toDatabase.handle.cast(), zDestDb, _handle, zSrcDb);
+
+    int returnCode;
+    if (!pBackup.isNullPointer) {
+      do {
+        returnCode = _bindings.sqlite3_backup_step(pBackup, 5);
+
+        final remaining = _bindings.sqlite3_backup_remaining(pBackup);
+        final count = _bindings.sqlite3_backup_pagecount(pBackup);
+
+        yield (count - remaining) / count;
+
+        if (returnCode == SqlError.SQLITE_OK ||
+            returnCode == SqlError.SQLITE_BUSY ||
+            returnCode == SqlError.SQLITE_LOCKED) {
+          //Give other threads the chance to work with the database
+          await Future<void>.delayed(const Duration(milliseconds: 250));
+        }
+      } while (returnCode == SqlError.SQLITE_OK ||
+          returnCode == SqlError.SQLITE_BUSY ||
+          returnCode == SqlError.SQLITE_LOCKED);
+
+      _bindings.sqlite3_backup_finish(pBackup);
+    }
+
+    final extendedErrorCode =
+        _bindings.sqlite3_extended_errcode(toDatabase.handle.cast());
+    final errorCode = extendedErrorCode & 0xFF;
+
+    zDestDb.free();
+    zSrcDb.free();
+
+    if (errorCode != SqlError.SQLITE_OK) {
+      throw createExceptionFromExtendedCode(
+          _bindings, _handle, errorCode, extendedErrorCode);
+    }
+  }
+
+  /// Impl only, this should be only called right after opening a new in-memory
+  /// database
+  @internal
+  void restore(Database fromDatabase) {
+    if (!isInMemory()) {
+      throw ArgumentError(
+          'Restoring is only available for in-momory databases');
+    }
+
+    _loadOrSaveInMemoryDatabase(fromDatabase, false);
+  }
+
+  @override
+  Stream<double> backup(Database toDatabase) {
+    if (isInMemory()) {
+      _loadOrSaveInMemoryDatabase(toDatabase, true);
+      return const Stream.empty();
+    } else {
+      return _backupDatabase(toDatabase);
+    }
+  }
 }

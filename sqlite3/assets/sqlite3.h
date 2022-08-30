@@ -3,6 +3,7 @@
 typedef struct sqlite3_char sqlite3_char;
 typedef struct sqlite3 sqlite3;
 typedef struct sqlite3_stmt sqlite3_stmt;
+typedef struct sqlite3_backup sqlite3_backup;
 typedef struct sqlite3_api_routines sqlite3_api_routines;
 
 sqlite3_char *sqlite3_temp_directory;
@@ -10,6 +11,7 @@ sqlite3_char *sqlite3_temp_directory;
 int sqlite3_open_v2(sqlite3_char *filename, sqlite3 **ppDb, int flags,
                     sqlite3_char *zVfs);
 int sqlite3_close_v2(sqlite3 *db);
+sqlite3_char *sqlite3_db_filename(sqlite3 *db, sqlite3_char *zDbName);
 
 // Error handling
 int sqlite3_extended_result_codes(sqlite3 *db, int onoff);
@@ -96,6 +98,14 @@ void sqlite3_result_text(sqlite3_context *ctx, sqlite3_char *data, int length,
 // Collations
 int sqlite3_create_collation_v2(sqlite3 *, sqlite3_char *zName, int eTextRep,
                                 void *pArg, int *xCompare, void *xDestroy);
+
+// Backup
+sqlite3_backup *sqlite3_backup_init(sqlite3 *pDestDb, sqlite3_char *zDestDb,
+                                    sqlite3 *pSrcDb, sqlite3_char *zSrcDb);
+int sqlite3_backup_step(sqlite3_backup *p, int nPage);
+int sqlite3_backup_finish(sqlite3_backup *p);
+int sqlite3_backup_remaining(sqlite3_backup *p);
+int sqlite3_backup_pagecount(sqlite3_backup *p);
 
 // Extensions
 int sqlite3_auto_extension(void *xEntryPoint);
