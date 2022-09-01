@@ -12,17 +12,8 @@ external Object _bigInt(Object s);
 @JS('Number')
 external int _number(Object obj);
 
-@JS('eval')
-external Object _eval(String s);
-
-@JS('Object.keys')
-external List<Object> _objectKeys(Object value);
-
 @JS('self')
 external _JsContext get self;
-
-bool Function(Object, Object) _leq =
-    _eval('(a,b)=>a<=b') as bool Function(Object, Object);
 
 @JS()
 @staticInterop
@@ -209,7 +200,8 @@ class JsBigInt {
     const maxSafeInteger = 9007199254740992;
     const minSafeInteger = -maxSafeInteger;
 
-    return _leq(minSafeInteger, _jsBigInt) && _leq(_jsBigInt, maxSafeInteger);
+    return lessThanOrEqual<Object>(minSafeInteger, _jsBigInt) &&
+        lessThanOrEqual<Object>(_jsBigInt, maxSafeInteger);
   }
 
   Object toDart() {
@@ -240,7 +232,7 @@ class WasmInstance {
   final Map<String, Global> globals = {};
 
   WasmInstance(_WasmInstance nativeInstance) {
-    for (final key in _objectKeys(nativeInstance.exports).cast<String>()) {
+    for (final key in objectKeys(nativeInstance.exports).cast<String>()) {
       final value = getProperty<Object>(nativeInstance.exports, key);
 
       if (value is Function) {
