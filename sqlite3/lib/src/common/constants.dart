@@ -509,10 +509,6 @@ class SqlFunctionFlag {
 
 enum LoadableExtension { spellfix1 }
 
-const loadableExtensionEntrypoints = {
-  LoadableExtension.spellfix1: 'sqlite3_spellfix_init'
-};
-
 const SQLITE_DELETE = 9;
 const SQLITE_INSERT = 18;
 const SQLITE_UPDATE = 23;

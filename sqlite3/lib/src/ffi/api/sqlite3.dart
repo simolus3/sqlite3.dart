@@ -1,6 +1,6 @@
 import '../../../common.dart';
 import '../../../open.dart';
-import '../../common/constants.dart';
+import '../extension.dart';
 import '../ffi.dart';
 import '../impl/implementation.dart';
 import 'database.dart';
@@ -90,16 +90,18 @@ class Sqlite3 implements CommmonSqlite3 {
     }
   }
 
-  /// Load statically linked extension
-  void _autoLoadExtension(String extensionEntrypoint) {
-    final extensionPtr = _library.library.lookup<Void>(extensionEntrypoint);
+  /// Make sure extension is loaded
+  /// Call this before opening a database
+  void ensureExtensionLoaded(SqliteExtension extension,
+      {DynamicLibrary? sourceLibrary}) {
+    //When no library provided, try to find a statically linked extension
+    final library = sourceLibrary ?? _library.library;
+    final extensionPtr = extension.lookup(library);
+
     final result = _bindings.sqlite3_auto_extension(extensionPtr);
     if (result != SqlError.SQLITE_OK) {
       throw SqliteException(result,
-          'Could not load extension with entrypoint "$extensionEntrypoint"');
+          'Could not load extension with entrypoint "${extension.entrypoint}"');
     }
   }
-
-  void ensureExtensionLoaded(LoadableExtension extension) =>
-      _autoLoadExtension(loadableExtensionEntrypoints[extension]!);
 }
