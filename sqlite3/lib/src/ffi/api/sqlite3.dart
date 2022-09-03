@@ -92,11 +92,10 @@ class Sqlite3 implements CommmonSqlite3 {
 
   /// Make sure extension is loaded
   /// Call this before opening a database
-  void ensureExtensionLoaded(SqliteExtension extension,
-      {DynamicLibrary? sourceLibrary}) {
+  void ensureExtensionLoaded(SqliteExtension extension) {
     //When no library provided, try to find a statically linked extension
-    final library = sourceLibrary ?? _library.library;
-    final extensionPtr = extension.lookup(library);
+    final extensionPtr = extension
+        .lookup((extension.isStaticallyLinked) ? _library.library : null);
 
     final result = _bindings.sqlite3_auto_extension(extensionPtr);
     if (result != SqlError.SQLITE_OK) {
