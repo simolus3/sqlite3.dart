@@ -24,9 +24,17 @@ else()
 endif()
 FetchContent_MakeAvailable(sqlite3)
 
+FetchContent_Declare(
+  spellfix1
+  URL https://raw.githubusercontent.com/sqlite/sqlite/branch-3.39/ext/misc/spellfix.c
+  DOWNLOAD_NO_EXTRACT TRUE
+)
+FetchContent_MakeAvailable(spellfix1)
+
 add_library(${PLUGIN_NAME} SHARED
   "sqlite3_flutter_libs_plugin.cc"
   "${sqlite3_SOURCE_DIR}/sqlite3.c"
+  "${spellfix1_SOURCE_DIR}/spellfix.c"
 )
 
 # Not applying the standard settings because we compile sqlite3

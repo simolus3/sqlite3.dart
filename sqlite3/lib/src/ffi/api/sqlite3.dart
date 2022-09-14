@@ -1,5 +1,5 @@
+import '../../../common.dart';
 import '../../../open.dart';
-import '../../common/sqlite3.dart';
 import '../ffi.dart';
 import '../impl/implementation.dart';
 import 'database.dart';
@@ -87,5 +87,68 @@ class Sqlite3 implements CommmonSqlite3 {
     } else {
       _bindings.sqlite3_temp_directory = allocateZeroTerminated(value);
     }
+  }
+
+  /// Loads an extensions through the `sqlite3_auto_extension` mechanism.
+  ///
+  /// For a more in-depth discussion, including links to an example, see the
+  /// documentation for [SqliteExtension].
+  void ensureExtensionLoaded(SqliteExtension extension) {
+    final functionPtr = extension._resolveEntrypoint(_library.library);
+
+    final result = _bindings.sqlite3_auto_extension(functionPtr);
+    if (result != SqlError.SQLITE_OK) {
+      throw SqliteException(result, 'Could not load extension');
+    }
+  }
+}
+
+typedef _ResolveEntrypoint = Pointer<Void> Function(DynamicLibrary);
+
+/// Information used to load an extension through `sqlite3_auto_extension`,
+/// exposed by [Sqlite3.ensureExtensionLoaded].
+///
+/// Note that this feature is __not__ a direct wrapper around sqlite3's dynamic
+/// extension loading mechanism. In sqlite3 builds created through
+/// `sqlite3_flutter_libs`, dynamic extensions are omitted from sqlite3 due to
+/// security concerns.
+///
+/// However, if you want to manually load extensions, you can do that with a
+/// [SqliteExtension] where the entrypoint is already known. This puts the
+/// responsibility of dynamically loading code onto you.
+class SqliteExtension {
+  /// The internal function resolving the function pointer to pass to
+  /// `sqlite3_auto_extension`.
+  final _ResolveEntrypoint _resolveEntrypoint;
+
+  /// A sqlite extension having the given [extensionEntrypoint] as a function
+  /// pointer.
+  ///
+  /// For the exact signature of [extensionEntrypoint], see
+  /// [sqlite3_auto_extension](https://www.sqlite.org/c3ref/auto_extension.html).
+  factory SqliteExtension(Pointer<Void> extensionEntrypoint) {
+    return SqliteExtension._((_) => extensionEntrypoint);
+  }
+
+  SqliteExtension._(this._resolveEntrypoint);
+
+  /// A sqlite extension from another library with a given symbol as an
+  /// entrypoint.
+  factory SqliteExtension.inLibrary(DynamicLibrary library, String symbol) {
+    return SqliteExtension._((_) => library.lookup(symbol));
+  }
+
+  /// A sqlite extension assumed to be statically linked into the sqlite3
+  /// library loaded by this package.
+  ///
+  /// In most sqlite3 distributions, including the one from `sqlite3_flutter_libs`,
+  /// no extensions are available this way.
+  ///
+  /// One example where an extension would be available is if you added a
+  /// native dependency on the `sqlite3/spellfix1` pod on iOS or macOS. On those
+  /// platforms, you could then load the  [spellfix](https://www.sqlite.org/spellfix1.html)
+  /// extension with `SqliteExtension.staticallyLinked('sqlite3_spellfix_init')`.
+  factory SqliteExtension.staticallyLinked(String symbol) {
+    return SqliteExtension._((library) => library.lookup(symbol));
   }
 }

@@ -3,6 +3,8 @@ tags:
     test_on: vm
   wasm:
     test_on: browser
+  ci_only:
+    skip: "This test requires special setup and only runs in the GitHub CI action"
 
 platforms: [vm]
 
@@ -16,3 +18,7 @@ presets:
     platforms: [vm, chrome, firefox]
   web:
     platforms: [chrome, firefox]
+  ci:
+    tags:
+      ci_only:
+        skip: false

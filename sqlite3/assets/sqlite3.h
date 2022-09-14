@@ -4,6 +4,7 @@ typedef struct sqlite3_char sqlite3_char;
 typedef struct sqlite3 sqlite3;
 typedef struct sqlite3_stmt sqlite3_stmt;
 typedef struct sqlite3_backup sqlite3_backup;
+typedef struct sqlite3_api_routines sqlite3_api_routines;
 
 sqlite3_char *sqlite3_temp_directory;
 
@@ -105,3 +106,6 @@ int sqlite3_backup_step(sqlite3_backup *p, int nPage);
 int sqlite3_backup_finish(sqlite3_backup *p);
 int sqlite3_backup_remaining(sqlite3_backup *p);
 int sqlite3_backup_pagecount(sqlite3_backup *p);
+
+// Extensions
+int sqlite3_auto_extension(void *xEntryPoint);

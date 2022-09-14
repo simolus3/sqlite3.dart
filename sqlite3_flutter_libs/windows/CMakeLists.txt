@@ -40,7 +40,18 @@ else()
 endif()
 FetchContent_MakeAvailable(sqlite3)
 
-add_library(sqlite3 SHARED "sqlite3_flutter.c")
+FetchContent_Declare(
+  spellfix1
+  URL https://raw.githubusercontent.com/sqlite/sqlite/branch-3.39/ext/misc/spellfix.c
+  DOWNLOAD_NO_EXTRACT TRUE
+)
+FetchContent_MakeAvailable(spellfix1)
+
+add_library(sqlite3 SHARED 
+  "sqlite3_flutter.c"
+  "${spellfix1_SOURCE_DIR}/spellfix.c"
+)
+
 target_include_directories(sqlite3 PRIVATE "${sqlite3_SOURCE_DIR}")
 target_compile_options(${PLUGIN_NAME} PRIVATE "$<$<NOT:$<CONFIG:Debug>>:-O3>")
 
