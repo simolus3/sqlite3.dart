@@ -54,7 +54,14 @@ void main() {
         dynamicLibraryPath = p.join(d.sandbox, 'my_extension.dll');
 
         result = await Process.run(
-            'cl', [sourcePath, '-link', '-dll', '-out:$dynamicLibraryPath']);
+          'cl',
+          [
+            sourcePath,
+            '/link',
+            '/DLL',
+            '/OUT:$dynamicLibraryPath',
+          ],
+        );
       } else if (Platform.isMacOS) {
         dynamicLibraryPath = p.join(d.sandbox, 'my_extension.dylib');
 
@@ -71,7 +78,7 @@ void main() {
 
       if (result.exitCode != 0) {
         fail('Could not compile shared library for extension: \n'
-            '${result.stderr}');
+            '${result.stderr}\n${result.stdout}');
       }
 
       final library = DynamicLibrary.open(dynamicLibraryPath);

@@ -67,6 +67,8 @@ jobs:
         cl sqlite3e.c -link -dll -out:sqlite3.dll
         mkdir ../out
         cp sqlite3.dll ../out
+        cp sqlite3.h ../out
+        cp sqlite3ext.h ../out
     - name: Upload built sqlite3 binaries
       uses: actions/upload-artifact@v3
       with:
@@ -154,6 +156,7 @@ jobs:
       run: |
         echo $env:path
         Resolve-Path -Path "sqlite/out" >> $env:GITHUB_PATH
+        "INCLUDE=" + $env:INCLUDE + ";" + (Resolve-Path -Path "sqlite/out") >> $env:GITHUB_ENV
     - uses: ilammy/msvc-dev-cmd@v1
       if: runner.os == 'Windows'
 
