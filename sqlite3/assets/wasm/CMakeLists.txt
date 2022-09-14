@@ -3,10 +3,22 @@ set(PROJECT_NAME "sqlite3_web")
 project(${PROJECT_NAME} LANGUAGES C)
 
 include(FetchContent)
-FetchContent_Declare(
-  sqlite3
-  URL https://sqlite.org/2022/sqlite-autoconf-3390200.tar.gz
-)
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+  # cmake 3.24.0 added the `DOWNLOAD_EXTRACT_TIMESTAMP` and prints an ugly warning when
+  # the default is used, so override it to the recommended behavior.
+  # We can't really ask users to use a cmake that recent, so there's this if here.
+  FetchContent_Declare(
+    sqlite3
+    URL https://sqlite.org/2022/sqlite-autoconf-3390300.tar.gz
+    DOWNLOAD_EXTRACT_TIMESTAMP NEW
+  )
+else()
+  FetchContent_Declare(
+    sqlite3
+    URL https://sqlite.org/2022/sqlite-autoconf-3390300.tar.gz
+  )
+endif()
+
 FetchContent_MakeAvailable(sqlite3)
 
 set(wasm_visibility "__attribute__((visibility(\"default\")))")

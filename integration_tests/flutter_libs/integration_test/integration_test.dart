@@ -55,7 +55,11 @@ void main() {
     ]);
   });
 
-  test('has fts5 support', () {});
+  test('has fts5 support', () {
+    final db = sqlite3.openInMemory()..closeWhenDone();
+
+    db.execute('CREATE VIRTUAL TABLE foo USING fts5 (a,b,c);');
+  });
 
   test('can create collation', () {
     final db = sqlite3.openInMemory()

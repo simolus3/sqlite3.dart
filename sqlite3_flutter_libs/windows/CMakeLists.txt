@@ -23,10 +23,21 @@ target_include_directories(${PLUGIN_NAME} INTERFACE
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
 
 include(FetchContent)
-FetchContent_Declare(
-  sqlite3
-  URL https://www.sqlite.org/2022/sqlite-autoconf-3390200.tar.gz
-)
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+  # cmake 3.24.0 added the `DOWNLOAD_EXTRACT_TIMESTAMP` and prints an ugly warning when
+  # the default is used, so override it to the recommended behavior.
+  # We can't really ask users to use a cmake that recent, so there's this if here.
+  FetchContent_Declare(
+    sqlite3
+    URL https://sqlite.org/2022/sqlite-autoconf-3390300.tar.gz
+    DOWNLOAD_EXTRACT_TIMESTAMP NEW
+  )
+else()
+  FetchContent_Declare(
+    sqlite3
+    URL https://sqlite.org/2022/sqlite-autoconf-3390300.tar.gz
+  )
+endif()
 FetchContent_MakeAvailable(sqlite3)
 
 add_library(sqlite3 SHARED "sqlite3_flutter.c")
@@ -35,8 +46,9 @@ target_compile_options(${PLUGIN_NAME} PRIVATE "$<$<NOT:$<CONFIG:Debug>>:-O3>")
 
 # Note: Keep in sync with https://github.com/simolus3/sqlite-native-libraries/blob/master/sqlite3-native-library/cpp/CMakeLists.txt
 target_compile_definitions(sqlite3 PRIVATE
+  SQLITE_ENABLE_FTS5
+  SQLITE_ENABLE_RTREE
   SQLITE_DQS=0
-  SQLITE_THREADSAFE=2
   SQLITE_DEFAULT_MEMSTATUS=0
   SQLITE_TEMP_STORE=2
   SQLITE_MAX_EXPR_DEPTH=0
@@ -52,9 +64,8 @@ target_compile_definitions(sqlite3 PRIVATE
   SQLITE_USE_ALLOCA
   SQLITE_UNTESTABLE
   SQLITE_HAVE_ISNAN
-  SQLITE_ENABLE_FTS5
-  SQLITE_ENABLE_JSON1
-  SQLITE_ENABLE_RTREE
+  SQLITE_HAVE_LOCALTIME_R
+  SQLITE_HAVE_LOCALTIME_S
 )
 
 # Ensure sqlite3 actually gets build

@@ -8,7 +8,6 @@ Future<WasmSqlite3> loadSqlite3([SqliteEnvironment? environment]) async {
 
   final sqliteWasm =
       Uri.parse('http://localhost:$port/example/web/sqlite3.wasm');
-  print(sqliteWasm);
 
   final response = await http.get(sqliteWasm);
   if (response.statusCode != 200) {
