@@ -154,6 +154,8 @@ jobs:
       run: |
         echo $env:path
         Resolve-Path -Path "sqlite/out" >> $env:GITHUB_PATH
+    - uses: ilammy/msvc-dev-cmd@v1
+      if: runner.os == 'Windows'
 
     - uses: actions/cache@v3
       with:

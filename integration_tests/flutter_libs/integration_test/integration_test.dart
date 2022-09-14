@@ -112,6 +112,22 @@ void main() {
     expect(db.select("SELECT * FROM foo2 WHERE bar = 'dd' COLLATE RTRIMNOCASE"),
         []);
   });
+
+  test(
+    'can use statically-linked extensions',
+    () {
+      sqlite3.ensureExtensionLoaded(
+          SqliteExtension.staticallyLinked('sqlite3_spellfix_init'));
+
+      final db = sqlite3.openInMemory()..closeWhenDone();
+      db.execute('CREATE VIRTUAL TABLE demo USING spellfix1;');
+    },
+    onPlatform: {
+      '!ios && !mac-os': Skip(
+        'Statically-linked extensions have only been set up for iOS and macOS.',
+      ),
+    },
+  );
 }
 
 extension on Database {
