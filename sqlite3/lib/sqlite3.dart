@@ -8,4 +8,3 @@ export 'common.dart'
 export 'src/ffi/api/database.dart';
 export 'src/ffi/api/sqlite3.dart';
 export 'src/ffi/api/statement.dart';
-export 'src/ffi/extension.dart';

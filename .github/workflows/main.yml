@@ -10,7 +10,7 @@ jobs:
   compile_sqlite3:
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest, macos-latest]
 
     name: Compile sqlite3 for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -37,6 +37,19 @@ jobs:
         mkdir ../out
         cp sqlite3 ../out
         cp .libs/libsqlite3.so ../out
+    - name: Compile sqlite3 on macOS
+      if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'macOS'
+      run: |
+        mkdir sqlite
+        cd sqlite
+        curl https://sqlite.org/$SQLITE_YEAR/sqlite-autoconf-$SQLITE_VERSION.tar.gz --output sqlite.tar.gz
+        tar zxvf sqlite.tar.gz
+        cd sqlite-autoconf-$SQLITE_VERSION
+        ./configure
+        make -j
+        mkdir ../out
+        cp sqlite3 ../out
+        cp .libs/libsqlite3.dylib ../out
     - uses: ilammy/msvc-dev-cmd@v1
       if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Windows'
     - name: Compile sqlite3 on Windows
@@ -93,7 +106,7 @@ jobs:
       working-directory: ${{ matrix.package }}
 
     - name: Format native
-      run: clang-format --Werror --dry-run --style=google assets/sqlite3.h assets/wasm/*.{c,h}
+      run: clang-format --Werror --dry-run --style=google assets/sqlite3.h assets/wasm/*.{c,h} test/**/*.c
       if: ${{ matrix.package == 'sqlite3' }}
       working-directory: sqlite3
 
@@ -118,7 +131,7 @@ jobs:
         sdk: ${{ matrix.dart }}
 
     - name: Download compiled sqlite3
-      if: runner.os == 'Linux' || runner.os == 'Windows'
+      if: runner.os == 'Linux' || runner.os == 'Windows' || runner.os == 'macOS'
       uses: actions/download-artifact@v3
       with:
         name: sqlite3-${{ runner.os }}
@@ -130,6 +143,12 @@ jobs:
         chmod a+x sqlite/out/sqlite3
         realpath sqlite/out >> $GITHUB_PATH
         echo "LD_LIBRARY_PATH=$(realpath sqlite/out)" >> $GITHUB_ENV
+    - name: Install compiled sqlite3 (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        chmod a+x sqlite/out/sqlite3
+        echo "$(pwd)/sqlite/out" >> $GITHUB_PATH
+        echo "DYLD_LIBRARY_PATH=$(pwd)/sqlite/out" >> $GITHUB_ENV
     - name: Install compiled sqlite3 (Windows)
       if: runner.os == 'Windows'
       run: |
@@ -147,7 +166,7 @@ jobs:
     - name: Test
       run: |
         dart pub get
-        dart test
+        dart test -P ci
       working-directory: sqlite3/
 
     - name: Web tests
