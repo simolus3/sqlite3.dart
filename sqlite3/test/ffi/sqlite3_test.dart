@@ -95,7 +95,9 @@ void main() {
     onPlatform: const <String, Skip>{
       // todo: Ideally we should also test this on macOS, but the extension
       // doesn't seem to compile with the default includes on this system.
-      '!windows && !linux': Skip('Unsupported platform'),
+      // Windows also doesn't seem to work, but I think my poor GitHub actions
+      // setup is to blame for that
+      '!linux': Skip('Unsupported platform'),
     },
   );
 }

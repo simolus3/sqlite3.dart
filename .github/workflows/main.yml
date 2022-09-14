@@ -151,14 +151,14 @@ jobs:
         chmod a+x sqlite/out/sqlite3
         echo "$(pwd)/sqlite/out" >> $GITHUB_PATH
         echo "DYLD_LIBRARY_PATH=$(pwd)/sqlite/out" >> $GITHUB_ENV
+    - uses: ilammy/msvc-dev-cmd@v1
+      if: runner.os == 'Windows'
     - name: Install compiled sqlite3 (Windows)
       if: runner.os == 'Windows'
       run: |
         echo $env:path
         Resolve-Path -Path "sqlite/out" >> $env:GITHUB_PATH
-        "INCLUDE=" + $env:INCLUDE + ";" + (Resolve-Path -Path "sqlite/out") >> $env:GITHUB_ENV
-    - uses: ilammy/msvc-dev-cmd@v1
-      if: runner.os == 'Windows'
+        "INCLUDE=" + $env:INCLUDE + ";" + (Resolve-Path -Path "sqlite/out") >> $env:GITHUB_EN
 
     - uses: actions/cache@v3
       with:
