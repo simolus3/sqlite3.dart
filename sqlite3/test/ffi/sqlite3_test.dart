@@ -37,12 +37,13 @@ void main() {
     () async {
       const sourcePath = 'test/ffi/test_extension.c';
       final String dynamicLibraryPath;
+      final ProcessResult result;
 
       // https://www.sqlite.org/loadext.html#compiling_a_loadable_extension
       if (Platform.isLinux) {
         dynamicLibraryPath = p.join(d.sandbox, 'libmy_extension.so');
 
-        await Process.run('gcc', [
+        result = await Process.run('gcc', [
           '-fpic',
           '-shared',
           sourcePath,
@@ -52,12 +53,12 @@ void main() {
       } else if (Platform.isWindows) {
         dynamicLibraryPath = p.join(d.sandbox, 'my_extension.dll');
 
-        await Process.run(
+        result = await Process.run(
             'cl', [sourcePath, '-link', '-dll', '-out:$dynamicLibraryPath']);
       } else if (Platform.isMacOS) {
         dynamicLibraryPath = p.join(d.sandbox, 'my_extension.dylib');
 
-        await Process.run('gcc', [
+        result = await Process.run('gcc', [
           '-fpic',
           '-dynamiclib',
           sourcePath,
@@ -66,6 +67,11 @@ void main() {
         ]);
       } else {
         fail('Test should not run on this platform');
+      }
+
+      if (result.exitCode != 0) {
+        fail('Could not compile shared library for extension: \n'
+            '${result.stderr}');
       }
 
       final library = DynamicLibrary.open(dynamicLibraryPath);
@@ -80,7 +86,9 @@ void main() {
     },
     tags: 'ci_only',
     onPlatform: const <String, Skip>{
-      '!windows && !linux && !mac-os': Skip('Unsupported platform'),
+      // todo: Ideally we should also test this on macOS, but the extension
+      // doesn't seem to compile with the default includes on this system.
+      '!windows && !linux': Skip('Unsupported platform'),
     },
   );
 }
