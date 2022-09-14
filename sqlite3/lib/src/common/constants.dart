@@ -507,8 +507,6 @@ class SqlFunctionFlag {
   static const SQLITE_INNOCUOUS = 0x000200000;
 }
 
-enum LoadableExtension { spellfix1 }
-
 const SQLITE_DELETE = 9;
 const SQLITE_INSERT = 18;
 const SQLITE_UPDATE = 23;
