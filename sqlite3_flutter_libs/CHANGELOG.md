@@ -1,3 +1,8 @@
+## 0.5.10
+
+- Upgrade sqlite to version `3.39.3`.
+- Consistently compile sqlite3 with `-DSQLITE_THREADSAFE=1` on all platforms.
+
 ## 0.5.9
 
 - Upgrade sqlite to version `3.39.2`.
