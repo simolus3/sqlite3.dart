@@ -1,4 +1,4 @@
-## 1.9.0-dev
+## 1.9.0
 
 - Add an API for sqlite3's backup API via `Database.backup()`.
 - Add an API to load extensions via `sqlite3.ensureExtensionLoaded`.
