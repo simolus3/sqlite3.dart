@@ -35,9 +35,6 @@ void main() {
 
   // You can iterate on the result set in multiple ways to retrieve Row objects
   // one by one.
-  resultSet.forEach((element) {
-    print(element);
-  });
   for (final Row row in resultSet) {
     print('Artist[id: ${row['id']}, name: ${row['name']}]');
   }

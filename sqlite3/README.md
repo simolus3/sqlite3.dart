@@ -2,7 +2,19 @@
 
 Provides Dart bindings to [SQLite](https://www.sqlite.org/index.html) via `dart:ffi`.
 
-For an example on how to use this library from Dart, see the [example](https://pub.dev/packages/sqlite3/example).
+## Using this library
+
+1. Make sure sqlite3 is available as a shared library in your environment (see
+   [supported platforms](#supported-platforms) below).
+2. Import `package:sqlite3/sqlite3.dart`.
+3. Use `sqlite3.open()` to open a database file, or `sqlite3.openInMemory()` to
+   open a temporary in-memory database.
+4. Use `Database.execute` or `Database.prepare` to execute statements directly
+   or by preparing them first.
+5. Don't forget to close prepared statements or the database with `dispose()`
+   if you no longer need it.
+
+For a more complete example on how to use this library, see the [example](https://pub.dev/packages/sqlite3/example).
 
 ## Supported platforms
 
