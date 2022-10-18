@@ -3,8 +3,10 @@ import 'dart:collection';
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
-/// Base class for result sets that are either an in-memory ([ResultSet]) or
-/// a lazy iterator ([IteratingCursor]).
+/// Base class for result sets.
+///
+/// Result sets are either completely materialized ([ResultSet] with all rows
+/// being directly available), or executed row-by-row ([IteratingCursor]).
 @sealed
 abstract class Cursor {
   /// The column names of this query, as returned by `sqlite3`.
@@ -80,7 +82,7 @@ class Row
   final Cursor _result;
   final List<Object?> _data;
 
-  Row(this._result, this._data);
+  Row(this._result, List<Object?> data) : _data = List.unmodifiable(data);
 
   /// Returns the value stored in the [i]-th column in this row (zero-indexed).
   dynamic columnAt(int i) {
@@ -103,7 +105,10 @@ class Row
   }
 
   @override
-  Iterable<String> get keys => _result.columnNames;
+  List<String> get keys => _result.columnNames;
+
+  @override
+  List<Object?> get values => _data;
 
   /// Returns a two-level map that on the first level contains the resolved
   /// non-aliased table name, and on the second level the column name (or its alias).

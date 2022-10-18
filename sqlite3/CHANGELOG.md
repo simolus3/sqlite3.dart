@@ -1,3 +1,7 @@
+## 1.9.1
+
+- Change `Row.keys` and `Row.values` to return a list.
+
 ## 1.9.0
 
 - Add an API for sqlite3's backup API via `Database.backup()`.
