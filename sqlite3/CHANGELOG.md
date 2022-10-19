@@ -1,3 +1,7 @@
+## 1.9.2
+
+- Include parameters when throwing an exception in prepared statements.
+
 ## 1.9.1
 
 - Change `Row.keys` and `Row.values` to return a list.

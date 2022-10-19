@@ -131,7 +131,8 @@ class DatabaseImpl extends Database {
       }
 
       if (result != SqlError.SQLITE_OK) {
-        throw SqliteException(result, errorMsg ?? 'unknown error', null, sql);
+        throw SqliteException(
+            result, errorMsg ?? 'unknown error', null, sql, parameters);
       }
     } else {
       final stmt = prepare(sql, checkNoTail: true);

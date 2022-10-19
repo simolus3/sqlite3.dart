@@ -61,12 +61,15 @@ class WasmDatabase extends CommonDatabase {
     _finalizer.attach(this, _finalizable, detach: this);
   }
 
-  SqliteException createException(int returnCode, [String? previousStatement]) {
-    return createExceptionRaw(bindings, db, returnCode, previousStatement);
+  SqliteException createException(int returnCode,
+      [String? previousStatement, List<Object?>? parameters]) {
+    return createExceptionRaw(
+        bindings, db, returnCode, previousStatement, parameters);
   }
 
-  Never throwException(int returnCode, [String? previousStatement]) {
-    throw createException(returnCode, previousStatement);
+  Never throwException(int returnCode,
+      [String? previousStatement, List<Object?>? parameters]) {
+    throw createException(returnCode, previousStatement, parameters);
   }
 
   @override
@@ -176,7 +179,7 @@ class WasmDatabase extends CommonDatabase {
 
       if (result != SqlError.SQLITE_OK) {
         throw SqliteException(
-            result, errorMessage ?? 'unknown error', null, sql);
+            result, errorMessage ?? 'unknown error', null, sql, parameters);
       }
     } else {
       final stmt = prepare(sql, checkNoTail: true);

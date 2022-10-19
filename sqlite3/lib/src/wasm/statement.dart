@@ -44,6 +44,7 @@ class WasmStatement extends CommonPreparedStatement {
   final WasmDatabase database;
   final Pointer statement;
   final String sqlForStatement;
+  List<Object?>? _latestArguments;
 
   final WasmFinalizableStatement finalizable;
   final Finalizer<FinalizablePart> _finalizer = disposeFinalizer;
@@ -59,6 +60,7 @@ class WasmStatement extends CommonPreparedStatement {
 
   void _reset() {
     finalizable._reset();
+    _latestArguments = null;
     _currentCursor = null;
   }
 
@@ -90,7 +92,7 @@ class WasmStatement extends CommonPreparedStatement {
     } while (result == SqlError.SQLITE_ROW);
 
     if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
-      database.throwException(result, sql);
+      database.throwException(result, sql, _latestArguments);
     }
   }
 
@@ -144,11 +146,13 @@ class WasmStatement extends CommonPreparedStatement {
       _bindParam(param, i);
     }
 
+    _latestArguments = params;
     finalizable._variablesBound = true;
   }
 
   void _bindMapParams(Map<String, Object?> params) {
     final expectedLength = parameterCount;
+    final paramsAsList = List<Object?>.filled(expectedLength, null);
 
     if (params.isEmpty) {
       if (expectedLength != 0) {
@@ -173,6 +177,7 @@ class WasmStatement extends CommonPreparedStatement {
             'This statement contains no parameter named `$key`');
       }
       _bindParam(param, i);
+      paramsAsList[i - 1] = param;
     }
 
     // If we reached this point. All parameters from [params] were bound. Check
@@ -182,6 +187,7 @@ class WasmStatement extends CommonPreparedStatement {
           params, 'params', 'Expected $expectedLength parameters');
     }
 
+    _latestArguments = paramsAsList;
     finalizable._variablesBound = true;
   }
 
@@ -303,7 +309,7 @@ class WasmStatement extends CommonPreparedStatement {
 
     if (resultCode != SqlError.SQLITE_OK &&
         resultCode != SqlError.SQLITE_DONE) {
-      database.throwException(resultCode, sql);
+      database.throwException(resultCode, sql, _latestArguments);
     }
 
     return ResultSet(names, null, rows);
@@ -348,7 +354,8 @@ class _ActiveCursorIterator extends IteratingCursor {
     statement._currentCursor = null;
 
     if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
-      statement.database.throwException(result, statement.sql);
+      statement.database
+          .throwException(result, statement.sql, statement._latestArguments);
     }
 
     return false;

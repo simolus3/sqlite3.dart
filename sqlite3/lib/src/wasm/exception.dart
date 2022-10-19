@@ -4,7 +4,7 @@ import 'bindings.dart';
 
 SqliteException createExceptionRaw(
     WasmBindings bindings, Pointer db, int returnCode,
-    [String? previousStatement]) {
+    [String? previousStatement, List<Object?>? statementArgs]) {
   // We don't need to free the pointer returned by sqlite3_errmsg: "Memory to
   // hold the error message string is managed internally. The application does
   // not need to worry about freeing the result."
@@ -21,5 +21,6 @@ SqliteException createExceptionRaw(
 
   explanation = '$errStr (code $extendedCode)';
 
-  return SqliteException(returnCode, dbMessage, explanation, previousStatement);
+  return SqliteException(
+      returnCode, dbMessage, explanation, previousStatement, statementArgs);
 }

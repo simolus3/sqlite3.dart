@@ -35,6 +35,8 @@ class _FinalizableStatement extends FinalizablePart {
 class PreparedStatementImpl implements PreparedStatement {
   @override
   final String sql;
+  List<Object?>? _latestArguments;
+
   final Pointer<sqlite3_stmt> _stmt;
   final DatabaseImpl _db;
 
@@ -88,7 +90,7 @@ class PreparedStatementImpl implements PreparedStatement {
     } while (result == SqlError.SQLITE_ROW);
 
     if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
-      throwException(_db, result, sql);
+      throwException(_db, result, sql, _latestArguments);
     }
   }
 
@@ -149,7 +151,7 @@ class PreparedStatementImpl implements PreparedStatement {
 
     if (resultCode != SqlError.SQLITE_OK &&
         resultCode != SqlError.SQLITE_DONE) {
-      throwException(_db, resultCode, sql);
+      throwException(_db, resultCode, sql, _latestArguments);
     }
 
     return ResultSet(names, tableNames, rows);
@@ -194,11 +196,13 @@ class PreparedStatementImpl implements PreparedStatement {
       _bindParam(param, i);
     }
 
+    _latestArguments = params;
     _finalizable._variablesBound = true;
   }
 
   void _bindMapParams(Map<String, Object?> params) {
     final expectedLength = parameterCount;
+    final paramsAsList = List<Object?>.filled(expectedLength, null);
 
     if (params.isEmpty) {
       if (expectedLength != 0) {
@@ -223,6 +227,7 @@ class PreparedStatementImpl implements PreparedStatement {
             'This statement contains no parameter named `$key`');
       }
       _bindParam(param, i);
+      paramsAsList[i - 1] = param;
     }
 
     // If we reached this point. All parameters from [params] were bound. Check
@@ -233,6 +238,7 @@ class PreparedStatementImpl implements PreparedStatement {
     }
 
     _finalizable._variablesBound = true;
+    _latestArguments = paramsAsList;
   }
 
   void _bindParam(Object? param, int i) {
@@ -356,7 +362,8 @@ class _ActiveCursorIterator extends IteratingCursor {
     statement._currentCursor = null;
 
     if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
-      throwException(statement._db, result, statement.sql);
+      throwException(
+          statement._db, result, statement.sql, statement._latestArguments);
     }
 
     return false;

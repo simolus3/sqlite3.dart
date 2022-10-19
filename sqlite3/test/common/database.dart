@@ -140,6 +140,117 @@ void testDatabase(
             .having((e) => e.message, 'message', contains('no such table'))),
       );
     });
+
+    group('with statement and args', () {
+      setUp(() {
+        database.createFunction(
+          functionName: 'throw_if_3',
+          argumentCount: const AllowedArgumentCount(1),
+          function: (args) {
+            if (args[0] == 3) {
+              throw Exception('intended exception');
+            }
+            return null;
+          },
+        );
+      });
+
+      Matcher sqlite3Exception(
+          dynamic causingStatement, dynamic parameters, dynamic toString) {
+        return isA<SqliteException>()
+            .having(
+                (e) => e.causingStatement, 'causingStatement', causingStatement)
+            .having((e) => e.parametersToStatement, 'parametersToStatement',
+                parameters)
+            .having((e) => e.toString(), 'toString()', toString);
+      }
+
+      test('for execute', () {
+        expect(
+          () => database.execute('SELECT throw_if_3(?)', [3]),
+          throwsA(
+            sqlite3Exception(
+              'SELECT throw_if_3(?)',
+              [3],
+              contains(
+                'Causing statement: SELECT throw_if_3(?), parameters: 3',
+              ),
+            ),
+          ),
+        );
+      });
+
+      test('for reading prepared statements', () {
+        final stmt = database.prepare('SELECT throw_if_3(?)');
+
+        expect(
+          () => stmt.select([3]),
+          throwsA(
+            sqlite3Exception(
+              'SELECT throw_if_3(?)',
+              [3],
+              contains(
+                'Causing statement: SELECT throw_if_3(?), parameters: 3',
+              ),
+            ),
+          ),
+        );
+      });
+
+      test('for writing prepared statements', () {
+        database.execute('CREATE TABLE foo (bar INTEGER);');
+
+        final stmt = database.prepare('INSERT INTO foo VALUES (throw_if_3(?))');
+        expect(
+          () => stmt.execute([3]),
+          throwsA(
+            sqlite3Exception(
+              'INSERT INTO foo VALUES (throw_if_3(?))',
+              [3],
+              contains(
+                'Causing statement: INSERT INTO foo VALUES (throw_if_3(?)), parameters: 3',
+              ),
+            ),
+          ),
+        );
+      });
+
+      test('for prepared statements with map', () {
+        final stmt = database.prepare('SELECT :a, throw_if_3(:b)');
+
+        expect(
+          () => stmt.selectMap({':a': 1, ':b': 3}),
+          throwsA(
+            sqlite3Exception(
+              'SELECT :a, throw_if_3(:b)',
+              [1, 3],
+              contains(
+                'Causing statement: SELECT :a, throw_if_3(:b), parameters: 1, 3',
+              ),
+            ),
+          ),
+        );
+      });
+
+      test('for prepared statements with cursor', () {
+        const sql = 'SELECT throw_if_3(column1) FROM (VALUES (?), (?))';
+        final stmt = database.prepare(sql);
+        final cursor = stmt.selectCursor([1, 3]);
+
+        expect(cursor.moveNext(), isTrue);
+        expect(
+            () => cursor.moveNext(),
+            throwsA(
+              sqlite3Exception(
+                sql,
+                [1, 3],
+                contains(
+                  'Causing statement: $sql, parameters: 1, 3',
+                ),
+              ),
+            ));
+      });
+    });
   });
 
   test('violating constraint throws exception with extended error code', () {

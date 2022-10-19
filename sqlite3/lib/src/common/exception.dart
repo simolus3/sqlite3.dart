@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 /// Thrown by sqlite methods.
 ///
 /// This is the only exception thrown by `package:sqlite3`. Additionally, errors
@@ -26,8 +28,12 @@ class SqliteException implements Exception {
   /// This may be null when no prior statement is known.
   final String? causingStatement;
 
+  /// If this exception has a [causingStatement], this list contains the
+  /// parameters used to run that statement.
+  final List<Object?>? parametersToStatement;
+
   SqliteException(this.extendedResultCode, this.message,
-      [this.explanation, this.causingStatement]);
+      [this.explanation, this.causingStatement, this.parametersToStatement]);
 
   @override
   String toString() {
@@ -47,6 +53,17 @@ class SqliteException implements Exception {
         ..writeln()
         ..write('  Causing statement: ')
         ..write(causingStatement);
+
+      if (parametersToStatement != null) {
+        final params = parametersToStatement!.map((e) {
+          if (e is Uint8List) {
+            return 'blob (${e.length} bytes)';
+          } else {
+            return e.toString();
+          }
+        }).join(', ');
+        buffer.write(', parameters: $params');
+      }
     }
 
     return buffer.toString();
