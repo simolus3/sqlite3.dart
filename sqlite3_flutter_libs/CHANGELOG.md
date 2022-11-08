@@ -1,4 +1,4 @@
-## 0.5.11
+## 0.5.11+1
 
 - Upgrade sqlite3 to version `3.39.4`.
 - Fix a compilation warning on Windows.
