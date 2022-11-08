@@ -6,6 +6,12 @@ contain native `sqlite3` libraries on Android, iOS, macOS, Linux and Windows.
 For more details on how to actually use this package in a Flutter app, see
 [sqlite3](https://pub.dev/packages/sqlite3).
 
+The sqlite3 version compiled with this package uses the
+[recommended compile-time options](https://www.sqlite.org/compile.html#recommended_compile_time_options).
+Additionally, it ships the `fts5` module by default (the `json1` module is part
+of the default build in recent sqlite3 versions).
+No other modules are included in these builds.
+
 ## Notes on Android
 
 ### Included platforms
