@@ -18,6 +18,7 @@ A new flutter plugin project.
   s.dependency 'Flutter'
 
   s.dependency 'sqlite3', '~> 3.39.4'
+  s.dependency 'sqlite3/fts'
   s.dependency 'sqlite3/fts5'
   s.dependency 'sqlite3/perf-threadsafe'
   s.dependency 'sqlite3/rtree'
