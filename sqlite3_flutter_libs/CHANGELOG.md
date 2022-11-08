@@ -1,3 +1,10 @@
+## 0.5.11
+
+- Upgrade sqlite3 to version `3.39.4`.
+- Fix a compilation warning on Windows.
+- Stop bundling `spellfix1` on platforms where that was still the case by
+  default.
+
 ## 0.5.10
 
 - Upgrade sqlite to version `3.39.3`.

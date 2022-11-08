@@ -29,13 +29,13 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
   # We can't really ask users to use a cmake that recent, so there's this if here.
   FetchContent_Declare(
     sqlite3
-    URL https://sqlite.org/2022/sqlite-autoconf-3390300.tar.gz
+    URL https://sqlite.org/2022/sqlite-autoconf-3390400.tar.gz
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
   )
 else()
   FetchContent_Declare(
     sqlite3
-    URL https://sqlite.org/2022/sqlite-autoconf-3390300.tar.gz
+    URL https://sqlite.org/2022/sqlite-autoconf-3390400.tar.gz
   )
 endif()
 FetchContent_MakeAvailable(sqlite3)
@@ -43,7 +43,7 @@ FetchContent_MakeAvailable(sqlite3)
 add_library(sqlite3 SHARED "sqlite3_flutter.c")
 
 target_include_directories(sqlite3 PRIVATE "${sqlite3_SOURCE_DIR}")
-target_compile_options(sqlite3 PRIVATE "$<$<NOT:$<CONFIG:Debug>>:-O3>" "/w")
+target_compile_options(sqlite3 PRIVATE "$<$<NOT:$<CONFIG:Debug>>:-O2>" "/w")
 
 # Note: Keep in sync with https://github.com/simolus3/sqlite-native-libraries/blob/master/sqlite3-native-library/cpp/CMakeLists.txt
 target_compile_definitions(sqlite3 PRIVATE
