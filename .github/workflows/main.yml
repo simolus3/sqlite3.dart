@@ -187,29 +187,29 @@ jobs:
 # The integration tests for android are currently broken (the emulator doesn't want to
 # start up...)
 #
-  integration_test_android:
-    runs-on: macos-latest
-    needs: [test]
-    strategy:
-      matrix:
-        test:
-          - flutter_libs
-          - sqlcipher_flutter
-    steps:
-      - uses: actions/checkout@v2
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: dev
-      - name: pub get
-        working-directory: "integration_tests/${{ matrix.test }}"
-        run: flutter pub get
-
-      - name: run tests
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 29
-          script: flutter test integration_test
-          working-directory: "integration_tests/${{ matrix.test }}"
+#  integration_test_android:
+#    runs-on: macos-latest
+#    needs: [test]
+#    strategy:
+#      matrix:
+#        test:
+#          - flutter_libs
+#          - sqlcipher_flutter
+#    steps:
+#      - uses: actions/checkout@v2
+#      - uses: subosito/flutter-action@v2
+#        with:
+#          channel: dev
+#      - name: pub get
+#        working-directory: "integration_tests/${{ matrix.test }}"
+#        run: flutter pub get
+#
+#      - name: run tests
+#        uses: reactivecircus/android-emulator-runner@v2
+#        with:
+#          api-level: 29
+#          script: flutter test integration_test
+#          working-directory: "integration_tests/${{ matrix.test }}"
 
   # Linux integration tests don't work because there's no display on GitHub actions
   # I don't know if this can be faked easily to get `flutter run -d linux` to work.
