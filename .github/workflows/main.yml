@@ -189,6 +189,7 @@ jobs:
 #
   integration_test_android:
     runs-on: macos-latest
+    needs: [test]
     strategy:
       matrix:
         test:
@@ -196,7 +197,7 @@ jobs:
           - sqlcipher_flutter
     steps:
       - uses: actions/checkout@v2
-      - uses: subosito/flutter-action@v1
+      - uses: subosito/flutter-action@v2
         with:
           channel: dev
       - name: pub get
@@ -204,7 +205,7 @@ jobs:
         run: flutter pub get
 
       - name: run tests
-        uses: reactivecircus/android-emulator-runner@v2.20.0
+        uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
           script: flutter test integration_test
