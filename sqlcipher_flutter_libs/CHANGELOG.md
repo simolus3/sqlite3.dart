@@ -1,3 +1,7 @@
+## 0.5.3
+
+- Upgrade `SQLCipher` to version `4.5.2`.
+
 ## 0.5.2
 
 - This package now works on Windows and Linux too!
