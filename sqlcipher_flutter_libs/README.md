@@ -21,7 +21,7 @@ Depending on your target platform, additional dependencies may be needed:
 - Linux: SQLCipher is compiled and linked against a static OpenSSL library that you need to install manually (e.g. `apt install libssl-dev` on Debian).
   OpenSSL is linked into the generated `.so`, so your users don't have to have OpenSSL installed.
 - Windows: SQLCipher is compiled and linked against a static OpenSSL library that you need to install manually (`choco install openssl` works with Chocolatey).
-  OpenSSL is linked into the generated `.dll`, so your users don't have to have OpenSSL installed.
+  OpenSSL is statically linked into the generated `.dll`, so your users don't have to have OpenSSL installed.
 
 When using this package on Android, you need to tell the `sqlite3` package
 how to open `sqlcipher` since it will attempt to open the regular

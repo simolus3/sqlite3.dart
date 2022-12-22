@@ -1,3 +1,7 @@
+## 0.5.4
+
+- Fix building `SQLCipher` on Windows - see the readme for more details.
+
 ## 0.5.3
 
 - Upgrade `SQLCipher` to version `4.5.2`.
