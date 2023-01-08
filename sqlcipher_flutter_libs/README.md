@@ -50,7 +50,7 @@ For more details on how to actually use this package in a Flutter app, see
 For iOS and macOS builds, depending on this package will install the `SQLCipher` pod.
 When depending on another package linking the regular `sqlite3` pod or library, this can lead to undefined
 behavior which may mean that __SQLCipher will not be available in your app__.
-On such problematic package is `google_mobile_ads`.
+On such problematic package is `google_mobile_ads`, or `firebase_messaging`.
 
 To fix this problem, you can put `-framework SQLCipher` in "Other Linker Flags" in your project's settings
 on XCode.
@@ -62,6 +62,9 @@ For more details on this, see
 To catch these errors early, I recommend selecting `PRAGMA cipher_version` after opening a database
 and throwing an exception if you get an empty string back, as you're not running with SQLCipher in
 that case.
+
+Alternatively, you can prevent other pods from linking sqlite3 by adding [this snippet](https://github.com/simolus3/drift/issues/1810#issuecomment-1119426006)
+to your podfile.
 
 ## Problems on Android 6
 
