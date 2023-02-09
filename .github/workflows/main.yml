@@ -276,9 +276,13 @@ jobs:
           flutter --version
 
       - name: sqlite3 driver tests
-        run: "flutter pub get && flutter test integration_test"
+        run: |
+          flutter pub get
+          flutter test integration_test
         working-directory: integration_tests/flutter_libs
 
       - name: sqlcipher driver tests
-        run: "flutter pub get && flutter test integration_test"
+        run: |
+          flutter pub get
+          flutter test integration_test
         working-directory: integration_tests/sqlcipher_flutter
