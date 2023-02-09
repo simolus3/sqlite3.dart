@@ -227,13 +227,17 @@ jobs:
       - name: sqlite3 driver tests
         uses: GabrielBB/xvfb-action@v1
         with:
-          run: "flutter pub get && flutter test integration_test"
+          run: |
+            flutter pub get
+            flutter test integration_test
           working-directory: integration_tests/flutter_libs
       
       - name: sqlcipher driver tests
         uses: GabrielBB/xvfb-action@v1
         with:
-          run: "flutter pub get && flutter test integration_test"
+          run: |
+            flutter pub get
+            flutter test integration_test
           working-directory: integration_tests/sqlcipher_flutter
 
   # Shamelessly stolen from https://medium.com/flutter-community/run-flutter-driver-tests-on-github-actions-13c639c7e4ab
@@ -276,13 +280,9 @@ jobs:
           flutter --version
 
       - name: sqlite3 driver tests
-        run: |
-          flutter pub get
-          flutter test integration_test
+        run: "flutter pub get && flutter test integration_test"
         working-directory: integration_tests/flutter_libs
 
       - name: sqlcipher driver tests
-        run: |
-          flutter pub get
-          flutter test integration_test
+        run: "flutter pub get && flutter test integration_test"
         working-directory: integration_tests/sqlcipher_flutter
