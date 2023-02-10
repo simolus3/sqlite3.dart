@@ -297,7 +297,8 @@ class ResponseInit {
 @staticInterop
 class Response {
   external factory Response(
-      Object /* Blob|BufferSource|FormData|ReadableStream|URLSearchParams|UVString */ body,
+      Object /* Blob|BufferSource|FormData|ReadableStream|URLSearchParams|UVString */
+          body,
       ResponseInit init);
 }
 
