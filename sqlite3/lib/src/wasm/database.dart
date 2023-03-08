@@ -62,14 +62,25 @@ class WasmDatabase extends CommonDatabase {
   }
 
   SqliteException createException(int returnCode,
-      [String? previousStatement, List<Object?>? parameters]) {
-    return createExceptionRaw(
-        bindings, db, returnCode, previousStatement, parameters);
+      {String? operation,
+      String? previousStatement,
+      List<Object?>? parameters}) {
+    return createExceptionRaw(bindings, db, returnCode,
+        operation: operation,
+        previousStatement: previousStatement,
+        statementArgs: parameters);
   }
 
   Never throwException(int returnCode,
-      [String? previousStatement, List<Object?>? parameters]) {
-    throw createException(returnCode, previousStatement, parameters);
+      {String? operation,
+      String? previousStatement,
+      List<Object?>? parameters}) {
+    throw createException(
+      returnCode,
+      operation: operation,
+      previousStatement: previousStatement,
+      parameters: parameters,
+    );
   }
 
   @override
@@ -269,7 +280,8 @@ class WasmDatabase extends CommonDatabase {
 
       if (resultCode != SqlError.SQLITE_OK) {
         freeIntermediateResults();
-        throwException(resultCode, sql);
+        throwException(resultCode,
+            operation: 'preparing statement', previousStatement: sql);
       }
 
       final stmtPtr = bindings.int32ValueOfPointer(stmtOut);

@@ -82,7 +82,8 @@ class DatabaseImpl extends Database {
 
     if (result != SqlError.SQLITE_OK) {
       bindings.sqlite3_close_v2(dbPtr);
-      throw createExceptionRaw(bindings, dbPtr, result);
+      throw createExceptionRaw(bindings, dbPtr, result,
+          operation: 'opening database');
     }
 
     bindings.sqlite3_extended_result_codes(dbPtr, 1);
@@ -245,7 +246,8 @@ class DatabaseImpl extends Database {
 
       if (resultCode != SqlError.SQLITE_OK) {
         freeIntermediateResults();
-        throwException(this, resultCode, sql);
+        throwException(this, resultCode,
+            operation: 'preparing statement', previousStatement: sql);
       }
 
       final stmtPtr = stmtOut.value;

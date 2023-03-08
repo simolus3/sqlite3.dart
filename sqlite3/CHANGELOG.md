@@ -1,3 +1,7 @@
+## 1.9.3-dev
+
+- Provide more information about the source of sqlite exceptions.
+
 ## 1.9.2
 
 - Include parameters when throwing an exception in prepared statements.

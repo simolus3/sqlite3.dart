@@ -137,6 +137,7 @@ void testDatabase(
       expect(
         () => database.prepare('INSERT INTO foo VALUES (3);'),
         throwsA(const TypeMatcher<SqliteException>()
+            .having((e) => e.operation, 'operation', 'preparing statement')
             .having((e) => e.message, 'message', contains('no such table'))),
       );
     });
@@ -155,9 +156,10 @@ void testDatabase(
         );
       });
 
-      Matcher sqlite3Exception(
-          dynamic causingStatement, dynamic parameters, dynamic toString) {
+      Matcher sqlite3Exception(dynamic operation, dynamic causingStatement,
+          dynamic parameters, dynamic toString) {
         return isA<SqliteException>()
+            .having((e) => e.operation, 'operation', operation)
             .having(
                 (e) => e.causingStatement, 'causingStatement', causingStatement)
             .having((e) => e.parametersToStatement, 'parametersToStatement',
@@ -170,6 +172,7 @@ void testDatabase(
           () => database.execute('SELECT throw_if_3(?)', [3]),
           throwsA(
             sqlite3Exception(
+              'executing statement',
               'SELECT throw_if_3(?)',
               [3],
               contains(
@@ -187,6 +190,7 @@ void testDatabase(
           () => stmt.select([3]),
           throwsA(
             sqlite3Exception(
+              'selecting from statement',
               'SELECT throw_if_3(?)',
               [3],
               contains(
@@ -205,6 +209,7 @@ void testDatabase(
           () => stmt.execute([3]),
           throwsA(
             sqlite3Exception(
+              'executing statement',
               'INSERT INTO foo VALUES (throw_if_3(?))',
               [3],
               contains(
@@ -222,6 +227,7 @@ void testDatabase(
           () => stmt.selectMap({':a': 1, ':b': 3}),
           throwsA(
             sqlite3Exception(
+              'selecting from statement',
               'SELECT :a, throw_if_3(:b)',
               [1, 3],
               contains(
@@ -242,6 +248,7 @@ void testDatabase(
             () => cursor.moveNext(),
             throwsA(
               sqlite3Exception(
+                'iterating through statement',
                 sql,
                 [1, 3],
                 contains(

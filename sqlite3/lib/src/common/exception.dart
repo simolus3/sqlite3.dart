@@ -23,6 +23,11 @@ class SqliteException implements Exception {
   /// code, providing some idea of the cause of the failure.
   int get resultCode => extendedResultCode & 0xFF;
 
+  /// An informal description of what the `sqlite3` package was attempting to do
+  /// when the exception occured, e.g. "preparing a statement",
+  /// "opening the database".
+  final String? operation;
+
   /// The SQL statement triggering this exception.
   ///
   /// This may be null when no prior statement is known.
@@ -32,14 +37,23 @@ class SqliteException implements Exception {
   /// parameters used to run that statement.
   final List<Object?>? parametersToStatement;
 
-  SqliteException(this.extendedResultCode, this.message,
-      [this.explanation, this.causingStatement, this.parametersToStatement]);
+  SqliteException(
+    this.extendedResultCode,
+    this.message,
+    // todo: migrate to named parameters in next breaking release
+    [
+    this.explanation,
+    this.causingStatement,
+    this.parametersToStatement,
+    this.operation,
+  ]);
 
   @override
   String toString() {
     final buffer = StringBuffer('SqliteException(')
       ..write(extendedResultCode)
       ..write('): ')
+      ..write(operation == null ? '' : 'while $operation, ')
       ..write(message);
 
     if (explanation != null) {

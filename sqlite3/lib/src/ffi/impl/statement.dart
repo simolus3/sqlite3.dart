@@ -90,7 +90,13 @@ class PreparedStatementImpl implements PreparedStatement {
     } while (result == SqlError.SQLITE_ROW);
 
     if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
-      throwException(_db, result, sql, _latestArguments);
+      throwException(
+        _db,
+        result,
+        operation: 'executing statement',
+        previousStatement: sql,
+        statementArgs: _latestArguments,
+      );
     }
   }
 
@@ -151,7 +157,13 @@ class PreparedStatementImpl implements PreparedStatement {
 
     if (resultCode != SqlError.SQLITE_OK &&
         resultCode != SqlError.SQLITE_DONE) {
-      throwException(_db, resultCode, sql, _latestArguments);
+      throwException(
+        _db,
+        resultCode,
+        operation: 'selecting from statement',
+        previousStatement: sql,
+        statementArgs: _latestArguments,
+      );
     }
 
     return ResultSet(names, tableNames, rows);
@@ -363,7 +375,12 @@ class _ActiveCursorIterator extends IteratingCursor {
 
     if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
       throwException(
-          statement._db, result, statement.sql, statement._latestArguments);
+        statement._db,
+        result,
+        operation: 'iterating through statement',
+        previousStatement: statement.sql,
+        statementArgs: statement._latestArguments,
+      );
     }
 
     return false;

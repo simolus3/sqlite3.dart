@@ -92,7 +92,12 @@ class WasmStatement extends CommonPreparedStatement {
     } while (result == SqlError.SQLITE_ROW);
 
     if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
-      database.throwException(result, sql, _latestArguments);
+      database.throwException(
+        result,
+        operation: 'executing statement',
+        previousStatement: sql,
+        parameters: _latestArguments,
+      );
     }
   }
 
@@ -309,7 +314,12 @@ class WasmStatement extends CommonPreparedStatement {
 
     if (resultCode != SqlError.SQLITE_OK &&
         resultCode != SqlError.SQLITE_DONE) {
-      database.throwException(resultCode, sql, _latestArguments);
+      database.throwException(
+        resultCode,
+        operation: 'selecting from statement',
+        previousStatement: sql,
+        parameters: _latestArguments,
+      );
     }
 
     return ResultSet(names, null, rows);
@@ -354,8 +364,12 @@ class _ActiveCursorIterator extends IteratingCursor {
     statement._currentCursor = null;
 
     if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
-      statement.database
-          .throwException(result, statement.sql, statement._latestArguments);
+      statement.database.throwException(
+        result,
+        operation: 'iterating through statement',
+        previousStatement: statement.sql,
+        parameters: statement._latestArguments,
+      );
     }
 
     return false;
