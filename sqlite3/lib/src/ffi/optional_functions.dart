@@ -91,7 +91,7 @@ extension PrepareSupport on BindingsWithLibrary {
     return !_usesV2[this]!;
   }
 
-  Pointer<NativeType> get appropriateOpenFunction {
+  Pointer<NativeType> get appropriatePrepareFunction {
     _ensureLoaded();
     return _prepareFunction[this]!;
   }

@@ -207,7 +207,7 @@ class DatabaseImpl extends Database {
     int prepare() {
       // Use prepare_v3 if supported, fall-back to prepare_v2 otherwise
       if (_library.supportsOpenV3) {
-        final function = _library.appropriateOpenFunction
+        final function = _library.appropriatePrepareFunction
             .cast<NativeFunction<sqlite3_prepare_v3_native>>()
             .asFunction<sqlite3_prepare_v3_dart>();
 
@@ -226,7 +226,7 @@ class DatabaseImpl extends Database {
           'not support prepare_v3',
         );
 
-        final function = _library.appropriateOpenFunction
+        final function = _library.appropriatePrepareFunction
             .cast<NativeFunction<sqlite3_prepare_v2_native>>()
             .asFunction<sqlite3_prepare_v2_dart>();
 
