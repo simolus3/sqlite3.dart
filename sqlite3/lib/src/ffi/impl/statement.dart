@@ -4,7 +4,7 @@ class _FinalizableStatement extends FinalizablePart {
   final Bindings _bindings;
   final Pointer<sqlite3_stmt> _stmt;
 
-  bool _variablesBound = false;
+  bool _inResetState = true;
   bool _closed = false;
   final List<Pointer> _allocatedWhileBinding = [];
 
@@ -20,9 +20,9 @@ class _FinalizableStatement extends FinalizablePart {
   }
 
   void _reset() {
-    if (_variablesBound) {
+    if (!_inResetState) {
       _bindings.sqlite3_reset(_stmt);
-      _variablesBound = false;
+      _inResetState = true;
     }
 
     for (final pointer in _allocatedWhileBinding) {
@@ -83,6 +83,7 @@ class PreparedStatementImpl implements PreparedStatement {
   void _execute() {
     int result;
 
+    _finalizable._inResetState = false;
     // Users should be able to execute statements returning rows, so we should
     // call _step() to skip past rows.
     do {
@@ -149,6 +150,7 @@ class PreparedStatementImpl implements PreparedStatement {
     final tableNames = _tableNames;
     final columnCount = names.length;
     final rows = <List<Object?>>[];
+    _finalizable._inResetState = false;
 
     int resultCode;
     while ((resultCode = _step()) == SqlError.SQLITE_ROW) {
@@ -209,7 +211,6 @@ class PreparedStatementImpl implements PreparedStatement {
     }
 
     _latestArguments = params;
-    _finalizable._variablesBound = true;
   }
 
   void _bindMapParams(Map<String, Object?> params) {
@@ -249,7 +250,6 @@ class PreparedStatementImpl implements PreparedStatement {
           params, 'params', 'Expected $expectedLength parameters');
     }
 
-    _finalizable._variablesBound = true;
     _latestArguments = paramsAsList;
   }
 
@@ -351,7 +351,9 @@ class _ActiveCursorIterator extends IteratingCursor {
     List<String> columnNames,
     List<String?>? tableNames,
   )   : columnCount = columnNames.length,
-        super(columnNames, tableNames);
+        super(columnNames, tableNames) {
+    statement._finalizable._inResetState = false;
+  }
 
   @override
   bool moveNext() {
