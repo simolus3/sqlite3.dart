@@ -2,10 +2,10 @@
 /// the `dart:js` WASM version of this library.
 library sqlite3.common;
 
-export 'src/common/constants.dart' show SqlError, SqlExtendedError;
-export 'src/common/database.dart';
-export 'src/common/exception.dart';
-export 'src/common/functions.dart';
-export 'src/common/result_set.dart';
-export 'src/common/sqlite3.dart';
-export 'src/common/statement.dart';
+export 'src/constants.dart';
+export 'src/database.dart';
+export 'src/exception.dart';
+export 'src/functions.dart';
+export 'src/result_set.dart';
+export 'src/sqlite3.dart';
+export 'src/statement.dart';

@@ -1,0 +1,77 @@
+import 'package:meta/meta.dart';
+
+import '../constants.dart';
+import '../database.dart';
+import '../sqlite3.dart';
+import 'bindings.dart';
+import 'database.dart';
+import 'exception.dart';
+
+class Sqlite3Implementation implements CommonSqlite3 {
+  final RawSqliteBindings bindings;
+
+  Sqlite3Implementation(this.bindings);
+
+  @visibleForOverriding
+  CommonDatabase wrapDatabase(RawSqliteDatabase rawDb) {
+    return DatabaseImplementation(bindings, rawDb);
+  }
+
+  @override
+  String? get tempDirectory => bindings.sqlite3_temp_directory;
+
+  @override
+  set tempDirectory(String? value) => bindings.sqlite3_temp_directory = value;
+
+  @override
+  CommonDatabase open(String filename,
+      {String? vfs,
+      OpenMode mode = OpenMode.readWriteCreate,
+      bool uri = false,
+      bool? mutex}) {
+    int flags;
+    switch (mode) {
+      case OpenMode.readOnly:
+        flags = SqlFlag.SQLITE_OPEN_READONLY;
+        break;
+      case OpenMode.readWrite:
+        flags = SqlFlag.SQLITE_OPEN_READWRITE;
+        break;
+      case OpenMode.readWriteCreate:
+        flags = SqlFlag.SQLITE_OPEN_READWRITE | SqlFlag.SQLITE_OPEN_CREATE;
+        break;
+    }
+
+    if (uri) {
+      flags |= SqlFlag.SQLITE_OPEN_URI;
+    }
+
+    if (mutex != null) {
+      flags |=
+          mutex ? SqlFlag.SQLITE_OPEN_FULLMUTEX : SqlFlag.SQLITE_OPEN_NOMUTEX;
+    }
+
+    final result = bindings.sqlite3_open_v2(filename, flags, vfs);
+    if (result.resultCode != SqlError.SQLITE_OK) {
+      result.database.sqlite3_close_v2();
+      throw createExceptionRaw(bindings, result.database, result.resultCode,
+          operation: 'opening the database');
+    }
+
+    return wrapDatabase(result.database..sqlite3_extended_result_codes(1));
+  }
+
+  @override
+  CommonDatabase openInMemory() {
+    return open(':memory:');
+  }
+
+  @override
+  Version get version {
+    return Version(
+      bindings.sqlite3_libversion(),
+      bindings.sqlite3_sourceid(),
+      bindings.sqlite3_libversion_number(),
+    );
+  }
+}

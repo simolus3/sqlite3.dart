@@ -40,6 +40,36 @@ Pointer<Uint8> allocateBytes(List<int> bytes, {int additionalLength = 0}) {
   return ptr;
 }
 
-Pointer<sqlite3_char> allocateZeroTerminated(String string) {
-  return allocateBytes(utf8.encode(string), additionalLength: 1).cast();
+extension Utf8Utils on Pointer<sqlite3_char> {
+  int get _length {
+    final asBytes = cast<Uint8>();
+    var length = 0;
+
+    for (; asBytes[length] != 0; length++) {}
+    return length;
+  }
+
+  String? readNullableString() {
+    return isNullPointer ? null : readString();
+  }
+
+  String readString([int? length]) {
+    final resolvedLength = length ??= _length;
+
+    return utf8.decode(cast<Uint8>().asTypedList(resolvedLength));
+  }
+
+  static Pointer<sqlite3_char> allocateZeroTerminated(String string) {
+    return allocateBytes(utf8.encode(string), additionalLength: 1).cast();
+  }
+}
+
+extension PointerUtils on Pointer<NativeType> {
+  bool get isNullPointer => address == 0;
+
+  Uint8List copyRange(int length) {
+    final list = Uint8List(length);
+    list.setAll(0, cast<Uint8>().asTypedList(length));
+    return list;
+  }
 }
