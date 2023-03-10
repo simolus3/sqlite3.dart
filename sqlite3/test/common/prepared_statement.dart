@@ -34,6 +34,16 @@ void testPreparedStatements(
     opened.dispose();
   });
 
+  test('prepared statements without parameters can be used multiple times', () {
+    final opened = sqlite3.openInMemory();
+    addTearDown(opened.dispose);
+    opened.execute('CREATE TABLE tbl (a TEXT);');
+
+    final stmt = opened.prepare('SELECT * FROM tbl');
+    stmt.select();
+    stmt.select();
+  });
+
   test('prepared statements cannot be used after close', () {
     final opened = sqlite3.openInMemory();
 
