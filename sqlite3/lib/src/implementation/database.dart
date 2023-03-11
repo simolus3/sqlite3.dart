@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:meta/meta.dart';
+
 import '../constants.dart';
 import '../database.dart';
 import '../exception.dart';
@@ -59,6 +61,11 @@ class DatabaseImplementation implements CommonDatabase {
   DatabaseImplementation(this.bindings, this.database)
       : finalizable = FinalizableDatabase(bindings, database) {
     disposeFinalizer.attach(this, finalizable, detach: this);
+  }
+
+  @visibleForOverriding
+  StatementImplementation wrapStatement(String sql, RawSqliteStatement stmt) {
+    return StatementImplementation(sql, this, stmt);
   }
 
   void handleFinalized(StatementImplementation stmt) {
@@ -142,11 +149,6 @@ class DatabaseImplementation implements CommonDatabase {
   @override
   int get lastInsertRowId => database.sqlite3_last_insert_rowid();
 
-  StatementImplementation createStatement(
-      String sql, RawSqliteStatement statement) {
-    return StatementImplementation(sql, this, statement);
-  }
-
   List<StatementImplementation> _prepareInternal(String sql,
       {bool persistent = false,
       bool vtab = true,
@@ -193,7 +195,7 @@ class DatabaseImplementation implements CommonDatabase {
       final stmt = result.result;
       if (stmt != null) {
         createdStatements
-            .add(createStatement(sql.substring(offset, endOffset), stmt));
+            .add(wrapStatement(sql.substring(offset, endOffset), stmt));
       }
 
       offset = endOffset;
@@ -215,7 +217,7 @@ class DatabaseImplementation implements CommonDatabase {
 
         if (stmt != null) {
           // Had an unexpected trailing statement -> throw!
-          createdStatements.add(createStatement('', stmt));
+          createdStatements.add(wrapStatement('', stmt));
           freeIntermediateResults();
           throw ArgumentError.value(
               sql, 'sql', 'Had an unexpected trailing statement.');

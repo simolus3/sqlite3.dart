@@ -27,7 +27,7 @@ dev_dependencies:
   test_descriptor: ^2.0.0
 
 ffigen:
-  output: 'lib/src/ffi/sqlite3.g.dart'
+  output: 'lib/src/ffi2/sqlite3.g.dart'
   name: Bindings
   description: Auto-generated, internal bindings to sqlite3
   headers:

@@ -12,6 +12,7 @@ int sqlite3_open_v2(sqlite3_char *filename, sqlite3 **ppDb, int flags,
                     sqlite3_char *zVfs);
 int sqlite3_close_v2(sqlite3 *db);
 sqlite3_char *sqlite3_db_filename(sqlite3 *db, sqlite3_char *zDbName);
+const sqlite3_char *sqlite3_compileoption_get(int N);
 
 // Error handling
 int sqlite3_extended_result_codes(sqlite3 *db, int onoff);
@@ -36,6 +37,8 @@ void *sqlite3_update_hook(sqlite3 *,
                           void *);
 
 // Statements
+int sqlite3_prepare_v2(sqlite3 *db, const sqlite3_char *zSql, int nByte, sqlite3_stmt **ppStmt, const sqlite3_char **pzTail);
+int sqlite3_prepare_v3(sqlite3 *db, const sqlite3_char *zSql, int nByte, unsigned int prepFlags, sqlite3_stmt **ppStmt, const sqlite3_char **pzTail);
 int sqlite3_finalize(sqlite3_stmt *pStmt);
 int sqlite3_step(sqlite3_stmt *pStmt);
 int sqlite3_reset(sqlite3_stmt *pStmt);
@@ -44,6 +47,7 @@ int sqlite3_column_count(sqlite3_stmt *pStmt);
 int sqlite3_bind_parameter_count(sqlite3_stmt *pStmt);
 int sqlite3_bind_parameter_index(sqlite3_stmt *, sqlite3_char *zName);
 sqlite3_char *sqlite3_column_name(sqlite3_stmt *pStmt, int N);
+sqlite3_char *sqlite3_column_table_name(sqlite3_stmt *pStmt, int N);
 
 int sqlite3_bind_blob64(sqlite3_stmt *pStmt, int index, void *data,
                         uint64_t length, void *destructor);

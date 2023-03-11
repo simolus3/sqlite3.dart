@@ -53,12 +53,12 @@ class Sqlite3Implementation implements CommonSqlite3 {
 
     final result = bindings.sqlite3_open_v2(filename, flags, vfs);
     if (result.resultCode != SqlError.SQLITE_OK) {
-      result.database.sqlite3_close_v2();
-      throw createExceptionRaw(bindings, result.database, result.resultCode,
+      result.result.sqlite3_close_v2();
+      throw createExceptionRaw(bindings, result.result, result.resultCode,
           operation: 'opening the database');
     }
 
-    return wrapDatabase(result.database..sqlite3_extended_result_codes(1));
+    return wrapDatabase(result.result..sqlite3_extended_result_codes(1));
   }
 
   @override
