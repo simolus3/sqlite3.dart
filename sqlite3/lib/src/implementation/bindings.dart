@@ -48,6 +48,16 @@ abstract class RawSqliteDatabase {
     RawXStep? xStep,
     RawXFinal? xFinal,
   });
+
+  int sqlite3_create_window_function({
+    required Uint8List functionName,
+    required int nArg,
+    required int eTextRep,
+    required RawXStep xStep,
+    required RawXFinal xFinal,
+    required RawXFinal xValue,
+    required RawXStep xInverse,
+  });
 }
 
 /// A stateful wrapper around multiple `sqlite3_prepare` invocations.

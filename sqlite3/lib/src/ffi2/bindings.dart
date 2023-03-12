@@ -167,6 +167,40 @@ class FfiDatabase implements RawSqliteDatabase {
   void deallocateAdditionalMemory() {}
 
   @override
+  int sqlite3_create_window_function({
+    required Uint8List functionName,
+    required int nArg,
+    required int eTextRep,
+    required RawXStep xStep,
+    required RawXFinal xFinal,
+    required RawXFinal xValue,
+    required RawXStep xInverse,
+  }) {
+    final functionNamePtr = allocateBytes(functionName, additionalLength: 1);
+    final id = DartCallbacks.register(RegisteredFunctionSet(
+      xStep: xStep,
+      xFinal: xFinal,
+      xValue: xValue,
+      xInverse: xInverse,
+    ));
+
+    final result = bindings.bindings.sqlite3_create_window_function(
+      db,
+      functionNamePtr.cast(),
+      nArg,
+      eTextRep,
+      Pointer.fromAddress(id),
+      DartCallbacks.xStep,
+      DartCallbacks.xFinal,
+      DartCallbacks.xValue,
+      DartCallbacks.xInverse,
+      DartCallbacks.xDestroy,
+    );
+    functionNamePtr.free();
+    return result;
+  }
+
+  @override
   int sqlite3_create_function_v2({
     required Uint8List functionName,
     required int nArg,
@@ -182,7 +216,7 @@ class FfiDatabase implements RawSqliteDatabase {
       xFinal: xFinal,
     ));
 
-    return bindings.bindings.sqlite3_create_function_v2(
+    final result = bindings.bindings.sqlite3_create_function_v2(
       db,
       functionNamePtr.cast(),
       nArg,
@@ -193,6 +227,8 @@ class FfiDatabase implements RawSqliteDatabase {
       xFinal != null ? DartCallbacks.xFinal : nullPtr(),
       DartCallbacks.xDestroy,
     );
+    functionNamePtr.free();
+    return result;
   }
 
   @override
@@ -532,7 +568,16 @@ class RegisteredFunctionSet {
   final RawXStep? xStep;
   final RawXFinal? xFinal;
 
-  RegisteredFunctionSet({this.xFunc, this.xStep, this.xFinal});
+  final RawXFinal? xValue;
+  final RawXStep? xInverse;
+
+  RegisteredFunctionSet({
+    this.xFunc,
+    this.xStep,
+    this.xFinal,
+    this.xValue,
+    this.xInverse,
+  });
 }
 
 /// Helper class to use abitrary functions as sqlite callbacks.
@@ -602,6 +647,35 @@ class DartCallbacks {
   static Pointer<Void> xFinal =
       Pointer.fromFunction<Void Function(Pointer<sqlite3_context>)>(_xFinal)
           .cast();
+
+  static void _xValue(
+    Pointer<sqlite3_context> context,
+  ) {
+    final functionId = bindingsForStore.sqlite3_user_data(context).address;
+    final target = functions[functionId]!.xValue!;
+
+    target(FfiContext(bindingsForStore, context));
+  }
+
+  static Pointer<Void> xValue =
+      Pointer.fromFunction<Void Function(Pointer<sqlite3_context>)>(_xValue)
+          .cast();
+
+  static void _xInverse(
+    Pointer<sqlite3_context> context,
+    int argCount,
+    Pointer<Pointer<sqlite3_value>> args,
+  ) {
+    final functionId = bindingsForStore.sqlite3_user_data(context).address;
+    final target = functions[functionId]!.xInverse!;
+
+    target(FfiContext(bindingsForStore, context), _ValueList(argCount, args));
+  }
+
+  static Pointer<Void> xInverse = Pointer.fromFunction<
+          Void Function(Pointer<sqlite3_context>, Int,
+              Pointer<Pointer<sqlite3_value>>)>(_xInverse)
+      .cast();
 
   static void _xDestroy(Pointer<Void> data) {
     functions.remove(data.address);

@@ -106,49 +106,58 @@ class DatabaseImplementation implements CommonDatabase {
     final textRep = eTextRep(deterministic, directOnly);
     int result;
 
+    AggregateContext<V> readOrCreateContext(RawSqliteContext raw) {
+      var dartContext = raw.dartAggregateContext as AggregateContext<V>?;
+      return dartContext ??=
+          raw.dartAggregateContext = function.createContext();
+    }
+
+    void step(RawSqliteContext context, List<RawSqliteValue> args) {
+      final dartContext = readOrCreateContext(context);
+      context.runWithArgsAndSetResult(
+          (args) => function.step(args, dartContext), args);
+    }
+
+    void finalize(RawSqliteContext context) {
+      context.runAndSetResult(() {
+        final existingContext =
+            context.dartAggregateContext as AggregateContext<V>?;
+
+        return function.finalize(existingContext ?? function.createContext());
+      });
+    }
+
     if (function is WindowFunction<V>) {
-      throw UnimplementedError();
+      result = database.sqlite3_create_window_function(
+        functionName: name,
+        nArg: argumentCount.allowedArgs,
+        eTextRep: textRep,
+        xStep: step,
+        xFinal: finalize,
+        xValue: (context) {
+          context.runAndSetResult(() {
+            return function.value(readOrCreateContext(context));
+          });
+        },
+        xInverse: (context, args) {
+          final dartContext = readOrCreateContext(context);
+          context.runWithArgsAndSetResult(
+              (args) => function.inverse(args, dartContext), args);
+        },
+      );
     } else {
       result = database.sqlite3_create_function_v2(
         functionName: name,
         nArg: argumentCount.allowedArgs,
         eTextRep: textRep,
-        xStep: (context, args) {
-          var dartContext =
-              context.dartAggregateContext as AggregateContext<V>?;
-          dartContext ??=
-              context.dartAggregateContext = function.createContext();
-
-          final arguments = ValueList(args);
-          try {
-            function.step(arguments, dartContext);
-          } finally {
-            arguments.isValid = false;
-          }
-        },
-        xFinal: (context) {
-          try {
-            final existingContext =
-                context.dartAggregateContext as AggregateContext<V>?;
-
-            context.setResult(
-                function.finalize(existingContext ?? function.createContext()));
-          } on Object catch (e) {
-            context.sqlite3_result_error(Error.safeToString(e));
-          }
-        },
+        xStep: step,
+        xFinal: finalize,
       );
     }
 
     if (result != SqlError.SQLITE_OK) {
       throwException(this, result);
     }
-  }
-
-  @override
-  void createCollation(
-      {required String name, required CollatingFunction function}) {
-    // TODO: implement createCollation
   }
 
   @override
@@ -164,21 +173,19 @@ class DatabaseImplementation implements CommonDatabase {
       nArg: argumentCount.allowedArgs,
       eTextRep: eTextRep(deterministic, directOnly),
       xFunc: (context, args) {
-        final values = ValueList(args);
-
-        try {
-          context.setResult(function(values));
-        } on Object catch (e) {
-          context.sqlite3_result_error(Error.safeToString(e));
-        } finally {
-          values.isValid = false;
-        }
+        context.runWithArgsAndSetResult(function, args);
       },
     );
 
     if (returnCode != SqlError.SQLITE_OK) {
       throwException(this, returnCode);
     }
+  }
+
+  @override
+  void createCollation(
+      {required String name, required CollatingFunction function}) {
+    // TODO: implement createCollation
   }
 
   @override
@@ -356,6 +363,26 @@ class DatabaseImplementation implements CommonDatabase {
 }
 
 extension on RawSqliteContext {
+  void runWithArgsAndSetResult(
+      Object? Function(List<Object?>) function, List<RawSqliteValue> args) {
+    final dartArgs = ValueList(args);
+    try {
+      setResult(function(args));
+    } on Object catch (e) {
+      sqlite3_result_error(Error.safeToString(e));
+    } finally {
+      dartArgs.isValid = false;
+    }
+  }
+
+  void runAndSetResult(Object? Function() function) {
+    try {
+      setResult(function());
+    } on Object catch (e) {
+      sqlite3_result_error(Error.safeToString(e));
+    }
+  }
+
   void setResult(Object? result) {
     if (result == null) {
       sqlite3_result_null();
