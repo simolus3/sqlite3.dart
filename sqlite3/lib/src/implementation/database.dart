@@ -95,13 +95,54 @@ class DatabaseImplementation implements CommonDatabase {
   }
 
   @override
-  void createAggregateFunction<V>(
-      {required String functionName,
-      required AggregateFunction<V> function,
-      AllowedArgumentCount argumentCount = const AllowedArgumentCount.any(),
-      bool deterministic = false,
-      bool directOnly = true}) {
-    // TODO: implement createAggregateFunction
+  void createAggregateFunction<V>({
+    required String functionName,
+    required AggregateFunction<V> function,
+    AllowedArgumentCount argumentCount = const AllowedArgumentCount.any(),
+    bool deterministic = false,
+    bool directOnly = true,
+  }) {
+    final name = _validateAndEncodeFunctionName(functionName);
+    final textRep = eTextRep(deterministic, directOnly);
+    int result;
+
+    if (function is WindowFunction<V>) {
+      throw UnimplementedError();
+    } else {
+      result = database.sqlite3_create_function_v2(
+        functionName: name,
+        nArg: argumentCount.allowedArgs,
+        eTextRep: textRep,
+        xStep: (context, args) {
+          var dartContext =
+              context.dartAggregateContext as AggregateContext<V>?;
+          dartContext ??=
+              context.dartAggregateContext = function.createContext();
+
+          final arguments = ValueList(args);
+          try {
+            function.step(arguments, dartContext);
+          } finally {
+            arguments.isValid = false;
+          }
+        },
+        xFinal: (context) {
+          try {
+            final existingContext =
+                context.dartAggregateContext as AggregateContext<V>?;
+
+            context.setResult(
+                function.finalize(existingContext ?? function.createContext()));
+          } on Object catch (e) {
+            context.sqlite3_result_error(Error.safeToString(e));
+          }
+        },
+      );
+    }
+
+    if (result != SqlError.SQLITE_OK) {
+      throwException(this, result);
+    }
   }
 
   @override

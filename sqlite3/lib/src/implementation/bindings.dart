@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import '../functions.dart';
+
 abstract class RawSqliteBindings {
   String sqlite3_libversion();
   String sqlite3_sourceid();
@@ -89,7 +91,7 @@ abstract class RawSqliteStatement {
 }
 
 abstract class RawSqliteContext {
-//  int sqlite3_aggregate_context();
+  abstract AggregateContext<Object?>? dartAggregateContext;
 
   void sqlite3_result_null();
   void sqlite3_result_int64(int value);

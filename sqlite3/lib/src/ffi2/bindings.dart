@@ -4,6 +4,7 @@ import 'dart:ffi';
 import 'dart:typed_data';
 
 import '../constants.dart';
+import '../functions.dart';
 import '../implementation/bindings.dart';
 import 'memory.dart';
 import 'sqlite3.g.dart';
@@ -188,8 +189,8 @@ class FfiDatabase implements RawSqliteDatabase {
       eTextRep,
       Pointer.fromAddress(id),
       xFunc != null ? DartCallbacks.xFunc : nullPtr(),
-      nullPtr(),
-      nullPtr(),
+      xStep != null ? DartCallbacks.xStep : nullPtr(),
+      xFinal != null ? DartCallbacks.xFinal : nullPtr(),
       DartCallbacks.xDestroy,
     );
   }
@@ -442,6 +443,43 @@ class FfiContext implements RawSqliteContext {
 
   FfiContext(this.bindings, this.context);
 
+  Pointer<Int64> get _rawAggregateContext {
+    final agCtxPtr = bindings
+        .sqlite3_aggregate_context(context, sizeOf<Int64>())
+        .cast<Int64>();
+
+    if (agCtxPtr.isNullPointer) {
+      // We can't run without our 8 bytes! This indicates an out-of-memory error
+      throw StateError(
+          'Internal error while allocating sqlite3 aggregate context (OOM?)');
+    }
+
+    return agCtxPtr;
+  }
+
+  @override
+  AggregateContext<Object?>? get dartAggregateContext {
+    final agCtxPtr = _rawAggregateContext;
+
+    // Ok, we have a pointer (that sqlite3 zeroes out for us). Our state counter
+    // starts at one, so if it's still zero we don't have a Dart context yet.
+    if (agCtxPtr.value == 0) {
+      return null;
+    } else {
+      return DartCallbacks.aggregateContexts[agCtxPtr.value];
+    }
+  }
+
+  @override
+  set dartAggregateContext(AggregateContext<Object?>? value) {
+    final ptr = _rawAggregateContext;
+
+    final id = DartCallbacks.aggregateContextId++;
+    DartCallbacks.aggregateContexts[id] = ArgumentError.checkNotNull(value);
+
+    ptr.value = id;
+  }
+
   @override
   void sqlite3_result_blob64(List<int> blob) {
     final ptr = allocateBytes(blob);
@@ -511,6 +549,9 @@ class DartCallbacks {
   static final Map<int, RegisteredFunctionSet> functions =
       <int, RegisteredFunctionSet>{};
 
+  static int aggregateContextId = 1;
+  static final Map<int, AggregateContext<Object?>> aggregateContexts = {};
+
   static int register(RegisteredFunctionSet set) {
     final id = _id++;
     functions[id] = set;
@@ -529,9 +570,38 @@ class DartCallbacks {
   }
 
   static Pointer<Void> xFunc = Pointer.fromFunction<
-          Void Function(Pointer<sqlite3_context>, Int32,
+          Void Function(Pointer<sqlite3_context>, Int,
               Pointer<Pointer<sqlite3_value>>)>(_xFunc)
       .cast();
+
+  static void _xStep(
+    Pointer<sqlite3_context> context,
+    int argCount,
+    Pointer<Pointer<sqlite3_value>> args,
+  ) {
+    final functionId = bindingsForStore.sqlite3_user_data(context).address;
+    final target = functions[functionId]!.xStep!;
+
+    target(FfiContext(bindingsForStore, context), _ValueList(argCount, args));
+  }
+
+  static Pointer<Void> xStep = Pointer.fromFunction<
+          Void Function(Pointer<sqlite3_context>, Int,
+              Pointer<Pointer<sqlite3_value>>)>(_xStep)
+      .cast();
+
+  static void _xFinal(
+    Pointer<sqlite3_context> context,
+  ) {
+    final functionId = bindingsForStore.sqlite3_user_data(context).address;
+    final target = functions[functionId]!.xFinal!;
+
+    target(FfiContext(bindingsForStore, context));
+  }
+
+  static Pointer<Void> xFinal =
+      Pointer.fromFunction<Void Function(Pointer<sqlite3_context>)>(_xFinal)
+          .cast();
 
   static void _xDestroy(Pointer<Void> data) {
     functions.remove(data.address);
