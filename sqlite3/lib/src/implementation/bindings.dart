@@ -1,7 +1,5 @@
 import 'dart:typed_data';
 
-import 'finalizer.dart';
-
 abstract class RawSqliteBindings {
   String sqlite3_libversion();
   String sqlite3_sourceid();
@@ -22,6 +20,10 @@ class SqliteResult<T> {
   SqliteResult(this.resultCode, this.result);
 }
 
+typedef RawXFunc = void Function(RawSqliteContext, List<RawSqliteValue>);
+typedef RawXStep = void Function(RawSqliteContext, List<RawSqliteValue>);
+typedef RawXFinal = void Function(RawSqliteContext);
+
 abstract class RawSqliteDatabase {
   int sqlite3_changes();
   int sqlite3_last_insert_rowid();
@@ -35,6 +37,15 @@ abstract class RawSqliteDatabase {
   String sqlite3_errmsg();
 
   RawStatementCompiler newCompiler(List<int> utf8EncodedSql);
+
+  int sqlite3_create_function_v2({
+    required Uint8List functionName,
+    required int nArg,
+    required int eTextRep,
+    RawXFunc? xFunc,
+    RawXStep? xStep,
+    RawXFinal? xFinal,
+  });
 }
 
 /// A stateful wrapper around multiple `sqlite3_prepare` invocations.
@@ -75,4 +86,24 @@ abstract class RawSqliteStatement {
   Uint8List sqlite3_column_bytes(int index);
 
   int sqlite3_bind_parameter_count();
+}
+
+abstract class RawSqliteContext {
+//  int sqlite3_aggregate_context();
+
+  void sqlite3_result_null();
+  void sqlite3_result_int64(int value);
+  void sqlite3_result_int64BigInt(BigInt value);
+  void sqlite3_result_double(double value);
+  void sqlite3_result_text(String text);
+  void sqlite3_result_blob64(List<int> blob);
+  void sqlite3_result_error(String message);
+}
+
+abstract class RawSqliteValue {
+  int sqlite3_value_type();
+  int sqlite3_value_int64();
+  double sqlite3_value_double();
+  String sqlite3_value_text();
+  Uint8List sqlite3_value_blob();
 }

@@ -8,3 +8,15 @@ extension BigIntRangeCheck on BigInt {
     return this;
   }
 }
+
+int eTextRep(bool deterministic, bool directOnly) {
+  var flags = SqlTextEncoding.SQLITE_UTF8;
+  if (deterministic) {
+    flags |= SqlFunctionFlag.SQLITE_DETERMINISTIC;
+  }
+  if (directOnly) {
+    flags |= SqlFunctionFlag.SQLITE_DIRECTONLY;
+  }
+
+  return flags;
+}

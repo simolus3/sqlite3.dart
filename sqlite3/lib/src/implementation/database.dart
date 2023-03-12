@@ -1,4 +1,6 @@
+import 'dart:collection';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
 
@@ -12,6 +14,7 @@ import 'bindings.dart';
 import 'exception.dart';
 import 'finalizer.dart';
 import 'statement.dart';
+import 'utils.dart';
 
 /// Contains the state of a database needed for finalization.
 ///
@@ -80,6 +83,17 @@ class DatabaseImplementation implements CommonDatabase {
     }
   }
 
+  Uint8List _validateAndEncodeFunctionName(String functionName) {
+    final functionNameBytes = utf8.encode(functionName);
+
+    if (functionNameBytes.length > 255) {
+      throw ArgumentError.value(functionName, 'functionName',
+          'Must not exceed 255 bytes when utf-8 encoded');
+    }
+
+    return Uint8List.fromList(functionNameBytes);
+  }
+
   @override
   void createAggregateFunction<V>(
       {required String functionName,
@@ -97,13 +111,33 @@ class DatabaseImplementation implements CommonDatabase {
   }
 
   @override
-  void createFunction(
-      {required String functionName,
-      required ScalarFunction function,
-      AllowedArgumentCount argumentCount = const AllowedArgumentCount.any(),
-      bool deterministic = false,
-      bool directOnly = true}) {
-    // TODO: implement createFunction
+  void createFunction({
+    required String functionName,
+    required ScalarFunction function,
+    AllowedArgumentCount argumentCount = const AllowedArgumentCount.any(),
+    bool deterministic = false,
+    bool directOnly = true,
+  }) {
+    final returnCode = database.sqlite3_create_function_v2(
+      functionName: _validateAndEncodeFunctionName(functionName),
+      nArg: argumentCount.allowedArgs,
+      eTextRep: eTextRep(deterministic, directOnly),
+      xFunc: (context, args) {
+        final values = ValueList(args);
+
+        try {
+          context.setResult(function(values));
+        } on Object catch (e) {
+          context.sqlite3_result_error(Error.safeToString(e));
+        } finally {
+          values.isValid = false;
+        }
+      },
+    );
+
+    if (returnCode != SqlError.SQLITE_OK) {
+      throwException(this, returnCode);
+    }
   }
 
   @override
@@ -278,4 +312,84 @@ class DatabaseImplementation implements CommonDatabase {
   @override
   // TODO: implement updates
   Stream<SqliteUpdate> get updates => throw UnimplementedError();
+}
+
+extension on RawSqliteContext {
+  void setResult(Object? result) {
+    if (result == null) {
+      sqlite3_result_null();
+    } else if (result is int) {
+      sqlite3_result_int64(result);
+    } else if (result is BigInt) {
+      sqlite3_result_int64(result.checkRange.toInt());
+    } else if (result is double) {
+      sqlite3_result_double(result);
+    } else if (result is bool) {
+      sqlite3_result_int64(result ? 1 : 0);
+    } else if (result is String) {
+      sqlite3_result_text(result);
+    } else if (result is List<int>) {
+      sqlite3_result_blob64(result);
+    } else {
+      throw ArgumentError.value(result, 'result', 'Unsupported type');
+    }
+  }
+}
+
+/// An unmodifiable Dart list backed by native sqlite3 values.
+class ValueList extends ListBase<Object?> {
+  final List<RawSqliteValue> rawValues;
+  final List<Object?> _cachedCopies;
+
+  bool isValid = true;
+
+  ValueList(this.rawValues)
+      : _cachedCopies = List.filled(rawValues.length, null);
+
+  @override
+  int get length => rawValues.length;
+
+  @override
+  set length(int newLength) {
+    throw UnsupportedError('Changing the length of sql arguments in Dart');
+  }
+
+  @override
+  Object? operator [](int index) {
+    assert(
+      isValid,
+      'Invalid arguments. This commonly happens when an application-defined '
+      'sql function leaks its arguments after it finishes running. '
+      'Please use List.of(arguments) in the function to create a copy of '
+      'the argument instead.',
+    );
+    RangeError.checkValidIndex(index, this, 'index', length);
+
+    final cached = _cachedCopies[index];
+    if (cached != null) {
+      return cached;
+    }
+
+    final result = rawValues[index];
+    final type = result.sqlite3_value_type();
+
+    switch (type) {
+      case SqlType.SQLITE_INTEGER:
+        return result.sqlite3_value_int64();
+      case SqlType.SQLITE_FLOAT:
+        return result.sqlite3_value_double();
+      case SqlType.SQLITE_TEXT:
+        return result.sqlite3_value_text();
+      case SqlType.SQLITE_BLOB:
+        return result.sqlite3_value_blob();
+      case SqlType.SQLITE_NULL:
+      default:
+        return null;
+    }
+  }
+
+  @override
+  void operator []=(int index, Object? value) {
+    throw ArgumentError('The argument list is unmodifiable');
+  }
 }

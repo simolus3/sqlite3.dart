@@ -1,7 +1,9 @@
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:typed_data';
 
+import '../constants.dart';
 import '../implementation/bindings.dart';
 import 'memory.dart';
 import 'sqlite3.g.dart';
@@ -56,7 +58,9 @@ class BindingsWithLibrary {
 class FfiBindings implements RawSqliteBindings {
   final BindingsWithLibrary bindings;
 
-  FfiBindings(this.bindings);
+  FfiBindings(this.bindings) {
+    DartCallbacks.bindingsForStore = bindings.bindings;
+  }
 
   @override
   String? get sqlite3_temp_directory {
@@ -160,6 +164,35 @@ class FfiDatabase implements RawSqliteDatabase {
 
   @override
   void deallocateAdditionalMemory() {}
+
+  @override
+  int sqlite3_create_function_v2({
+    required Uint8List functionName,
+    required int nArg,
+    required int eTextRep,
+    RawXFunc? xFunc,
+    RawXStep? xStep,
+    RawXFinal? xFinal,
+  }) {
+    final functionNamePtr = allocateBytes(functionName, additionalLength: 1);
+    final id = DartCallbacks.register(RegisteredFunctionSet(
+      xFunc: xFunc,
+      xStep: xStep,
+      xFinal: xFinal,
+    ));
+
+    return bindings.bindings.sqlite3_create_function_v2(
+      db,
+      functionNamePtr.cast(),
+      nArg,
+      eTextRep,
+      Pointer.fromAddress(id),
+      xFunc != null ? DartCallbacks.xFunc : nullPtr(),
+      nullPtr(),
+      nullPtr(),
+      DartCallbacks.xDestroy,
+    );
+  }
 
   @override
   RawStatementCompiler newCompiler(List<int> utf8EncodedSql) {
@@ -366,4 +399,161 @@ class FfiStatement implements RawSqliteStatement {
   @override
   bool get supportsReadingTableNameForColumn =>
       database.bindings.supportsColumnTableName;
+}
+
+class FfiValue implements RawSqliteValue {
+  final Bindings bindings;
+  final Pointer<sqlite3_value> value;
+
+  FfiValue(this.bindings, this.value);
+
+  @override
+  Uint8List sqlite3_value_blob() {
+    final byteLength = bindings.sqlite3_value_bytes(value);
+    return bindings.sqlite3_value_blob(value).copyRange(byteLength);
+  }
+
+  @override
+  double sqlite3_value_double() {
+    return bindings.sqlite3_value_double(value);
+  }
+
+  @override
+  int sqlite3_value_int64() {
+    return bindings.sqlite3_value_type(value);
+  }
+
+  @override
+  String sqlite3_value_text() {
+    final byteLength = bindings.sqlite3_value_bytes(value);
+    return utf8
+        .decode(bindings.sqlite3_value_text(value).copyRange(byteLength));
+  }
+
+  @override
+  int sqlite3_value_type() {
+    return bindings.sqlite3_value_type(value);
+  }
+}
+
+class FfiContext implements RawSqliteContext {
+  final Bindings bindings;
+  final Pointer<sqlite3_context> context;
+
+  FfiContext(this.bindings, this.context);
+
+  @override
+  void sqlite3_result_blob64(List<int> blob) {
+    final ptr = allocateBytes(blob);
+
+    bindings.sqlite3_result_blob64(context, ptr.cast(), blob.length,
+        Pointer.fromAddress(SqlSpecialDestructor.SQLITE_TRANSIENT));
+    ptr.free();
+  }
+
+  @override
+  void sqlite3_result_double(double value) {
+    bindings.sqlite3_result_double(context, value);
+  }
+
+  @override
+  void sqlite3_result_error(String message) {
+    final ptr = allocateBytes(utf8.encode(message));
+
+    bindings.sqlite3_result_error(context, ptr.cast(), message.length);
+    ptr.free();
+  }
+
+  @override
+  void sqlite3_result_int64(int value) {
+    bindings.sqlite3_result_int64(context, value);
+  }
+
+  @override
+  void sqlite3_result_int64BigInt(BigInt value) {
+    bindings.sqlite3_result_int64(context, value.toInt());
+  }
+
+  @override
+  void sqlite3_result_null() {
+    bindings.sqlite3_result_null(context);
+  }
+
+  @override
+  void sqlite3_result_text(String text) {
+    final ptr = allocateBytes(utf8.encode(text));
+
+    bindings.sqlite3_result_text(context, ptr.cast(), text.length,
+        Pointer.fromAddress(SqlSpecialDestructor.SQLITE_TRANSIENT));
+    ptr.free();
+  }
+}
+
+class RegisteredFunctionSet {
+  final RawXFunc? xFunc;
+  final RawXStep? xStep;
+  final RawXFinal? xFinal;
+
+  RegisteredFunctionSet({this.xFunc, this.xStep, this.xFinal});
+}
+
+/// Helper class to use abitrary functions as sqlite callbacks.
+///
+/// `dart:ffi`'s `Pointer.fromFunction` only supports static top-level functions
+/// (in particular, no closures). All sqlite functions with callbacks allow us
+/// to provide an application-specific `void*` pointer that will be forwarded to
+/// the callback when invoked. We use an incrementing pointer for that, as it
+/// allows us to identify functions.
+class DartCallbacks {
+  static late Bindings bindingsForStore;
+
+  static int _id = 0;
+  static final Map<int, RegisteredFunctionSet> functions =
+      <int, RegisteredFunctionSet>{};
+
+  static int register(RegisteredFunctionSet set) {
+    final id = _id++;
+    functions[id] = set;
+    return id;
+  }
+
+  static void _xFunc(
+    Pointer<sqlite3_context> context,
+    int argCount,
+    Pointer<Pointer<sqlite3_value>> args,
+  ) {
+    final functionId = bindingsForStore.sqlite3_user_data(context).address;
+    final target = functions[functionId]!.xFunc!;
+
+    target(FfiContext(bindingsForStore, context), _ValueList(argCount, args));
+  }
+
+  static Pointer<Void> xFunc = Pointer.fromFunction<
+          Void Function(Pointer<sqlite3_context>, Int32,
+              Pointer<Pointer<sqlite3_value>>)>(_xFunc)
+      .cast();
+
+  static void _xDestroy(Pointer<Void> data) {
+    functions.remove(data.address);
+  }
+
+  static Pointer<Void> xDestroy =
+      Pointer.fromFunction<Void Function(Pointer<Void>)>(_xDestroy).cast();
+}
+
+class _ValueList extends ListBase<FfiValue> {
+  @override
+  int length;
+  final Pointer<Pointer<sqlite3_value>> args;
+
+  _ValueList(this.length, this.args);
+
+  @override
+  FfiValue operator [](int index) {
+    return FfiValue(
+        DartCallbacks.bindingsForStore, args.elementAt(index).value);
+  }
+
+  @override
+  void operator []=(int index, FfiValue value) {}
 }
