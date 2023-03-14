@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -55,6 +56,8 @@ class DatabaseImplementation implements CommonDatabase {
   final RawSqliteDatabase database;
 
   final FinalizableDatabase finalizable;
+
+  final List<MultiStreamController<SqliteUpdate>> _updateListeners = [];
 
   var _isClosed = false;
 
@@ -194,7 +197,12 @@ class DatabaseImplementation implements CommonDatabase {
 
     disposeFinalizer.detach(this);
     _isClosed = true;
-    // TODO updates.close()
+
+    for (final listener in _updateListeners) {
+      listener.close();
+    }
+    database.sqlite3_update_hook(null);
+
     finalizable.dispose();
   }
 
@@ -358,8 +366,63 @@ class DatabaseImplementation implements CommonDatabase {
   }
 
   @override
-  // TODO: implement updates
-  Stream<SqliteUpdate> get updates => throw UnimplementedError();
+  Stream<SqliteUpdate> get updates {
+    return Stream.multi(
+      (newListener) {
+        if (_isClosed) {
+          newListener.closeSync();
+          return;
+        }
+
+        void addUpdateListener() {
+          final isFirstListener = _updateListeners.isEmpty;
+          _updateListeners.add(newListener);
+
+          if (isFirstListener) {
+            // Add native update hook
+            database.sqlite3_update_hook((kind, tableName, rowId) {
+              SqliteUpdateKind updateKind;
+
+              switch (kind) {
+                case SQLITE_INSERT:
+                  updateKind = SqliteUpdateKind.insert;
+                  break;
+                case SQLITE_UPDATE:
+                  updateKind = SqliteUpdateKind.update;
+                  break;
+                case SQLITE_DELETE:
+                  updateKind = SqliteUpdateKind.delete;
+                  break;
+                default:
+                  return;
+              }
+
+              final update = SqliteUpdate(updateKind, tableName, rowId);
+              for (final listener in _updateListeners) {
+                listener.add(update);
+              }
+            });
+          }
+        }
+
+        void removeUpdateListener() {
+          _updateListeners.remove(newListener);
+
+          if (_updateListeners.isEmpty && !_isClosed) {
+            database.sqlite3_update_hook(null); // Remove native hook
+          }
+        }
+
+        newListener
+          ..onPause = removeUpdateListener
+          ..onCancel = removeUpdateListener
+          ..onResume = addUpdateListener;
+
+        addUpdateListener(); // This is a onListen callback
+      },
+      isBroadcast: true,
+    );
+  }
 }
 
 extension on RawSqliteContext {

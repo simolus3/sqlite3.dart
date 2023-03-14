@@ -25,6 +25,7 @@ class SqliteResult<T> {
 typedef RawXFunc = void Function(RawSqliteContext, List<RawSqliteValue>);
 typedef RawXStep = void Function(RawSqliteContext, List<RawSqliteValue>);
 typedef RawXFinal = void Function(RawSqliteContext);
+typedef RawUpdateHook = void Function(int kind, String tableName, int rowId);
 
 abstract class RawSqliteDatabase {
   int sqlite3_changes();
@@ -37,6 +38,8 @@ abstract class RawSqliteDatabase {
   int sqlite3_close_v2();
   void deallocateAdditionalMemory();
   String sqlite3_errmsg();
+
+  void sqlite3_update_hook(RawUpdateHook? hook);
 
   RawStatementCompiler newCompiler(List<int> utf8EncodedSql);
 

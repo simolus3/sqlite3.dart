@@ -232,6 +232,17 @@ class FfiDatabase implements RawSqliteDatabase {
   }
 
   @override
+  void sqlite3_update_hook(RawUpdateHook? hook) {
+    DartCallbacks.installedUpdateHook = hook;
+
+    bindings.bindings.sqlite3_update_hook(
+      db,
+      (hook == null ? nullptr : DartCallbacks.updateCallback).cast(),
+      nullPtr(),
+    );
+  }
+
+  @override
   RawStatementCompiler newCompiler(List<int> utf8EncodedSql) {
     return FfiStatementCompiler(this, allocateBytes(utf8EncodedSql));
   }
@@ -597,6 +608,8 @@ class DartCallbacks {
   static int aggregateContextId = 1;
   static final Map<int, AggregateContext<Object?>> aggregateContexts = {};
 
+  static RawUpdateHook? installedUpdateHook;
+
   static int register(RegisteredFunctionSet set) {
     final id = _id++;
     functions[id] = set;
@@ -683,6 +696,17 @@ class DartCallbacks {
 
   static Pointer<Void> xDestroy =
       Pointer.fromFunction<Void Function(Pointer<Void>)>(_xDestroy).cast();
+
+  static void _updateCallback(Pointer<Void> data, int kind,
+      Pointer<sqlite3_char> db, Pointer<sqlite3_char> table, int rowid) {
+    final tableName = table.readString();
+    installedUpdateHook?.call(kind, tableName, rowid);
+  }
+
+  static final Pointer<NativeType> updateCallback = Pointer.fromFunction<
+          Void Function(Pointer<Void>, Int32, Pointer<sqlite3_char>,
+              Pointer<sqlite3_char>, Int64)>(_updateCallback)
+      .cast();
 }
 
 class _ValueList extends ListBase<FfiValue> {

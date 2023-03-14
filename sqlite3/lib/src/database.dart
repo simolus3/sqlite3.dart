@@ -194,6 +194,7 @@ enum SqliteUpdateKind {
 }
 
 /// A data change notification from sqlite.
+@sealed
 class SqliteUpdate {
   /// The kind of write being reported.
   final SqliteUpdateKind kind;
@@ -205,4 +206,20 @@ class SqliteUpdate {
   final int rowId;
 
   SqliteUpdate(this.kind, this.tableName, this.rowId);
+
+  @override
+  int get hashCode => Object.hash(kind, tableName, rowId);
+
+  @override
+  bool operator ==(Object other) {
+    return other is SqliteUpdate &&
+        other.kind == kind &&
+        other.tableName == tableName &&
+        other.rowId == rowId;
+  }
+
+  @override
+  String toString() {
+    return 'SqliteUpdate: $kind on $tableName, rowid = $rowId';
+  }
 }
