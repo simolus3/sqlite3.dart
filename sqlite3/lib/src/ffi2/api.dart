@@ -1,5 +1,7 @@
 import 'dart:ffi';
 
+import 'package:meta/meta.dart';
+
 import '../../open.dart';
 import '../database.dart';
 import '../sqlite3.dart';
@@ -44,8 +46,6 @@ abstract class Sqlite3 implements CommmonSqlite3 {
   void ensureExtensionLoaded(SqliteExtension extension);
 }
 
-typedef _ResolveEntrypoint = Pointer<Void> Function(DynamicLibrary);
-
 /// Information used to load an extension through `sqlite3_auto_extension`,
 /// exposed by [Sqlite3.ensureExtensionLoaded].
 ///
@@ -61,26 +61,21 @@ typedef _ResolveEntrypoint = Pointer<Void> Function(DynamicLibrary);
 /// For an example of how to write and load extensions, see
 ///  - this C file: https://github.com/simolus3/sqlite3.dart/blob/main/sqlite3/test/ffi/test_extension.c
 ///  - this Dart test loading it: https://github.com/simolus3/sqlite3.dart/blob/a9a379494c6b8d58a3c31cf04fe16e83b49130f1/sqlite3/test/ffi/sqlite3_test.dart#L35
+@sealed
 class SqliteExtension {
-  /// The internal function resolving the function pointer to pass to
-  /// `sqlite3_auto_extension`.
-  final _ResolveEntrypoint _resolveEntrypoint;
-
   /// A sqlite extension having the given [extensionEntrypoint] as a function
   /// pointer.
   ///
   /// For the exact signature of [extensionEntrypoint], see
   /// [sqlite3_auto_extension](https://www.sqlite.org/c3ref/auto_extension.html).
   factory SqliteExtension(Pointer<Void> extensionEntrypoint) {
-    return SqliteExtension._((_) => extensionEntrypoint);
+    return SqliteExtensionImpl((_) => extensionEntrypoint);
   }
-
-  SqliteExtension._(this._resolveEntrypoint);
 
   /// A sqlite extension from another library with a given symbol as an
   /// entrypoint.
   factory SqliteExtension.inLibrary(DynamicLibrary library, String symbol) {
-    return SqliteExtension._((_) => library.lookup(symbol));
+    return SqliteExtensionImpl((_) => library.lookup(symbol));
   }
 
   /// A sqlite extension assumed to be statically linked into the sqlite3
@@ -94,7 +89,7 @@ class SqliteExtension {
   /// platforms, you could then load the  [spellfix](https://www.sqlite.org/spellfix1.html)
   /// extension with `SqliteExtension.staticallyLinked('sqlite3_spellfix_init')`.
   factory SqliteExtension.staticallyLinked(String symbol) {
-    return SqliteExtension._((library) => library.lookup(symbol));
+    return SqliteExtensionImpl((library) => library.lookup(symbol));
   }
 }
 

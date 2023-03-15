@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:path/path.dart';
 import 'package:sqlite3/sqlite3.dart';
-import 'package:sqlite3/src/ffi/impl/implementation.dart';
+import 'package:sqlite3/src/ffi2/implementation.dart';
 import 'package:test/test.dart';
 import 'package:test_descriptor/test_descriptor.dart' as d;
 
@@ -63,11 +63,11 @@ void main() {
     });
 
     test('detects if is in-memory database', () {
-      final db1 = sqlite3.open(path) as DatabaseImpl;
-      final db2 = sqlite3.openInMemory() as DatabaseImpl;
+      final db1 = sqlite3.open(path) as FfiDatabaseImplementation;
+      final db2 = sqlite3.openInMemory() as FfiDatabaseImplementation;
 
-      expect(db1.isInMemory(), isFalse);
-      expect(db2.isInMemory(), isTrue);
+      expect(db1.isInMemory, isFalse);
+      expect(db2.isInMemory, isTrue);
 
       db1.dispose();
       db2.dispose();

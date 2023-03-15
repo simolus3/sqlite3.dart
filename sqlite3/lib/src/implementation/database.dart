@@ -426,7 +426,8 @@ class DatabaseImplementation implements CommonDatabase {
           ..onCancel = removeUpdateListener
           ..onResume = addUpdateListener;
 
-        addUpdateListener(); // This is a onListen callback
+        // Since this is a onListen callback, add listener now
+        addUpdateListener();
       },
       isBroadcast: true,
     );

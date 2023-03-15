@@ -1,12 +1,19 @@
 import 'dart:ffi';
 
+import 'package:meta/meta.dart';
+
+import '../constants.dart';
+import '../exception.dart';
 import '../implementation/bindings.dart';
 import '../implementation/database.dart';
+import '../implementation/exception.dart';
 import '../implementation/sqlite3.dart';
 import '../implementation/statement.dart';
 import '../sqlite3.dart';
 import 'api.dart';
 import 'bindings.dart';
+import 'memory.dart';
+import 'sqlite3.g.dart';
 
 class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
   final FfiBindings ffiBindings;
@@ -28,8 +35,8 @@ class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
   }
 
   @override
-  Database openInMemory() {
-    return super.openInMemory() as Database;
+  FfiDatabaseImplementation openInMemory() {
+    return super.openInMemory() as FfiDatabaseImplementation;
   }
 
   @override
@@ -39,13 +46,19 @@ class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
 
   @override
   Database copyIntoMemory(Database restoreFrom) {
-    // TODO: implement copyIntoMemory
-    throw UnimplementedError();
+    return openInMemory()..restore(restoreFrom);
   }
 
   @override
   void ensureExtensionLoaded(SqliteExtension extension) {
-    // TODO: implement ensureExtensionLoaded
+    final entrypoint = (extension as SqliteExtensionImpl)._resolveEntrypoint;
+    final functionPtr = entrypoint(ffiBindings.bindings.library);
+
+    final result =
+        ffiBindings.bindings.bindings.sqlite3_auto_extension(functionPtr);
+    if (result != SqlError.SQLITE_OK) {
+      throw SqliteException(result, 'Could not load extension');
+    }
   }
 
   @override
@@ -54,9 +67,21 @@ class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
   }
 }
 
+typedef _ResolveEntrypoint = Pointer<Void> Function(DynamicLibrary);
+
+class SqliteExtensionImpl implements SqliteExtension {
+  /// The internal function resolving the function pointer to pass to
+  /// `sqlite3_auto_extension`.
+  final _ResolveEntrypoint _resolveEntrypoint;
+
+  SqliteExtensionImpl(this._resolveEntrypoint);
+}
+
 class FfiDatabaseImplementation extends DatabaseImplementation
     implements Database {
   final FfiDatabase ffiDatabase;
+
+  Bindings get _bindings => ffiDatabase.bindings.bindings;
 
   FfiDatabaseImplementation(RawSqliteBindings bindings, this.ffiDatabase)
       : super(bindings, ffiDatabase);
@@ -69,11 +94,16 @@ class FfiDatabaseImplementation extends DatabaseImplementation
 
   @override
   Stream<double> backup(Database toDatabase) {
-    throw UnimplementedError();
+    if (isInMemory) {
+      _loadOrSaveInMemoryDatabase(toDatabase, true);
+      return const Stream.empty();
+    } else {
+      return _backupDatabase(toDatabase);
+    }
   }
 
   @override
-  Pointer<void> get handle => throw UnimplementedError();
+  Pointer<void> get handle => ffiDatabase.db;
 
   @override
   PreparedStatement prepare(String sql,
@@ -90,6 +120,102 @@ class FfiDatabaseImplementation extends DatabaseImplementation
     return super
         .prepareMultiple(sql, persistent: persistent, vtab: vtab)
         .cast<PreparedStatement>();
+  }
+
+  /// check if this is a in-memory database
+  @visibleForTesting
+  bool get isInMemory {
+    final zDbName = Utf8Utils.allocateZeroTerminated('main');
+    final pFileName = _bindings.sqlite3_db_filename(ffiDatabase.db, zDbName);
+
+    zDbName.free();
+
+    return pFileName.isNullPointer || pFileName.readString().isEmpty;
+  }
+
+  /// Ported from https://www.sqlite.org/backup.html Example 1
+  void _loadOrSaveInMemoryDatabase(Database other, bool isSave) {
+    final fromDatabase = isSave ? this : other;
+    final toDatabase = isSave ? other : this;
+
+    final zDestDb = Utf8Utils.allocateZeroTerminated('main');
+    final zSrcDb = Utf8Utils.allocateZeroTerminated('main');
+
+    final pBackup = _bindings.sqlite3_backup_init(
+        toDatabase.handle.cast(), zDestDb, fromDatabase.handle.cast(), zSrcDb);
+
+    if (!pBackup.isNullPointer) {
+      _bindings.sqlite3_backup_step(pBackup, -1);
+      _bindings.sqlite3_backup_finish(pBackup);
+    }
+
+    final extendedErrorCode =
+        _bindings.sqlite3_extended_errcode(toDatabase.handle.cast());
+    final errorCode = extendedErrorCode & 0xFF;
+
+    zDestDb.free();
+    zSrcDb.free();
+
+    if (errorCode != SqlError.SQLITE_OK) {
+      if (errorCode != SqlError.SQLITE_OK) {
+        throw createExceptionFromExtendedCode(
+            bindings, database, errorCode, extendedErrorCode);
+      }
+    }
+  }
+
+  /// Ported from https://www.sqlite.org/backup.html Example 2
+  Stream<double> _backupDatabase(Database toDatabase) async* {
+    final zDestDb = Utf8Utils.allocateZeroTerminated('main');
+    final zSrcDb = Utf8Utils.allocateZeroTerminated('main');
+
+    final pBackup = _bindings.sqlite3_backup_init(
+        toDatabase.handle.cast(), zDestDb, ffiDatabase.db, zSrcDb);
+
+    int returnCode;
+    if (!pBackup.isNullPointer) {
+      do {
+        returnCode = _bindings.sqlite3_backup_step(pBackup, 5);
+
+        final remaining = _bindings.sqlite3_backup_remaining(pBackup);
+        final count = _bindings.sqlite3_backup_pagecount(pBackup);
+
+        yield (count - remaining) / count;
+
+        if (returnCode == SqlError.SQLITE_OK ||
+            returnCode == SqlError.SQLITE_BUSY ||
+            returnCode == SqlError.SQLITE_LOCKED) {
+          //Give other threads the chance to work with the database
+          await Future<void>.delayed(const Duration(milliseconds: 250));
+        }
+      } while (returnCode == SqlError.SQLITE_OK ||
+          returnCode == SqlError.SQLITE_BUSY ||
+          returnCode == SqlError.SQLITE_LOCKED);
+
+      _bindings.sqlite3_backup_finish(pBackup);
+    }
+
+    final extendedErrorCode =
+        _bindings.sqlite3_extended_errcode(toDatabase.handle.cast());
+    final errorCode = extendedErrorCode & 0xFF;
+
+    zDestDb.free();
+    zSrcDb.free();
+
+    if (errorCode != SqlError.SQLITE_OK) {
+      throw createExceptionFromExtendedCode(
+          bindings, database, errorCode, extendedErrorCode);
+    }
+  }
+
+  @internal
+  void restore(Database fromDatabase) {
+    if (!isInMemory) {
+      throw ArgumentError(
+          'Restoring is only available for in-momory databases');
+    }
+
+    _loadOrSaveInMemoryDatabase(fromDatabase, false);
   }
 }
 
