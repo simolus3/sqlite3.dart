@@ -26,6 +26,7 @@ typedef RawXFunc = void Function(RawSqliteContext, List<RawSqliteValue>);
 typedef RawXStep = void Function(RawSqliteContext, List<RawSqliteValue>);
 typedef RawXFinal = void Function(RawSqliteContext);
 typedef RawUpdateHook = void Function(int kind, String tableName, int rowId);
+typedef RawCollation = int Function(String? a, String? b);
 
 abstract class RawSqliteDatabase {
   int sqlite3_changes();
@@ -42,6 +43,12 @@ abstract class RawSqliteDatabase {
   void sqlite3_update_hook(RawUpdateHook? hook);
 
   RawStatementCompiler newCompiler(List<int> utf8EncodedSql);
+
+  int sqlite3_create_collation_v2({
+    required Uint8List collationName,
+    required int eTextRep,
+    required RawCollation collation,
+  });
 
   int sqlite3_create_function_v2({
     required Uint8List functionName,

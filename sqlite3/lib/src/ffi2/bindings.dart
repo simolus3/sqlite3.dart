@@ -167,6 +167,29 @@ class FfiDatabase implements RawSqliteDatabase {
   void deallocateAdditionalMemory() {}
 
   @override
+  int sqlite3_create_collation_v2({
+    required Uint8List collationName,
+    required int eTextRep,
+    required RawCollation collation,
+  }) {
+    final name = allocateBytes(collationName, additionalLength: 1);
+    final id =
+        DartCallbacks.register(RegisteredFunctionSet(collation: collation));
+
+    final result = bindings.bindings.sqlite3_create_collation_v2(
+      db,
+      name.cast(),
+      eTextRep,
+      Pointer.fromAddress(id),
+      DartCallbacks.xCompare.cast(),
+      DartCallbacks.xDestroy.cast(),
+    );
+    name.free();
+
+    return result;
+  }
+
+  @override
   int sqlite3_create_window_function({
     required Uint8List functionName,
     required int nArg,
@@ -582,12 +605,15 @@ class RegisteredFunctionSet {
   final RawXFinal? xValue;
   final RawXStep? xInverse;
 
+  final RawCollation? collation;
+
   RegisteredFunctionSet({
     this.xFunc,
     this.xStep,
     this.xFinal,
     this.xValue,
     this.xInverse,
+    this.collation,
   });
 }
 
@@ -706,6 +732,21 @@ class DartCallbacks {
   static final Pointer<NativeType> updateCallback = Pointer.fromFunction<
           Void Function(Pointer<Void>, Int32, Pointer<sqlite3_char>,
               Pointer<sqlite3_char>, Int64)>(_updateCallback)
+      .cast();
+
+  static int _xCompare(Pointer<Void> app, int lengthA, Pointer<Void> a,
+      int lengthB, Pointer<Void> b) {
+    final function = functions[app.address]!.collation!;
+
+    final dartA = a.cast<sqlite3_char>().readNullableString(lengthA);
+    final dartB = b.cast<sqlite3_char>().readNullableString(lengthB);
+
+    return function(dartA, dartB);
+  }
+
+  static final Pointer<NativeType> xCompare = Pointer.fromFunction<
+          Int Function(Pointer<Void>, Int, Pointer<Void>, Int,
+              Pointer<Void>)>(_xCompare, 0)
       .cast();
 }
 

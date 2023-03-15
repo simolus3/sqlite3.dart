@@ -188,7 +188,15 @@ class DatabaseImplementation implements CommonDatabase {
   @override
   void createCollation(
       {required String name, required CollatingFunction function}) {
-    // TODO: implement createCollation
+    final result = database.sqlite3_create_collation_v2(
+      collationName: _validateAndEncodeFunctionName(name),
+      eTextRep: eTextRep(false, false),
+      collation: function,
+    );
+
+    if (result != SqlError.SQLITE_OK) {
+      throwException(this, result);
+    }
   }
 
   @override

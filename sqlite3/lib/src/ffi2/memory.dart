@@ -49,8 +49,8 @@ extension Utf8Utils on Pointer<sqlite3_char> {
     return length;
   }
 
-  String? readNullableString() {
-    return isNullPointer ? null : readString();
+  String? readNullableString([int? length]) {
+    return isNullPointer ? null : readString(length);
   }
 
   String readString([int? length]) {
