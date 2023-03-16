@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:path/path.dart';
 import 'package:sqlite3/sqlite3.dart';
-import 'package:sqlite3/src/ffi2/implementation.dart';
+import 'package:sqlite3/src/ffi/implementation.dart';
 import 'package:test/test.dart';
 import 'package:test_descriptor/test_descriptor.dart' as d;
 

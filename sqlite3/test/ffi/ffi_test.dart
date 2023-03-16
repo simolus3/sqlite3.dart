@@ -1,7 +1,7 @@
 @Tags(['ffi'])
 import 'dart:ffi';
 
-import 'package:sqlite3/src/ffi2/memory.dart';
+import 'package:sqlite3/src/ffi/memory.dart';
 import 'package:test/test.dart';
 
 void main() {

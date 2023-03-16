@@ -7,9 +7,8 @@ import 'package:js/js.dart';
 import 'package:path/path.dart' as p;
 
 import '../../wasm.dart';
-import '../common/constants.dart';
-import '../common/impl/utils.dart';
-import 'function_store.dart';
+import '../implementation/bindings.dart';
+import 'bindings.dart';
 import 'js_interop.dart';
 
 typedef Pointer = int;
@@ -21,21 +20,9 @@ class WasmBindings {
   static const pointerSize = 4;
 
   final WasmInstance instance;
-  late final FunctionStore functions;
   final Memory memory;
 
-  // ignore: close_sinks
-  final StreamController<QualifiedSqliteUpdate> _updates =
-      StreamController.broadcast();
-
-  /// A stream of updates happening across all databases using these bindings.
-  ///
-  /// For each database, the stream handler needs to be started or stopped with
-  /// .
-  Stream<QualifiedSqliteUpdate> get allUpdates => _updates.stream;
-
-  /// A counter for database ids used by [allUpdates].
-  int lastDatabaseId = 0;
+  final DartCallbacks callbacks;
 
   Uint8List get memoryAsBytes => memory.buffer.asUint8List();
 
@@ -46,6 +33,7 @@ class WasmBindings {
       _create_scalar,
       _create_aggregate,
       _create_window,
+      _create_collation,
       _update_hooks,
       _sqlite3_libversion,
       _sqlite3_sourceid,
@@ -98,6 +86,7 @@ class WasmBindings {
 
   WasmBindings(this.instance, _InjectedValues values)
       : memory = values.memory,
+        callbacks = values.callbacks,
         _malloc = instance.functions['dart_sqlite3_malloc']!,
         _free = instance.functions['dart_sqlite3_free']!,
         _create_scalar =
@@ -106,6 +95,8 @@ class WasmBindings {
             instance.functions['dart_sqlite3_create_aggregate_function']!,
         _create_window =
             instance.functions['dart_sqlite3_create_window_function']!,
+        _create_collation =
+            instance.functions['dart_sqlite3_create_collation']!,
         _update_hooks = instance.functions['dart_sqlite3_updates']!,
         _sqlite3_libversion = instance.functions['sqlite3_libversion']!,
         _sqlite3_sourceid = instance.functions['sqlite3_sourceid']!,
@@ -162,7 +153,6 @@ class WasmBindings {
             instance.functions['sqlite3_aggregate_context']!,
         _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']! {
     values.bindings = this;
-    functions = values.functions;
   }
 
   static Future<WasmBindings> instantiateAsync(
@@ -219,6 +209,10 @@ class WasmBindings {
     return _create_window(db, functionName, nArg, eTextRep, id) as int;
   }
 
+  int create_collation(Pointer db, Pointer name, int eTextRep, int id) {
+    return _create_collation(db, name, eTextRep, id) as int;
+  }
+
   int sqlite3_libversion() => _sqlite3_libversion() as int;
 
   Pointer sqlite3_sourceid() => _sqlite3_sourceid() as Pointer;
@@ -245,8 +239,6 @@ class WasmBindings {
 
   /// Pass a non-negative [id] to enable update tracking on the db, a negative
   /// one to stop it.
-  ///
-  /// Updates are reported through [allUpdates].
   void dart_sqlite3_updates(Pointer db, int id) {
     _update_hooks(db, id);
   }
@@ -271,8 +263,13 @@ class WasmBindings {
   }
 
   int sqlite3_bind_int64(Pointer stmt, int index, BigInt value) {
-    return _sqlite3_bind_int64(
-        stmt, index, JsBigInt.fromBigInt(value.checkRange).jsObject) as int;
+    return _sqlite3_bind_int64(stmt, index, JsBigInt.fromBigInt(value).jsObject)
+        as int;
+  }
+
+  int sqlite3_bind_int(Pointer stmt, int index, int value) {
+    return _sqlite3_bind_int64(stmt, index, JsBigInt.fromInt(value).jsObject)
+        as int;
   }
 
   int sqlite3_bind_double(Pointer stmt, int index, double value) {
@@ -306,8 +303,8 @@ class WasmBindings {
     return _sqlite3_column_type(stmt, index) as Pointer;
   }
 
-  Object sqlite3_column_int64(Pointer stmt, int index) {
-    return JsBigInt(_sqlite3_column_int64(stmt, index) as Object).toDart();
+  JsBigInt sqlite3_column_int64(Pointer stmt, int index) {
+    return JsBigInt(_sqlite3_column_int64(stmt, index) as Object);
   }
 
   double sqlite3_column_double(Pointer stmt, int index) {
@@ -330,8 +327,8 @@ class WasmBindings {
     return _sqlite3_value_type(value) as int;
   }
 
-  Object sqlite3_value_int64(Pointer value) {
-    return JsBigInt(_sqlite3_value_int64(value) as Object).toDart();
+  JsBigInt sqlite3_value_int64(Pointer value) {
+    return JsBigInt(_sqlite3_value_int64(value) as Object);
   }
 
   double sqlite3_value_double(Pointer value) {
@@ -355,8 +352,7 @@ class WasmBindings {
   }
 
   void sqlite3_result_int64(Pointer context, BigInt value) {
-    _sqlite3_result_int64(
-        context, JsBigInt.fromBigInt(value.checkRange).jsObject);
+    _sqlite3_result_int64(context, JsBigInt.fromBigInt(value).jsObject);
   }
 
   void sqlite3_result_double(Pointer context, double value) {
@@ -391,7 +387,7 @@ class WasmBindings {
 
   int sqlite3_finalize(Pointer stmt) => _sqlite3_finalize(stmt) as int;
 
-  int sqlite3_changed(Pointer db) => _sqlite3_changes(db) as int;
+  int sqlite3_changes(Pointer db) => _sqlite3_changes(db) as int;
 
   int sqlite3_last_insert_rowid(Pointer db) =>
       JsBigInt(_sqlite3_last_insert_rowid(db) as Object).asDartInt;
@@ -420,6 +416,12 @@ extension ReadMemory on Memory {
     return utf8.decode(buffer.asUint8List(address, length ?? strlen(address)));
   }
 
+  String? readNullableString(int address, [int? length]) {
+    if (address == 0) return null;
+
+    return utf8.decode(buffer.asUint8List(address, length ?? strlen(address)));
+  }
+
   Uint8List copyRange(Pointer pointer, int length) {
     final list = Uint8List(length);
     list.setAll(0, buffer.asUint8List(pointer, length));
@@ -433,7 +435,7 @@ class _InjectedValues {
 
   late Memory memory;
 
-  late final FunctionStore functions = FunctionStore(bindings);
+  final DartCallbacks callbacks = DartCallbacks();
 
   _InjectedValues(SqliteEnvironment environment) {
     final memory = this.memory = Memory(MemoryDescriptor(initial: 16));
@@ -471,40 +473,53 @@ class _InjectedValues {
           }
         }),
         'function_xFunc': allowInterop((Pointer ctx, int args, Pointer value) {
-          functions.runScalarFunction(ctx, args, value);
+          final id = bindings.sqlite3_user_data(ctx);
+          callbacks.functions[id]!.xFunc!(
+            WasmContext(bindings, ctx, callbacks),
+            WasmValueList(bindings, args, value),
+          );
         }),
         'function_xStep': allowInterop((Pointer ctx, int args, Pointer value) {
-          functions.runStepFunction(ctx, args, value);
+          final id = bindings.sqlite3_user_data(ctx);
+          callbacks.functions[id]!.xStep!(
+            WasmContext(bindings, ctx, callbacks),
+            WasmValueList(bindings, args, value),
+          );
         }),
         'function_xInverse':
             allowInterop((Pointer ctx, int args, Pointer value) {
-          functions.runInverseFunction(ctx, args, value);
+          final id = bindings.sqlite3_user_data(ctx);
+          callbacks.functions[id]!.xInverse!(
+            WasmContext(bindings, ctx, callbacks),
+            WasmValueList(bindings, args, value),
+          );
         }),
         'function_xFinal': allowInterop((Pointer ctx) {
-          functions.runFinalFunction(ctx);
+          final id = bindings.sqlite3_user_data(ctx);
+          callbacks
+              .functions[id]!.xFinal!(WasmContext(bindings, ctx, callbacks));
         }),
         'function_xValue': allowInterop((Pointer ctx) {
-          functions.runValueFunction(ctx);
+          final id = bindings.sqlite3_user_data(ctx);
+          callbacks
+              .functions[id]!.xValue!(WasmContext(bindings, ctx, callbacks));
         }),
-        'function_forget': allowInterop((Pointer ctx) => functions.forget(ctx)),
+        'function_forget': allowInterop((Pointer ctx) {
+          callbacks.forget(ctx);
+        }),
+        'function_compare': allowInterop(
+            (Pointer ctx, int lengthA, Pointer a, int lengthB, int b) {
+          final aStr = memory.readNullableString(a, lengthA);
+          final bStr = memory.readNullableString(b, lengthB);
+
+          return callbacks.functions[ctx]!.collation!(aStr, bStr);
+        }),
         'function_hook': allowInterop(
             (int id, int kind, Pointer _, Pointer table, Object rowId) {
-          SqliteUpdateKind kindEnum;
-          switch (kind) {
-            case SQLITE_INSERT:
-              kindEnum = SqliteUpdateKind.insert;
-              break;
-            case SQLITE_UPDATE:
-              kindEnum = SqliteUpdateKind.update;
-              break;
-            case SQLITE_DELETE:
-            default:
-              kindEnum = SqliteUpdateKind.delete;
-          }
-
           final tableName = memory.readString(table);
-          bindings._updates.add(QualifiedSqliteUpdate(id,
-              SqliteUpdate(kindEnum, tableName, JsBigInt(rowId).asDartInt)));
+
+          callbacks.installedUpdateHook
+              ?.call(kind, tableName, JsBigInt(rowId).asDartInt);
         }),
         'fs_create': allowInterop((Pointer path, int flags) {
           final pathStr = memory.readString(path);
@@ -594,9 +609,40 @@ class _InjectedValues {
   }
 }
 
-class QualifiedSqliteUpdate {
-  final int databaseId;
-  final SqliteUpdate update;
+class DartCallbacks {
+  int _id = 0;
+  final Map<int, RegisteredFunctionSet> functions = {};
 
-  QualifiedSqliteUpdate(this.databaseId, this.update);
+  int aggregateContextId = 1;
+  final Map<int, AggregateContext<Object?>> aggregateContexts = {};
+
+  RawUpdateHook? installedUpdateHook;
+
+  int register(RegisteredFunctionSet set) {
+    final id = _id++;
+    functions[id] = set;
+    return id;
+  }
+
+  void forget(int id) => functions.remove(id);
+}
+
+class RegisteredFunctionSet {
+  final RawXFunc? xFunc;
+  final RawXStep? xStep;
+  final RawXFinal? xFinal;
+
+  final RawXFinal? xValue;
+  final RawXStep? xInverse;
+
+  final RawCollation? collation;
+
+  RegisteredFunctionSet({
+    this.xFunc,
+    this.xStep,
+    this.xFinal,
+    this.xValue,
+    this.xInverse,
+    this.collation,
+  });
 }

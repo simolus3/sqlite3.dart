@@ -10,7 +10,7 @@ import 'utils.dart';
 class FinalizableStatement extends FinalizablePart {
   final RawSqliteStatement statement;
 
-  bool _variablesBound = false;
+  bool _inResetState = true;
   bool _closed = false;
 
   FinalizableStatement(this.statement);
@@ -25,9 +25,9 @@ class FinalizableStatement extends FinalizablePart {
   }
 
   void _reset() {
-    if (_variablesBound) {
+    if (!_inResetState) {
       statement.sqlite3_reset();
-      _variablesBound = false;
+      _inResetState = true;
     }
 
     statement.deallocateArguments();
@@ -91,6 +91,7 @@ class StatementImplementation implements CommonPreparedStatement {
   void _execute() {
     int result;
 
+    finalizable._inResetState = false;
     // Users should be able to execute statements returning rows, so we should
     // call _step() to skip past rows.
     do {
@@ -113,6 +114,7 @@ class StatementImplementation implements CommonPreparedStatement {
     final tableNames = _tableNames;
     final columnCount = names.length;
     final rows = <List<Object?>>[];
+    finalizable._inResetState = false;
 
     int resultCode;
     while ((resultCode = _step()) == SqlError.SQLITE_ROW) {
@@ -162,7 +164,6 @@ class StatementImplementation implements CommonPreparedStatement {
     }
 
     _latestArguments = params;
-    finalizable._variablesBound = true;
   }
 
   void _bindMapParams(Map<String, Object?> params) {
@@ -198,7 +199,6 @@ class StatementImplementation implements CommonPreparedStatement {
           params, 'params', 'Expected $expectedLength parameters');
     }
 
-    finalizable._variablesBound = true;
     _latestArguments = paramsAsList;
   }
 
@@ -304,7 +304,9 @@ class _ActiveCursorIterator extends IteratingCursor {
     List<String> columnNames,
     List<String?>? tableNames,
   )   : columnCount = columnNames.length,
-        super(columnNames, tableNames);
+        super(columnNames, tableNames) {
+    statement.finalizable._inResetState = false;
+  }
 
   @override
   bool moveNext() {

@@ -3,8 +3,8 @@ import 'dart:ffi';
 import 'package:integration_test/integration_test.dart';
 import 'package:test/test.dart';
 import 'package:sqlite3/sqlite3.dart';
-import 'package:sqlite3/src/ffi/ffi.dart'
-    show sqlite3_char, Utf8Utils, PointerUtils;
+import 'package:sqlite3/src/ffi/sqlite3.g.dart' hide sqlite3;
+import 'package:sqlite3/src/ffi/memory.dart';
 import 'package:sqlite3/open.dart';
 
 typedef _sqlite3_compileoption_get_native = Pointer<Uint8> Function(Int32 n);

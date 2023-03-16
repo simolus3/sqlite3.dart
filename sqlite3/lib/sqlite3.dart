@@ -5,4 +5,4 @@ library sqlite3;
 export 'common.dart'
     hide CommonPreparedStatement, CommonDatabase, CommmonSqlite3;
 
-export 'src/ffi2/api.dart';
+export 'src/ffi/api.dart';

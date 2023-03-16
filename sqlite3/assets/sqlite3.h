@@ -37,8 +37,11 @@ void *sqlite3_update_hook(sqlite3 *,
                           void *);
 
 // Statements
-int sqlite3_prepare_v2(sqlite3 *db, const sqlite3_char *zSql, int nByte, sqlite3_stmt **ppStmt, const sqlite3_char **pzTail);
-int sqlite3_prepare_v3(sqlite3 *db, const sqlite3_char *zSql, int nByte, unsigned int prepFlags, sqlite3_stmt **ppStmt, const sqlite3_char **pzTail);
+int sqlite3_prepare_v2(sqlite3 *db, const sqlite3_char *zSql, int nByte,
+                       sqlite3_stmt **ppStmt, const sqlite3_char **pzTail);
+int sqlite3_prepare_v3(sqlite3 *db, const sqlite3_char *zSql, int nByte,
+                       unsigned int prepFlags, sqlite3_stmt **ppStmt,
+                       const sqlite3_char **pzTail);
 int sqlite3_finalize(sqlite3_stmt *pStmt);
 int sqlite3_step(sqlite3_stmt *pStmt);
 int sqlite3_reset(sqlite3_stmt *pStmt);

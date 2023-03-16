@@ -31,6 +31,10 @@ import_dart("function_hook") extern void dartUpdateHook(void *id, int kind,
                                                         const char *db,
                                                         const char *table,
                                                         sqlite3_int64 rowid);
+import_dart("function_compare") extern int dartXCompare(void *id, int lengthA,
+                                                        const void *a,
+                                                        int lengthB,
+                                                        const void *b);
 
 import_dart("fs_create") extern int dartCreateFile(const char *zPath,
                                                    int flags);
