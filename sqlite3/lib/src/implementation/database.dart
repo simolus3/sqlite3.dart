@@ -62,7 +62,22 @@ class DatabaseImplementation implements CommonDatabase {
   var _isClosed = false;
 
   @override
-  int userVersion = 0;
+  int get userVersion {
+    final stmt = prepare('PRAGMA user_version;');
+    try {
+      final result = stmt.select();
+
+      final version = result.first.columnAt(0) as int;
+      return version;
+    } finally {
+      stmt.dispose();
+    }
+  }
+
+  @override
+  set userVersion(int value) {
+    execute('PRAGMA user_version = $value;');
+  }
 
   DatabaseImplementation(this.bindings, this.database)
       : finalizable = FinalizableDatabase(bindings, database) {
@@ -439,7 +454,7 @@ extension on RawSqliteContext {
       Object? Function(List<Object?>) function, List<RawSqliteValue> args) {
     final dartArgs = ValueList(args);
     try {
-      setResult(function(args));
+      setResult(function(dartArgs));
     } on Object catch (e) {
       sqlite3_result_error(Error.safeToString(e));
     } finally {

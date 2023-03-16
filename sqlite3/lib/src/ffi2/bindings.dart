@@ -491,7 +491,7 @@ class FfiValue implements RawSqliteValue {
 
   @override
   int sqlite3_value_int64() {
-    return bindings.sqlite3_value_type(value);
+    return bindings.sqlite3_value_int64(value);
   }
 
   @override

@@ -7,21 +7,7 @@ import 'statement.dart';
 /// An opened sqlite3 database.
 abstract class CommonDatabase {
   /// The application defined version of this database.
-  int get userVersion {
-    final stmt = prepare('PRAGMA user_version;');
-    try {
-      final result = stmt.select();
-
-      final version = result.first.columnAt(0) as int;
-      return version;
-    } finally {
-      stmt.dispose();
-    }
-  }
-
-  set userVersion(int value) {
-    execute('PRAGMA user_version = $value;');
-  }
+  abstract int userVersion;
 
   /// Returns the row id of the last inserted row.
   int get lastInsertRowId;
@@ -54,12 +40,7 @@ abstract class CommonDatabase {
 
   /// Prepares the [sql] select statement and runs it with the provided
   /// [parameters].
-  ResultSet select(String sql, [List<Object?> parameters = const []]) {
-    final stmt = prepare(sql);
-    final result = stmt.select(parameters);
-    stmt.dispose();
-    return result;
-  }
+  ResultSet select(String sql, [List<Object?> parameters = const []]);
 
   /// Compiles the [sql] statement to execute it later.
   ///
