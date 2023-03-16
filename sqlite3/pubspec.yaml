@@ -25,16 +25,3 @@ dev_dependencies:
   stream_channel: ^2.1.0
   test: ^1.17.0
   test_descriptor: ^2.0.0
-
-ffigen:
-  output: 'lib/src/ffi2/sqlite3.g.dart'
-  name: Bindings
-  description: Auto-generated, internal bindings to sqlite3
-  headers:
-    entry-points: [assets/sqlite3.h]
-  structs:
-    include: ['sqlite3.*']
-  macros:
-    include: ['sqlite3.*']
-  globals:
-    include: ['sqlite3.*']

@@ -1,0 +1,13 @@
+# To generate, run `dart run ffigen --config ffigen.yaml`
+
+output: 'lib/src/ffi/sqlite3.g.dart'
+name: Bindings
+description: Auto-generated, internal bindings to sqlite3
+headers:
+  entry-points: [assets/sqlite3.h]
+structs:
+  include: ['sqlite3.*']
+macros:
+  include: ['sqlite3.*']
+globals:
+  include: ['sqlite3.*']
