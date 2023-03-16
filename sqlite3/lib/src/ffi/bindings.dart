@@ -427,7 +427,7 @@ class FfiStatement implements RawSqliteStatement {
   }
 
   @override
-  BigInt sqlite3_column_int64BigInt(int index) {
+  BigInt sqlite3_column_int64OrBigInt(int index) {
     return BigInt.from(bindings.sqlite3_column_int64(stmt, index));
   }
 

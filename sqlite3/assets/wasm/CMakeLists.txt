@@ -43,7 +43,7 @@ base_sqlite3_target(sqlite3_debug)
 file(DOWNLOAD https://raw.githubusercontent.com/sqlite/sqlite/master/src/test_vfstrace.c "${CMAKE_BINARY_DIR}/vfstrace.c")
 target_sources(sqlite3_debug PRIVATE "${CMAKE_BINARY_DIR}/vfstrace.c")
 target_compile_options(sqlite3_debug PRIVATE -g)
-target_compile_definitions(sqlite3_debug PRIVATE SQLITE_ENABLE_VFSTRACE)
+target_compile_definitions(sqlite3_debug PRIVATE SQLITE_ENABLE_VFSTRACE SQLITE_ENABLE_API_ARMOR)
 set_target_properties(sqlite3_debug PROPERTIES OUTPUT_NAME "sqlite3" SUFFIX ".debug.wasm")
 
 base_sqlite3_target(sqlite3_opt)

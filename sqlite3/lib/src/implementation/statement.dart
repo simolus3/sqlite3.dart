@@ -139,7 +139,15 @@ class StatementImplementation implements CommonPreparedStatement {
     final type = statement.sqlite3_column_type(index);
     switch (type) {
       case SqlType.SQLITE_INTEGER:
-        return statement.sqlite3_column_int64(index);
+        const hasNativeInts = !identical(0.0, 0);
+
+        if (hasNativeInts) {
+          return statement.sqlite3_column_int64(index);
+        } else {
+          // Wrap in BigInt if needed
+          return statement.sqlite3_column_int64OrBigInt(index);
+        }
+
       case SqlType.SQLITE_FLOAT:
         return statement.sqlite3_column_double(index);
       case SqlType.SQLITE_TEXT:
@@ -208,7 +216,7 @@ class StatementImplementation implements CommonPreparedStatement {
     } else if (param is int) {
       statement.sqlite3_bind_int64(i, param);
     } else if (param is BigInt) {
-      statement.sqlite3_bind_int64(i, param.checkRange.toInt());
+      statement.sqlite3_bind_int64BigInt(i, param.checkRange);
     } else if (param is bool) {
       statement.sqlite3_bind_int64(i, param ? 1 : 0);
     } else if (param is double) {

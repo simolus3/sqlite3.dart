@@ -102,7 +102,7 @@ abstract class RawSqliteStatement {
 
   int sqlite3_column_type(int index);
   int sqlite3_column_int64(int index);
-  BigInt sqlite3_column_int64BigInt(int index);
+  Object sqlite3_column_int64OrBigInt(int index);
   double sqlite3_column_double(int index);
   String sqlite3_column_text(int index);
   Uint8List sqlite3_column_bytes(int index);

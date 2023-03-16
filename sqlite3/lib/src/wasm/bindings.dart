@@ -180,7 +180,7 @@ class WasmDatabase implements RawSqliteDatabase {
     required RawXStep xInverse,
   }) {
     final ptr = bindings.allocateBytes(functionName, additionalLength: 1);
-    final result = bindings.create_scalar_function(
+    final result = bindings.create_window_function(
         db,
         ptr,
         nArg,
@@ -238,7 +238,7 @@ class WasmStatementCompiler implements RawStatementCompiler {
   @override
   int get endOffset {
     final bindings = database.bindings;
-    return bindings.int32ValueOfPointer(pzTail) - stmtOut;
+    return bindings.int32ValueOfPointer(pzTail) - sql;
   }
 
   @override
@@ -354,9 +354,9 @@ class WasmStatement implements RawSqliteStatement {
   }
 
   @override
-  BigInt sqlite3_column_int64BigInt(int index) {
+  Object sqlite3_column_int64OrBigInt(int index) {
     final jsBigInt = bindings.sqlite3_column_int64(stmt, index);
-    return jsBigInt.asDartBigInt;
+    return jsBigInt.toDart();
   }
 
   @override
@@ -501,7 +501,7 @@ class WasmValue extends RawSqliteValue {
   Uint8List sqlite3_value_blob() {
     final length = bindings.sqlite3_value_bytes(value);
     return bindings.memory
-        .copyRange(bindings.sqlite3_value_bytes(value), length);
+        .copyRange(bindings.sqlite3_value_blob(value), length);
   }
 
   @override
@@ -542,7 +542,8 @@ class WasmValueList extends ListBase<WasmValue> {
 
   @override
   WasmValue operator [](int index) {
-    final valuePtr = bindings.int32ValueOfPointer(value + index);
+    final valuePtr =
+        bindings.int32ValueOfPointer(value + index * WasmBindings.pointerSize);
     return WasmValue(bindings, valuePtr);
   }
 

@@ -181,10 +181,12 @@ class WasmBindings {
   }
 
   int int32ValueOfPointer(Pointer pointer) {
+    assert(pointer != 0, 'Null pointer dereference');
     return memoryAsWords[pointer >> 2];
   }
 
   void setInt32Value(Pointer pointer, int value) {
+    assert(pointer != 0, 'Null pointer dereference');
     memoryAsWords[pointer >> 2] = value;
   }
 
@@ -403,6 +405,7 @@ class WasmBindings {
 
 extension ReadMemory on Memory {
   int strlen(int address) {
+    assert(address != 0, 'Null pointer dereference');
     var length = 0;
     final bytes = buffer.asUint8List();
     while (bytes[address + length] != 0) {
@@ -413,6 +416,7 @@ extension ReadMemory on Memory {
   }
 
   String readString(int address, [int? length]) {
+    assert(address != 0, 'Null pointer dereference');
     return utf8.decode(buffer.asUint8List(address, length ?? strlen(address)));
   }
 
