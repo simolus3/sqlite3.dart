@@ -141,8 +141,11 @@ just grab the `.wasm` from the latest release on GitHub.
 You'll need a clang toolchain capable of compiling to WebAssembly and a libc
 suitable for it (I use wasi in `/usr/share/wasi-sysroot`).
 
-Create a build directory, then run
+In this directory, run:
+
 ```
-cmake <path/to/clone>/sqlite3/assets/wasm --toolchain <path/to/clone>/sqlite3/assets/wasm/toolchain.cmake
-make -j output
+cmake -S assets/wasm -B .dart_tool/sqlite3_build --toolchain toolchain.cmake
+make -C .dart_tool/sqlite3_build/ -j output
 ```
+
+(Of course, you can also run the build in any other directory).
