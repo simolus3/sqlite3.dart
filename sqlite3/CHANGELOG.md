@@ -1,6 +1,7 @@
-## 1.9.3-dev
+## 1.9.3
 
 - Provide more information about the source of sqlite exceptions.
+- Fix prepared statements without parameters not being reused properly.
 
 ## 1.9.2
 

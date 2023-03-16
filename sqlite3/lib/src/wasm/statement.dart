@@ -13,7 +13,7 @@ class WasmFinalizableStatement extends FinalizablePart {
   final WasmBindings bindings;
 
   final List<Pointer> _allocatedWhileBinding = [];
-  var _variablesBound = false;
+  var _inResetState = true;
   var _closed = false;
 
   WasmFinalizableStatement(this.statement, this.bindings);
@@ -28,9 +28,9 @@ class WasmFinalizableStatement extends FinalizablePart {
   }
 
   void _reset() {
-    if (_variablesBound) {
+    if (!_inResetState) {
       bindings.sqlite3_reset(statement);
-      _variablesBound = false;
+      _inResetState = true;
     }
 
     for (final pointer in _allocatedWhileBinding) {
@@ -85,6 +85,7 @@ class WasmStatement extends CommonPreparedStatement {
   void _execute() {
     int result;
 
+    finalizable._inResetState = false;
     // Users should be able to execute statements returning rows, so we should
     // call _step() to skip past rows.
     do {
@@ -152,7 +153,6 @@ class WasmStatement extends CommonPreparedStatement {
     }
 
     _latestArguments = params;
-    finalizable._variablesBound = true;
   }
 
   void _bindMapParams(Map<String, Object?> params) {
@@ -193,7 +193,6 @@ class WasmStatement extends CommonPreparedStatement {
     }
 
     _latestArguments = paramsAsList;
-    finalizable._variablesBound = true;
   }
 
   void _bindParam(Object? param, int i) {
@@ -306,6 +305,7 @@ class WasmStatement extends CommonPreparedStatement {
     final names = _columnNames;
     final columnCount = names.length;
     final rows = <List<Object?>>[];
+    finalizable._inResetState = false;
 
     int resultCode;
     while ((resultCode = _step()) == SqlError.SQLITE_ROW) {
@@ -341,7 +341,9 @@ class _ActiveCursorIterator extends IteratingCursor {
     List<String> columnNames,
     List<String?>? tableNames,
   )   : columnCount = columnNames.length,
-        super(columnNames, tableNames);
+        super(columnNames, tableNames) {
+    statement.finalizable._inResetState = false;
+  }
 
   @override
   bool moveNext() {
