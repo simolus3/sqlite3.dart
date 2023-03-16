@@ -1,7 +1,28 @@
+@internal
+library sqlite3.implementation.bindings;
+
 import 'dart:typed_data';
+
+import 'package:meta/meta.dart';
 
 import '../functions.dart';
 
+/// Defines a lightweight abstraction layer around sqlite3 that can be accessed
+/// without platform-specific APIs (`dart:ffi` or `dart:js`).
+///
+/// The implementation for the user-visible API exposed by this package will
+/// wrap these raw bindings to provide the more convenient to use Dart API.
+/// By only requiring platform-specific code for the lowest layer, we can
+/// advance the overal API with less maintenance overhead, as changes don't
+/// need to be implemented for both the FFI and the WASM backend.
+///
+/// Methods defined here mirror the corresponding sqlite3 functions where
+/// applicable. These functions don't do much more than transforming types
+/// (e.g. a `String` to `sqlite3_char *`).
+/// Other methods and special considerations are documented separately.
+///
+/// All of the classes and methods defined here are internal and can be changed
+/// as needed.
 abstract class RawSqliteBindings {
   String sqlite3_libversion();
   String sqlite3_sourceid();
@@ -15,8 +36,12 @@ abstract class RawSqliteBindings {
   String sqlite3_errstr(int extendedErrorCode);
 }
 
+/// Combines a sqlite result code and the result object.
 class SqliteResult<T> {
   final int resultCode;
+
+  /// The result of the operation, which is assumed to be valid if [resultCode]
+  /// is zero.
   final T result;
 
   SqliteResult(this.resultCode, this.result);
@@ -37,11 +62,19 @@ abstract class RawSqliteDatabase {
   int sqlite3_extended_errcode();
   void sqlite3_extended_result_codes(int onoff);
   int sqlite3_close_v2();
-  void deallocateAdditionalMemory();
   String sqlite3_errmsg();
+
+  /// Deallocate additional memory that the raw implementation may had to use
+  /// for some type conversions for previous method invocations.
+  ///
+  /// This is called by the higher-level implementation when a database is
+  /// closed.
+  void deallocateAdditionalMemory();
 
   void sqlite3_update_hook(RawUpdateHook? hook);
 
+  /// Returns a compiler able to create prepared statements from the utf8-
+  /// encoded SQL string passed as its argument.
   RawStatementCompiler newCompiler(List<int> utf8EncodedSql);
 
   int sqlite3_create_collation_v2({
@@ -72,11 +105,22 @@ abstract class RawSqliteDatabase {
 
 /// A stateful wrapper around multiple `sqlite3_prepare` invocations.
 abstract class RawStatementCompiler {
+  /// The current byte-offset in the SQL statement passed to
+  /// [RawSqliteDatabase.newCompiler].
+  ///
+  /// After calling [sqlite3_prepare], this value should advance to the end of
+  /// that statement.
+  ///
+  /// The behavior of invoking this getter before the first
+  /// [sqlite3_prepare] is undefined.
   int get endOffset;
 
+  /// Compile a statement from the substring at [byteOffset] with a maximum
+  /// length of [length].
   SqliteResult<RawSqliteStatement?> sqlite3_prepare(
       int byteOffset, int length, int prepFlag);
 
+  /// Releases resources used by this compiler interface.
   void close();
 }
 
@@ -84,6 +128,9 @@ abstract class RawSqliteStatement {
   void sqlite3_reset();
   int sqlite3_step();
   void sqlite3_finalize();
+
+  /// Deallocates memory used using `sqlite3_bind` calls to hold argument
+  /// values.
   void deallocateArguments();
 
   int sqlite3_bind_parameter_index(String name);
@@ -102,6 +149,10 @@ abstract class RawSqliteStatement {
 
   int sqlite3_column_type(int index);
   int sqlite3_column_int64(int index);
+
+  /// (Only used on the web): Like [sqlite3_column_int64], but wrapping the
+  /// result in a [BigInt] if it's too large to be represented in a JavaScript
+  /// [int] implementation.
   Object sqlite3_column_int64OrBigInt(int index);
   double sqlite3_column_double(int index);
   String sqlite3_column_text(int index);
@@ -111,7 +162,7 @@ abstract class RawSqliteStatement {
 }
 
 abstract class RawSqliteContext {
-  abstract AggregateContext<Object?>? dartAggregateContext;
+  AggregateContext<Object?>? dartAggregateContext;
 
   void sqlite3_result_null();
   void sqlite3_result_int64(int value);
