@@ -1,3 +1,8 @@
+## 1.10.0-dev
+
+- Rewrite the implementation to allow more code reuse between `dart:ffi` and
+  the WASM-based web implementation.
+
 ## 1.9.3
 
 - Provide more information about the source of sqlite exceptions.
