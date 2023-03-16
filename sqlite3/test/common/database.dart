@@ -494,6 +494,62 @@ void testDatabase(
     },
   );
 
+  test('createCollation', () {
+    database
+      ..execute('CREATE TABLE foo2 (bar)')
+      ..execute(
+          "INSERT INTO foo2 VALUES ('AaAaaaAA'), ('BBBbBb'),('cCCCcc    '), ('  dD   ')")
+      ..createCollation(
+        name: "RTRIMNOCASE",
+        function: (String? a, String? b) {
+          final compareA = a?.toLowerCase().trimRight();
+          final compareB = b?.toLowerCase().trimRight();
+
+          if (compareA == null && compareB == null) {
+            return 0;
+          } else if (compareA == null) {
+            // a < b
+            return -1;
+          } else if (compareB == null) {
+            // a > b
+            return 1;
+          } else {
+            return compareA.compareTo(compareB);
+          }
+        },
+      );
+
+    expect(
+      database.select(
+          "SELECT * FROM foo2 WHERE bar = 'aaaaAaAa   ' COLLATE RTRIMNOCASE"),
+      [
+        {'bar': 'AaAaaaAA'},
+      ],
+    );
+
+    expect(
+      database.select(
+          "SELECT * FROM foo2 WHERE bar = 'bbbbbb' COLLATE RTRIMNOCASE"),
+      [
+        {'bar': 'BBBbBb'},
+      ],
+    );
+
+    expect(
+      database.select(
+          "SELECT * FROM foo2 WHERE bar = 'cCcccC' COLLATE RTRIMNOCASE"),
+      [
+        {'bar': 'cCCCcc    '},
+      ],
+    );
+
+    expect(
+      database
+          .select("SELECT * FROM foo2 WHERE bar = 'dd' COLLATE RTRIMNOCASE"),
+      isEmpty,
+    );
+  });
+
   test('prepare does not throw for multiple statements by default', () {
     final stmt = database.prepare('SELECT 1; SELECT 2');
     expect(stmt.sql, 'SELECT 1;');

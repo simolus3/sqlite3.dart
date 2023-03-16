@@ -37,8 +37,8 @@ SQLITE_API void dart_sqlite3_updates(sqlite3 *db, int id) {
   sqlite3_update_hook(db, id >= 0 ? &dartUpdateHook : NULL, (void *)id);
 }
 
-SQLITE_API void dart_sqlite3_create_collation(sqlite3 *db, const char *zName,
-                                              int eTextRep, int id) {
-  sqlite3_create_collation_v2(db, zName, eTextRep, (void*) id, &dartXCompare,
-                              &dartForgetAboutFunction);
+SQLITE_API int dart_sqlite3_create_collation(sqlite3 *db, const char *zName,
+                                             int eTextRep, int id) {
+  return sqlite3_create_collation_v2(db, zName, eTextRep, (void *)id,
+                                     &dartXCompare, &dartForgetAboutFunction);
 }
