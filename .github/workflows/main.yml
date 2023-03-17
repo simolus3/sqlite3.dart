@@ -261,6 +261,7 @@ jobs:
         working-directory: integration_tests/sqlcipher_flutter
 
   integration_test_macos:
+    if: "false" # Temporarily disabled since it causes timeouts
     needs: [test]
     runs-on: macos-latest
     steps:
