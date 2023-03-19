@@ -13,11 +13,11 @@ external Object _bigInt(Object s);
 external int _number(Object obj);
 
 @JS('self')
-external _JsContext get self;
+external JsContext get self;
 
 @JS()
 @staticInterop
-class _JsContext {}
+class JsContext {}
 
 // Doing KeyRange.only / KeyRange.bound in Dart will look up the factory from
 // `window`, but we want to look it up from `self` to support workers.
@@ -155,7 +155,7 @@ class _CursorReader<T extends Cursor> implements StreamIterator<T> {
   }
 }
 
-extension JsContext on _JsContext {
+extension JsContextExt on JsContext {
   @JS()
   external IdbFactory? get indexedDB;
 }
@@ -231,7 +231,7 @@ class WasmInstance {
   final Map<String, Function> functions = {};
   final Map<String, Global> globals = {};
 
-  WasmInstance(_WasmInstance nativeInstance) {
+  WasmInstance._(_WasmInstance nativeInstance) {
     for (final key in objectKeys(nativeInstance.exports).cast<String>()) {
       final value = getProperty<Object>(nativeInstance.exports, key);
 
@@ -263,7 +263,7 @@ class WasmInstance {
 
     final native = await promiseToFuture<_ResultObject>(instantiateStreaming(
         Response(source, ResponseInit(headers: headers)), importsJs));
-    return WasmInstance(native.instance);
+    return WasmInstance._(native.instance);
   }
 }
 

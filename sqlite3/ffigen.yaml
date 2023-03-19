@@ -5,9 +5,13 @@ name: Bindings
 description: Auto-generated, internal bindings to sqlite3
 headers:
   entry-points: [assets/sqlite3.h]
+preamble: '// ignore_for_file: type=lint'
+exclude-all-by-default: true
 structs:
   include: ['sqlite3.*']
 macros:
+  include: ['sqlite3.*']
+functions:
   include: ['sqlite3.*']
 globals:
   include: ['sqlite3.*']

@@ -7,6 +7,8 @@ import 'package:meta/meta.dart';
 
 import '../functions.dart';
 
+// ignore_for_file: non_constant_identifier_names
+
 /// Defines a lightweight abstraction layer around sqlite3 that can be accessed
 /// without platform-specific APIs (`dart:ffi` or `dart:js`).
 ///

@@ -8,6 +8,8 @@ import '../implementation/bindings.dart';
 import 'wasm_interop.dart' as wasm;
 import 'wasm_interop.dart';
 
+// ignore_for_file: non_constant_identifier_names
+
 class WasmSqliteBindings implements RawSqliteBindings {
   final wasm.WasmBindings bindings;
 

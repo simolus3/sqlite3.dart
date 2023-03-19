@@ -11,6 +11,8 @@ import '../implementation/bindings.dart';
 import 'bindings.dart';
 import 'js_interop.dart';
 
+// ignore_for_file: non_constant_identifier_names
+
 typedef Pointer = int;
 
 final _context = p.Context(style: p.Style.url, current: '/');
@@ -85,7 +87,7 @@ class WasmBindings {
 
   final Global _sqlite3_temp_directory;
 
-  WasmBindings(this.instance, _InjectedValues values)
+  WasmBindings._(this.instance, _InjectedValues values)
       : memory = values.memory,
         callbacks = values.callbacks,
         _malloc = instance.functions['dart_sqlite3_malloc']!,
@@ -160,7 +162,7 @@ class WasmBindings {
     final injected = _InjectedValues(environment);
     final instance = await WasmInstance.load(source, injected.injectedValues);
 
-    return WasmBindings(instance, injected);
+    return WasmBindings._(instance, injected);
   }
 
   Pointer allocateBytes(List<int> bytes, {int additionalLength = 0}) {

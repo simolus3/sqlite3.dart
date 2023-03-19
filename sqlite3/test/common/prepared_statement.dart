@@ -64,7 +64,7 @@ void testPreparedStatements(
     expect(stmt.select, throwsStateError);
   });
 
-  Uint8List? _insertBlob(Uint8List? value) {
+  Uint8List? insertBlob(Uint8List? value) {
     final opened = sqlite3.openInMemory();
     opened.execute('CREATE TABLE tbl (x BLOB);');
 
@@ -80,16 +80,16 @@ void testPreparedStatements(
   }
 
   test('can bind empty blob in prepared statements', () {
-    expect(_insertBlob(Uint8List(0)), isEmpty);
+    expect(insertBlob(Uint8List(0)), isEmpty);
   });
 
   test('can bind null blob in prepared statements', () {
-    expect(_insertBlob(null), isNull);
+    expect(insertBlob(null), isNull);
   });
 
   test('can bind and read non-empty blob', () {
     const bytes = [1, 2, 3];
-    expect(_insertBlob(Uint8List.fromList(bytes)), bytes);
+    expect(insertBlob(Uint8List.fromList(bytes)), bytes);
   });
 
   test('throws when sql statement has an error', () {

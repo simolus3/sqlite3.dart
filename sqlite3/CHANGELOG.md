@@ -1,4 +1,4 @@
-## 1.10.0-dev
+## 1.10.0
 
 - Rewrite the implementation to allow more code reuse between `dart:ffi` and
   the WASM-based web implementation.

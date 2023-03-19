@@ -9,6 +9,8 @@ import '../implementation/bindings.dart';
 import 'memory.dart';
 import 'sqlite3.g.dart';
 
+// ignore_for_file: non_constant_identifier_names
+
 class BindingsWithLibrary {
   // sqlite3_prepare_v3 was added in 3.20.0
   static const int _firstVersionForV3 = 3020000;

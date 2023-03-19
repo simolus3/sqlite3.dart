@@ -1,3 +1,5 @@
+// ignore_for_file: constant_identifier_names
+
 /// Common result codes, https://www.sqlite.org/rescode.html
 /// Result Codes
 ///

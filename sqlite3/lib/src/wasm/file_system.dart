@@ -101,16 +101,16 @@ class _InMemoryFileSystem implements FileSystem {
     bool errorIfNotExists = false,
     bool errorIfAlreadyExists = false,
   }) {
-    final _exists = exists(path);
-    if (errorIfAlreadyExists && _exists) {
+    final fileExists = exists(path);
+    if (errorIfAlreadyExists && fileExists) {
       throw FileSystemException(SqlError.SQLITE_IOERR, 'File already exists');
     }
-    if (errorIfNotExists && !_exists) {
+    if (errorIfNotExists && !fileExists) {
       throw FileSystemException(SqlError.SQLITE_IOERR, 'File not exists');
     }
 
     _files.putIfAbsent(path, () => null);
-    if (!_exists) {
+    if (!fileExists) {
       _log('Add file: $path');
     }
   }
@@ -417,7 +417,7 @@ class AsynchronousIndexedDbFileSystem {
     return bytesRead;
   }
 
-  Future<void> write(int fileId, _FileWriteRequest writes) async {
+  Future<void> _write(int fileId, _FileWriteRequest writes) async {
     final transaction = _database!.transactionList(_stores, 'readwrite');
     final blocks = transaction.objectStore(_blocksStore);
     final file = await _readFile(transaction, fileId);
@@ -956,6 +956,6 @@ class _WriteFileWorkItem extends _IndexedDbWorkItem {
     }
 
     await fileSystem._asynchronous
-        .write(await fileSystem._fileId(path), request);
+        ._write(await fileSystem._fileId(path), request);
   }
 }
