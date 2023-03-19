@@ -33,7 +33,6 @@ class WasmBindings {
       _create_scalar,
       _create_aggregate,
       _create_window,
-      _create_collation,
       _update_hooks,
       _sqlite3_libversion,
       _sqlite3_sourceid,
@@ -82,6 +81,8 @@ class WasmBindings {
       _sqlite3_value_blob,
       _sqlite3_aggregate_context;
 
+  final Function? _create_collation;
+
   final Global _sqlite3_temp_directory;
 
   WasmBindings(this.instance, _InjectedValues values)
@@ -95,8 +96,7 @@ class WasmBindings {
             instance.functions['dart_sqlite3_create_aggregate_function']!,
         _create_window =
             instance.functions['dart_sqlite3_create_window_function']!,
-        _create_collation =
-            instance.functions['dart_sqlite3_create_collation']!,
+        _create_collation = instance.functions['dart_sqlite3_create_collation'],
         _update_hooks = instance.functions['dart_sqlite3_updates']!,
         _sqlite3_libversion = instance.functions['sqlite3_libversion']!,
         _sqlite3_sourceid = instance.functions['sqlite3_sourceid']!,
@@ -212,7 +212,15 @@ class WasmBindings {
   }
 
   int create_collation(Pointer db, Pointer name, int eTextRep, int id) {
-    return _create_collation(db, name, eTextRep, id) as int;
+    final function = _create_collation;
+
+    if (function == null) {
+      throw UnsupportedError(
+          'createCollation is not supported by WASM sqlite3, try upgrading to '
+          'a more recent sqlite3.wasm');
+    } else {
+      return function(db, name, eTextRep, id) as int;
+    }
   }
 
   int sqlite3_libversion() => _sqlite3_libversion() as int;
