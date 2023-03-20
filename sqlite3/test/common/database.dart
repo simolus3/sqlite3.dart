@@ -695,6 +695,24 @@ void testDatabase(
       database.dispose();
     });
   });
+
+  test('accents in statements', () {
+    final table = 'télé'; // with accent
+    final column = 'mycolumn';
+
+    database
+      ..execute('''
+    CREATE TABLE $table (
+      $column INTEGER
+    )''')
+      ..execute('INSERT INTO $table($column) VALUES(1)');
+
+    final statement = database.prepare('SELECT * FROM $table;');
+    final cursor = statement.selectCursor();
+    expect(cursor.moveNext(), isTrue);
+
+    database.dispose();
+  });
 }
 
 /// Aggregate function that counts the length of all string parameters it

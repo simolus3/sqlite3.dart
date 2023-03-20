@@ -14,6 +14,18 @@ void testPreparedStatements(
 
   setUpAll(() async => sqlite3 = await loadSqlite());
 
+  test('report used SQL', () {
+    final db = sqlite3.openInMemory()
+      ..execute('CREATE TABLE foo (a INTEGER);')
+      ..execute('CREATE TABLE télé (a INTEGER);');
+    addTearDown(db.dispose);
+
+    final stmts = db.prepareMultiple('SELECT * FROM foo;SELECT * FROM télé;');
+
+    expect(stmts[0].sql, 'SELECT * FROM foo;');
+    expect(stmts[1].sql, 'SELECT * FROM télé;');
+  });
+
   test('prepared statements can be used multiple times', () {
     final opened = sqlite3.openInMemory();
     opened.execute('CREATE TABLE tbl (a TEXT);');

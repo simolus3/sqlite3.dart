@@ -1,3 +1,8 @@
+## 1.10.1
+
+- Fix a regression introduced in 1.10.0 causing crashes when SQL statements
+  containing non-ASCII characters are prepared.
+
 ## 1.10.0
 
 - Rewrite the implementation to allow more code reuse between `dart:ffi` and
