@@ -57,6 +57,7 @@ For instance, if you release your own `sqlite3.so` next to your application, you
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:path/path.dart';
 import 'package:sqlite3/open.dart';
 import 'package:sqlite3/sqlite3.dart';
 
@@ -70,7 +71,7 @@ void main() {
 
 DynamicLibrary _openOnLinux() {
   final scriptDir = File(Platform.script.toFilePath()).parent;
-  final libraryNextToScript = File('${scriptDir.path}/sqlite3.so');
+  final libraryNextToScript = File(join(scriptDir.path, 'sqlite3.so'));
   return DynamicLibrary.open(libraryNextToScript.path);
 }
 ```
