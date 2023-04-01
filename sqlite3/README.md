@@ -111,11 +111,12 @@ import 'package:sqlite3/common.dart';
 import 'package:sqlite3/wasm.dart';
 
 Future<WasmSqlite3> loadSqlite() async {
-  final response = await http.get(Uri.parse('sqlite.wasm'));
-  final fs = await IndexedDbFileSystem.load('/');
+  final fs = await IndexedDbFileSystem.open('my_app');
 
-  return await WasmSqlite3.load(
-      response.bodyBytes, SqliteEnvironment(fileSystem: fs));
+  return await WasmSqlite3.loadFromUrl(
+      Uri.parse('sqlite.wasm'),
+      environment: SqliteEnvironment(fileSystem: fs),
+  );
 }
 ```
 

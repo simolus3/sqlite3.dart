@@ -1,13 +1,13 @@
-import 'package:http/http.dart' as http;
 import 'package:sqlite3/wasm.dart';
 
 Future<void> main() async {
   final fs = await IndexedDbFileSystem.open(dbName: 'test');
   print('loaded fs');
 
-  final response = await http.get(Uri.parse('sqlite3.wasm'));
-  final sqlite = await WasmSqlite3.load(
-      response.bodyBytes, SqliteEnvironment(fileSystem: fs));
+  final sqlite = await WasmSqlite3.loadFromUrl(
+    Uri.parse('sqlite3.wasm'),
+    environment: SqliteEnvironment(fileSystem: fs),
+  );
 
   print('Version of sqlite used is ${sqlite.version}');
 

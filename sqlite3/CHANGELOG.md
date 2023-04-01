@@ -1,3 +1,8 @@
+## 1.11.0-dev
+
+- Add `WasmSqlite3.loadFromUrl` which uses a streaming `fetch()` request to
+  load the sqlite3 WASM binary.
+
 ## 1.10.1
 
 - Fix a regression introduced in 1.10.0 causing crashes when SQL statements

@@ -244,7 +244,7 @@ class WasmInstance {
   }
 
   static Future<WasmInstance> load(
-    Uint8List source,
+    Response response,
     Map<String, Map<String, Object>> imports,
   ) async {
     final importsJs = newObject<Object>();
@@ -261,8 +261,8 @@ class WasmInstance {
     final headers = newObject<Object>();
     setProperty(headers, 'content-type', 'application/wasm');
 
-    final native = await promiseToFuture<_ResultObject>(instantiateStreaming(
-        Response(source, ResponseInit(headers: headers)), importsJs));
+    final native = await promiseToFuture<_ResultObject>(
+        instantiateStreaming(response, importsJs));
     return WasmInstance._(native.instance);
   }
 }
@@ -285,6 +285,24 @@ class Memory {
 class Global {
   external int value;
 }
+
+@JS()
+@staticInterop
+class URL {
+  external factory URL(String url, String base);
+}
+
+@JS()
+@anonymous
+class FetchOptions {
+  external factory FetchOptions({
+    String? method,
+    Object? headers,
+  });
+}
+
+@JS()
+external Object fetch(URL resource, [FetchOptions? options]);
 
 @JS()
 @anonymous

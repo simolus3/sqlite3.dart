@@ -158,9 +158,9 @@ class WasmBindings {
   }
 
   static Future<WasmBindings> instantiateAsync(
-      Uint8List source, SqliteEnvironment environment) async {
+      Response response, SqliteEnvironment environment) async {
     final injected = _InjectedValues(environment);
-    final instance = await WasmInstance.load(source, injected.injectedValues);
+    final instance = await WasmInstance.load(response, injected.injectedValues);
 
     return WasmBindings._(instance, injected);
   }
