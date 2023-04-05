@@ -79,12 +79,22 @@ extension FileSystemDirectoryHandleApi on FileSystemDirectoryHandle {
   @JS('getFileHandle')
   external Object _getFileHandle(String name, _GetFileHandleOptions options);
 
+  @JS('getDirectoryHandle')
+  external Object _getDirectoryHandle(
+      String name, _GetFileHandleOptions options);
+
   @JS('removeEntry')
   external Object _removeEntry(String name, _RemoveEntryOptions options);
 
   Future<FileSystemFileHandle> openFile(String name, {bool create = false}) {
     return promiseToFuture(
         _getFileHandle(name, _GetFileHandleOptions(create: create)));
+  }
+
+  Future<FileSystemDirectoryHandle> getDirectory(String name,
+      {bool create = false}) {
+    return promiseToFuture(
+        _getDirectoryHandle(name, _GetFileHandleOptions(create: create)));
   }
 
   Future<void> removeEntry(String name, {bool recursive = false}) {

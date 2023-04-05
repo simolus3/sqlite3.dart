@@ -1,5 +1,8 @@
 import 'dart:typed_data';
 
+import 'package:path/path.dart' as p;
+
+import '../../constants.dart';
 import '../file_system.dart';
 import '../js_interop.dart';
 
@@ -26,7 +29,24 @@ class OpfsFileSystem implements FileSystem {
 
   OpfsFileSystem._(this._metaHandle, this._files);
 
-  static Future<OpfsFileSystem> load(FileSystemDirectoryHandle root) async {
+  static Future<OpfsFileSystem> loadFromStorage(String root) async {
+    final storage = storageManager;
+    if (storage == null) {
+      throw FileSystemException(
+          SqlError.SQLITE_ERROR, 'storageManager not supported by browser');
+    }
+
+    var opfsDirectory = await storage.directory;
+
+    for (final segment in p.split(root)) {
+      opfsDirectory = await opfsDirectory.getDirectory(segment, create: true);
+    }
+
+    return inDirectory(opfsDirectory);
+  }
+
+  static Future<OpfsFileSystem> inDirectory(
+      FileSystemDirectoryHandle root) async {
     Future<FileSystemSyncAccessHandle> open(String name) async {
       final handle = await root.openFile(name, create: true);
       return await handle.createSyncAccessHandle();
@@ -161,6 +181,13 @@ class OpfsFileSystem implements FileSystem {
       _memory.write(path, bytes, offset);
     } else {
       _files[type]!.write(bytes, FileSystemReadWriteOptions(at: offset));
+    }
+  }
+
+  void close() {
+    _metaHandle.close();
+    for (final entry in _files.values) {
+      entry.close();
     }
   }
 }
