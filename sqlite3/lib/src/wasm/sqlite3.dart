@@ -66,8 +66,10 @@ class WasmSqlite3 extends Sqlite3Implementation {
       options = FetchOptions(headers: headers);
     }
 
-    final response = await promiseToFuture<Response>(
-        fetch(URL(uri.toString(), Uri.base.toString()), options));
+    final jsUri = uri.isAbsolute
+        ? URL(uri.toString())
+        : URL(uri.toString(), Uri.base.toString());
+    final response = await promiseToFuture<Response>(fetch(jsUri, options));
     return _load(response, environment);
   }
 

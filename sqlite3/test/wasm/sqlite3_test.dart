@@ -1,5 +1,8 @@
 @Tags(['wasm'])
+import 'dart:html';
+
 import 'package:http/http.dart' as http;
+import 'package:js/js.dart';
 import 'package:sqlite3/wasm.dart';
 import 'package:test/test.dart';
 
@@ -52,4 +55,51 @@ void main() {
       });
     });
   }
+
+  group(
+    'can be used in workers',
+    () {
+      late String workerUri;
+      late String wasmUri;
+
+      setUpAll(() async {
+        final channel = spawnHybridUri('/test/wasm/worker_server.dart');
+        final port = await channel.stream.first as int;
+
+        final uri = 'http://localhost:$port/worker.dart.js';
+        wasmUri = 'http://localhost:$port/sqlite3.wasm';
+        final blob =
+            Blob(<String>['importScripts("$uri");'], 'application/javascript');
+
+        workerUri = _createObjectURL(blob);
+      });
+
+      // See worker.dart for the supported backends
+      for (final backend in ['memory', 'opfs', 'indexeddb']) {
+        test(backend, () async {
+          final worker = Worker(workerUri);
+
+          worker.onError.listen((event) {
+            if (event is ErrorEvent) {
+              fail('Error ${event.message} - ${event.error}');
+            } else {
+              fail(event.toString());
+            }
+          });
+          // Inform the worker about the test we want to run
+          worker.postMessage([backend, wasmUri]);
+
+          final response = (await worker.onMessage.first).data as List;
+          final status = response[0] as bool;
+
+          if (!status) {
+            throw 'Exception in worker: $response';
+          }
+        });
+      }
+    },
+  );
 }
+
+@JS('URL.createObjectURL')
+external String _createObjectURL(Blob blob);

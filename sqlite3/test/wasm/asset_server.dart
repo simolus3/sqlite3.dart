@@ -7,7 +7,7 @@ import 'package:stream_channel/stream_channel.dart';
 
 const _corsHeaders = {'Access-Control-Allow-Origin': '*'};
 
-Middleware _cors() {
+Middleware cors() {
   Response? handleOptionsRequest(Request request) {
     if (request.method == 'OPTIONS') {
       return Response.ok(null, headers: _corsHeaders);
@@ -29,7 +29,7 @@ Future<void> hybridMain(StreamChannel<Object?> channel) async {
   final server = await HttpServer.bind('localhost', 0);
 
   final handler = const Pipeline()
-      .addMiddleware(_cors())
+      .addMiddleware(cors())
       .addHandler(createStaticHandler('.'));
   io.serveRequests(server, handler);
 
