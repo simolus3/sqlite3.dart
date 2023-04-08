@@ -67,8 +67,8 @@ class WasmSqlite3 extends Sqlite3Implementation {
     }
 
     final jsUri = uri.isAbsolute
-        ? URL(uri.toString())
-        : URL(uri.toString(), Uri.base.toString());
+        ? URL.absolute(uri.toString())
+        : URL.relative(uri.toString(), Uri.base.toString());
     final response = await promiseToFuture<Response>(fetch(jsUri, options));
     return _load(response, environment);
   }

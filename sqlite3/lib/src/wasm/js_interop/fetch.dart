@@ -3,7 +3,8 @@ import 'package:js/js.dart';
 @JS()
 @staticInterop
 class URL {
-  external factory URL(String url, [String? base]);
+  external factory URL.absolute(String url);
+  external factory URL.relative(String url, String base);
 }
 
 @JS()
