@@ -4,6 +4,8 @@
   load the sqlite3 WASM binary.
 - Add `OpfsFileSystem`, a file system implementation for the WASM library that
   is based on the synchronous File System Access API.
+- The WASM version of sqlite3 used by this library is now compiled with `-Oz`
+  instead of `-Ofast`.
 
 ## 1.10.1
 

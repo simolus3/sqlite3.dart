@@ -37,6 +37,7 @@ macro(base_sqlite3_target name)
         _HAVE_SQLITE_CONFIG_H
         SQLITE_API=${wasm_visibility}
     )
+    set_property(TARGET ${name} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 endmacro()
 
 base_sqlite3_target(sqlite3_debug)
@@ -47,7 +48,7 @@ target_compile_definitions(sqlite3_debug PRIVATE SQLITE_ENABLE_VFSTRACE SQLITE_E
 set_target_properties(sqlite3_debug PROPERTIES OUTPUT_NAME "sqlite3" SUFFIX ".debug.wasm")
 
 base_sqlite3_target(sqlite3_opt)
-target_compile_options(sqlite3_opt PRIVATE -Ofast)
+target_compile_options(sqlite3_opt PRIVATE -Oz)
 set_target_properties(sqlite3_opt PROPERTIES OUTPUT_NAME "sqlite3" SUFFIX ".tmp.wasm")
 add_custom_command(TARGET sqlite3_opt POST_BUILD
     COMMAND wasm-opt sqlite3.tmp.wasm -O4 -o sqlite3.wasm
