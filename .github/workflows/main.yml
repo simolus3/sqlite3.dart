@@ -181,7 +181,7 @@ jobs:
       # If browsers behave differently on different platforms, surely that's not our fault...
       # So, only run browser tests on Linux to be faster.
       # todo: Something broke Dart web tests in Dart 2.18, it looks like this is related to finalizers
-      if: false # runner.os == 'Linux'
+      if: runner.os == 'Linux'
       working-directory: sqlite3/
 
 # The integration tests for android are currently broken (the emulator doesn't want to
@@ -223,7 +223,7 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
           flutter --version
-      
+
       - name: sqlite3 driver tests
         run: "flutter pub get && xvfb-run -a flutter test integration_test"
         working-directory: integration_tests/flutter_libs
