@@ -2,6 +2,8 @@
 
 - Add `WasmSqlite3.loadFromUrl` which uses a streaming `fetch()` request to
   load the sqlite3 WASM binary.
+- Add `OpfsFileSystem`, a file system implementation for the WASM library that
+  is based on the synchronous File System Access API.
 
 ## 1.10.1
 
