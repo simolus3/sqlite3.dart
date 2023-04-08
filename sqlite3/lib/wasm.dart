@@ -22,5 +22,5 @@ export 'src/wasm/environment.dart';
 export 'src/wasm/file_system.dart' hide debugFileSystem;
 export 'src/wasm/file_system/indexed_db.dart'
     hide AsynchronousIndexedDbFileSystem;
-export 'src/wasm/file_system/opfs.dart';
+export 'src/wasm/file_system/opfs.dart' show OpfsFileSystem;
 export 'src/wasm/sqlite3.dart';
