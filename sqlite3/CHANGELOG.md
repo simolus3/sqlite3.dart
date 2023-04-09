@@ -1,4 +1,4 @@
-## 1.11.0-dev
+## 1.11.0
 
 - Add `WasmSqlite3.loadFromUrl` which uses a streaming `fetch()` request to
   load the sqlite3 WASM binary.
