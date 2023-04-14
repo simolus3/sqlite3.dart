@@ -49,9 +49,6 @@ class WasmInstance {
       });
     });
 
-    final headers = newObject<Object>();
-    setProperty(headers, 'content-type', 'application/wasm');
-
     final native = await promiseToFuture<_ResultObject>(
         instantiateStreaming(response, importsJs));
     return WasmInstance._(native.instance);
