@@ -34,7 +34,6 @@ class WasmBindings {
       _free,
       _create_scalar,
       _create_aggregate,
-      _create_window,
       _update_hooks,
       _sqlite3_libversion,
       _sqlite3_sourceid,
@@ -83,7 +82,10 @@ class WasmBindings {
       _sqlite3_value_blob,
       _sqlite3_aggregate_context;
 
-  final Function? _create_collation;
+  // These functions were added in more recent versions of our compiled sqlite3
+  // wasm bundle. For backwards compatibility, we only access these functions
+  // when needed.
+  final Function? _create_window, _create_collation;
 
   final Global _sqlite3_temp_directory;
 
@@ -97,7 +99,7 @@ class WasmBindings {
         _create_aggregate =
             instance.functions['dart_sqlite3_create_aggregate_function']!,
         _create_window =
-            instance.functions['dart_sqlite3_create_window_function']!,
+            instance.functions['dart_sqlite3_create_window_function'],
         _create_collation = instance.functions['dart_sqlite3_create_collation'],
         _update_hooks = instance.functions['dart_sqlite3_updates']!,
         _sqlite3_libversion = instance.functions['sqlite3_libversion']!,
@@ -165,6 +167,16 @@ class WasmBindings {
     return WasmBindings._(instance, injected);
   }
 
+  Function _checkForPresence(Function? function, String name) {
+    if (function == null) {
+      throw UnsupportedError(
+          '$name is not supported by WASM sqlite3, try upgrading to '
+          'a more recent sqlite3.wasm');
+    }
+
+    return function;
+  }
+
   Pointer allocateBytes(List<int> bytes, {int additionalLength = 0}) {
     final ptr = malloc(bytes.length + additionalLength);
     memoryAsBytes
@@ -210,19 +222,13 @@ class WasmBindings {
 
   int create_window_function(
       Pointer db, Pointer functionName, int nArg, int eTextRep, int id) {
-    return _create_window(db, functionName, nArg, eTextRep, id) as int;
+    final function = _checkForPresence(_create_window, 'createWindow');
+    return function(db, functionName, nArg, eTextRep, id) as int;
   }
 
   int create_collation(Pointer db, Pointer name, int eTextRep, int id) {
-    final function = _create_collation;
-
-    if (function == null) {
-      throw UnsupportedError(
-          'createCollation is not supported by WASM sqlite3, try upgrading to '
-          'a more recent sqlite3.wasm');
-    } else {
-      return function(db, name, eTextRep, id) as int;
-    }
+    final function = _checkForPresence(_create_collation, 'createCollation');
+    return function(db, name, eTextRep, id) as int;
   }
 
   int sqlite3_libversion() => _sqlite3_libversion() as int;
