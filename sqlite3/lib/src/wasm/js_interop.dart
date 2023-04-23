@@ -6,6 +6,7 @@ import 'package:js/js_util.dart';
 // This internal library exports wrappers around newer Web APIs for which no
 // up-to-date bindings exist in the Dart SDK.
 
+export 'js_interop/atomics.dart';
 export 'js_interop/core.dart';
 export 'js_interop/fetch.dart';
 export 'js_interop/file_system_access.dart';
