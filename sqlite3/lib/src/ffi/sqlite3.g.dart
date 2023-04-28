@@ -1183,16 +1183,16 @@ class Bindings {
       .asFunction<int Function(ffi.Pointer<ffi.Void>)>();
 }
 
-class sqlite3_char extends ffi.Opaque {}
+final class sqlite3_char extends ffi.Opaque {}
 
-class sqlite3 extends ffi.Opaque {}
+final class sqlite3 extends ffi.Opaque {}
 
-class sqlite3_stmt extends ffi.Opaque {}
+final class sqlite3_stmt extends ffi.Opaque {}
 
-class sqlite3_backup extends ffi.Opaque {}
+final class sqlite3_backup extends ffi.Opaque {}
 
-class sqlite3_api_routines extends ffi.Opaque {}
+final class sqlite3_api_routines extends ffi.Opaque {}
 
-class sqlite3_value extends ffi.Opaque {}
+final class sqlite3_value extends ffi.Opaque {}
 
-class sqlite3_context extends ffi.Opaque {}
+final class sqlite3_context extends ffi.Opaque {}

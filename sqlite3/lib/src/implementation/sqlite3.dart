@@ -1,4 +1,5 @@
 import 'package:meta/meta.dart';
+import 'package:sqlite3/src/vfs.dart';
 
 import '../constants.dart';
 import '../database.dart';
@@ -73,5 +74,16 @@ class Sqlite3Implementation implements CommonSqlite3 {
       bindings.sqlite3_sourceid(),
       bindings.sqlite3_libversion_number(),
     );
+  }
+
+  @override
+  void registerVirtualFileSystem(VirtualFileSystem vfs,
+      {bool makeDefault = false}) {
+    bindings.registerVirtualFileSystem(vfs, makeDefault ? 1 : 0);
+  }
+
+  @override
+  void unregisterVirtualFileSystem(VirtualFileSystem vfs) {
+    bindings.unregisterVirtualFileSystem(vfs);
   }
 }

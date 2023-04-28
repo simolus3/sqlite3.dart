@@ -13,8 +13,11 @@ class Atomics {
     return hasProperty(globalThis, 'Atomics');
   }
 
-  @JS()
-  external static String wait(
+  @JS('wait')
+  external static String wait(Int32List typedArray, int index, int value);
+
+  @JS('wait')
+  external static String waitWithTimeout(
       Int32List typedArray, int index, int value, int timeOutInMillis);
 
   @JS()

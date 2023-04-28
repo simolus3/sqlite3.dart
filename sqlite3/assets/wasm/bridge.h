@@ -8,13 +8,25 @@
 
 // Defines functions implemented in Dart. These functions are imported into
 // the wasm module.
-
-import_dart("random") extern void dartRandom(char *buf, size_t length);
 import_dart("error_log") extern void dartLogError(const char *msg);
-import_dart("now") extern int64_t dartUnixMillis();
-import_dart("path_normalize") extern int dartNormalizePath(const char *zPath,
-                                                           char *zOut,
-                                                           int nOut);
+import_dart("xOpen") extern int xOpen(int vfs, sqlite3_filename zName, int* dartFdPtr,
+               int flags, int *pOutFlags);
+import_dart("xDelete") extern int xDelete(int vfs, const char *zName, int syncDir);
+import_dart("xAccess") extern int xAccess(int vfs, const char *zName, int flags, int *pResOut);
+import_dart("xFullPathname") extern int xFullPathname(int vfs, const char *zName, int nOut, char *zOut);
+import_dart("xRandomness") extern int xRandomness(int vfs, int nByte, char* zOut);
+import_dart("xSleep") extern int xSleep(int vfs, int microseconds);
+import_dart("xCurrentTimeInt64") extern int xCurrentTimeInt64(int vfs, int* target);
+
+import_dart("xClose") extern int xClose(int file);
+import_dart("xRead") extern int xRead(int, void*, int iAmt, sqlite3_int64 iOfst);
+import_dart("xWrite") extern int xWrite(int, const void*, int iAmt, sqlite3_int64 iOfst);
+import_dart("xTruncate") extern int xTruncate(int, sqlite3_int64 size);
+import_dart("xSync") extern int xSync(int, int flags);
+import_dart("xFileSize") extern int xFileSize(int, int *pSize);
+import_dart("xLock") extern int xLock(int, int);
+import_dart("xUnlock") extern int xUnlock(int, int);
+import_dart("xCheckReservedLock") extern int xCheckReservedLock(int, int *pResOut);
 
 import_dart("function_xFunc") extern void dartXFunc(sqlite3_context *ctx,
                                                     int nArgs,
@@ -36,18 +48,3 @@ import_dart("function_compare") extern int dartXCompare(void *id, int lengthA,
                                                         int lengthB,
                                                         const void *b);
 
-import_dart("fs_create") extern int dartCreateFile(const char *zPath,
-                                                   int flags);
-import_dart("fs_temp_create") extern const char *dartCreateTemporaryFile();
-import_dart("fs_size") extern int dartFileSize(const char *zPath,
-                                               sqlite3_int64 *pSize);
-import_dart("fs_truncate") extern int dartTruncate(const char *zPath,
-                                                   sqlite3_int64 pSize);
-import_dart("fs_read") extern int dartRead(const char *zPath, void *into,
-                                           int amt, sqlite3_int64 offset);
-import_dart("fs_write") extern int dartWrite(const char *zPath,
-                                             const void *from, int amt,
-                                             sqlite3_int64 offset);
-import_dart("fs_delete") extern int dartDeleteFile(const char *zPath);
-import_dart("fs_access") extern int dartAccessFile(const char *zName, int flags,
-                                                   int *pResOut);

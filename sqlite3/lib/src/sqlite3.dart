@@ -1,4 +1,5 @@
 import 'database.dart';
+import 'vfs.dart';
 
 typedef CommmonSqlite3 = CommonSqlite3;
 
@@ -36,6 +37,11 @@ abstract class CommonSqlite3 {
   ///
   /// See also: https://www.sqlite.org/c3ref/temp_directory.html
   String? tempDirectory;
+
+  void registerVirtualFileSystem(VirtualFileSystem vfs,
+      {bool makeDefault = false});
+
+  void unregisterVirtualFileSystem(VirtualFileSystem vfs);
 }
 
 /// Version information about the sqlite3 library in use.

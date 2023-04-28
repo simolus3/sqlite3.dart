@@ -135,7 +135,7 @@ class Row
   }
 }
 
-class _ResultIterator extends Iterator<Row> {
+class _ResultIterator implements Iterator<Row> {
   final ResultSet result;
   int index = -1;
 

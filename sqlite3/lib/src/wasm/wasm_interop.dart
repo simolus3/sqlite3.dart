@@ -4,18 +4,16 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:js/js.dart';
-import 'package:path/path.dart' as p;
 
 import '../../wasm.dart';
 import '../implementation/bindings.dart';
+import '../vfs.dart';
 import 'bindings.dart';
 import 'js_interop.dart';
 
 // ignore_for_file: non_constant_identifier_names
 
 typedef Pointer = int;
-
-final _context = p.Context(style: p.Style.url, current: '/');
 
 class WasmBindings {
   // We're compiling to 32bit wasm
@@ -26,14 +24,14 @@ class WasmBindings {
 
   final DartCallbacks callbacks;
 
-  Uint8List get memoryAsBytes => memory.buffer.asUint8List();
-
-  Uint32List get memoryAsWords => memory.buffer.asUint32List();
-
   final Function _malloc,
       _free,
+      _create_window,
+      _create_collation,
       _create_scalar,
       _create_aggregate,
+      _register_vfs,
+      _unregister_vfs,
       _update_hooks,
       _sqlite3_libversion,
       _sqlite3_sourceid,
@@ -82,11 +80,6 @@ class WasmBindings {
       _sqlite3_value_blob,
       _sqlite3_aggregate_context;
 
-  // These functions were added in more recent versions of our compiled sqlite3
-  // wasm bundle. For backwards compatibility, we only access these functions
-  // when needed.
-  final Function? _create_window, _create_collation;
-
   final Global _sqlite3_temp_directory;
 
   WasmBindings._(this.instance, _InjectedValues values)
@@ -99,8 +92,11 @@ class WasmBindings {
         _create_aggregate =
             instance.functions['dart_sqlite3_create_aggregate_function']!,
         _create_window =
-            instance.functions['dart_sqlite3_create_window_function'],
-        _create_collation = instance.functions['dart_sqlite3_create_collation'],
+            instance.functions['dart_sqlite3_create_window_function']!,
+        _create_collation =
+            instance.functions['dart_sqlite3_create_collation']!,
+        _register_vfs = instance.functions['dart_sqlite3_register_vfs']!,
+        _unregister_vfs = instance.functions['sqlite3_vfs_unregister']!,
         _update_hooks = instance.functions['dart_sqlite3_updates']!,
         _sqlite3_libversion = instance.functions['sqlite3_libversion']!,
         _sqlite3_sourceid = instance.functions['sqlite3_sourceid']!,
@@ -179,7 +175,7 @@ class WasmBindings {
 
   Pointer allocateBytes(List<int> bytes, {int additionalLength = 0}) {
     final ptr = malloc(bytes.length + additionalLength);
-    memoryAsBytes
+    memory.asBytes
       ..setRange(ptr, ptr + bytes.length, bytes)
       ..fillRange(ptr + bytes.length, ptr + bytes.length + additionalLength, 0);
 
@@ -192,16 +188,6 @@ class WasmBindings {
 
   Pointer malloc(int size) {
     return _malloc(size) as Pointer;
-  }
-
-  int int32ValueOfPointer(Pointer pointer) {
-    assert(pointer != 0, 'Null pointer dereference');
-    return memoryAsWords[pointer >> 2];
-  }
-
-  void setInt32Value(Pointer pointer, int value) {
-    assert(pointer != 0, 'Null pointer dereference');
-    memoryAsWords[pointer >> 2] = value;
   }
 
   void free(Pointer pointer) {
@@ -229,6 +215,14 @@ class WasmBindings {
   int create_collation(Pointer db, Pointer name, int eTextRep, int id) {
     final function = _checkForPresence(_create_collation, 'createCollation');
     return function(db, name, eTextRep, id) as int;
+  }
+
+  Pointer dart_sqlite3_register_vfs(Pointer name, int dartId, int makeDefault) {
+    return _register_vfs(name, dartId, makeDefault) as Pointer;
+  }
+
+  int sqlite3_vfs_unregister(Pointer vfs) {
+    return _unregister_vfs(vfs) as int;
   }
 
   int sqlite3_libversion() => _sqlite3_libversion() as int;
@@ -419,16 +413,41 @@ class WasmBindings {
   }
 }
 
-extension ReadMemory on Memory {
+int _runVfs(void Function() body) {
+  try {
+    body();
+    return SqlError.SQLITE_OK;
+  } on VfsException catch (e) {
+    return e.returnCode;
+  } on Object {
+    return SqlError.SQLITE_ERROR;
+  }
+}
+
+extension WrappedMemory on Memory {
+  Uint8List get asBytes => buffer.asUint8List();
+
   int strlen(int address) {
     assert(address != 0, 'Null pointer dereference');
+
+    final bytes = buffer.asUint8List(address);
+
     var length = 0;
-    final bytes = buffer.asUint8List();
-    while (bytes[address + length] != 0) {
+    while (bytes[length] != 0) {
       length++;
     }
 
     return length;
+  }
+
+  int int32ValueOfPointer(Pointer pointer) {
+    assert(pointer != 0, 'Null pointer dereference');
+    return buffer.asInt32List()[pointer >> 2];
+  }
+
+  void setInt32Value(Pointer pointer, int value) {
+    assert(pointer != 0, 'Null pointer dereference');
+    buffer.asInt32List()[pointer >> 2] = value;
   }
 
   String readString(int address, [int? length]) {
@@ -461,36 +480,134 @@ class _InjectedValues {
     final memory = this.memory = Memory(MemoryDescriptor(initial: 16));
 
     injectedValues = {
-      'env': {
-        'memory': memory,
-      },
+      'env': {'memory': memory},
       'dart': {
         // See assets/wasm/bridge.h
-        'random': allowInterop((Pointer ptr, int length) {
-          final buffer = memory.buffer.asUint8List(ptr, length);
-          final random = environment.random;
-
-          for (var i = 0; i < buffer.length; i++) {
-            buffer[i] = random.nextInt(1 << 8);
-          }
-        }),
         'error_log': allowInterop((Pointer ptr) {
           print('Error reported by native handler: ${memory.readString(ptr)}');
         }),
-        'now': allowInterop(() {
-          return JsBigInt.fromInt(DateTime.now().millisecondsSinceEpoch);
-        }),
-        'path_normalize':
-            allowInterop((Pointer source, Pointer dest, int length) {
-          final normalized = _context.absolute(memory.readString(source));
-          final encoded = utf8.encode(normalized);
+        'xOpen': allowInterop((int vfsId, Pointer zName, Pointer dartFdPtr,
+            int flags, Pointer pOutFlags) {
+          final vfs = callbacks.registeredVfs[vfsId]!;
+          final path = Sqlite3Filename(memory.readNullableString(zName));
 
-          if (encoded.length >= length) {
-            return 1;
-          } else {
-            memory.buffer.asUint8List(dest, length).setAll(0, encoded);
-            return 0;
-          }
+          return _runVfs(() {
+            final result = vfs.xOpen(path, flags);
+            final fd = callbacks.registerFile(result.file);
+
+            memory
+              ..setInt32Value(dartFdPtr, fd)
+              ..setInt32Value(pOutFlags, result.outFlags);
+          });
+        }),
+        'xDelete': allowInterop((int vfsId, Pointer zName, int syncDir) {
+          final vfs = callbacks.registeredVfs[vfsId]!;
+          final path = memory.readString(zName);
+
+          return _runVfs(() => vfs.xDelete(path, syncDir));
+        }),
+        'xAccess': allowInterop(
+            (int vfsId, Pointer zName, int flags, Pointer pResOut) {
+          final vfs = callbacks.registeredVfs[vfsId]!;
+          final path = memory.readString(zName);
+
+          return _runVfs(() {
+            final res = vfs.xAccess(path, flags);
+            memory.setInt32Value(pResOut, res);
+          });
+        }),
+        'xFullPathname':
+            allowInterop((int vfsId, Pointer zName, int nOut, Pointer zOut) {
+          final vfs = callbacks.registeredVfs[vfsId]!;
+          final path = memory.readString(zName);
+
+          return _runVfs(() {
+            final fullPath = vfs.xFullPathName(path);
+            final encoded = utf8.encode(fullPath);
+
+            if (encoded.length > nOut) {
+              throw VfsException(SqlError.SQLITE_CANTOPEN);
+            }
+
+            memory.asBytes
+              ..setAll(zOut, encoded)
+              ..[zOut + encoded.length] = 0;
+          });
+        }),
+        'xRandomness': allowInterop((int vfsId, int nByte, Pointer zOut) {
+          final vfs = callbacks.registeredVfs[vfsId]!;
+
+          return _runVfs(() {
+            vfs.xRandomness(memory.buffer.asUint8List(zOut, nByte));
+          });
+        }),
+        'xSleep': allowInterop((int vfsId, int micros) {
+          final vfs = callbacks.registeredVfs[vfsId]!;
+
+          return _runVfs(() {
+            vfs.xSleep(Duration(microseconds: micros));
+          });
+        }),
+        'xCurrentTimeInt64': allowInterop((int vfsId, Pointer target) {
+          final vfs = callbacks.registeredVfs[vfsId]!;
+          final time = vfs.xCurrentTime();
+
+          // dartvfs_currentTimeInt64 will turn this into the right value, it's
+          // annoying to do in JS due to the lack of proper ints.
+          memory.setInt32Value(target, time.millisecondsSinceEpoch);
+        }),
+        'xClose': allowInterop((int fd) {
+          final file = callbacks.openedFiles[fd]!;
+          return _runVfs(() {
+            file.xClose();
+            callbacks.openedFiles.remove(fd);
+          });
+        }),
+        'xRead':
+            allowInterop((int fd, Pointer target, int amount, JsBigInt offset) {
+          final file = callbacks.openedFiles[fd]!;
+          return _runVfs(() {
+            file.xRead(
+                memory.buffer.asUint8List(target, amount), offset.asDartInt);
+          });
+        }),
+        'xWrite':
+            allowInterop((int fd, Pointer source, int amount, JsBigInt offset) {
+          final file = callbacks.openedFiles[fd]!;
+          return _runVfs(() {
+            file.xWrite(
+                memory.buffer.asUint8List(source, amount), offset.asDartInt);
+          });
+        }),
+        'xTruncate': allowInterop((int fd, JsBigInt size) {
+          final file = callbacks.openedFiles[fd]!;
+          return _runVfs(() => file.xTruncate(size.asDartInt));
+        }),
+        'xSync': allowInterop((int fd, int flags) {
+          final file = callbacks.openedFiles[fd]!;
+          return _runVfs(() => file.xSync(flags));
+        }),
+        'xFileSize': allowInterop((int fd, Pointer sizePtr) {
+          final file = callbacks.openedFiles[fd]!;
+          return _runVfs(() {
+            final size = file.xFileSize();
+            memory.setInt32Value(sizePtr, size);
+          });
+        }),
+        'xLock': allowInterop((int fd, int flags) {
+          final file = callbacks.openedFiles[fd]!;
+          return _runVfs(() => file.xLock(flags));
+        }),
+        'xUnlock': allowInterop((int fd, int flags) {
+          final file = callbacks.openedFiles[fd]!;
+          return _runVfs(() => file.xUnlock(flags));
+        }),
+        'xCheckReservedLock': allowInterop((int fd, Pointer pResOut) {
+          final file = callbacks.openedFiles[fd]!;
+          return _runVfs(() {
+            final status = file.xCheckReservedLock();
+            memory.setInt32Value(pResOut, status);
+          });
         }),
         'function_xFunc': allowInterop((Pointer ctx, int args, Pointer value) {
           final id = bindings.sqlite3_user_data(ctx);
@@ -541,89 +658,6 @@ class _InjectedValues {
           callbacks.installedUpdateHook
               ?.call(kind, tableName, JsBigInt(rowId).asDartInt);
         }),
-        'fs_create': allowInterop((Pointer path, int flags) {
-          final pathStr = memory.readString(path);
-
-          final createIfNotExists = (flags & SqlFlag.SQLITE_OPEN_CREATE) != 0;
-          final exclusive = (flags & SqlFlag.SQLITE_OPEN_EXCLUSIVE) != 0;
-
-          try {
-            environment.fileSystem.createFile(
-              pathStr,
-              errorIfNotExists: !createIfNotExists,
-              errorIfAlreadyExists: exclusive,
-            );
-            return 0;
-          } on FileSystemException catch (e) {
-            return e.errorCode;
-          }
-        }),
-        'fs_temp_create': allowInterop(() {
-          final path = environment.fileSystem.createTemporaryFile();
-          return bindings.allocateZeroTerminated(path);
-        }),
-        'fs_size': allowInterop((Pointer path, Pointer pSize) {
-          try {
-            final size =
-                environment.fileSystem.sizeOfFile(memory.readString(path));
-
-            bindings
-              ..setInt32Value(pSize, 0)
-              ..setInt32Value(pSize + 1, size);
-            return 0;
-          } on FileSystemException catch (e) {
-            return e.errorCode;
-          }
-        }),
-        'fs_truncate': allowInterop((Pointer path, int size) {
-          try {
-            environment.fileSystem.truncateFile(memory.readString(path), size);
-            return 0;
-          } on FileSystemException catch (e) {
-            return e.errorCode;
-          }
-        }),
-        'fs_read': allowInterop(
-            (Pointer path, Pointer into, int amount, Object offset) {
-          try {
-            return environment.fileSystem.read(
-                memory.readString(path),
-                memory.buffer.asUint8List(into, amount),
-                JsBigInt(offset).asDartInt);
-          } on FileSystemException catch (e) {
-            return -e.errorCode;
-          }
-        }),
-        'fs_write': allowInterop(
-            (Pointer path, Pointer from, int amount, Object offset) {
-          try {
-            environment.fileSystem.write(
-                memory.readString(path),
-                memory.buffer.asUint8List(from, amount),
-                JsBigInt(offset).asDartInt);
-            return 0;
-          } on FileSystemException catch (e) {
-            return e.errorCode;
-          }
-        }),
-        'fs_delete': allowInterop((Pointer path) {
-          try {
-            environment.fileSystem.deleteFile(memory.readString(path));
-            return 0;
-          } on FileSystemException catch (e) {
-            return e.errorCode;
-          }
-        }),
-        'fs_access': allowInterop((Pointer path, int flags, Pointer pResOut) {
-          try {
-            final exists =
-                environment.fileSystem.exists(memory.readString(path));
-            bindings.setInt32Value(pResOut, exists ? 1 : 0);
-            return 0;
-          } on FileSystemException catch (e) {
-            return e.errorCode;
-          }
-        }),
       }
     };
   }
@@ -636,6 +670,9 @@ class DartCallbacks {
   int aggregateContextId = 1;
   final Map<int, AggregateContext<Object?>> aggregateContexts = {};
 
+  final Map<int, VirtualFileSystem> registeredVfs = {};
+  final Map<int, VirtualFileSystemFile> openedFiles = {};
+
   RawUpdateHook? installedUpdateHook;
 
   int register(RegisteredFunctionSet set) {
@@ -644,7 +681,21 @@ class DartCallbacks {
     return id;
   }
 
+  int registerVfs(VirtualFileSystem vfs) {
+    final id = registeredVfs.length;
+    registeredVfs[id] = vfs;
+    return id;
+  }
+
+  int registerFile(VirtualFileSystemFile file) {
+    final id = openedFiles.length;
+    openedFiles[id] = file;
+    return id;
+  }
+
   void forget(int id) => functions.remove(id);
+
+  static final sqliteVfsPointer = Expando<int>();
 }
 
 class RegisteredFunctionSet {

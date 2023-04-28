@@ -11,6 +11,7 @@ export 'js_interop/core.dart';
 export 'js_interop/fetch.dart';
 export 'js_interop/file_system_access.dart';
 export 'js_interop/indexed_db.dart';
+export 'js_interop/typed_data.dart';
 export 'js_interop/wasm.dart';
 
 extension ReadBlob on Blob {

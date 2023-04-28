@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:ffi';
 import 'dart:typed_data';
 
+import 'package:sqlite3/src/vfs.dart';
+
 import '../constants.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
@@ -118,6 +120,16 @@ class FfiBindings implements RawSqliteBindings {
   @override
   String sqlite3_sourceid() {
     return bindings.bindings.sqlite3_sourceid().readString();
+  }
+
+  @override
+  void registerVirtualFileSystem(VirtualFileSystem fvs, int makeDefault) {
+    throw UnimplementedError();
+  }
+
+  @override
+  void unregisterVirtualFileSystem(VirtualFileSystem fvs) {
+    throw UnimplementedError();
   }
 }
 
