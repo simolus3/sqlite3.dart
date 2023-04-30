@@ -121,16 +121,6 @@ class FfiBindings implements RawSqliteBindings {
   String sqlite3_sourceid() {
     return bindings.bindings.sqlite3_sourceid().readString();
   }
-
-  @override
-  void registerVirtualFileSystem(VirtualFileSystem fvs, int makeDefault) {
-    throw UnimplementedError();
-  }
-
-  @override
-  void unregisterVirtualFileSystem(VirtualFileSystem fvs) {
-    throw UnimplementedError();
-  }
 }
 
 class FfiDatabase implements RawSqliteDatabase {

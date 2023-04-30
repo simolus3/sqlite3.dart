@@ -76,7 +76,6 @@ class WasmSqliteBindings implements RawSqliteBindings {
     return bindings.memory.readString(bindings.sqlite3_sourceid());
   }
 
-  @override
   void registerVirtualFileSystem(VirtualFileSystem vfs, int makeDefault) {
     final name = bindings.allocateZeroTerminated(vfs.name);
     final id = bindings.callbacks.registerVfs(vfs);
@@ -85,7 +84,6 @@ class WasmSqliteBindings implements RawSqliteBindings {
     DartCallbacks.sqliteVfsPointer[vfs] = ptr;
   }
 
-  @override
   void unregisterVirtualFileSystem(VirtualFileSystem vfs) {
     final ptr = DartCallbacks.sqliteVfsPointer[vfs];
     if (ptr == null) {

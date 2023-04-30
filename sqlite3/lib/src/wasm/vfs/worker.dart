@@ -12,7 +12,7 @@ const _workerDebugLog =
     bool.fromEnvironment('sqlite3.wasm.worker.debug', defaultValue: false);
 
 void _log(String message) {
-  print(message);
+  if (_workerDebugLog) print(message);
 }
 
 @JS()
