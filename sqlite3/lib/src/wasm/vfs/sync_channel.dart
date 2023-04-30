@@ -68,7 +68,7 @@ class MessageSerializer {
   final Uint8List byteView;
 
   MessageSerializer(this.buffer)
-      : dataView = buffer.asByteData(),
+      : dataView = buffer.asByteData(metaOffset, metaSize),
         byteView = buffer.asUint8List();
 
   void write(Message message) {
@@ -85,6 +85,10 @@ class MessageSerializer {
     } else {
       throw UnsupportedError('Message $message');
     }
+  }
+
+  Uint8List viewByteRange(int offset, int length) {
+    return buffer.asUint8List(offset, length);
   }
 
   String _readString(int offset) {
@@ -125,22 +129,51 @@ enum WorkerOperation<Req extends Message, Res extends Message> {
     MessageSerializer.readNameAndFlags,
     MessageSerializer.readFlags,
   ),
+  xDelete<NameAndInt32Flags, EmptyMessage>(
+    MessageSerializer.readNameAndFlags,
+    MessageSerializer.readEmpty,
+  ),
   xOpen<NameAndInt32Flags, Flags>(
     MessageSerializer.readNameAndFlags,
     MessageSerializer.readFlags,
   ),
+  xRead<Flags, Flags>(
+    MessageSerializer.readFlags,
+    MessageSerializer.readFlags,
+  ),
+  xWrite<Flags, EmptyMessage>(
+    MessageSerializer.readFlags,
+    MessageSerializer.readEmpty,
+  ),
+  xSleep<Flags, EmptyMessage>(
+    MessageSerializer.readFlags,
+    MessageSerializer.readEmpty,
+  ),
   xClose<Flags, EmptyMessage>(
-    MessageSerializer.readNameAndFlags,
+    MessageSerializer.readFlags,
     MessageSerializer.readEmpty,
   ),
   xFileSize<Flags, Flags>(
-    MessageSerializer.readNameAndFlags,
-    MessageSerializer.readNameAndFlags,
+    MessageSerializer.readFlags,
+    MessageSerializer.readFlags,
+  ),
+  xSync<Flags, EmptyMessage>(
+    MessageSerializer.readFlags,
+    MessageSerializer.readEmpty,
   ),
   xTruncate<Flags, EmptyMessage>(
-    MessageSerializer.readNameAndFlags,
+    MessageSerializer.readFlags,
     MessageSerializer.readEmpty,
-  );
+  ),
+  xLock<Flags, EmptyMessage>(
+    MessageSerializer.readFlags,
+    MessageSerializer.readEmpty,
+  ),
+  xUnlock<Flags, EmptyMessage>(
+    MessageSerializer.readFlags,
+    MessageSerializer.readEmpty,
+  ),
+  ;
 
   final Req Function(MessageSerializer) readRequest;
   final Res Function(MessageSerializer) readResponse;

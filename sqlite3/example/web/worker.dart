@@ -1,4 +1,5 @@
 import 'dart:html';
+import 'dart:typed_data';
 
 import 'package:js/js.dart';
 import 'package:js/js_util.dart';
@@ -37,12 +38,22 @@ void main() {
           vfs.xOpen(Sqlite3Filename('/test'), SqlFlag.SQLITE_OPEN_CREATE);
       print('opened file $file, outflags $flags');
 
+      final buffer = Uint8List.fromList([1, 2, 3, 4, 5, 6]);
+      file.xWrite(buffer, 0);
+
+      buffer.fillRange(0, 6, 0);
+      file.xRead(buffer, 0);
+      print('Buffer after read = $buffer');
+
       print('size = ${file.xFileSize()}');
       file.xTruncate(1024);
       print('file after truncate: ${file.xFileSize()}');
 
       file.xClose();
       print('closed file');
+
+      vfs.xDelete('/test', 0);
+      print('deleted file');
     } else {
       final message = data as WorkerOptions;
 

@@ -44,3 +44,12 @@ extension SharedArrayBufferAsByteBuffer on SharedArrayBuffer {
     }
   }
 }
+
+extension NativeUint8List on Uint8List {
+  /// A native version of [setRange] that takes another typed array directly.
+  /// This avoids the type checks part of [setRange] in compiled JavaScript
+  /// code.
+  void set(Uint8List from, int offset) {
+    callMethod<void>(this, 'set', [from, offset]);
+  }
+}

@@ -483,6 +483,15 @@ class SqlTextEncoding {
   static const int SQLITE_UTF16_ALIGNED = 8;
 }
 
+/// File lock levels, https://www.sqlite.org/c3ref/c_lock_exclusive.html
+class SqlFileLockingLevels {
+  static const SQLITE_LOCK_NONE = 0;
+  static const SQLITE_LOCK_SHARED = 1;
+  static const SQLITE_LOCK_RESERVED = 0;
+  static const SQLITE_LOCK_PENDING = 0;
+  static const SQLITE_LOCK_EXCLUSIVE = 0;
+}
+
 /// Special destructors, https://www.sqlite.org/c3ref/c_static.html
 class SqlSpecialDestructor {
   /// it means that the content pointer is constant and will never change, It does not need to be destroyed

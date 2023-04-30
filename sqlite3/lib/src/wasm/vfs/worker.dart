@@ -104,6 +104,16 @@ class VfsWorker {
     return Flags(rc, 0, 0);
   }
 
+  Future<void> _xDelete(NameAndInt32Flags options) async {
+    final (dirHandle, _, basename) = await _resolvePath(options.name);
+    try {
+      await dirHandle.removeEntry(basename);
+    } catch (e) {
+      _log('Could not delete entry: $e');
+      throw const VfsException(SqlExtendedError.SQLITE_IOERR_DELETE);
+    }
+  }
+
   Future<Flags> _xOpen(NameAndInt32Flags req) async {
     final flags = req.flag0;
     final create = (flags & SqlFlag.SQLITE_OPEN_CREATE) != 0;
@@ -141,6 +151,37 @@ class VfsWorker {
     return Flags(outFlags, opened.fd, 0);
   }
 
+  Future<Flags> _xRead(Flags req) async {
+    final file = _openFiles[req.flag0]!;
+    final offset = req.flag1;
+    final bufferLength = req.flag2;
+    assert(bufferLength <= MessageSerializer.dataSize);
+
+    final syncHandle = await _openForSynchronousAccess(file);
+    final bytesRead = syncHandle.read(messages.viewByteRange(0, bufferLength),
+        FileSystemReadWriteOptions(at: offset));
+
+    return Flags(bytesRead, 0, 0);
+  }
+
+  Future<EmptyMessage> _xWrite(Flags req) async {
+    final file = _openFiles[req.flag0]!;
+    final offset = req.flag1;
+    final bufferLength = req.flag2;
+    assert(bufferLength <= MessageSerializer.dataSize);
+
+    final syncHandle = await _openForSynchronousAccess(file);
+    final bytesWritten = syncHandle.write(
+        messages.viewByteRange(0, bufferLength),
+        FileSystemReadWriteOptions(at: offset));
+
+    if (bytesWritten != bufferLength) {
+      throw const VfsException(SqlExtendedError.SQLITE_IOERR_WRITE);
+    }
+
+    return const EmptyMessage();
+  }
+
   Future<void> _xClose(Flags req) async {
     final file = _openFiles.remove(req.flag0);
     _implicitlyHeldLocks.remove(file);
@@ -169,11 +210,58 @@ class VfsWorker {
 
   Future<EmptyMessage> _xTruncate(Flags req) async {
     final file = _openFiles[req.flag0]!;
+    file.checkMayWrite();
+
     try {
       final syncHandle = await _openForSynchronousAccess(file);
       syncHandle.truncate(req.flag1);
     } finally {
       _releaseImplicitLock(file);
+    }
+
+    return const EmptyMessage();
+  }
+
+  Future<EmptyMessage> _xSync(Flags req) async {
+    final file = _openFiles[req.flag0]!;
+
+    // Closing a sync handle will also flush it, so we only need to call flush
+    // explicitly if the file is currently opened.
+    final syncHandle = file.syncHandle;
+    if (!file.readonly && syncHandle != null) {
+      syncHandle.flush();
+    }
+
+    return const EmptyMessage();
+  }
+
+  Future<EmptyMessage> _xLock(Flags req) async {
+    final file = _openFiles[req.flag0]!;
+
+    if (file.syncHandle == null) {
+      try {
+        await _openForSynchronousAccess(file);
+        file.explicitlyLocked = true;
+      } on Object {
+        throw const VfsException(SqlExtendedError.SQLITE_IOERR_LOCK);
+      }
+    } else {
+      // We already have an (implicit) lock on this file, so we just need to
+      // make it explicit.
+      file.explicitlyLocked = true;
+    }
+
+    return const EmptyMessage();
+  }
+
+  Future<EmptyMessage> _xUnlock(Flags req) async {
+    final file = _openFiles[req.flag0]!;
+    final mode = req.flag1;
+
+    final existingHandle = file.syncHandle;
+    if (existingHandle != null &&
+        mode == SqlFileLockingLevels.SQLITE_LOCK_NONE) {
+      _closeSyncHandle(file);
     }
 
     return const EmptyMessage();
@@ -197,21 +285,46 @@ class VfsWorker {
         request = opcode.readRequest(messages);
 
         switch (opcode) {
+          case WorkerOperation.xSleep:
+            _releaseImplicitLocks();
+            await Future<void>.delayed(
+                Duration(milliseconds: (request as Flags).flag0));
+            response = const EmptyMessage();
+            break;
           case WorkerOperation.xAccess:
             response = await _xAccess(request as NameAndInt32Flags);
+            break;
+          case WorkerOperation.xDelete:
+            await _xDelete(request as NameAndInt32Flags);
+            response = const EmptyMessage();
             break;
           case WorkerOperation.xOpen:
             response = await _xOpen(request as NameAndInt32Flags);
             break;
+          case WorkerOperation.xRead:
+            response = await _xRead(request as Flags);
+            break;
+          case WorkerOperation.xWrite:
+            response = await _xWrite(request as Flags);
+            break;
           case WorkerOperation.xClose:
             await _xClose(request as Flags);
-            response = EmptyMessage();
+            response = const EmptyMessage();
             break;
           case WorkerOperation.xFileSize:
             response = await _xFileSize(request as Flags);
             break;
           case WorkerOperation.xTruncate:
             response = await _xTruncate(request as Flags);
+            break;
+          case WorkerOperation.xSync:
+            response = await _xSync(request as Flags);
+            break;
+          case WorkerOperation.xLock:
+            response = await _xLock(request as Flags);
+            break;
+          case WorkerOperation.xUnlock:
+            response = await _xUnlock(request as Flags);
             break;
         }
 
@@ -289,6 +402,7 @@ class VfsWorker {
       _log('Closing sync handle for ${handle.fullPath}');
       handle.syncHandle = null;
       _implicitlyHeldLocks.remove(syncHandle);
+      handle.explicitlyLocked = false;
       syncHandle.close();
     }
   }
@@ -316,4 +430,10 @@ class _OpenedFileHandle {
     required this.filename,
     required this.file,
   });
+
+  void checkMayWrite() {
+    if (readonly) {
+      throw const VfsException(SqlError.SQLITE_READONLY);
+    }
+  }
 }
