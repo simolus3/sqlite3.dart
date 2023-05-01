@@ -79,10 +79,21 @@ int dartvfs_fileControl(sqlite3_file *file, int op, void *pArg) {
   return SQLITE_NOTFOUND;
 }
 
+int dartvfs_deviceCharacteristics(sqlite3_file *file) {
+  return xDeviceCharacteristics(DART_FD(file));
+}
+
+int dartvfs_sectorSize(sqlite3_file *file) {
+  // This is also the value of SQLITE_DEFAULT_SECTOR_SIZE, which would be picked if this function didn't exist.
+  // We need this method because vfstrace does not support null callbacks.
+  return 4096;
+}
+
 static int dartvfs_open(sqlite3_vfs* vfs, sqlite3_filename zName, sqlite3_file* file,
                int flags, int *pOutFlags) {
   dart_vfs_file* dartFile = (dart_vfs_file*) file;
-  memset(dartFile, sizeof(dart_vfs_file), 0);
+  memset(dartFile, 0, sizeof(dart_vfs_file));
+  dartFile->dart_fd = -1;
 
   static sqlite3_io_methods methods = {
       .iVersion = 1,
@@ -95,7 +106,13 @@ static int dartvfs_open(sqlite3_vfs* vfs, sqlite3_filename zName, sqlite3_file* 
       .xLock = &dartvfs_lock,
       .xUnlock = &dartvfs_unlock,
       .xCheckReservedLock = &dartvfs_checkReservedLock,
-      .xFileControl = &dartvfs_fileControl
+      .xFileControl = &dartvfs_fileControl,
+      .xDeviceCharacteristics = &dartvfs_deviceCharacteristics,
+#ifdef SQLITE_ENABLE_VFSTRACE
+      .xSectorSize = &dartvfs_sectorSize
+#else
+      .xSectorSize = NULL
+#endif
   };
 
   int *dartFileId = &dartFile->dart_fd;
@@ -103,7 +120,7 @@ static int dartvfs_open(sqlite3_vfs* vfs, sqlite3_filename zName, sqlite3_file* 
   // The xOpen call will also set the dart_fd field.
   int rc = xOpen((int) vfs->pAppData, zName, dartFileId, flags, pOutFlags);
 
-  if (*dartFileId != 0) {
+  if (*dartFileId != -1) {
     // sqlite3 will call xClose() even if this open call returns an error if methods
     // are set. So, we only provide the methods if a file has actually been opened.
     dartFile->pMethods = &methods;
@@ -144,7 +161,7 @@ static int dartvfs_currentTimeInt64(sqlite3_vfs* vfs, sqlite3_int64* timeOut) {
 
 SQLITE_API sqlite3_vfs* dart_sqlite3_register_vfs(const char* name, int dartId, int makeDefault) {
   sqlite3_vfs *vfs = calloc(1, sizeof(sqlite3_vfs));
-  vfs->iVersion = 3;
+  vfs->iVersion = 2;
   vfs->szOsFile = sizeof(dart_vfs_file);
   vfs->mxPathname = 1024;
   vfs->zName = name;
@@ -157,7 +174,20 @@ SQLITE_API sqlite3_vfs* dart_sqlite3_register_vfs(const char* name, int dartId, 
   vfs->xSleep = &dartvfs_sleep;
   vfs->xCurrentTimeInt64 = &dartvfs_currentTimeInt64;
 
+#ifdef SQLITE_ENABLE_VFSTRACE
+  sqlite3_vfs_register(vfs, 0);
+
+  static const char* prefix = "trace_";
+  static const int prefixLength = 6;
+  char *traceName = malloc(strlen(name) + prefixLength);
+  strcpy(traceName, prefix);
+  strcpy(&traceName[prefixLength], name);
+
+  vfstrace_register(traceName, name, &dartvfs_trace_log1, NULL, makeDefault);
+#else
+  // Just register the VFS as is.
   sqlite3_vfs_register(vfs, makeDefault);
+#endif
   return vfs;
 }
 

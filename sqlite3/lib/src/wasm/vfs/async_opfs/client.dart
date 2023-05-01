@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import '../../../constants.dart';
 import '../../../vfs.dart';
 import '../../js_interop.dart';
+import '../utils.dart';
 import 'sync_channel.dart';
 import 'worker.dart';
 
@@ -65,7 +66,7 @@ class WasmVfs extends BaseVirtualFileSystem {
 
   @override
   XOpenResult xOpen(Sqlite3Filename path, int flags) {
-    final filePath = path.path ?? _randomFileName();
+    final filePath = path.path ?? random.randomFileName(prefix: chroot);
     final result = _runInWorker(
         WorkerOperation.xOpen, NameAndInt32Flags(filePath, flags, 0, 0));
 
@@ -77,18 +78,6 @@ class WasmVfs extends BaseVirtualFileSystem {
   @override
   void xSleep(Duration duration) {
     _runInWorker(WorkerOperation.xSleep, Flags(duration.inMilliseconds, 0, 0));
-  }
-
-  String _randomFileName({int length = 16}) {
-    const chars =
-        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ012346789';
-
-    final buffer = StringBuffer();
-    for (var i = 0; i < length; i++) {
-      buffer.writeCharCode(chars.codeUnitAt(random.nextInt(chars.length)));
-    }
-
-    return buffer.toString();
   }
 
   static bool get supportsAtomicsAndSharedMemory {
@@ -111,6 +100,11 @@ class WasmFile extends BaseVfsFile {
   int lockStatus = SqlFileLockingLevels.SQLITE_LOCK_NONE;
 
   WasmFile(this.vfs, this.fd);
+
+  @override
+  int get xDeviceCharacteristics {
+    return SqlDeviceCharacteristics.SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN;
+  }
 
   @override
   int readInto(Uint8List buffer, int offset) {

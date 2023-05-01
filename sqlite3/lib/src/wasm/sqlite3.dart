@@ -5,7 +5,6 @@ import '../implementation/sqlite3.dart';
 import '../sqlite3.dart';
 import '../vfs.dart';
 import 'bindings.dart';
-import 'environment.dart';
 import 'js_interop.dart';
 import 'wasm_interop.dart';
 
@@ -28,8 +27,7 @@ class WasmSqlite3 extends Sqlite3Implementation {
   /// using [loadFromUrl] as that method is more efficient.
   ///
   /// [pgk release]: https://github.com/simolus3/sqlite3.dart/releases
-  static Future<WasmSqlite3> load(Uint8List source,
-      [SqliteEnvironment? environment]) {
+  static Future<WasmSqlite3> load(Uint8List source) {
     final headers = newObject<Object>();
     setProperty(headers, 'content-type', 'application/wasm');
 
@@ -38,7 +36,7 @@ class WasmSqlite3 extends Sqlite3Implementation {
       ResponseInit(headers: headers),
     );
 
-    return _load(fakeResponse, environment);
+    return _load(fakeResponse);
   }
 
   /// Loads a web version of the sqlite3 libraries.
@@ -54,7 +52,6 @@ class WasmSqlite3 extends Sqlite3Implementation {
   static Future<WasmSqlite3> loadFromUrl(
     Uri uri, {
     Map<String, String>? headers,
-    SqliteEnvironment? environment,
   }) async {
     FetchOptions? options;
 
@@ -71,13 +68,11 @@ class WasmSqlite3 extends Sqlite3Implementation {
         ? URL.absolute(uri.toString())
         : URL.relative(uri.toString(), Uri.base.toString());
     final response = await promiseToFuture<Response>(fetch(jsUri, options));
-    return _load(response, environment);
+    return _load(response);
   }
 
-  static Future<WasmSqlite3> _load(
-      Response fetchResponse, SqliteEnvironment? environment) async {
-    final bindings = await WasmBindings.instantiateAsync(
-        fetchResponse, environment ?? SqliteEnvironment());
+  static Future<WasmSqlite3> _load(Response fetchResponse) async {
+    final bindings = await WasmBindings.instantiateAsync(fetchResponse);
     return WasmSqlite3._(bindings);
   }
 

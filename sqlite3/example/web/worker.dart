@@ -1,12 +1,10 @@
 import 'dart:html';
-import 'dart:typed_data';
 
 import 'package:js/js.dart';
 import 'package:js/js_util.dart';
-import 'package:sqlite3/src/constants.dart';
-import 'package:sqlite3/src/vfs.dart';
 import 'package:sqlite3/src/wasm/vfs/async_opfs/client.dart';
 import 'package:sqlite3/src/wasm/vfs/async_opfs/worker.dart';
+import 'package:sqlite3/wasm.dart';
 
 @JS()
 external bool get crossOriginIsolated;
@@ -33,28 +31,19 @@ void main() {
       // Now, wait for the worker to report that it has been initialized.
       await worker.onMessage.first;
 
-      final vfs = WasmVfs(workerOptions: options);
-      final opened =
-          vfs.xOpen(Sqlite3Filename('/test'), SqlFlag.SQLITE_OPEN_CREATE);
-      final file = opened.file;
-      print('opened file $file, outflags ${opened.outFlags}');
+      final sqlite3 =
+          await WasmSqlite3.loadFromUrl(Uri.parse('sqlite3.debug.wasm'));
+      sqlite3.registerVirtualFileSystem(WasmVfs(workerOptions: options),
+          makeDefault: true);
 
-      final buffer = Uint8List.fromList([1, 2, 3, 4, 5, 6]);
-      file.xWrite(buffer, 0);
+      sqlite3.open('/tmp/foo.db')
+        ..execute('pragma user_version = 1')
+        ..execute('CREATE TABLE foo (bar INTEGER NOT NULL);')
+        ..execute('INSERT INTO foo (bar) VALUES (?)', [3])
+        ..dispose();
 
-      buffer.fillRange(0, 6, 0);
-      file.xRead(buffer, 0);
-      print('Buffer after read = $buffer');
-
-      print('size = ${file.xFileSize()}');
-      file.xTruncate(1024);
-      print('file after truncate: ${file.xFileSize()}');
-
-      file.xClose();
-      print('closed file');
-
-      vfs.xDelete('/test', 0);
-      print('deleted file');
+      final db = sqlite3.open('/tmp/foo.db');
+      print(db.select('SELECT * FROM foo'));
     } else {
       final message = data as WorkerOptions;
 

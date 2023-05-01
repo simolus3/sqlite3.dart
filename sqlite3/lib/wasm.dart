@@ -18,9 +18,5 @@ import 'package:meta/meta.dart';
 
 export 'common.dart' hide CommmonSqlite3;
 
-export 'src/wasm/environment.dart';
-export 'src/wasm/file_system.dart' hide debugFileSystem;
-export 'src/wasm/file_system/indexed_db.dart'
-    hide AsynchronousIndexedDbFileSystem;
-export 'src/wasm/file_system/opfs.dart' show OpfsFileSystem;
+export 'src/wasm/vfs/simple_opfs.dart' show SimpleOpfsFileSystem;
 export 'src/wasm/sqlite3.dart';

@@ -155,9 +155,8 @@ class WasmBindings {
     values.bindings = this;
   }
 
-  static Future<WasmBindings> instantiateAsync(
-      Response response, SqliteEnvironment environment) async {
-    final injected = _InjectedValues(environment);
+  static Future<WasmBindings> instantiateAsync(Response response) async {
+    final injected = _InjectedValues();
     final instance = await WasmInstance.load(response, injected.injectedValues);
 
     return WasmBindings._(instance, injected);
@@ -476,7 +475,7 @@ class _InjectedValues {
 
   final DartCallbacks callbacks = DartCallbacks();
 
-  _InjectedValues(SqliteEnvironment environment) {
+  _InjectedValues() {
     final memory = this.memory = Memory(MemoryDescriptor(initial: 16));
 
     injectedValues = {
@@ -495,9 +494,10 @@ class _InjectedValues {
             final result = vfs.xOpen(path, flags);
             final fd = callbacks.registerFile(result.file);
 
-            memory
-              ..setInt32Value(dartFdPtr, fd)
-              ..setInt32Value(pOutFlags, result.outFlags);
+            memory.setInt32Value(dartFdPtr, fd);
+            if (pOutFlags != 0) {
+              memory.setInt32Value(pOutFlags, result.outFlags);
+            }
           });
         }),
         'xDelete': allowInterop((int vfsId, Pointer zName, int syncDir) {
@@ -556,6 +556,10 @@ class _InjectedValues {
           // annoying to do in JS due to the lack of proper ints.
           memory.setInt32Value(target, time.millisecondsSinceEpoch);
         }),
+        'xDeviceCharacteristics': allowInterop((int fd) {
+          final file = callbacks.openedFiles[fd]!;
+          return file.xDeviceCharacteristics;
+        }),
         'xClose': allowInterop((int fd) {
           final file = callbacks.openedFiles[fd]!;
           return _runVfs(() {
@@ -564,24 +568,24 @@ class _InjectedValues {
           });
         }),
         'xRead':
-            allowInterop((int fd, Pointer target, int amount, JsBigInt offset) {
+            allowInterop((int fd, Pointer target, int amount, Object offset) {
           final file = callbacks.openedFiles[fd]!;
           return _runVfs(() {
-            file.xRead(
-                memory.buffer.asUint8List(target, amount), offset.asDartInt);
+            file.xRead(memory.buffer.asUint8List(target, amount),
+                JsBigInt(offset).asDartInt);
           });
         }),
         'xWrite':
-            allowInterop((int fd, Pointer source, int amount, JsBigInt offset) {
+            allowInterop((int fd, Pointer source, int amount, Object offset) {
           final file = callbacks.openedFiles[fd]!;
           return _runVfs(() {
-            file.xWrite(
-                memory.buffer.asUint8List(source, amount), offset.asDartInt);
+            file.xWrite(memory.buffer.asUint8List(source, amount),
+                JsBigInt(offset).asDartInt);
           });
         }),
-        'xTruncate': allowInterop((int fd, JsBigInt size) {
+        'xTruncate': allowInterop((int fd, Object size) {
           final file = callbacks.openedFiles[fd]!;
-          return _runVfs(() => file.xTruncate(size.asDartInt));
+          return _runVfs(() => file.xTruncate(JsBigInt(size).asDartInt));
         }),
         'xSync': allowInterop((int fd, int flags) {
           final file = callbacks.openedFiles[fd]!;

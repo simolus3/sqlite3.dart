@@ -130,6 +130,9 @@ abstract class VirtualFileSystemFile {
 
   /// Returns the lock state held by any process on this file.
   int xCheckReservedLock();
+
+  ///
+  int get xDeviceCharacteristics;
 }
 
 /// A [VirtualFileSystem] implementation that uses a [Random] instance for
@@ -161,6 +164,9 @@ abstract class BaseVfsFile implements VirtualFileSystemFile {
   /// __Safety warning__: [bufer] may be a direct view over native memory that
   /// must not be used after this function returns.
   int readInto(Uint8List buffer, int offset);
+
+  @override
+  int get xDeviceCharacteristics => 0;
 
   @override
   void xRead(Uint8List target, int fileOffset) {

@@ -27,6 +27,7 @@ import_dart("xFileSize") extern int xFileSize(int, int *pSize);
 import_dart("xLock") extern int xLock(int, int);
 import_dart("xUnlock") extern int xUnlock(int, int);
 import_dart("xCheckReservedLock") extern int xCheckReservedLock(int, int *pResOut);
+import_dart("xDeviceCharacteristics") extern int xDeviceCharacteristics(int);
 
 import_dart("function_xFunc") extern void dartXFunc(sqlite3_context *ctx,
                                                     int nArgs,

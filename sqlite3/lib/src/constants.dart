@@ -487,9 +487,9 @@ class SqlTextEncoding {
 class SqlFileLockingLevels {
   static const SQLITE_LOCK_NONE = 0;
   static const SQLITE_LOCK_SHARED = 1;
-  static const SQLITE_LOCK_RESERVED = 0;
-  static const SQLITE_LOCK_PENDING = 0;
-  static const SQLITE_LOCK_EXCLUSIVE = 0;
+  static const SQLITE_LOCK_RESERVED = 2;
+  static const SQLITE_LOCK_PENDING = 3;
+  static const SQLITE_LOCK_EXCLUSIVE = 4;
 }
 
 /// Special destructors, https://www.sqlite.org/c3ref/c_static.html
@@ -516,6 +516,10 @@ class SqlFunctionFlag {
 
   ///The SQLITE_INNOCUOUS flag means that the function is unlikely to cause problems even if misused.
   static const SQLITE_INNOCUOUS = 0x000200000;
+}
+
+class SqlDeviceCharacteristics {
+  static const SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN = 0x00000800;
 }
 
 const SQLITE_DELETE = 9;

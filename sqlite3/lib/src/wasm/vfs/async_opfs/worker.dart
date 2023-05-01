@@ -352,7 +352,7 @@ class VfsWorker {
   }
 
   void _releaseImplicitLocks() {
-    _implicitlyHeldLocks.forEach(_releaseImplicitLock);
+    _implicitlyHeldLocks.toList().forEach(_releaseImplicitLock);
   }
 
   void _releaseImplicitLock(_OpenedFileHandle handle) {
