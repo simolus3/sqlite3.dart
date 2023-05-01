@@ -2,12 +2,13 @@ import 'dart:convert';
 import 'dart:html';
 import 'dart:typed_data';
 
-import '../js_interop.dart';
+import '../../js_interop.dart';
 
 const protocolVersion = 1;
 const asyncIdleWaitTimeMs = 150;
 const asyncIdleWaitTime = Duration(milliseconds: asyncIdleWaitTimeMs);
 
+/// Implements a synchronous mechanism to wait for requests and responses.
 class RequestResponseSynchronizer {
   static const _requestIndex = 0;
   static const _responseIndex = 1;
@@ -15,7 +16,12 @@ class RequestResponseSynchronizer {
   // 2 32-bit slots for the int32 array
   static const byteLength = 2 * 4;
 
+  /// The shared array buffer used with atomics for synchronization.
+  ///
+  /// It must have a length of [byteLength].
   final SharedArrayBuffer buffer;
+
+  /// A int32 view over [buffer], required for atomics to work.
   final Int32List int32View;
 
   RequestResponseSynchronizer._(this.buffer) : int32View = buffer.asInt32List();
@@ -29,6 +35,8 @@ class RequestResponseSynchronizer {
         buffer ?? SharedArrayBuffer(byteLength));
   }
 
+  /// Send a request with the given [opcode], wait for the remote worker to
+  /// process it and returns the response code.
   int requestAndWaitForResponse(int opcode) {
     Atomics.store(int32View, _responseIndex, -1);
     Atomics.store(int32View, _requestIndex, opcode);

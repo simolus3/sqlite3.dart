@@ -5,8 +5,8 @@ import 'package:js/js.dart';
 import 'package:js/js_util.dart';
 import 'package:sqlite3/src/constants.dart';
 import 'package:sqlite3/src/vfs.dart';
-import 'package:sqlite3/src/wasm/vfs/client.dart';
-import 'package:sqlite3/src/wasm/vfs/worker.dart';
+import 'package:sqlite3/src/wasm/vfs/async_opfs/client.dart';
+import 'package:sqlite3/src/wasm/vfs/async_opfs/worker.dart';
 
 @JS()
 external bool get crossOriginIsolated;
@@ -34,9 +34,10 @@ void main() {
       await worker.onMessage.first;
 
       final vfs = WasmVfs(workerOptions: options);
-      final (file: file, outFlags: flags) =
+      final opened =
           vfs.xOpen(Sqlite3Filename('/test'), SqlFlag.SQLITE_OPEN_CREATE);
-      print('opened file $file, outflags $flags');
+      final file = opened.file;
+      print('opened file $file, outflags ${opened.outFlags}');
 
       final buffer = Uint8List.fromList([1, 2, 3, 4, 5, 6]);
       file.xWrite(buffer, 0);

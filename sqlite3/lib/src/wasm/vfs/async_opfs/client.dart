@@ -5,9 +5,9 @@ import 'dart:typed_data';
 import 'package:js/js_util.dart';
 import 'package:path/path.dart' as p;
 
-import '../../constants.dart';
-import '../../vfs.dart';
-import '../js_interop.dart';
+import '../../../constants.dart';
+import '../../../vfs.dart';
+import '../../js_interop.dart';
 import 'sync_channel.dart';
 import 'worker.dart';
 
@@ -71,7 +71,7 @@ class WasmVfs extends BaseVirtualFileSystem {
 
     final outFlags = result.flag0;
     final fd = result.flag1;
-    return (outFlags: outFlags, file: WasmFile(this, fd));
+    return XOpenResult(outFlags: outFlags, file: WasmFile(this, fd));
   }
 
   @override

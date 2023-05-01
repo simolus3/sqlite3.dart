@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'dart:ffi';
 import 'dart:typed_data';
 
-import 'package:sqlite3/src/vfs.dart';
-
 import '../constants.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';

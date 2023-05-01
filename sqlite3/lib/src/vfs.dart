@@ -78,7 +78,13 @@ abstract class VirtualFileSystem {
 }
 
 /// The result of [VirtualFileSystem.xOpen].
-typedef XOpenResult = ({int outFlags, VirtualFileSystemFile file});
+class XOpenResult {
+  final int outFlags;
+  final VirtualFileSystemFile file;
+
+  XOpenResult({required this.outFlags, required this.file});
+  // todo: Turn into record
+}
 
 /// A file implemented by a VFS author and returned by [VirtualFileSystem.xOpen].
 ///

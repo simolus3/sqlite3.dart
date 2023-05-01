@@ -3,9 +3,9 @@ import 'dart:html';
 import 'package:js/js.dart';
 import 'package:path/path.dart' as p show url;
 
-import '../../constants.dart';
-import '../../vfs.dart';
-import '../js_interop.dart';
+import '../../../constants.dart';
+import '../../../vfs.dart';
+import '../../js_interop.dart';
 import 'sync_channel.dart';
 
 const _workerDebugLog =
@@ -45,6 +45,19 @@ class WorkerOptions {
   }
 }
 
+class _ResolvedPath {
+  final String fullPath;
+
+  final FileSystemDirectoryHandle directory;
+  final String filename;
+
+  _ResolvedPath(this.fullPath, this.directory, this.filename);
+
+  Future<FileSystemFileHandle> openFile({bool create = false}) {
+    return directory.openFile(filename, create: create);
+  }
+}
+
 class VfsWorker {
   final RequestResponseSynchronizer synchronizer;
   final MessageSerializer messages;
@@ -54,8 +67,6 @@ class VfsWorker {
   var _fdCounter = 0;
   final Map<int, _OpenedFileHandle> _openFiles = {};
   final Set<_OpenedFileHandle> _implicitlyHeldLocks = {};
-
-  var _shutdownRequested = false;
 
   VfsWorker._(WorkerOptions options, this.root)
       : synchronizer =
@@ -73,30 +84,30 @@ class VfsWorker {
     return VfsWorker._(options, root);
   }
 
-  Future<(FileSystemDirectoryHandle, String, String)> _resolvePath(
-      String absolutePath,
+  Future<_ResolvedPath> _resolvePath(String absolutePath,
       {bool createDirectories = false}) async {
     final fullPath = p.url.relative(absolutePath, from: '/');
-    final [...dir, file] = p.url.split(fullPath);
+    final directories = p.url.split(fullPath);
+    final file = directories.removeLast();
 
     var dirHandle = root;
-    for (final entry in dir) {
+    for (final entry in directories) {
       dirHandle =
           await dirHandle.getDirectory(entry, create: createDirectories);
     }
 
-    return (dirHandle, fullPath, file);
+    return _ResolvedPath(fullPath, dirHandle, file);
   }
 
   Future<Flags> _xAccess(NameAndInt32Flags flags) async {
     var rc = 0;
 
     try {
-      final (dir, _, fileName) = await _resolvePath(flags.name);
+      final resolved = await _resolvePath(flags.name);
 
       // If we can open the file, it exists. For OPFS, that means that it's both
       // readable and writable.
-      await dir.openFile(fileName);
+      await resolved.openFile();
     } catch (e) {
       rc = SqlError.SQLITE_IOERR;
     }
@@ -105,9 +116,9 @@ class VfsWorker {
   }
 
   Future<void> _xDelete(NameAndInt32Flags options) async {
-    final (dirHandle, _, basename) = await _resolvePath(options.name);
+    final resolved = await _resolvePath(options.name);
     try {
-      await dirHandle.removeEntry(basename);
+      await resolved.directory.removeEntry(resolved.filename);
     } catch (e) {
       _log('Could not delete entry: $e');
       throw const VfsException(SqlExtendedError.SQLITE_IOERR_DELETE);
@@ -118,24 +129,22 @@ class VfsWorker {
     final flags = req.flag0;
     final create = (flags & SqlFlag.SQLITE_OPEN_CREATE) != 0;
 
-    FileSystemDirectoryHandle directory;
-    String fullPath, fileName;
+    _ResolvedPath resolved;
 
     try {
-      (directory, fullPath, fileName) =
-          await _resolvePath(req.name, createDirectories: create);
+      resolved = await _resolvePath(req.name, createDirectories: create);
     } catch (e) {
       // Error traversing the path
       throw VfsException(SqlError.SQLITE_NOTFOUND);
     }
 
-    final fileHandle = await directory.openFile(fileName, create: create);
+    final fileHandle = await resolved.openFile(create: create);
     final readonly = !create && (flags & SqlFlag.SQLITE_OPEN_READONLY) != 0;
     final opened = _OpenedFileHandle(
       fd: _fdCounter++,
-      directory: directory,
-      fullPath: fullPath,
-      filename: fileName,
+      directory: resolved.directory,
+      fullPath: resolved.fullPath,
+      filename: resolved.filename,
       file: fileHandle,
       deleteOnClose: (flags & SqlFlag.SQLITE_OPEN_DELETEONCLOSE) != 0,
       readonly: readonly,
@@ -268,7 +277,7 @@ class VfsWorker {
   }
 
   Future<void> start() async {
-    while (!_shutdownRequested) {
+    while (true) {
       final waitResult = synchronizer.waitForRequest();
       if (waitResult == Atomics.timedOut) {
         // No requests for some time, transition to idle

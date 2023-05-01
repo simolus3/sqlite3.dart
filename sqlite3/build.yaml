@@ -32,6 +32,8 @@ targets:
     builders:
       build_web_compilers:entrypoint:
         generate_for:
+          include:
+            - "example/web/**"
           # This one is compiled in the other target
           exclude:
             - "example/web/worker.dart"

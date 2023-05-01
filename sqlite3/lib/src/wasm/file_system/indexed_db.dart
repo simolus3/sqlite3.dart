@@ -626,7 +626,7 @@ class IndexedDbFileSystem implements FileSystem {
   }
 }
 
-sealed class _IndexedDbWorkItem with LinkedListEntry<_IndexedDbWorkItem> {
+abstract class _IndexedDbWorkItem with LinkedListEntry<_IndexedDbWorkItem> {
   final Completer<void> completer = Completer.sync();
 
   /// Insert this item into the [pending] list, returning whether the item was
@@ -647,7 +647,7 @@ sealed class _IndexedDbWorkItem with LinkedListEntry<_IndexedDbWorkItem> {
   FutureOr<void> run();
 }
 
-final class _FunctionWorkItem extends _IndexedDbWorkItem {
+class _FunctionWorkItem extends _IndexedDbWorkItem {
   final FutureOr<void> Function() work;
   final String description;
 
@@ -657,7 +657,7 @@ final class _FunctionWorkItem extends _IndexedDbWorkItem {
   FutureOr<void> run() => work();
 }
 
-final class _DeleteFileWorkItem extends _IndexedDbWorkItem {
+class _DeleteFileWorkItem extends _IndexedDbWorkItem {
   final IndexedDbFileSystem fileSystem;
   final String path;
 
@@ -720,7 +720,7 @@ final class _DeleteFileWorkItem extends _IndexedDbWorkItem {
   }
 }
 
-final class _CreateFileWorkItem extends _IndexedDbWorkItem {
+class _CreateFileWorkItem extends _IndexedDbWorkItem {
   final IndexedDbFileSystem fileSystem;
   final String path;
 
@@ -733,7 +733,7 @@ final class _CreateFileWorkItem extends _IndexedDbWorkItem {
   }
 }
 
-final class _WriteFileWorkItem extends _IndexedDbWorkItem {
+class _WriteFileWorkItem extends _IndexedDbWorkItem {
   final IndexedDbFileSystem fileSystem;
   final String path;
 
