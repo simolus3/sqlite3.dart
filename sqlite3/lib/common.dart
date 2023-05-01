@@ -9,3 +9,4 @@ export 'src/functions.dart';
 export 'src/result_set.dart';
 export 'src/sqlite3.dart';
 export 'src/statement.dart';
+export 'src/vfs.dart';

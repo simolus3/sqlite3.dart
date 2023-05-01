@@ -10,9 +10,10 @@ import 'package:js/js.dart';
 import 'package:meta/meta.dart';
 
 import '../../constants.dart';
-import '../file_system.dart';
+import '../../vfs.dart';
 import '../js_interop.dart';
 import 'memory.dart';
+import 'utils.dart';
 
 /// An (asynchronous) file system implementation backed by IndexedDB.
 ///
@@ -400,7 +401,7 @@ class _OffsetAndBuffer {
 ///
 /// In the future, we may want to store individual blocks instead.
 
-class IndexedDbFileSystem implements FileSystem {
+class IndexedDbFileSystem extends BaseVirtualFileSystem {
   final AsynchronousIndexedDbFileSystem _asynchronous;
 
   var _isClosing = false;
@@ -415,7 +416,8 @@ class IndexedDbFileSystem implements FileSystem {
 
   IndexedDbFileSystem._(String dbName)
       : _asynchronous = AsynchronousIndexedDbFileSystem(dbName),
-        _memory = InMemoryFileSystem();
+        _memory = InMemoryFileSystem(),
+        super(name: 'indexeddb');
 
   /// Loads an IndexedDB file system identified by the [dbName].
   ///
@@ -443,8 +445,7 @@ class IndexedDbFileSystem implements FileSystem {
     // https://github.com/dart-lang/sdk/issues/48854
     await self.indexedDB!.deleteDatabase(dbName).timeout(
         const Duration(milliseconds: 1000),
-        onTimeout: () => throw FileSystemException(
-            0, "Failed to delete database. Database is still open"));
+        onTimeout: () => throw VfsException(1));
   }
 
   /// Whether this file system is closing or closed.
@@ -500,7 +501,7 @@ class IndexedDbFileSystem implements FileSystem {
 
   void _checkClosed() {
     if (isClosed) {
-      throw FileSystemException(SqlError.SQLITE_IOERR, 'FileSystem closed');
+      throw VfsException(SqlError.SQLITE_IOERR);
     }
   }
 
@@ -534,35 +535,11 @@ class IndexedDbFileSystem implements FileSystem {
   }
 
   @override
-  void createFile(
-    String path, {
-    bool errorIfNotExists = false,
-    bool errorIfAlreadyExists = false,
-  }) {
-    _checkClosed();
-    final existsBefore = _memory.exists(path);
-    _memory.createFile(
-      path,
-      errorIfAlreadyExists: errorIfAlreadyExists,
-      errorIfNotExists: errorIfNotExists,
-    );
-
-    if (!existsBefore) {
-      _submitWork(_CreateFileWorkItem(this, path));
-    }
-  }
+  int xAccess(String path, int flags) => _memory.xAccess(path, flags);
 
   @override
-  String createTemporaryFile() {
-    _checkClosed();
-    final path = _memory.createTemporaryFile();
-    _inMemoryOnlyFiles.add(path);
-    return path;
-  }
-
-  @override
-  void deleteFile(String path) {
-    _memory.deleteFile(path);
+  void xDelete(String path, int syncDir) {
+    _memory.xDelete(path, syncDir);
 
     if (!_inMemoryOnlyFiles.remove(path)) {
       _submitWork(_DeleteFileWorkItem(this, path));
@@ -570,58 +547,98 @@ class IndexedDbFileSystem implements FileSystem {
   }
 
   @override
-  Future<void> clear() async {
-    _memory.clear();
-    await _submitWorkFunction(_asynchronous.clear, 'clear');
+  String xFullPathName(String path) => _memory.xFullPathName(path);
+
+  @override
+  XOpenResult xOpen(Sqlite3Filename path, int flags) {
+    final pathStr = path.path ?? random.randomFileName(prefix: '/');
+    final existedBefore = _memory.xAccess(pathStr, 0) != 0;
+
+    final inMemoryFile = _memory.xOpen(Sqlite3Filename(pathStr), flags);
+    final deleteOnClose = (flags & SqlFlag.SQLITE_OPEN_DELETEONCLOSE) != 0;
+
+    if (!existedBefore) {
+      if (deleteOnClose) {
+        // No point in persisting this file, it doesn't exist and won't exist
+        // after we're done.
+        _inMemoryOnlyFiles.add(pathStr);
+      } else {
+        _submitWork(_CreateFileWorkItem(this, pathStr));
+      }
+    }
+
+    return XOpenResult(
+        outFlags: 0, file: _IndexedDbFile(this, inMemoryFile.file, pathStr));
   }
 
   @override
-  bool exists(String path) {
-    _checkClosed();
-    return _memory.exists(path);
+  void xSleep(Duration duration) {
+    // noop
+  }
+}
+
+class _IndexedDbFile extends VirtualFileSystemFile {
+  final IndexedDbFileSystem vfs;
+  final VirtualFileSystemFile memoryFile;
+  final String path;
+
+  _IndexedDbFile(this.vfs, this.memoryFile, this.path);
+
+  @override
+  void xRead(Uint8List target, int fileOffset) {
+    memoryFile.xRead(target, fileOffset);
   }
 
   @override
-  List<String> get files {
-    _checkClosed();
-    return _memory.files;
+  int get xDeviceCharacteristics => 0;
+
+  @override
+  int xCheckReservedLock() => memoryFile.xCheckReservedLock();
+
+  @override
+  void xClose() {}
+
+  @override
+  int xFileSize() => memoryFile.xFileSize();
+
+  @override
+  void xLock(int mode) => memoryFile.xLock(mode);
+
+  @override
+  void xSync(int flags) {
+    // We can't wait for a sync either way, so this just has to be a noop
   }
 
   @override
-  int read(String path, Uint8List target, int offset) {
-    _checkClosed();
-    return _memory.read(path, target, offset);
-  }
+  void xTruncate(int size) {
+    vfs._checkClosed();
+    memoryFile.xTruncate(size);
 
-  @override
-  int sizeOfFile(String path) {
-    _checkClosed();
-    return _memory.sizeOfFile(path);
-  }
-
-  @override
-  void truncateFile(String path, int length) {
-    _checkClosed();
-    _memory.truncateFile(path, length);
-
-    if (!_inMemoryOnlyFiles.contains(path)) {
-      _submitWorkFunction(
-          () async => _asynchronous.truncate(await _fileId(path), length),
+    if (!vfs._inMemoryOnlyFiles.contains(path)) {
+      vfs._submitWorkFunction(
+          () async => vfs._asynchronous.truncate(await vfs._fileId(path), size),
           'truncate $path');
     }
   }
 
   @override
-  void write(String path, Uint8List bytes, int offset) {
-    _checkClosed();
+  void xUnlock(int mode) => memoryFile.xUnlock(mode);
 
-    final previousContent = _memory.fileData[path] ?? Uint8List(0);
+  @override
+  void xWrite(Uint8List buffer, int fileOffset) {
+    vfs._checkClosed();
 
-    _memory.write(path, bytes, offset);
+    final previousContent = vfs._memory.fileData[path] ?? Uint8List(0);
+    memoryFile.xWrite(buffer, fileOffset);
 
-    if (!_inMemoryOnlyFiles.contains(path)) {
-      _submitWork(_WriteFileWorkItem(this, path, previousContent)
-        ..writes.add(_OffsetAndBuffer(offset, bytes)));
+    if (!vfs._inMemoryOnlyFiles.contains(path)) {
+      // We need to copy the buffer for the write because it will become invalid
+      // after this synchronous method returns.
+      final copy = Uint8List(buffer.length);
+      copy.setAll(0, buffer);
+
+      vfs._submitWork(_WriteFileWorkItem(vfs, path, previousContent)
+        ..writes.add(_OffsetAndBuffer(fileOffset, copy)));
     }
   }
 }

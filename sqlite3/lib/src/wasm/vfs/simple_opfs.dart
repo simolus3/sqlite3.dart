@@ -170,6 +170,15 @@ class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
 
   @override
   void xSleep(Duration duration) {}
+
+  /// Closes the synchronous access handles kept open while this file system is
+  /// active.
+  void close() {
+    _metaHandle.close();
+    for (final file in _files.values) {
+      file.close();
+    }
+  }
 }
 
 class _SimpleOpfsFile extends BaseVfsFile {
@@ -194,7 +203,7 @@ class _SimpleOpfsFile extends BaseVfsFile {
 
   @override
   void xClose() {
-    syncHandle.close();
+    syncHandle.flush();
 
     if (deleteOnClose) {
       vfs._markExists(type, false);

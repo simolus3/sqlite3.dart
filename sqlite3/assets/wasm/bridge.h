@@ -16,7 +16,7 @@ import_dart("xAccess") extern int xAccess(int vfs, const char *zName, int flags,
 import_dart("xFullPathname") extern int xFullPathname(int vfs, const char *zName, int nOut, char *zOut);
 import_dart("xRandomness") extern int xRandomness(int vfs, int nByte, char* zOut);
 import_dart("xSleep") extern int xSleep(int vfs, int microseconds);
-import_dart("xCurrentTimeInt64") extern int xCurrentTimeInt64(int vfs, int* target);
+import_dart("xCurrentTimeInt64") extern int xCurrentTimeInt64(int vfs, int64_t* target);
 
 import_dart("xClose") extern int xClose(int file);
 import_dart("xRead") extern int xRead(int, void*, int iAmt, sqlite3_int64 iOfst);

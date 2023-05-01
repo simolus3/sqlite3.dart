@@ -118,7 +118,7 @@ extension FileSystemDirectoryHandleApi on FileSystemDirectoryHandle {
   }
 }
 
-extension FileSystemFileHandleAPi on FileSystemFileHandle {
+extension FileSystemFileHandleApi on FileSystemFileHandle {
   @JS('createSyncAccessHandle')
   external Object _createSyncAccessHandle();
 

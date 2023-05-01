@@ -18,5 +18,7 @@ import 'package:meta/meta.dart';
 
 export 'common.dart' hide CommmonSqlite3;
 
+export 'src/wasm/vfs/memory.dart' show InMemoryFileSystem;
 export 'src/wasm/vfs/simple_opfs.dart' show SimpleOpfsFileSystem;
+export 'src/wasm/vfs/indexed_db.dart' show IndexedDbFileSystem;
 export 'src/wasm/sqlite3.dart';

@@ -30,6 +30,8 @@ void main() {
           }
 
           sqlite3 = await WasmSqlite3.load(response.bodyBytes);
+          sqlite3.registerVirtualFileSystem(InMemoryFileSystem(),
+              makeDefault: true);
         }
       });
 
@@ -75,7 +77,7 @@ void main() {
       });
 
       // See worker.dart for the supported backends
-      for (final backend in ['memory', 'opfs', 'indexeddb']) {
+      for (final backend in ['memory', 'opfs-simple', 'indexeddb']) {
         test(backend, () async {
           final worker = Worker(workerUri);
 

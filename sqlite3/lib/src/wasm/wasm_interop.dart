@@ -7,7 +7,6 @@ import 'package:js/js.dart';
 
 import '../../wasm.dart';
 import '../implementation/bindings.dart';
-import '../vfs.dart';
 import 'bindings.dart';
 import 'js_interop.dart';
 
@@ -449,6 +448,11 @@ extension WrappedMemory on Memory {
     buffer.asInt32List()[pointer >> 2] = value;
   }
 
+  void setInt64Value(Pointer pointer, JsBigInt value) {
+    assert(pointer != 0, 'Null pointer dereference');
+    buffer.asByteData().setBigInt64(pointer, value, true);
+  }
+
   String readString(int address, [int? length]) {
     assert(address != 0, 'Null pointer dereference');
     return utf8.decode(buffer.asUint8List(address, length ?? strlen(address)));
@@ -554,7 +558,8 @@ class _InjectedValues {
 
           // dartvfs_currentTimeInt64 will turn this into the right value, it's
           // annoying to do in JS due to the lack of proper ints.
-          memory.setInt32Value(target, time.millisecondsSinceEpoch);
+          memory.setInt64Value(
+              target, JsBigInt.fromInt(time.millisecondsSinceEpoch));
         }),
         'xDeviceCharacteristics': allowInterop((int fd) {
           final file = callbacks.openedFiles[fd]!;

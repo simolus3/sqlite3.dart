@@ -33,16 +33,17 @@ void main() {
 
       final sqlite3 =
           await WasmSqlite3.loadFromUrl(Uri.parse('sqlite3.debug.wasm'));
-      sqlite3.registerVirtualFileSystem(WasmVfs(workerOptions: options),
+      sqlite3.registerVirtualFileSystem(
+          await SimpleOpfsFileSystem.loadFromStorage('worker-test'),
           makeDefault: true);
 
-      sqlite3.open('/tmp/foo.db')
+      sqlite3.open('/database')
         ..execute('pragma user_version = 1')
         ..execute('CREATE TABLE foo (bar INTEGER NOT NULL);')
         ..execute('INSERT INTO foo (bar) VALUES (?)', [3])
         ..dispose();
 
-      final db = sqlite3.open('/tmp/foo.db');
+      final db = sqlite3.open('/database');
       print(db.select('SELECT * FROM foo'));
     } else {
       final message = data as WorkerOptions;

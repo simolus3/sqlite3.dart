@@ -150,7 +150,7 @@ static int dartvfs_sleep(sqlite3_vfs* vfs, int microseconds) {
 }
 
 static int dartvfs_currentTimeInt64(sqlite3_vfs* vfs, sqlite3_int64* timeOut) {
-  int milliseconds;
+  int64_t milliseconds;
   int rc = xCurrentTimeInt64((int) vfs->pAppData, &milliseconds);
 
   // https://github.com/sqlite/sqlite/blob/8ee75f7c3ac1456b8d941781857be27bfddb57d6/src/os_unix.c#L6757

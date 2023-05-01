@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:js/js.dart';
 import 'package:js/js_util.dart';
 
+import 'core.dart';
+
 @JS('Uint8Array')
 external Object get _uint8Array;
 
@@ -51,5 +53,12 @@ extension NativeUint8List on Uint8List {
   /// code.
   void set(Uint8List from, int offset) {
     callMethod<void>(this, 'set', [from, offset]);
+  }
+}
+
+extension NativeDataView on ByteData {
+  void setBigInt64(int offset, JsBigInt value, bool littleEndian) {
+    callMethod<void>(
+        this, 'setBigInt64', [offset, value.jsObject, littleEndian]);
   }
 }

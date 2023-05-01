@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'dart:html';
 
 import 'package:sqlite3/wasm.dart';
@@ -14,11 +13,10 @@ void main() {
 
       final backend = message[0] as String;
       final wasmUri = Uri.parse(message[1] as String);
-      debugger();
 
       switch (backend) {
         case 'memory':
-          final fs = FileSystem.inMemory();
+          final fs = InMemoryFileSystem();
 
           test = _runTest(
             open: () => fs,
@@ -33,10 +31,12 @@ void main() {
             wasmUri: wasmUri,
           );
           break;
-        case 'opfs':
+        case 'opfs-simple':
           test = _runTest(
-            open: () => OpfsFileSystem.loadFromStorage('worker-test'),
-            close: (fs) async => fs.close(),
+            open: () => SimpleOpfsFileSystem.loadFromStorage('worker-test'),
+            close: (fs) async {
+              fs.close();
+            },
             wasmUri: wasmUri,
           );
           break;
@@ -59,17 +59,15 @@ void _expect(bool condition, String reason) {
   }
 }
 
-Future<void> _runTest<T extends FileSystem>({
+Future<void> _runTest<T extends VirtualFileSystem>({
   required FutureOr<T> Function() open,
   required Future<void> Function(T fs) close,
   required Uri wasmUri,
 }) async {
   final fileSystem = await open();
 
-  final sqlite3 = await WasmSqlite3.loadFromUrl(
-    wasmUri,
-    environment: SqliteEnvironment(fileSystem: fileSystem),
-  );
+  final sqlite3 = await WasmSqlite3.loadFromUrl(wasmUri);
+  sqlite3.registerVirtualFileSystem(fileSystem, makeDefault: true);
 
   final database = sqlite3.open('database');
   _expect(database.userVersion == 0, 'Database version should be 0');
@@ -106,13 +104,12 @@ Future<void> _runTest<T extends FileSystem>({
   await close(fileSystem).timeout(const Duration(seconds: 1));
 
   final fileSystem2 = await open();
-  final sqlite32 = await WasmSqlite3.loadFromUrl(
-    wasmUri,
-    environment: SqliteEnvironment(fileSystem: fileSystem2),
-  );
+  final sqlite32 = await WasmSqlite3.loadFromUrl(wasmUri);
+  sqlite32.registerVirtualFileSystem(fileSystem2, makeDefault: true);
   final database2 = sqlite32.open('database');
 
   _expect(database2.userVersion == 1, 'Should be 1 after reload');
   _expect(database2.select('SELECT * FROM users').length == 200,
       'Should find 200 rows');
+  database2.dispose();
 }
