@@ -65,6 +65,8 @@ class VfsWorker {
   final FileSystemDirectoryHandle root;
 
   var _fdCounter = 0;
+  var _stopped = false;
+
   final Map<int, _OpenedFileHandle> _openFiles = {};
   final Set<_OpenedFileHandle> _implicitlyHeldLocks = {};
 
@@ -277,7 +279,7 @@ class VfsWorker {
   }
 
   Future<void> start() async {
-    while (true) {
+    while (!_stopped) {
       final waitResult = synchronizer.waitForRequest();
       if (waitResult == Atomics.timedOut) {
         // No requests for some time, transition to idle
@@ -334,6 +336,11 @@ class VfsWorker {
             break;
           case WorkerOperation.xUnlock:
             response = await _xUnlock(request as Flags);
+            break;
+          case WorkerOperation.stopServer:
+            response = const EmptyMessage();
+            _stopped = true;
+            _releaseImplicitLocks();
             break;
         }
 

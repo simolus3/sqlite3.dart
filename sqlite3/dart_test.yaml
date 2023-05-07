@@ -12,12 +12,24 @@ override_platforms:
   firefox:
     settings:
       arguments: "-headless"
+  chrome:
+    settings:
+      arguments: "--enable-features=SharedArrayBuffer"
+  edge:
+    settings:
+      arguments: "--enable-features=SharedArrayBuffer"
 
 presets:
   full:
     platforms: [vm, chrome, firefox]
+    on_os:
+      windows:
+        platforms: [vm, chrome, firefox, edge]
   web:
     platforms: [chrome, firefox]
+    on_os:
+      windows:
+        platforms: [chrome, firefox, edge]
   ci:
     tags:
       ci_only:

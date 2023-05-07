@@ -487,7 +487,7 @@ class _InjectedValues {
       'dart': {
         // See assets/wasm/bridge.h
         'error_log': allowInterop((Pointer ptr) {
-          print('Error reported by native handler: ${memory.readString(ptr)}');
+          print('[sqlite3] ${memory.readString(ptr)}');
         }),
         'xOpen': allowInterop((int vfsId, Pointer zName, Pointer dartFdPtr,
             int flags, Pointer pOutFlags) {

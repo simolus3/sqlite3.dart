@@ -147,7 +147,7 @@ In this directory, run:
 
 ```
 cmake -S assets/wasm -B .dart_tool/sqlite3_build --toolchain toolchain.cmake
-make -C .dart_tool/sqlite3_build/ -j output
+cmake --build .dart_tool/sqlite3_build/ -t output -j
 ```
 
 (Of course, you can also run the build in any other directory).

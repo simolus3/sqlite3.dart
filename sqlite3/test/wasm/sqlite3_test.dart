@@ -77,27 +77,39 @@ void main() {
       });
 
       // See worker.dart for the supported backends
-      for (final backend in ['memory', 'opfs-simple', 'indexeddb']) {
-        test(backend, () async {
-          final worker = Worker(workerUri);
+      for (final backend in ['memory', 'opfs-simple', 'opfs', 'indexeddb']) {
+        final requiresSab = backend == 'opfs';
 
-          worker.onError.listen((event) {
-            if (event is ErrorEvent) {
-              fail('Error ${event.message} - ${event.error}');
-            } else {
-              fail(event.toString());
+        test(
+          backend,
+          () async {
+            final worker = Worker(workerUri);
+
+            worker.onError.listen((event) {
+              if (event is ErrorEvent) {
+                fail('Error ${event.message} - ${event.error}');
+              } else {
+                fail(event.toString());
+              }
+            });
+            // Inform the worker about the test we want to run
+            worker.postMessage([backend, wasmUri]);
+
+            final response = (await worker.onMessage.first).data as List;
+            final status = response[0] as bool;
+
+            if (!status) {
+              throw 'Exception in worker: $response';
             }
-          });
-          // Inform the worker about the test we want to run
-          worker.postMessage([backend, wasmUri]);
-
-          final response = (await worker.onMessage.first).data as List;
-          final status = response[0] as bool;
-
-          if (!status) {
-            throw 'Exception in worker: $response';
-          }
-        });
+          },
+          onPlatform: <String, Object?>{
+            if (requiresSab)
+              '!chrome && !edge': Skip(
+                'This test requires SharedArrayBuffers that cannot be enabled '
+                'on this platform with a simple `dart test` setup.',
+              ),
+          },
+        );
       }
     },
   );

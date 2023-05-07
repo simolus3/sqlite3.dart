@@ -1,56 +1,105 @@
 import 'dart:async';
 import 'dart:html';
+import 'dart:js_util';
 
+import 'package:js/js.dart';
+import 'package:sqlite3/src/wasm/vfs/async_opfs/client.dart';
+import 'package:sqlite3/src/wasm/vfs/async_opfs/worker.dart';
 import 'package:sqlite3/wasm.dart';
+
+@JS('Worker')
+external Function get _worker;
 
 void main() {
   final scope = DedicatedWorkerGlobalScope.instance;
 
   runZonedGuarded(() {
     scope.onMessage.listen((event) {
-      final message = event.data as List;
-      Future<void> test;
+      // We're not calling .data because we don't want the result to be Dartified,
+      // we want to keep the anonymous JS object.
+      final rawData = getProperty<Object>(event, 'data');
 
-      final backend = message[0] as String;
-      final wasmUri = Uri.parse(message[1] as String);
+      if (rawData is List) {
+        final backend = rawData[0] as String;
+        final wasmUri = Uri.parse(rawData[1] as String);
 
-      switch (backend) {
-        case 'memory':
-          final fs = InMemoryFileSystem();
-
-          test = _runTest(
-            open: () => fs,
-            close: (fs) async {},
-            wasmUri: wasmUri,
-          );
-          break;
-        case 'indexeddb':
-          test = _runTest(
-            open: () => IndexedDbFileSystem.open(dbName: 'worker-test'),
-            close: (fs) => fs.close(),
-            wasmUri: wasmUri,
-          );
-          break;
-        case 'opfs-simple':
-          test = _runTest(
-            open: () => SimpleOpfsFileSystem.loadFromStorage('worker-test'),
-            close: (fs) async {
-              fs.close();
-            },
-            wasmUri: wasmUri,
-          );
-          break;
-        default:
-          scope.postMessage([false]);
-          return;
+        _startTest(backend, wasmUri);
+      } else {
+        _startOpfsServer(rawData as WorkerOptions);
       }
-
-      test.then((value) => scope.postMessage([true]));
     });
   }, (error, stack) {
     // Inform the calling test in sqlite3_test.dart about the error
     scope.postMessage([false, error.toString(), stack.toString()]);
   });
+}
+
+Future<void> _startTest(String fsImplementation, Uri wasmUri) async {
+  Future<void> test;
+
+  switch (fsImplementation) {
+    case 'memory':
+      final fs = InMemoryFileSystem();
+
+      test = _runTest(
+        open: () => fs,
+        close: (fs) async {},
+        wasmUri: wasmUri,
+      );
+      break;
+    case 'indexeddb':
+      test = _runTest(
+        open: () => IndexedDbFileSystem.open(dbName: 'worker-test'),
+        close: (fs) => fs.close(),
+        wasmUri: wasmUri,
+      );
+      break;
+    case 'opfs-simple':
+      test = _runTest(
+        open: () => SimpleOpfsFileSystem.loadFromStorage('worker-test'),
+        close: (fs) async {
+          fs.close();
+        },
+        wasmUri: wasmUri,
+      );
+      break;
+    case 'opfs':
+      test = _runTest(
+        open: () async {
+          // Start another worker with this entrypoint to launch the OPFS
+          // server needed for synchronous access.
+          final options = WasmVfs.createOptions();
+
+          final worker = callConstructor<Worker>(
+              _worker, [DedicatedWorkerGlobalScope.instance.location]);
+          worker.postMessage(options);
+
+          // Wait for the worker to acknowledge it being ready
+          await worker.onMessage.first;
+
+          return WasmVfs(workerOptions: options);
+        },
+        close: (vfs) async {
+          vfs.close();
+        },
+        wasmUri: wasmUri,
+      );
+      break;
+    default:
+      DedicatedWorkerGlobalScope.instance.postMessage([false]);
+      return;
+  }
+
+  await test;
+  DedicatedWorkerGlobalScope.instance.postMessage([true]);
+}
+
+Future<void> _startOpfsServer(WorkerOptions options) async {
+  final worker = await VfsWorker.create(options);
+
+  // Inform the worker running the test that we're on it
+  DedicatedWorkerGlobalScope.instance.postMessage(true);
+  await worker.start();
 }
 
 void _expect(bool condition, String reason) {

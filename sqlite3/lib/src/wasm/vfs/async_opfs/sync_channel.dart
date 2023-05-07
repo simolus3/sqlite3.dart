@@ -181,6 +181,10 @@ enum WorkerOperation<Req extends Message, Res extends Message> {
     MessageSerializer.readFlags,
     MessageSerializer.readEmpty,
   ),
+  stopServer<EmptyMessage, EmptyMessage>(
+    MessageSerializer.readEmpty,
+    MessageSerializer.readEmpty,
+  ),
   ;
 
   final Req Function(MessageSerializer) readRequest;

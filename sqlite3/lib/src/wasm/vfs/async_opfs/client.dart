@@ -80,6 +80,10 @@ class WasmVfs extends BaseVirtualFileSystem {
     _runInWorker(WorkerOperation.xSleep, Flags(duration.inMilliseconds, 0, 0));
   }
 
+  void close() {
+    _runInWorker(WorkerOperation.stopServer, const EmptyMessage());
+  }
+
   static bool get supportsAtomicsAndSharedMemory {
     return Atomics.supported && hasProperty(globalThis, 'SharedArrayBuffer');
   }
