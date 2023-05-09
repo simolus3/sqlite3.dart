@@ -1,3 +1,3 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="com.example.sqlite3_flutter_libs">
+  package="eu.simonbinder.sqlite3_flutter_libs">
 </manifest>
