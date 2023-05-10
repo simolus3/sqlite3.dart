@@ -1,3 +1,7 @@
+## 0.5.5
+
+- Support Android projects built with Gradle 8.
+
 ## 0.5.4
 
 - Fix building `SQLCipher` on Windows - see the readme for more details.

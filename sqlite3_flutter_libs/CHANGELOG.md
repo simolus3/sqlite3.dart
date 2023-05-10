@@ -1,3 +1,7 @@
+## 0.5.14
+
+- Support Android projects built with Gradle 8.
+
 ## 0.5.13
 
 - Upgrade sqlite to version `3.41.0`.
