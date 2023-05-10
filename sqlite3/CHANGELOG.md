@@ -1,3 +1,8 @@
+## 1.11.1
+
+- Fix user-defined functions returning text not supporting multi-byte utf8
+  characters.
+
 ## 1.11.0
 
 - Add `WasmSqlite3.loadFromUrl` which uses a streaming `fetch()` request to

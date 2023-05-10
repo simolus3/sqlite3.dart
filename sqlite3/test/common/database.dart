@@ -696,22 +696,38 @@ void testDatabase(
     });
   });
 
-  test('accents in statements', () {
-    final table = 'télé'; // with accent
-    final column = 'mycolumn';
+  group('unicode handling', () {
+    test('accents in statements', () {
+      final table = 'télé'; // with accent
+      final column = 'mycolumn';
 
-    database
-      ..execute('''
+      database
+        ..execute('''
     CREATE TABLE $table (
       $column INTEGER
     )''')
-      ..execute('INSERT INTO $table($column) VALUES(1)');
+        ..execute('INSERT INTO $table($column) VALUES(1)');
 
-    final statement = database.prepare('SELECT * FROM $table;');
-    final cursor = statement.selectCursor();
-    expect(cursor.moveNext(), isTrue);
+      final statement = database.prepare('SELECT * FROM $table;');
+      final cursor = statement.selectCursor();
+      expect(cursor.moveNext(), isTrue);
 
-    database.dispose();
+      database.dispose();
+    });
+
+    test('return value of function', () {
+      database.createFunction(functionName: 'test', function: (args) => 'télé');
+
+      expect(database.select('SELECT test() AS r'), [
+        {'r': 'télé'}
+      ]);
+    });
+
+    test('parameter', () {
+      expect(database.select('SELECT ? AS r', ['télé']), [
+        {'r': 'télé'}
+      ]);
+    });
   });
 }
 

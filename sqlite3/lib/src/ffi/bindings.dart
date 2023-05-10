@@ -591,9 +591,10 @@ class FfiContext implements RawSqliteContext {
 
   @override
   void sqlite3_result_text(String text) {
-    final ptr = allocateBytes(utf8.encode(text));
+    final bytes = utf8.encode(text);
+    final ptr = allocateBytes(bytes);
 
-    bindings.sqlite3_result_text(context, ptr.cast(), text.length,
+    bindings.sqlite3_result_text(context, ptr.cast(), bytes.length,
         Pointer.fromAddress(SqlSpecialDestructor.SQLITE_TRANSIENT));
     ptr.free();
   }
