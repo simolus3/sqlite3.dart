@@ -103,7 +103,7 @@ extension FileSystemDirectoryHandleApi on FileSystemDirectoryHandle {
   }
 
   Stream<FileSystemHandle> list() {
-    return AsyncJavaScriptIteratable<List>(this)
+    return AsyncJavaScriptIteratable<List<Object?>>(this)
         .map((data) => data[1] as FileSystemHandle);
   }
 
