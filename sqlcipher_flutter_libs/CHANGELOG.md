@@ -1,3 +1,7 @@
+## 0.5.6
+
+- Upgrade `SQLCipher` to version `4.5.4` (https://www.zetetic.net/blog/2023/04/27/sqlcipher-4.5.4-release).
+
 ## 0.5.5
 
 - Support Android projects built with Gradle 8.
