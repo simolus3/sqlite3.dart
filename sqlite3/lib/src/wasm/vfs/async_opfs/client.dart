@@ -12,7 +12,7 @@ import '../utils.dart';
 import 'sync_channel.dart';
 import 'worker.dart';
 
-class WasmVfs extends BaseVirtualFileSystem {
+final class WasmVfs extends BaseVirtualFileSystem {
   final RequestResponseSynchronizer synchronizer;
   final MessageSerializer serializer;
 
@@ -72,7 +72,7 @@ class WasmVfs extends BaseVirtualFileSystem {
 
     final outFlags = result.flag0;
     final fd = result.flag1;
-    return XOpenResult(outFlags: outFlags, file: WasmFile(this, fd));
+    return (outFlags: outFlags, file: WasmFile(this, fd));
   }
 
   @override

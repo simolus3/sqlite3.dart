@@ -3,8 +3,10 @@
 // Don't include the default VFS implementations, we write our own
 #define SQLITE_OS_OTHER 1
 
-// Don't include locking code
+// Don't include locking code and WAL which require multiple threads to access
+// the same WASM module, something we can't do
 #define SQLITE_THREADSAFE 0
+#define SQLITE_OMIT_WAL 1
 
 // Our implementation of temporary files is also entirely in-memory,
 // so there really is no point in using temp files.
@@ -19,6 +21,10 @@
 #define SQLITE_OMIT_DECLTYPE 1
 #define SQLITE_USE_ALLOCA 1
 #define SQLITE_BYTEORDER 1234
+
+// This apparently improves performance: https://github.com/sqlite/sqlite/blob/b8d689b6668437e220fa329300e0541ff64e4ef6/ext/wasm/api/sqlite3-wasm.c#L57-L77
+#define SQLITE_DEFAULT_CACHE_SIZE -16384
+#define SQLITE_DEFAULT_PAGE_SIZE 8192
 
 // We have them, so we may as well let sqlite3 use them?
 #define HAVE_ISNAN 1

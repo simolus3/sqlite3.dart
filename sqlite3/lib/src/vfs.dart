@@ -39,7 +39,7 @@ class Sqlite3Filename {
 /// consider extending [BaseVirtualFileSystem].
 ///
 /// [vfs]: https://www.sqlite.org/c3ref/vfs.html
-abstract class VirtualFileSystem {
+abstract base class VirtualFileSystem {
   /// The name of this virtual file system.
   ///
   /// This can be passed as an URI parameter when opening databases to select
@@ -78,18 +78,12 @@ abstract class VirtualFileSystem {
 }
 
 /// The result of [VirtualFileSystem.xOpen].
-class XOpenResult {
-  final int outFlags;
-  final VirtualFileSystemFile file;
-
-  XOpenResult({required this.outFlags, required this.file});
-  // todo: Turn into record
-}
+typedef XOpenResult = ({int outFlags, VirtualFileSystemFile file});
 
 /// A file implemented by a VFS author and returned by [VirtualFileSystem.xOpen].
 ///
 /// To avoid common pitfalls, consider extending [BaseVfsFile] instead.
-abstract class VirtualFileSystemFile {
+abstract interface class VirtualFileSystemFile {
   /// Close this file.
   void xClose();
 
@@ -137,7 +131,7 @@ abstract class VirtualFileSystemFile {
 
 /// A [VirtualFileSystem] implementation that uses a [Random] instance for
 /// [xRandomness] and [DateTime.now] for [xCurrentTime].
-abstract class BaseVirtualFileSystem extends VirtualFileSystem {
+abstract base class BaseVirtualFileSystem extends VirtualFileSystem {
   final Random random;
 
   BaseVirtualFileSystem({Random? random, required String name})

@@ -1,3 +1,10 @@
+## 2.0.0-dev
+
+- __Breaking__: The WASM implementation no longer registers a default virtual
+  file system. Instead, `registerVirtualFileSystem` needs to be used to add
+  desired file system implementations.
+
+
 ## 1.11.1
 
 - Fix user-defined functions returning text not supporting multi-byte utf8

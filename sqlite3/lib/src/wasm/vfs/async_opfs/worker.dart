@@ -89,8 +89,7 @@ class VfsWorker {
   Future<_ResolvedPath> _resolvePath(String absolutePath,
       {bool createDirectories = false}) async {
     final fullPath = p.url.relative(absolutePath, from: '/');
-    final directories = p.url.split(fullPath);
-    final file = directories.removeLast();
+    final [...directories, file] = p.url.split(fullPath);
 
     var dirHandle = root;
     for (final entry in directories) {

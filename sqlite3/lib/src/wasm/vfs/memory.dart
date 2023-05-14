@@ -7,7 +7,7 @@ import '../../constants.dart';
 import '../../vfs.dart';
 import 'utils.dart';
 
-class InMemoryFileSystem extends BaseVirtualFileSystem {
+final class InMemoryFileSystem extends BaseVirtualFileSystem {
   final Map<String, Uint8List?> fileData = {};
 
   InMemoryFileSystem({super.name = 'dart-memory', super.random});
@@ -40,7 +40,7 @@ class InMemoryFileSystem extends BaseVirtualFileSystem {
       }
     }
 
-    return XOpenResult(
+    return (
       outFlags: 0,
       file: _InMemoryFile(
         this,

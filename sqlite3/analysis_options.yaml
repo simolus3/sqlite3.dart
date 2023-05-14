@@ -4,8 +4,3 @@ analyzer:
   language:
     strict-casts: true
     strict-raw-types: true
-
-linter:
-  rules:
-    # We already enable `parameter_assignments`, so this doesn't provide much value.
-    prefer_final_parameters: false
