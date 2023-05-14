@@ -2,7 +2,6 @@ import 'dart:js_util';
 import 'dart:typed_data';
 
 import '../implementation/sqlite3.dart';
-import '../sqlite3.dart';
 import '../vfs.dart';
 import 'bindings.dart';
 import 'js_interop.dart';
@@ -12,7 +11,7 @@ import 'wasm_interop.dart';
 ///
 /// This implementation supports the same API as the native version based on
 /// `dart:ffi`, but runs in the web.
-class WasmSqlite3 extends Sqlite3Implementation {
+final class WasmSqlite3 extends Sqlite3Implementation {
   /// Loads a web version of the sqlite3 libraries.
   ///
   /// [source] must be a byte buffer of a `sqlite.wasm` file prepared for this

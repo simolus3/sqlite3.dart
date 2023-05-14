@@ -4,7 +4,7 @@ import 'dart:typed_data';
 ///
 /// This is the only exception thrown by `package:sqlite3`. Additionally, errors
 /// might be thrown on api misuse.
-class SqliteException implements Exception {
+final class SqliteException implements Exception {
   /// An error message indicating what went wrong.
   final String message;
 

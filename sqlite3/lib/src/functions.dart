@@ -125,7 +125,7 @@ abstract class WindowFunction<V> implements AggregateFunction<V> {
 }
 
 /// Application-defined context used to compute results in aggregate functions.
-class AggregateContext<V> {
+final class AggregateContext<V> {
   /// The current value of this context.
   V value;
 

@@ -15,7 +15,7 @@ import 'bindings.dart';
 import 'memory.dart';
 import 'sqlite3.g.dart';
 
-class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
+final class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
   final FfiBindings ffiBindings;
 
   factory FfiSqlite3(DynamicLibrary library) {
@@ -77,7 +77,7 @@ class SqliteExtensionImpl implements SqliteExtension {
   SqliteExtensionImpl(this._resolveEntrypoint);
 }
 
-class FfiDatabaseImplementation extends DatabaseImplementation
+final class FfiDatabaseImplementation extends DatabaseImplementation
     implements Database {
   final FfiDatabase ffiDatabase;
 
@@ -219,7 +219,7 @@ class FfiDatabaseImplementation extends DatabaseImplementation
   }
 }
 
-class FfiStatementImplementation extends StatementImplementation
+final class FfiStatementImplementation extends StatementImplementation
     implements PreparedStatement {
   final FfiStatement ffiStatement;
 

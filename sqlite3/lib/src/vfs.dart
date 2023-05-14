@@ -5,7 +5,7 @@ import 'constants.dart';
 
 /// An exception thrown by [VirtualFileSystem] implementations written in Dart
 /// to signal that an operation could not be completed.
-class VfsException implements Exception {
+final class VfsException implements Exception {
   /// The error code to return to sqlite3.
   final int returnCode;
 
@@ -18,7 +18,7 @@ class VfsException implements Exception {
 }
 
 /// A filename passed to [VirtualFileSystem.xOpen].
-class Sqlite3Filename {
+base class Sqlite3Filename {
   final String? path;
 
   Sqlite3Filename(this.path);

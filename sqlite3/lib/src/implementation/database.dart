@@ -22,7 +22,7 @@ import 'utils.dart';
 /// This is extracted into separate object so that it can be used as a
 /// finalization token. It will get disposed when the main database is no longer
 /// reachable without being closed.
-class FinalizableDatabase extends FinalizablePart {
+final class FinalizableDatabase extends FinalizablePart {
   final RawSqliteBindings bindings;
   final RawSqliteDatabase database;
 
@@ -51,7 +51,7 @@ class FinalizableDatabase extends FinalizablePart {
   }
 }
 
-class DatabaseImplementation implements CommonDatabase {
+base class DatabaseImplementation implements CommonDatabase {
   final RawSqliteBindings bindings;
   final RawSqliteDatabase database;
 

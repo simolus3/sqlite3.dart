@@ -12,7 +12,7 @@ import 'wasm_interop.dart';
 
 // ignore_for_file: non_constant_identifier_names
 
-class WasmSqliteBindings implements RawSqliteBindings {
+final class WasmSqliteBindings extends RawSqliteBindings {
   final wasm.WasmBindings bindings;
 
   WasmSqliteBindings(this.bindings);
@@ -103,7 +103,7 @@ class WasmSqliteBindings implements RawSqliteBindings {
   }
 }
 
-class WasmDatabase implements RawSqliteDatabase {
+final class WasmDatabase extends RawSqliteDatabase {
   final wasm.WasmBindings bindings;
   final wasm.Pointer db;
 
@@ -247,7 +247,7 @@ class WasmDatabase implements RawSqliteDatabase {
   }
 }
 
-class WasmStatementCompiler implements RawStatementCompiler {
+final class WasmStatementCompiler extends RawStatementCompiler {
   final WasmDatabase database;
   final Pointer sql;
   final Pointer stmtOut;
@@ -290,7 +290,7 @@ class WasmStatementCompiler implements RawStatementCompiler {
   }
 }
 
-class WasmStatement implements RawSqliteStatement {
+final class WasmStatement extends RawSqliteStatement {
   final WasmDatabase database;
   final Pointer stmt;
   final WasmBindings bindings;
@@ -430,7 +430,7 @@ class WasmStatement implements RawSqliteStatement {
   bool get supportsReadingTableNameForColumn => false;
 }
 
-class WasmContext extends RawSqliteContext {
+final class WasmContext extends RawSqliteContext {
   final WasmBindings bindings;
   final Pointer context;
   final DartCallbacks callbacks;
@@ -521,7 +521,7 @@ class WasmContext extends RawSqliteContext {
   }
 }
 
-class WasmValue extends RawSqliteValue {
+final class WasmValue extends RawSqliteValue {
   final WasmBindings bindings;
   final Pointer value;
 

@@ -93,7 +93,7 @@ DynamicLibrary _defaultOpen() {
 /// The default behavior can be overridden for a specific OS by using
 /// [overrideFor]. To override the behavior on all platforms, use
 /// [overrideForAll].
-class OpenDynamicLibrary {
+final class OpenDynamicLibrary {
   final Map<OperatingSystem, OpenLibrary> _overriddenPlatforms = {};
   OpenLibrary? _overriddenForAll;
 

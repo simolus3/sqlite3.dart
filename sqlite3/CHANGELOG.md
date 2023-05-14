@@ -3,7 +3,9 @@
 - __Breaking__: The WASM implementation no longer registers a default virtual
   file system. Instead, `registerVirtualFileSystem` needs to be used to add
   desired file system implementations.
-
+- __Breaking__: Fix a typo, `CommmonSqlite3` is now called `CommonSqlite3`.
+- __Breaking__: Introduce class modifiers on classes of this package that aren't
+  meant to be extended or implemented by users.
 
 ## 1.11.1
 

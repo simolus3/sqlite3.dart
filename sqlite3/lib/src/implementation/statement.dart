@@ -7,7 +7,7 @@ import 'exception.dart';
 import 'finalizer.dart';
 import 'utils.dart';
 
-class FinalizableStatement extends FinalizablePart {
+final class FinalizableStatement extends FinalizablePart {
   final RawSqliteStatement statement;
 
   bool _inResetState = true;
@@ -34,7 +34,7 @@ class FinalizableStatement extends FinalizablePart {
   }
 }
 
-class StatementImplementation implements CommonPreparedStatement {
+base class StatementImplementation implements CommonPreparedStatement {
   final RawSqliteStatement statement;
   final DatabaseImplementation database;
   final FinalizableStatement finalizable;

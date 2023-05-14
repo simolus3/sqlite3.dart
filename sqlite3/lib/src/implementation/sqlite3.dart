@@ -7,7 +7,7 @@ import 'bindings.dart';
 import 'database.dart';
 import 'exception.dart';
 
-class Sqlite3Implementation implements CommonSqlite3 {
+base class Sqlite3Implementation implements CommonSqlite3 {
   final RawSqliteBindings bindings;
 
   Sqlite3Implementation(this.bindings);

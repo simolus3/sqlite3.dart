@@ -7,10 +7,10 @@ import 'package:test/test.dart';
 import 'utils.dart';
 
 void testDatabase(
-  FutureOr<CommmonSqlite3> Function() loadSqlite, {
+  FutureOr<CommonSqlite3> Function() loadSqlite, {
   bool hasColumnMetadata = false,
 }) {
-  late CommmonSqlite3 sqlite3;
+  late CommonSqlite3 sqlite3;
   late CommonDatabase database;
 
   setUpAll(() async => sqlite3 = await loadSqlite());

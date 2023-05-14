@@ -7,10 +7,10 @@ import 'package:test/test.dart';
 import 'utils.dart';
 
 void testPreparedStatements(
-  FutureOr<CommmonSqlite3> Function() loadSqlite, {
+  FutureOr<CommonSqlite3> Function() loadSqlite, {
   bool supportsReturning = true,
 }) {
-  late CommmonSqlite3 sqlite3;
+  late CommonSqlite3 sqlite3;
 
   setUpAll(() async => sqlite3 = await loadSqlite());
 

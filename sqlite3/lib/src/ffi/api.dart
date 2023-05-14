@@ -1,7 +1,5 @@
 import 'dart:ffi';
 
-import 'package:meta/meta.dart';
-
 import '../../open.dart';
 import '../database.dart';
 import '../sqlite3.dart';
@@ -16,7 +14,7 @@ Sqlite3 get sqlite3 {
 }
 
 /// Provides access to `sqlite3` functions, such as opening new databases.
-abstract class Sqlite3 implements CommmonSqlite3 {
+abstract interface class Sqlite3 implements CommonSqlite3 {
   @override
   Database open(
     String filename, {
@@ -61,7 +59,6 @@ abstract class Sqlite3 implements CommmonSqlite3 {
 /// For an example of how to write and load extensions, see
 ///  - this C file: https://github.com/simolus3/sqlite3.dart/blob/main/sqlite3/test/ffi/test_extension.c
 ///  - this Dart test loading it: https://github.com/simolus3/sqlite3.dart/blob/a9a379494c6b8d58a3c31cf04fe16e83b49130f1/sqlite3/test/ffi/sqlite3_test.dart#L35
-@sealed
 class SqliteExtension {
   /// A sqlite extension having the given [extensionEntrypoint] as a function
   /// pointer.

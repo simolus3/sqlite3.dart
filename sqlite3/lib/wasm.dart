@@ -16,7 +16,7 @@ library sqlite3.wasm;
 
 import 'package:meta/meta.dart';
 
-export 'common.dart' hide CommmonSqlite3;
+export 'common.dart';
 
 export 'src/wasm/vfs/memory.dart' show InMemoryFileSystem;
 export 'src/wasm/vfs/simple_opfs.dart' show SimpleOpfsFileSystem;
