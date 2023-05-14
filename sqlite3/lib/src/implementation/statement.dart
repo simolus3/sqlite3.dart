@@ -211,27 +211,29 @@ base class StatementImplementation implements CommonPreparedStatement {
   }
 
   void _bindParam(Object? param, int i) {
-    if (param == null) {
-      statement.sqlite3_bind_null(i);
-    } else if (param is int) {
-      statement.sqlite3_bind_int64(i, param);
-    } else if (param is BigInt) {
-      statement.sqlite3_bind_int64BigInt(i, param.checkRange);
-    } else if (param is bool) {
-      statement.sqlite3_bind_int64(i, param ? 1 : 0);
-    } else if (param is double) {
-      statement.sqlite3_bind_double(i, param);
-    } else if (param is String) {
-      statement.sqlite3_bind_text(i, param);
-    } else if (param is List<int>) {
-      statement.sqlite3_bind_blob64(i, param);
-    } else {
-      throw ArgumentError.value(
-        param,
-        'params[$i]',
-        'Allowed parameters must either be null or bool, int, num, String or '
-            'List<int>.',
-      );
+    // TODO: Replace with switch expression after https://github.com/dart-lang/sdk/issues/52234
+    switch (param) {
+      case null:
+        statement.sqlite3_bind_null(i);
+      case int():
+        statement.sqlite3_bind_int64(i, param);
+      case BigInt():
+        statement.sqlite3_bind_int64BigInt(i, param.checkRange);
+      case bool():
+        statement.sqlite3_bind_int64(i, param ? 1 : 0);
+      case double():
+        statement.sqlite3_bind_double(i, param);
+      case String():
+        statement.sqlite3_bind_text(i, param);
+      case List<int>():
+        statement.sqlite3_bind_blob64(i, param);
+      default:
+        throw ArgumentError.value(
+          param,
+          'params[$i]',
+          'Allowed parameters must either be null or bool, int, num, String or '
+              'List<int>.',
+        );
     }
   }
 

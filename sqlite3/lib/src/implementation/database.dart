@@ -472,22 +472,24 @@ extension on RawSqliteContext {
   }
 
   void setResult(Object? result) {
-    if (result == null) {
-      sqlite3_result_null();
-    } else if (result is int) {
-      sqlite3_result_int64(result);
-    } else if (result is BigInt) {
-      sqlite3_result_int64(result.checkRange.toInt());
-    } else if (result is double) {
-      sqlite3_result_double(result);
-    } else if (result is bool) {
-      sqlite3_result_int64(result ? 1 : 0);
-    } else if (result is String) {
-      sqlite3_result_text(result);
-    } else if (result is List<int>) {
-      sqlite3_result_blob64(result);
-    } else {
-      throw ArgumentError.value(result, 'result', 'Unsupported type');
+    // TODO: Replace with switch expression after https://github.com/dart-lang/sdk/issues/52234
+    switch (result) {
+      case null:
+        sqlite3_result_null();
+      case int():
+        sqlite3_result_int64(result);
+      case BigInt():
+        sqlite3_result_int64BigInt(result.checkRange);
+      case double():
+        sqlite3_result_double(result);
+      case bool():
+        sqlite3_result_int64(result ? 1 : 0);
+      case String():
+        sqlite3_result_text(result);
+      case List<int>():
+        sqlite3_result_blob64(result);
+      default:
+        throw ArgumentError.value(result, 'result', 'Unsupported type');
     }
   }
 }
