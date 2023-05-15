@@ -165,11 +165,13 @@ void testPreparedStatements(
   test('can bind named parameters', () {
     final db = sqlite3.openInMemory();
     final stmt = db.prepare('SELECT ?1, :a, @b');
-    final result = stmt.selectMap({
-      '?1': 'first',
-      ':a': 'second',
-      '@b': 'third',
-    }).single;
+    final result = stmt
+        .selectWith(StatementParameters.named({
+          '?1': 'first',
+          ':a': 'second',
+          '@b': 'third',
+        }))
+        .single;
 
     expect(result.values, ['first', 'second', 'third']);
   });
@@ -192,18 +194,22 @@ void testPreparedStatements(
 
     test('when not all names are covered', () {
       final stmt = db.prepare('SELECT :a, @b');
-      expect(() => stmt.executeMap({':a': 'a'}), throwsArgumentError);
+      expect(() => stmt.executeWith(StatementParameters.named({':a': 'a'})),
+          throwsArgumentError);
     });
 
     test('when an invalid name is passed', () {
       final stmt = db.prepare('SELECT :a, @b');
-      expect(() => stmt.executeMap({':a': 'a', '@b': 'b', ':c': 'c'}),
+      expect(
+          () => stmt.executeWith(
+              StatementParameters.named({':a': 'a', '@b': 'b', ':c': 'c'})),
           throwsArgumentError);
     });
 
     test('when named parameters are empty', () {
       final stmt = db.prepare('SELECT :a, @b');
-      expect(() => stmt.executeMap({}), throwsArgumentError);
+      expect(() => stmt.executeWith(const StatementParameters.named({})),
+          throwsArgumentError);
     });
   });
 
@@ -225,6 +231,16 @@ void testPreparedStatements(
     expect(result3.single.columnAt(0), '');
 
     opened.dispose();
+  });
+
+  test('does not validate custom parameters', () {
+    final opened = sqlite3.openInMemory();
+    addTearDown(opened.dispose);
+
+    final stmt = opened.prepare('SELECT ? AS r');
+    expect(stmt.selectWith(StatementParameters.bindCustom((stmt) {})), [
+      {'r': null}
+    ]);
   });
 
   group('cursors', () {

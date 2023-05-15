@@ -222,19 +222,26 @@ void testDatabase(
 
       test('for prepared statements with map', () {
         final stmt = database.prepare('SELECT :a, throw_if_3(:b)');
-
-        expect(
-          () => stmt.selectMap({':a': 1, ':b': 3}),
-          throwsA(
-            sqlite3Exception(
-              'selecting from statement',
-              'SELECT :a, throw_if_3(:b)',
-              [1, 3],
-              contains(
-                'Causing statement: SELECT :a, throw_if_3(:b), parameters: 1, 3',
-              ),
+        final expectation = throwsA(
+          sqlite3Exception(
+            'selecting from statement',
+            'SELECT :a, throw_if_3(:b)',
+            [1, 3],
+            contains(
+              'Causing statement: SELECT :a, throw_if_3(:b), parameters: 1, 3',
             ),
           ),
+        );
+
+        expect(
+          // ignore: deprecated_member_use_from_same_package
+          () => stmt.selectMap({':a': 1, ':b': 3}),
+          expectation,
+        );
+
+        expect(
+          () => stmt.selectWith(StatementParameters.named({':a': 1, ':b': 3})),
+          expectation,
         );
       });
 

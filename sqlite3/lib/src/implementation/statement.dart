@@ -34,7 +34,7 @@ final class FinalizableStatement extends FinalizablePart {
   }
 }
 
-base class StatementImplementation implements CommonPreparedStatement {
+base class StatementImplementation extends CommonPreparedStatement {
   final RawSqliteStatement statement;
   final DatabaseImplementation database;
   final FinalizableStatement finalizable;
@@ -160,7 +160,7 @@ base class StatementImplementation implements CommonPreparedStatement {
     }
   }
 
-  void _bindParams(List<Object?>? params) {
+  void _bindIndexedParams(List<Object?>? params) {
     _ensureMatchingParameters(params);
     if (params == null || params.isEmpty) return;
 
@@ -237,6 +237,17 @@ base class StatementImplementation implements CommonPreparedStatement {
     }
   }
 
+  void _bindParams(StatementParameters parameters) {
+    switch (parameters) {
+      case IndexedParameters():
+        _bindIndexedParams(parameters.parameters);
+      case NamedParameters():
+        _bindMapParams(parameters.parameters);
+      case CustomParameters():
+        parameters.bind(this);
+    }
+  }
+
   @override
   void dispose() {
     if (!finalizable._closed) {
@@ -248,29 +259,7 @@ base class StatementImplementation implements CommonPreparedStatement {
   }
 
   @override
-  void execute([List<Object?> parameters = const <Object>[]]) {
-    _ensureNotFinalized();
-
-    _reset();
-    _bindParams(parameters);
-    _execute();
-  }
-
-  @override
-  void executeMap(Map<String, Object?> parameters) {
-    _ensureNotFinalized();
-
-    _reset();
-    _bindMapParams(parameters);
-
-    _execute();
-  }
-
-  @override
-  int get parameterCount => statement.sqlite3_bind_parameter_count();
-
-  @override
-  ResultSet select([List<Object?> parameters = const <Object>[]]) {
+  ResultSet selectWith(StatementParameters parameters) {
     _ensureNotFinalized();
 
     _reset();
@@ -280,7 +269,16 @@ base class StatementImplementation implements CommonPreparedStatement {
   }
 
   @override
-  IteratingCursor selectCursor([List<Object?> parameters = const <Object>[]]) {
+  void executeWith(StatementParameters parameters) {
+    _ensureNotFinalized();
+
+    _reset();
+    _bindParams(parameters);
+    _execute();
+  }
+
+  @override
+  IteratingCursor iterateWith(StatementParameters parameters) {
     _ensureNotFinalized();
 
     _reset();
@@ -290,6 +288,9 @@ base class StatementImplementation implements CommonPreparedStatement {
     final tableNames = _tableNames;
     return _currentCursor = _ActiveCursorIterator(this, names, tableNames);
   }
+
+  @override
+  int get parameterCount => statement.sqlite3_bind_parameter_count();
 
   @override
   ResultSet selectMap(Map<String, Object?> parameters) {
