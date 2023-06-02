@@ -331,6 +331,27 @@ void testPreparedStatements(
       expect(cursor.moveNext(), isFalse);
     });
 
+    test('handles recompilations while running', () {
+      final opened = sqlite3.openInMemory()
+        ..execute('create table t (c1)')
+        ..execute('insert into t values (1)')
+        ..execute('insert into t values (2)');
+      addTearDown(opened.dispose);
+
+      final stmt = opened.prepare('select * from t');
+      final cursor = stmt.selectCursor();
+
+      expect(cursor.moveNext(), isTrue);
+      expect(cursor.current, {'c1': 1});
+
+      opened.execute('alter table t add column c2 default 2');
+
+      // alter statements while the cursor is iterating don't seem to be causing
+      // a recompile
+      expect(cursor.moveNext(), isTrue);
+      expect(cursor.current, {'c1': 2});
+    });
+
     group('are closed', () {
       test('by closing the prepared statement', () {
         final stmt = database.prepare('VALUES (1), (2), (3);');
