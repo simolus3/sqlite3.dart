@@ -110,14 +110,21 @@ class StatementImplementation implements CommonPreparedStatement {
   }
 
   ResultSet _selectResults() {
-    final names = _columnNames;
-    final tableNames = _tableNames;
-    final columnCount = names.length;
     final rows = <List<Object?>>[];
     finalizable._inResetState = false;
 
+    int columnCount = -1;
+
     int resultCode;
     while ((resultCode = _step()) == SqlError.SQLITE_ROW) {
+      // sqlite3_column_count() must be called after _step() because step() can
+      // re-compile the statement after schema changes, potentially leading to
+      // a different amount of columns.
+      if (columnCount == -1) {
+        columnCount = statement.sqlite3_column_count();
+      }
+
+      assert(columnCount >= 0);
       rows.add(<Object?>[for (var i = 0; i < columnCount; i++) _readValue(i)]);
     }
 
@@ -131,6 +138,9 @@ class StatementImplementation implements CommonPreparedStatement {
         statementArgs: _latestArguments,
       );
     }
+
+    final names = _columnNames;
+    final tableNames = _tableNames;
 
     return ResultSet(names, tableNames, rows);
   }
@@ -284,9 +294,7 @@ class StatementImplementation implements CommonPreparedStatement {
     _reset();
     _bindParams(parameters);
 
-    final names = _columnNames;
-    final tableNames = _tableNames;
-    return _currentCursor = _ActiveCursorIterator(this, names, tableNames);
+    return _currentCursor = _ActiveCursorIterator(this);
   }
 
   @override
@@ -302,19 +310,23 @@ class StatementImplementation implements CommonPreparedStatement {
 
 class _ActiveCursorIterator extends IteratingCursor {
   final StatementImplementation statement;
-  final int columnCount;
+  int columnCount = -1;
 
   @override
   late Row current;
 
+  /// We can only reliably know the columns of a statement after step() has been
+  /// called once.
+  ///
+  /// However, that also consumes a row which must happen in [moveNext]. This
+  /// interface unfortunately exposes the column names directly - the information
+  /// is potentially incorrect at the beginning but correct at the first row.
+  /// This design issue is documented on [IteratingCursor].
+  bool _hasReliableColumnNames = false;
+
   _ActiveCursorIterator(
     this.statement,
-    List<String> columnNames,
-    List<String?>? tableNames,
-  )   : columnCount = columnNames.length,
-        super(columnNames, tableNames) {
-    statement.finalizable._inResetState = false;
-  }
+  ) : super(statement._columnNames, statement._tableNames);
 
   @override
   bool moveNext() {
@@ -325,6 +337,13 @@ class _ActiveCursorIterator extends IteratingCursor {
     final result = statement._step();
 
     if (result == SqlError.SQLITE_ROW) {
+      if (!_hasReliableColumnNames) {
+        columnCount = statement.statement.sqlite3_column_count();
+        columnNames = statement._columnNames;
+        _hasReliableColumnNames = true;
+      }
+
+      assert(columnCount >= 0);
       final rowData = <Object?>[
         for (var i = 0; i < columnCount; i++) statement._readValue(i)
       ];

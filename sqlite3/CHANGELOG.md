@@ -1,3 +1,8 @@
+## 1.11.2
+
+- Report correct column names for statements that have been re-compiled due to
+  schema changes.
+
 ## 1.11.1
 
 - Fix user-defined functions returning text not supporting multi-byte utf8
