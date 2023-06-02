@@ -326,7 +326,9 @@ class _ActiveCursorIterator extends IteratingCursor {
 
   _ActiveCursorIterator(
     this.statement,
-  ) : super(statement._columnNames, statement._tableNames);
+  ) : super(statement._columnNames, statement._tableNames) {
+    statement.finalizable._inResetState = false;
+  }
 
   @override
   bool moveNext() {
