@@ -1,14 +1,23 @@
 import 'dart:collection';
 
 import 'package:collection/collection.dart';
+import 'package:meta/meta.dart';
 
 /// Base class for result sets.
 ///
 /// Result sets are either completely materialized ([ResultSet] with all rows
 /// being directly available), or executed row-by-row ([IteratingCursor]).
 sealed class Cursor {
+  List<String> _columnNames;
+
   /// The column names of this query, as returned by `sqlite3`.
-  final List<String> columnNames;
+  List<String> get columnNames => _columnNames;
+
+  @protected
+  set columnNames(List<String> names) {
+    _columnNames = names;
+    _calculateIndexes();
+  }
 
   /// The table names of this query, as returned by `sqlite3`.
   ///
@@ -18,19 +27,30 @@ sealed class Cursor {
   /// C-preprocessor symbol.
   /// More information in https://www.sqlite.org/c3ref/column_database_name.html.
   final List<String?>? tableNames;
+
   // a result set can have multiple columns with the same name, but that's rare
   // and users usually use a name as index. So we cache that for O(1) lookups
-  final Map<String, int> _calculatedIndexes;
+  Map<String, int> _calculatedIndexes = const {};
 
-  Cursor(this.columnNames, this.tableNames)
-      : _calculatedIndexes = {
-          for (var column in columnNames)
-            column: columnNames.lastIndexOf(column),
-        };
+  Cursor(this._columnNames, this.tableNames) {
+    _calculateIndexes();
+  }
+
+  void _calculateIndexes() {
+    _calculatedIndexes = {
+      for (var column in _columnNames) column: _columnNames.lastIndexOf(column),
+    };
+  }
 }
 
-/// A [Cursor] that can only be read once, obtaining rows from the database as
-/// necessary.
+/// A [Cursor] that can only be read once, obtaining rows from the database "on
+/// the fly" as [moveNext] is called.
+///
+/// This class provides [columnNames] and [tableNames]. Since sqlite3 statements
+/// are dynamically re-compiled by sqlite3 in response to schema changes, column
+/// names might change in the first call to [moveNext]. So, these getters are
+/// only reliable after [moveNext] was called once (regardless of its return
+/// value).
 abstract class IteratingCursor extends Cursor implements Iterator<Row> {
   IteratingCursor(List<String> columnNames, List<String?>? tableNames)
       : super(columnNames, tableNames);

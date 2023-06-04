@@ -243,6 +243,24 @@ void testPreparedStatements(
     ]);
   });
 
+  test('handles recompilations', () {
+    final opened = sqlite3.openInMemory()
+      ..execute('create table t (c1)')
+      ..execute('insert into t values (1)');
+    addTearDown(opened.dispose);
+
+    final stmt = opened.prepare('select * from t');
+    expect(stmt.select(), [
+      {'c1': 1}
+    ]);
+
+    opened.execute('alter table t add column c2 default 2');
+
+    expect(stmt.select(), [
+      {'c1': 1, 'c2': 2}
+    ]);
+  });
+
   group('cursors', () {
     late CommonDatabase database;
 
@@ -304,6 +322,50 @@ void testPreparedStatements(
 
       expect(cursor.moveNext, throwsA(isA<SqliteException>()));
       expect(cursor.moveNext(), isFalse);
+    });
+
+    test('handle recompilations while not running', () {
+      final opened = sqlite3.openInMemory()
+        ..execute('create table t (c1)')
+        ..execute('insert into t values (1)');
+      addTearDown(opened.dispose);
+
+      final stmt = opened.prepare('select * from t');
+      var cursor = stmt.selectCursor();
+
+      expect(cursor.moveNext(), isTrue);
+      expect(cursor.current, {'c1': 1});
+      expect(cursor.moveNext(), isFalse);
+
+      opened.execute('alter table t add column c2 default 2');
+      cursor = stmt.selectCursor();
+      expect(cursor.columnNames, ['c1']);
+
+      expect(cursor.moveNext(), isTrue);
+      expect(cursor.columnNames, ['c1', 'c2']);
+      expect(cursor.current, {'c1': 1, 'c2': 2});
+      expect(cursor.moveNext(), isFalse);
+    });
+
+    test('handles recompilations while running', () {
+      final opened = sqlite3.openInMemory()
+        ..execute('create table t (c1)')
+        ..execute('insert into t values (1)')
+        ..execute('insert into t values (2)');
+      addTearDown(opened.dispose);
+
+      final stmt = opened.prepare('select * from t');
+      final cursor = stmt.selectCursor();
+
+      expect(cursor.moveNext(), isTrue);
+      expect(cursor.current, {'c1': 1});
+
+      opened.execute('alter table t add column c2 default 2');
+
+      // alter statements while the cursor is iterating don't seem to be causing
+      // a recompile
+      expect(cursor.moveNext(), isTrue);
+      expect(cursor.current, {'c1': 2});
     });
 
     group('are closed', () {
