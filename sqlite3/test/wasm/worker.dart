@@ -3,8 +3,6 @@ import 'dart:html';
 import 'dart:js_util';
 
 import 'package:js/js.dart';
-import 'package:sqlite3/src/wasm/vfs/async_opfs/client.dart';
-import 'package:sqlite3/src/wasm/vfs/async_opfs/worker.dart';
 import 'package:sqlite3/wasm.dart';
 
 @JS('Worker')
