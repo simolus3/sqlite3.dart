@@ -11,6 +11,7 @@ final class FinalizableStatement extends FinalizablePart {
   final RawSqliteStatement statement;
 
   bool _inResetState = true;
+  bool _hasAllocatedArguments = false;
   bool _closed = false;
 
   FinalizableStatement(this.statement);
@@ -20,6 +21,7 @@ final class FinalizableStatement extends FinalizablePart {
     if (!_closed) {
       _closed = true;
       _reset();
+      _deallocateArguments();
       statement.sqlite3_finalize();
     }
   }
@@ -29,8 +31,13 @@ final class FinalizableStatement extends FinalizablePart {
       statement.sqlite3_reset();
       _inResetState = true;
     }
+  }
 
-    statement.deallocateArguments();
+  void _deallocateArguments() {
+    if (_hasAllocatedArguments) {
+      _hasAllocatedArguments = false;
+      statement.deallocateArguments();
+    }
   }
 }
 
@@ -83,8 +90,12 @@ base class StatementImplementation extends CommonPreparedStatement {
 
   int _step() => statement.sqlite3_step();
 
-  void _reset() {
+  void _reset({bool invalidateArgs = true}) {
     finalizable._reset();
+    if (invalidateArgs) {
+      finalizable._deallocateArguments();
+    }
+
     _currentCursor = null;
   }
 
@@ -256,6 +267,11 @@ base class StatementImplementation extends CommonPreparedStatement {
       case CustomParameters():
         parameters.bind(this);
     }
+  }
+
+  @override
+  void reset() {
+    _reset(invalidateArgs: false);
   }
 
   @override

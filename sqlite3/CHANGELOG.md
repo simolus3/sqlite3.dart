@@ -6,6 +6,7 @@
 - __Breaking__: Fix a typo, `CommmonSqlite3` is now called `CommonSqlite3`.
 - __Breaking__: Introduce class modifiers on classes of this package that aren't
   meant to be extended or implemented by users.
+- Add `PreparedStatement.reset()`.
 
 ## 1.11.2
 

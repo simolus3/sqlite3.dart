@@ -261,6 +261,25 @@ void testPreparedStatements(
     ]);
   });
 
+  test('reset', () {
+    final opened = sqlite3.openInMemory()
+      ..execute('create table t (c1)')
+      ..execute('begin;');
+
+    final stmt = opened.prepare('insert into t values (1), (2) returning c1');
+    final cursor = stmt.selectCursor();
+    expect(cursor.moveNext(), isTrue);
+
+    // This fails due to the pending write of the active statement
+    expect(() => opened.execute('commit'), throwsSqlError(5, 5));
+
+    stmt.reset();
+    expect(cursor.moveNext(), isFalse);
+
+    opened.execute('commit');
+    opened.dispose();
+  });
+
   group('cursors', () {
     late CommonDatabase database;
 
@@ -376,6 +395,16 @@ void testPreparedStatements(
 
         stmt.dispose();
         expect(cursor.moveNext(), isFalse);
+      });
+
+      test('by resetting the prepared statement', () {
+        final stmt = database.prepare('VALUES (1), (2), (3);');
+        final cursor = stmt.selectCursor();
+        expect(cursor.moveNext(), isTrue);
+
+        stmt.reset();
+        expect(cursor.moveNext(), isFalse);
+        stmt.dispose();
       });
 
       test('by invoking select', () {

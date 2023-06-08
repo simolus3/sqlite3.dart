@@ -85,6 +85,17 @@ abstract class CommonPreparedStatement {
     return iterateWith(StatementParameters(parameters));
   }
 
+  /// Resets this statement to be excuted again.
+  ///
+  /// You typically don't need to call [reset] manually as it is called for you
+  /// internally when [select] or [execute] called multiple times.
+  /// However, [reset] removes all active cursors on this statement, which can
+  /// be useful if a statement is re-used across longer periods of time.
+  ///
+  /// See also:
+  ///  - [sqlite3_reset]: https://www.sqlite.org/c3ref/reset.html
+  void reset();
+
   /// Disposes this statement and releases associated memory.
   void dispose();
 }
