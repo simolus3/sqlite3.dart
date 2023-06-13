@@ -32,7 +32,7 @@ class WorkerOptions {
 
   factory WorkerOptions({
     int clientVersion = protocolVersion,
-    String root = 'pkg_sqlite3_db/',
+    required String root,
     required SharedArrayBuffer synchronizationBuffer,
     required SharedArrayBuffer communicationBuffer,
   }) {
@@ -101,19 +101,16 @@ class VfsWorker {
   }
 
   Future<Flags> _xAccess(NameAndInt32Flags flags) async {
-    var rc = 0;
-
     try {
       final resolved = await _resolvePath(flags.name);
 
       // If we can open the file, it exists. For OPFS, that means that it's both
       // readable and writable.
       await resolved.openFile();
+      return Flags(1, 0, 0);
     } catch (e) {
-      rc = SqlError.SQLITE_IOERR;
+      return Flags(0, 0, 0);
     }
-
-    return Flags(rc, 0, 0);
   }
 
   Future<void> _xDelete(NameAndInt32Flags options) async {

@@ -44,7 +44,7 @@ final class WasmVfs extends BaseVirtualFileSystem {
   @override
   int xAccess(String path, int flags) {
     final res = _runInWorker(
-        WorkerOperation.xAccess, NameAndInt32Flags(name, flags, 0, 0));
+        WorkerOperation.xAccess, NameAndInt32Flags(path, flags, 0, 0));
     return res.flag0;
   }
 
@@ -88,11 +88,12 @@ final class WasmVfs extends BaseVirtualFileSystem {
     return Atomics.supported && hasProperty(globalThis, 'SharedArrayBuffer');
   }
 
-  static WorkerOptions createOptions() {
+  static WorkerOptions createOptions({String root = 'pkg_sqlite3_db/'}) {
     return WorkerOptions(
       synchronizationBuffer:
           SharedArrayBuffer(RequestResponseSynchronizer.byteLength),
       communicationBuffer: SharedArrayBuffer(MessageSerializer.totalSize),
+      root: root,
     );
   }
 }
