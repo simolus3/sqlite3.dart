@@ -108,6 +108,12 @@ abstract class CommonPreparedStatement {
 /// pass parameters by their index or by name. The different constructors of
 /// this class can be used to control how parameters are passed.
 ///
+/// This package supports binding [int], [BigInt], [String], [double], `List<int>`
+/// and `null` values by default. For custom values, such as those using the
+/// [pointer-binding](https://www.sqlite.org/bindptr.html) interface provided by
+/// `sqlite3`, [CustomStatementParameter] can be implemented and passed as a
+/// parameter as well.
+///
 /// [parameters]: https://www.sqlite.org/lang_expr.html#varparam
 sealed class StatementParameters {
   /// Convenience factory to use when no parameters should be passed.
@@ -156,4 +162,22 @@ class CustomParameters implements StatementParameters {
   final void Function(CommonPreparedStatement) bind;
 
   const CustomParameters(this.bind);
+}
+
+/// A parameter passed to prepared statements that decides how it gets mapped to
+/// SQL in [applyTo].
+///
+/// Implementing and using this class is rarely useful, as this package supports
+/// standard types supported by `sqlite3` directly.
+/// For advanced APIs, such as the [pointer-passing](https://www.sqlite.org/bindptr.html)
+/// interface that can't directly be represented in a high-level Dart interface,
+/// this class can be used to manually bind a value.
+abstract interface class CustomStatementParameter {
+  /// Applies this custom parameter to the [statement] at the variable index
+  /// [index].
+  ///
+  /// On native platforms, an implementation can safely cast the `statement` to
+  /// a `PreparedStatement` (from `package:sqlite3/sqlite3.dart`) and use the
+  /// `PreparedStatement.handle` to call `sqlite3_bind_*` manually.
+  void applyTo(CommonPreparedStatement statement, int index);
 }

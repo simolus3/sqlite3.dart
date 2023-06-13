@@ -8,5 +8,6 @@ export 'src/exception.dart';
 export 'src/functions.dart';
 export 'src/result_set.dart';
 export 'src/sqlite3.dart';
-export 'src/statement.dart' show CommonPreparedStatement, StatementParameters;
+export 'src/statement.dart'
+    show CommonPreparedStatement, StatementParameters, CustomStatementParameter;
 export 'src/vfs.dart';

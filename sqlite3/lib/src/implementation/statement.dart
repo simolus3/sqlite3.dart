@@ -248,6 +248,8 @@ base class StatementImplementation extends CommonPreparedStatement {
         statement.sqlite3_bind_text(i, param);
       case List<int>():
         statement.sqlite3_bind_blob64(i, param);
+      case CustomStatementParameter():
+        param.applyTo(this, i);
       default:
         throw ArgumentError.value(
           param,

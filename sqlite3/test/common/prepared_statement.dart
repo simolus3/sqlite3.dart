@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:sqlite3/common.dart';
+import 'package:sqlite3/src/implementation/statement.dart';
 import 'package:test/test.dart';
 
 import 'utils.dart';
@@ -174,6 +175,19 @@ void testPreparedStatements(
         .single;
 
     expect(result.values, ['first', 'second', 'third']);
+  });
+
+  test('can bind custom values', () {
+    final db = sqlite3.openInMemory();
+    addTearDown(db.dispose);
+
+    final stmt = db.prepare('SELECT :a AS a, :b AS b');
+    final result = stmt.selectWith(StatementParameters.named(
+        {':a': 'normal parameter', ':b': _CustomValue()}));
+
+    expect(result, [
+      {'a': 'normal parameter', 'b': 42}
+    ]);
   });
 
   group('checks that the amount of parameters are correct', () {
@@ -529,4 +543,12 @@ class _TestIterable<T> extends Iterable<T> {
   final Iterator<T> iterator;
 
   _TestIterable(this.iterator);
+}
+
+class _CustomValue implements CustomStatementParameter {
+  @override
+  void applyTo(CommonPreparedStatement statement, int index) {
+    final stmt = statement as StatementImplementation;
+    stmt.statement.sqlite3_bind_int64(index, 42);
+  }
 }

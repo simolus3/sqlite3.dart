@@ -7,6 +7,12 @@
 - __Breaking__: Introduce class modifiers on classes of this package that aren't
   meant to be extended or implemented by users.
 - Add `PreparedStatement.reset()`.
+- Add the `CustomStatementParameter` class which can be passed as a statement
+  parameter with a custom `sqlite3_bind_*` call.
+- Add the `StatementParameters` class and `executeWith`/`selectWith` methods
+  on `CommonPreparedStatement`. They can be used to control whether values are
+  bound by index or by name. The `selectMap` and `executeMap` methods have
+  been deprecated.
 
 ## 1.11.2
 
