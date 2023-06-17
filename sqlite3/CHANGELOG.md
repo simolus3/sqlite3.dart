@@ -1,4 +1,4 @@
-## 2.0.0-dev
+## 2.0.0
 
 - __Breaking__: The WASM implementation no longer registers a default virtual
   file system. Instead, `registerVirtualFileSystem` needs to be used to add
