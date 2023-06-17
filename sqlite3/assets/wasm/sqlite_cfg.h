@@ -22,7 +22,8 @@
 #define SQLITE_USE_ALLOCA 1
 #define SQLITE_BYTEORDER 1234
 
-// This apparently improves performance: https://github.com/sqlite/sqlite/blob/b8d689b6668437e220fa329300e0541ff64e4ef6/ext/wasm/api/sqlite3-wasm.c#L57-L77
+// This apparently improves performance:
+// https://github.com/sqlite/sqlite/blob/b8d689b6668437e220fa329300e0541ff64e4ef6/ext/wasm/api/sqlite3-wasm.c#L57-L77
 #define SQLITE_DEFAULT_CACHE_SIZE -16384
 #define SQLITE_DEFAULT_PAGE_SIZE 8192
 

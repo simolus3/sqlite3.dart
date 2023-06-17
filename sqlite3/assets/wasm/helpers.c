@@ -3,7 +3,7 @@
 #include "bridge.h"
 #include "sqlite3.h"
 
-#define DART_FD(file) (((dart_vfs_file*) (file))->dart_fd)
+#define DART_FD(file) (((dart_vfs_file *)(file))->dart_fd)
 
 #ifdef SQLITE_ENABLE_VFSTRACE
 // When this is enabled, assume that `vfstrace_register` exists
@@ -33,9 +33,7 @@ static int dartvfs_trace_log1(const char *msg, void *unused) {
   return SQLITE_OK;
 }
 
-int dartvfs_close(sqlite3_file *file) {
-  return xClose(DART_FD(file));
-}
+int dartvfs_close(sqlite3_file *file) { return xClose(DART_FD(file)); }
 
 int dartvfs_read(sqlite3_file *file, void *buf, int iAmt, sqlite3_int64 iOfst) {
   return xRead(DART_FD(file), buf, iAmt, iOfst);
@@ -57,13 +55,11 @@ int dartvfs_sync(sqlite3_file *file, int flags) {
 int dartvfs_fileSize(sqlite3_file *file, sqlite3_int64 *pSize) {
   int size32;
   int rc = xFileSize(DART_FD(file), &size32);
-  *pSize = (sqlite3_int64) size32;
+  *pSize = (sqlite3_int64)size32;
   return rc;
 }
 
-int dartvfs_lock(sqlite3_file *file, int i) {
-  return xLock(DART_FD(file), i);
-}
+int dartvfs_lock(sqlite3_file *file, int i) { return xLock(DART_FD(file), i); }
 
 int dartvfs_unlock(sqlite3_file *file, int i) {
   return xUnlock(DART_FD(file), i);
@@ -84,14 +80,15 @@ int dartvfs_deviceCharacteristics(sqlite3_file *file) {
 }
 
 int dartvfs_sectorSize(sqlite3_file *file) {
-  // This is also the value of SQLITE_DEFAULT_SECTOR_SIZE, which would be picked if this function didn't exist.
-  // We need this method because vfstrace does not support null callbacks.
+  // This is also the value of SQLITE_DEFAULT_SECTOR_SIZE, which would be picked
+  // if this function didn't exist. We need this method because vfstrace does
+  // not support null callbacks.
   return 4096;
 }
 
-static int dartvfs_open(sqlite3_vfs* vfs, sqlite3_filename zName, sqlite3_file* file,
-               int flags, int *pOutFlags) {
-  dart_vfs_file* dartFile = (dart_vfs_file*) file;
+static int dartvfs_open(sqlite3_vfs *vfs, sqlite3_filename zName,
+                        sqlite3_file *file, int flags, int *pOutFlags) {
+  dart_vfs_file *dartFile = (dart_vfs_file *)file;
   memset(dartFile, 0, sizeof(dart_vfs_file));
   dartFile->dart_fd = -1;
 
@@ -118,40 +115,43 @@ static int dartvfs_open(sqlite3_vfs* vfs, sqlite3_filename zName, sqlite3_file* 
   int *dartFileId = &dartFile->dart_fd;
 
   // The xOpen call will also set the dart_fd field.
-  int rc = xOpen((int) vfs->pAppData, zName, dartFileId, flags, pOutFlags);
+  int rc = xOpen((int)vfs->pAppData, zName, dartFileId, flags, pOutFlags);
 
   if (*dartFileId != -1) {
-    // sqlite3 will call xClose() even if this open call returns an error if methods
-    // are set. So, we only provide the methods if a file has actually been opened.
+    // sqlite3 will call xClose() even if this open call returns an error if
+    // methods are set. So, we only provide the methods if a file has actually
+    // been opened.
     dartFile->pMethods = &methods;
   }
 
   return rc;
 }
 
-static int dartvfs_delete(sqlite3_vfs* vfs, const char *zName, int syncDir) {
-  return xDelete((int) vfs->pAppData, zName, syncDir);
+static int dartvfs_delete(sqlite3_vfs *vfs, const char *zName, int syncDir) {
+  return xDelete((int)vfs->pAppData, zName, syncDir);
 }
 
-static int dartvfs_access(sqlite3_vfs* vfs, const char *zName, int flags, int *pResOut) {
-  return xAccess((int) vfs->pAppData, zName, flags, pResOut);
+static int dartvfs_access(sqlite3_vfs *vfs, const char *zName, int flags,
+                          int *pResOut) {
+  return xAccess((int)vfs->pAppData, zName, flags, pResOut);
 }
 
-static int dartvfs_fullPathname(sqlite3_vfs* vfs, const char *zName, int nOut, char *zOut) {
-  return xFullPathname((int) vfs->pAppData, zName, nOut, zOut);
+static int dartvfs_fullPathname(sqlite3_vfs *vfs, const char *zName, int nOut,
+                                char *zOut) {
+  return xFullPathname((int)vfs->pAppData, zName, nOut, zOut);
 }
 
-static int dartvfs_randomness(sqlite3_vfs* vfs, int nByte, char *zOut) {
-  return xRandomness((int) vfs->pAppData, nByte, zOut);
+static int dartvfs_randomness(sqlite3_vfs *vfs, int nByte, char *zOut) {
+  return xRandomness((int)vfs->pAppData, nByte, zOut);
 }
 
-static int dartvfs_sleep(sqlite3_vfs* vfs, int microseconds) {
-  return xSleep((int) vfs->pAppData, microseconds);
+static int dartvfs_sleep(sqlite3_vfs *vfs, int microseconds) {
+  return xSleep((int)vfs->pAppData, microseconds);
 }
 
-static int dartvfs_currentTimeInt64(sqlite3_vfs* vfs, sqlite3_int64* timeOut) {
+static int dartvfs_currentTimeInt64(sqlite3_vfs *vfs, sqlite3_int64 *timeOut) {
   int64_t milliseconds;
-  int rc = xCurrentTimeInt64((int) vfs->pAppData, &milliseconds);
+  int rc = xCurrentTimeInt64((int)vfs->pAppData, &milliseconds);
 
   // https://github.com/sqlite/sqlite/blob/8ee75f7c3ac1456b8d941781857be27bfddb57d6/src/os_unix.c#L6757
   static const int64_t unixEpoch = 24405875 * (int64_t)8640000;
@@ -159,13 +159,14 @@ static int dartvfs_currentTimeInt64(sqlite3_vfs* vfs, sqlite3_int64* timeOut) {
   return SQLITE_OK;
 }
 
-SQLITE_API sqlite3_vfs* dart_sqlite3_register_vfs(const char* name, int dartId, int makeDefault) {
+SQLITE_API sqlite3_vfs *dart_sqlite3_register_vfs(const char *name, int dartId,
+                                                  int makeDefault) {
   sqlite3_vfs *vfs = calloc(1, sizeof(sqlite3_vfs));
   vfs->iVersion = 2;
   vfs->szOsFile = sizeof(dart_vfs_file);
   vfs->mxPathname = 1024;
   vfs->zName = name;
-  vfs->pAppData = (void*) dartId;
+  vfs->pAppData = (void *)dartId;
   vfs->xOpen = &dartvfs_open;
   vfs->xDelete = &dartvfs_delete;
   vfs->xAccess = &dartvfs_access;
@@ -177,7 +178,7 @@ SQLITE_API sqlite3_vfs* dart_sqlite3_register_vfs(const char* name, int dartId, 
 #ifdef SQLITE_ENABLE_VFSTRACE
   sqlite3_vfs_register(vfs, 0);
 
-  static const char* prefix = "trace_";
+  static const char *prefix = "trace_";
   static const int prefixLength = 6;
   char *traceName = malloc(strlen(name) + prefixLength);
   strcpy(traceName, prefix);
