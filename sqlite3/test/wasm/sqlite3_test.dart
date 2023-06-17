@@ -3,6 +3,7 @@ import 'dart:html';
 
 import 'package:http/http.dart' as http;
 import 'package:js/js.dart';
+import 'package:js/js_util.dart';
 import 'package:sqlite3/wasm.dart';
 import 'package:test/test.dart';
 
@@ -102,13 +103,10 @@ void main() {
               throw 'Exception in worker: $response';
             }
           },
-          onPlatform: <String, Object?>{
-            if (requiresSab)
-              '!chrome && !edge': Skip(
-                'This test requires SharedArrayBuffers that cannot be enabled '
-                'on this platform with a simple `dart test` setup.',
-              ),
-          },
+          skip: requiresSab && !hasProperty(globalThis, 'SharedArrayBuffer')
+              ? 'This test requires SharedArrayBuffers that cannot be enabled '
+                  'on this platform with a simple `dart test` setup.'
+              : null,
         );
       }
     },
