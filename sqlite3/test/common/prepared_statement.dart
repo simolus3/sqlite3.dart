@@ -292,7 +292,10 @@ void testPreparedStatements(
 
     opened.execute('commit');
     opened.dispose();
-  });
+  },
+      skip: supportsReturning
+          ? null
+          : 'RETURNING not supported by current sqlite3 version');
 
   group('cursors', () {
     late CommonDatabase database;
