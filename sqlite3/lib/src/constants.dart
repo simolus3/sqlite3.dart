@@ -10,7 +10,7 @@
 ///
 /// See also: SQLITE_IOERR_READ | extended result codes,
 /// sqlite3_vtab_on_conflictstatic const int ) SQLITE_ROLLBACK | result codes.
-class SqlError {
+final class SqlError {
   /// Successful result
   static const int SQLITE_OK = 0;
 
@@ -112,7 +112,7 @@ class SqlError {
 /// Note that the primary result code is always a part of the extended result code. Given a full 32-bit extended result code, the application can always find the corresponding primary result code merely by extracting the least significant 8 bits of the extended result code.
 ///
 /// All extended result codes are also error codes. Hence the terms "extended result code" and "extended error code" are interchangeable.
-class SqlExtendedError {
+final class SqlExtendedError {
   /// The sqlite3_load_extension() interface loads an extension into a single database connection.
   ///
   /// The default behavior is for that extension to be automatically unloaded when the database connection closes. However, if the extension entry point returns SQLITE_OK_LOAD_PERMANENTLY instead of SQLITE_OK, then the extension remains loaded into the process address space after the database connection closes. In other words, the xDlClose methods of the sqlite3_vfs object is not called for the extension when the database connection closes.
@@ -374,7 +374,7 @@ class SqlExtendedError {
 /// These bit values are intended for use in the
 /// 3rd parameter to the [sqlite3_open_v2static const int )] interface and
 /// in the 4th parameter to the `xopen` method.
-class SqlFlag {
+final class SqlFlag {
   /// Ok for sqlite3_open_v2static const int )
   static const int SQLITE_OPEN_READONLY = 0x00000001;
 
@@ -437,7 +437,7 @@ class SqlFlag {
 }
 
 // Prepare flags, https://www.sqlite.org/c3ref/c_prepare_normalize.html
-class SqlPrepareFlag {
+final class SqlPrepareFlag {
   ///The SQLITE_PREPARE_PERSISTENT flag is a hint to the query planner that the prepared statement will be retained for a long time and probably reused many times.
   /// Without this flag, sqlite3_prepare_v3static const int ) and sqlite3_prepare16_v3static const int ) assume that the prepared statement will be used just once or at most a few times and then destroyed using sqlite3_finalizestatic const int ) relatively soon.
   ///  The current implementation acts on this hint by avoiding the use of lookaside memory so as not to deplete the limited store of lookaside memory.
@@ -453,7 +453,7 @@ class SqlPrepareFlag {
 }
 
 /// Datatypes, https://sqlite.org/c3ref/c_blob.html
-class SqlType {
+final class SqlType {
   static const int SQLITE_INTEGER = 1;
   static const int SQLITE_FLOAT = 2;
   static const int SQLITE_TEXT = 3;
@@ -463,7 +463,7 @@ class SqlType {
 
 /// Text Encodings, https://www.sqlite.org/c3ref/c_any.html
 /// These constant define integer codes that represent the various text encodings supported by SQLite.
-class SqlTextEncoding {
+final class SqlTextEncoding {
   ///IMP: R-37514-35566
   static const int SQLITE_UTF8 = 1;
 
@@ -484,7 +484,7 @@ class SqlTextEncoding {
 }
 
 /// File lock levels, https://www.sqlite.org/c3ref/c_lock_exclusive.html
-class SqlFileLockingLevels {
+final class SqlFileLockingLevels {
   static const SQLITE_LOCK_NONE = 0;
   static const SQLITE_LOCK_SHARED = 1;
   static const SQLITE_LOCK_RESERVED = 2;
@@ -493,7 +493,7 @@ class SqlFileLockingLevels {
 }
 
 /// Special destructors, https://www.sqlite.org/c3ref/c_static.html
-class SqlSpecialDestructor {
+final class SqlSpecialDestructor {
   /// it means that the content pointer is constant and will never change, It does not need to be destroyed
   static const SQLITE_STATIC = 0;
 
@@ -503,7 +503,7 @@ class SqlSpecialDestructor {
 }
 
 /// Function flags, https://www.sqlite.org/c3ref/c_deterministic.html
-class SqlFunctionFlag {
+final class SqlFunctionFlag {
   /// The SQLITE_DETERMINISTIC flag means that the new function always gives the same output when the input parameters are the same
   static const SQLITE_DETERMINISTIC = 0x000000800;
 
@@ -518,7 +518,7 @@ class SqlFunctionFlag {
   static const SQLITE_INNOCUOUS = 0x000200000;
 }
 
-class SqlDeviceCharacteristics {
+final class SqlDeviceCharacteristics {
   static const SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN = 0x00000800;
 }
 

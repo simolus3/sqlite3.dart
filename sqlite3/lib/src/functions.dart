@@ -134,7 +134,7 @@ final class AggregateContext<V> {
 }
 
 /// Describes how many arguments an application-defined sql function can take.
-class AllowedArgumentCount {
+final class AllowedArgumentCount {
   final int allowedArgs;
 
   const AllowedArgumentCount(this.allowedArgs);
