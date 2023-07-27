@@ -214,10 +214,10 @@ final class SqliteUpdate {
 /// Available options are documented in https://www.sqlite.org/c3ref/c_dbconfig_defensive.html
 abstract base class DatabaseOptions {
   /// Update configuration that accepts an int value.
+  /// Would throw when the internal C call returns a non-zero value.
   void setIntConfig(int key, int configValue);
 
   /// Enable or disable SQLite support for double quotes as string literals.
-  /// Would throw when the internal C call returns a non-zero value.
   ///
   /// More information: https://www.sqlite.org/compile.html#dqs
   set doubleQuotedStringLiterals(bool value) {
