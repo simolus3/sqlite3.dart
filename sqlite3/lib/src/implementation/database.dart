@@ -62,7 +62,7 @@ base class DatabaseImplementation implements CommonDatabase {
   var _isClosed = false;
 
   @override
-  DatabaseOptions get options => DatabaseOptionsImplementation(this);
+  DatabaseConfig get config => DatabaseConfigImplementation(this);
 
   @override
   int get userVersion {
@@ -555,10 +555,10 @@ class ValueList extends ListBase<Object?> {
   }
 }
 
-base class DatabaseOptionsImplementation extends DatabaseOptions {
+final class DatabaseConfigImplementation extends DatabaseConfig {
   final DatabaseImplementation database;
 
-  DatabaseOptionsImplementation(this.database);
+  DatabaseConfigImplementation(this.database);
 
   @override
   void setIntConfig(int key, int configValue) {

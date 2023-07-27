@@ -8,7 +8,12 @@ import 'constants.dart';
 /// An opened sqlite3 database.
 abstract class CommonDatabase {
   /// Configuration for the database connection.
-  DatabaseOptions get options;
+  ///
+  /// __Note__: On the web, the [DatabaseConfig] class only works when using a
+  /// version of `sqlite3.wasm` shipped with version 2.1.0 of the `sqlite3`
+  /// Dart package. In previous WASM builds, all setters on the config will
+  /// throw an exception.
+  DatabaseConfig get config;
 
   /// The application defined version of this database.
   abstract int userVersion;
@@ -212,7 +217,7 @@ final class SqliteUpdate {
 ///
 /// More information: https://www.sqlite.org/c3ref/db_config.html
 /// Available options are documented in https://www.sqlite.org/c3ref/c_dbconfig_defensive.html
-abstract base class DatabaseOptions {
+abstract base class DatabaseConfig {
   /// Update configuration that accepts an int value.
   /// Would throw when the internal C call returns a non-zero value.
   void setIntConfig(int key, int configValue);
@@ -221,9 +226,7 @@ abstract base class DatabaseOptions {
   ///
   /// More information: https://www.sqlite.org/compile.html#dqs
   set doubleQuotedStringLiterals(bool value) {
-    // 3 allows double quotes in DDL and DML
-    // 0 disallows double quotes in DDL and DML
-    final dqsValue = value ? 3 : 0;
+    final dqsValue = value ? 1 : 0;
     setIntConfig(SQLITE_DBCONFIG_DQS_DML, dqsValue);
     setIntConfig(SQLITE_DBCONFIG_DQS_DDL, dqsValue);
   }
