@@ -448,6 +448,23 @@ base class DatabaseImplementation implements CommonDatabase {
       isBroadcast: true,
     );
   }
+
+  @override
+  void configDoubleQuotedStringLiterals({required bool enable}) {
+    final value = enable ? 1 : 0;
+
+    final resultDML =
+        database.sqlite3_db_config(SQLITE_DBCONFIG_DQS_DML, value);
+    if (resultDML != SqlError.SQLITE_OK) {
+      throwException(this, resultDML);
+    }
+
+    final resultDDL =
+        database.sqlite3_db_config(SQLITE_DBCONFIG_DQS_DDL, value);
+    if (resultDDL != SqlError.SQLITE_OK) {
+      throwException(this, resultDDL);
+    }
+  }
 }
 
 extension on RawSqliteContext {

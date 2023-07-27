@@ -77,7 +77,8 @@ class WasmBindings {
       _sqlite3_value_bytes,
       _sqlite3_value_text,
       _sqlite3_value_blob,
-      _sqlite3_aggregate_context;
+      _sqlite3_aggregate_context,
+      _sqlite3_db_config;
 
   final Global _sqlite3_temp_directory;
 
@@ -150,6 +151,7 @@ class WasmBindings {
         _sqlite3_value_blob = instance.functions['sqlite3_value_blob']!,
         _sqlite3_aggregate_context =
             instance.functions['sqlite3_aggregate_context']!,
+        _sqlite3_db_config = instance.functions['sqlite3_db_config']!,
         _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']! {
     values.bindings = this;
   }
@@ -401,6 +403,9 @@ class WasmBindings {
 
   int sqlite3_last_insert_rowid(Pointer db) =>
       JsBigInt(_sqlite3_last_insert_rowid(db) as Object).asDartInt;
+
+  int sqlite3_db_config(Pointer db, int op, int value) =>
+      _sqlite3_db_config(db, op, value) as int;
 
   Pointer get sqlite3_temp_directory {
     return _sqlite3_temp_directory.value;

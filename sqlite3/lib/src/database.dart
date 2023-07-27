@@ -157,6 +157,8 @@ abstract class CommonDatabase {
     bool directOnly = true,
   });
 
+  void configDoubleQuotedStringLiterals({required bool enable});
+
   /// Closes this database and releases associated resources.
   void dispose();
 }

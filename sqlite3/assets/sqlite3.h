@@ -116,3 +116,6 @@ int sqlite3_backup_pagecount(sqlite3_backup *p);
 
 // Extensions
 int sqlite3_auto_extension(void *xEntryPoint);
+
+// Database configuration
+int sqlite3_db_config(sqlite3 *db, int op, ...);
