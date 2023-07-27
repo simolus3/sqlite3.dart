@@ -103,6 +103,8 @@ abstract base class RawSqliteDatabase {
     required RawXFinal xValue,
     required RawXStep xInverse,
   });
+
+  int sqlite3_db_config(int op, int value);
 }
 
 /// A stateful wrapper around multiple `sqlite3_prepare` invocations.

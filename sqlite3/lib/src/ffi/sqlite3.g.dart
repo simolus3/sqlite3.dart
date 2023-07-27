@@ -1181,6 +1181,33 @@ class Bindings {
           'sqlite3_auto_extension');
   late final _sqlite3_auto_extension = _sqlite3_auto_extensionPtr
       .asFunction<int Function(ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3_db_config(
+    ffi.Pointer<sqlite3> db,
+    int op,
+    int va,
+    ffi.Pointer<ffi.Int> va1,
+  ) {
+    return _sqlite3_db_config(
+      db,
+      op,
+      va,
+      va1,
+    );
+  }
+
+  late final _sqlite3_db_configPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<sqlite3>,
+              ffi.Int,
+              ffi.VarArgs<
+                  (
+                    ffi.Int,
+                    ffi.Pointer<ffi.Int>,
+                  )>)>>('sqlite3_db_config');
+  late final _sqlite3_db_config = _sqlite3_db_configPtr.asFunction<
+      int Function(ffi.Pointer<sqlite3>, int, int, ffi.Pointer<ffi.Int>)>();
 }
 
 final class sqlite3_char extends ffi.Opaque {}

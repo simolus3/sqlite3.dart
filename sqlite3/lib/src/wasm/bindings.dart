@@ -245,6 +245,11 @@ final class WasmDatabase extends RawSqliteDatabase {
 
     bindings.dart_sqlite3_updates(db, hook != null ? 1 : -1);
   }
+
+  @override
+  int sqlite3_db_config(int op, int value) {
+    return bindings.sqlite3_db_config(db, op, value);
+  }
 }
 
 final class WasmStatementCompiler extends RawStatementCompiler {

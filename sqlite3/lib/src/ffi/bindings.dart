@@ -267,6 +267,16 @@ final class FfiDatabase extends RawSqliteDatabase {
     );
   }
 
+  int sqlite3_db_config(int op, int value) {
+    final result = bindings.bindings.sqlite3_db_config(
+      db,
+      op,
+      value,
+      nullPtr(),
+    );
+    return result;
+  }
+
   @override
   RawStatementCompiler newCompiler(List<int> utf8EncodedSql) {
     return FfiStatementCompiler(this, allocateBytes(utf8EncodedSql));
