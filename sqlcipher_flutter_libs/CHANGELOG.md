@@ -1,3 +1,7 @@
+## 0.5.7
+
+- Consistently compile `SQLCipher` with `SQLITE_THREADSAFE=1` on all supported platforms.
+
 ## 0.5.6
 
 - Upgrade `SQLCipher` to version `4.5.4` (https://www.zetetic.net/blog/2023/04/27/sqlcipher-4.5.4-release).
