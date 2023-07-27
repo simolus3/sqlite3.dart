@@ -736,6 +736,30 @@ void testDatabase(
       ]);
     });
   });
+
+  group('double quotes as literals', () {
+    const query = 'SELECT "foo" AS double, \'bar\' AS single';
+
+    test('enable', () {
+      database.configDoubleQuotedStringLiterals(enable: true);
+
+      expect(database.select(query), [
+        {
+          'double': 'foo',
+          'single': 'bar',
+        }
+      ]);
+    });
+
+    test('disable', () {
+      database.configDoubleQuotedStringLiterals(enable: false);
+
+      expect(
+        () => database.select(query),
+        throwsSqlError(SqlError.SQLITE_ERROR, 1),
+      );
+    });
+  });
 }
 
 /// Aggregate function that counts the length of all string parameters it
