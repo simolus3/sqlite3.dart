@@ -62,6 +62,9 @@ base class DatabaseImplementation implements CommonDatabase {
   var _isClosed = false;
 
   @override
+  DatabaseOptions get options => DatabaseOptionsImplementation(this);
+
+  @override
   int get userVersion {
     final stmt = prepare('PRAGMA user_version;');
     try {
@@ -448,23 +451,6 @@ base class DatabaseImplementation implements CommonDatabase {
       isBroadcast: true,
     );
   }
-
-  @override
-  void configDoubleQuotedStringLiterals({required bool enable}) {
-    final value = enable ? 1 : 0;
-
-    final resultDML =
-        database.sqlite3_db_config(SQLITE_DBCONFIG_DQS_DML, value);
-    if (resultDML != SqlError.SQLITE_OK) {
-      throwException(this, resultDML);
-    }
-
-    final resultDDL =
-        database.sqlite3_db_config(SQLITE_DBCONFIG_DQS_DDL, value);
-    if (resultDDL != SqlError.SQLITE_OK) {
-      throwException(this, resultDDL);
-    }
-  }
 }
 
 extension on RawSqliteContext {
@@ -566,5 +552,19 @@ class ValueList extends ListBase<Object?> {
   @override
   void operator []=(int index, Object? value) {
     throw ArgumentError('The argument list is unmodifiable');
+  }
+}
+
+base class DatabaseOptionsImplementation extends DatabaseOptions {
+  final DatabaseImplementation database;
+
+  DatabaseOptionsImplementation(this.database);
+
+  @override
+  void setIntConfig(int key, int configValue) {
+    final resultDML = database.database.sqlite3_db_config(key, configValue);
+    if (resultDML != SqlError.SQLITE_OK) {
+      throwException(database, resultDML);
+    }
   }
 }
