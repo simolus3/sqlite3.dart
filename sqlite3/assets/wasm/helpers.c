@@ -228,3 +228,7 @@ SQLITE_API int dart_sqlite3_create_collation(sqlite3 *db, const char *zName,
   return sqlite3_create_collation_v2(db, zName, eTextRep, (void *)id,
                                      &dartXCompare, &dartForgetAboutFunction);
 }
+
+SQLITE_API int dart_sqlite3_db_config_int(sqlite3 *db, int op, int arg) {
+  return sqlite3_db_config(db, op, arg);
+}

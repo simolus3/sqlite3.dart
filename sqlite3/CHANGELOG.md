@@ -1,3 +1,7 @@
+## 2.1.0
+
+- Add `config` getter to `CommonDatabase` to access `sqlite3_db_config`.
+
 ## 2.0.0
 
 - __Breaking__: The WASM implementation no longer registers a default virtual
