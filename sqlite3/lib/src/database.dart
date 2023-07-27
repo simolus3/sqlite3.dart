@@ -3,9 +3,12 @@ import 'package:meta/meta.dart';
 import 'functions.dart';
 import 'result_set.dart';
 import 'statement.dart';
+import 'constants.dart';
 
 /// An opened sqlite3 database.
 abstract class CommonDatabase {
+  DatabaseOptions get options;
+
   /// The application defined version of this database.
   abstract int userVersion;
 
@@ -157,8 +160,6 @@ abstract class CommonDatabase {
     bool directOnly = true,
   });
 
-  void configDoubleQuotedStringLiterals({required bool enable});
-
   /// Closes this database and releases associated resources.
   void dispose();
 }
@@ -203,5 +204,15 @@ final class SqliteUpdate {
   @override
   String toString() {
     return 'SqliteUpdate: $kind on $tableName, rowid = $rowId';
+  }
+}
+
+abstract base class DatabaseOptions {
+  // Would throw when the internal C call returns a non-zero value.
+  void setIntConfig(int key, int configValue);
+
+  set doubleQuotedStringLiterals(bool value) {
+    setIntConfig(SQLITE_DBCONFIG_DQS_DML, value ? 1 : 0);
+    setIntConfig(SQLITE_DBCONFIG_DQS_DDL, value ? 1 : 0);
   }
 }

@@ -741,7 +741,7 @@ void testDatabase(
     const query = 'SELECT "foo" AS double, \'bar\' AS single';
 
     test('enable', () {
-      database.configDoubleQuotedStringLiterals(enable: true);
+      database.options.doubleQuotedStringLiterals = true;
 
       expect(database.select(query), [
         {
@@ -752,7 +752,7 @@ void testDatabase(
     });
 
     test('disable', () {
-      database.configDoubleQuotedStringLiterals(enable: false);
+      database.options.doubleQuotedStringLiterals = false;
 
       expect(
         () => database.select(query),
