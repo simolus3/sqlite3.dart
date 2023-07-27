@@ -95,6 +95,18 @@ that case.
 Alternatively, you can prevent other pods from linking sqlite3 by adding [this snippet](https://github.com/simolus3/drift/issues/1810#issuecomment-1119426006)
 to your podfile.
 
+## Different behavior on different platforms
+
+On Android, iOS and macOS, this package relies on dependencies managed by Zetetic (the authors of SQLCipher)
+to include SQLCipher in your application.
+As no such solutions exist for Windows and Linux, a custom build script is used there.
+This build script is inspired from the one used in `sqlite3_flutter_libs` and disables the [double-quoted strings](https://sqlite.org/quirks.html#double_quoted_string_literals_are_accepted)
+misfeature.
+The official SQLCipher builds don't do that.
+
+To avoid your app relying on double-quoted strings in SQL, you should test your app on Linux or Windows before release if you
+target these platforms.
+
 ## Problems on Android 6
 
 There appears to be a problem when loading native libraries on Android 6 (see [this issue](https://github.com/simolus3/moor/issues/895#issuecomment-720195005)).
