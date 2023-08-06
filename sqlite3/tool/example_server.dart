@@ -45,15 +45,11 @@ Future<void> main() async {
 
       final response = await proxy(request);
 
-      if (request.url.path == 'web/worker.dart.js') {
-        return response.change(headers: {
-          // Needed for shared array buffers to work
-          'Cross-Origin-Opener-Policy': 'same-origin',
-          'Cross-Origin-Embedder-Policy': 'require-corp'
-        });
-      }
-
-      return response;
+      return response.change(headers: {
+        // Needed for shared array buffers to work
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'require-corp'
+      });
     },
     'localhost',
     8080,
