@@ -9,13 +9,13 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
   # We can't really ask users to use a cmake that recent, so there's this if here.
   FetchContent_Declare(
     sqlite3
-    URL https://sqlite.org/2023/sqlite-autoconf-3420000.tar.gz
+    URL https://sqlite.org/2023/sqlite-autoconf-3430000.tar.gz
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
   )
 else()
   FetchContent_Declare(
     sqlite3
-    URL https://sqlite.org/2023/sqlite-autoconf-3420000.tar.gz
+    URL https://sqlite.org/2023/sqlite-autoconf-3430000.tar.gz
   )
 endif()
 
