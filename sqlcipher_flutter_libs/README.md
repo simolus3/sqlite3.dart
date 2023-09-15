@@ -44,8 +44,9 @@ void main() {
 Depending on your target platform, additional dependencies may be needed:
 
 - Android: Uses a precompiled library, no additional setup is needed.
+  - If you want to access SQLite Cipher from the native Android project, make sure to check the [migration guide](https://www.zetetic.net/sqlcipher/sqlcipher-for-android-migration/) from `net.zetetic:android-database-sqlcipher` to `net.zetetic:sqlcipher-android`.
 - macOS and iOS: Depends on the [SQLCipher](https://www.zetetic.net/sqlcipher/ios-tutorial/#option-2-cocoapod-integration) pod.
-  __IMPORTANT NOTE__: Bad things will happen if you depend on any other package linking the regular sqlite3 library.
+  **IMPORTANT NOTE**: Bad things will happen if you depend on any other package linking the regular sqlite3 library.
   Please be sure to read the [advisory](https://discuss.zetetic.net/t/important-advisory-sqlcipher-with-xcode-8-and-new-sdks/1688) before using this package.
 - Linux: SQLCipher is compiled and linked against a static OpenSSL library that you need to install manually (e.g. `apt install libssl-dev` on Debian).
   OpenSSL is linked into the generated `.so`, so your users don't have to have OpenSSL installed.
