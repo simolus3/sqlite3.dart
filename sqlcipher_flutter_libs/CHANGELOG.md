@@ -1,3 +1,10 @@
+## 0.6.0
+
+- Update SQLCipher to `4.5.5` (https://www.zetetic.net/blog/2023/08/31/sqlcipher-4.5.5-release/)
+- On Android, migrate from `android-database-sqlcipher` to `sqlcipher-android`.
+  If you use SQLCipher APIs in your native Android platform code, consider migrating as well and
+  follow the [migration guide](https://www.zetetic.net/sqlcipher/sqlcipher-for-android-migration/).
+
 ## 0.5.7
 
 - Consistently compile `SQLCipher` with `SQLITE_THREADSAFE=1` on all supported platforms.

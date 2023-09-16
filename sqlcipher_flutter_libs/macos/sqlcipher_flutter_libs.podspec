@@ -17,10 +17,10 @@ A new flutter plugin project.
   s.public_header_files = 'Classes/**/*.h'
   s.dependency 'FlutterMacOS'
 
-  s.dependency 'SQLCipher', '~> 4.5.4'
-  
+  s.dependency 'SQLCipher', '~> 4.5.5'
+
   s.platform = :osx, '10.11'
-  s.pod_target_xcconfig = { 
+  s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES'
   }
   s.swift_version = '5.0'
