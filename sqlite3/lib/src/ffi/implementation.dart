@@ -16,13 +16,9 @@ import 'memory.dart';
 import 'sqlite3.g.dart';
 
 final class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
-  final FfiBindings ffiBindings;
+  static final FfiBindings ffiBindings = FfiBindings();
 
-  factory FfiSqlite3(DynamicLibrary library) {
-    return FfiSqlite3._(FfiBindings(BindingsWithLibrary(library)));
-  }
-
-  FfiSqlite3._(this.ffiBindings) : super(ffiBindings);
+  FfiSqlite3() : super(ffiBindings);
 
   @override
   Database open(String filename,
@@ -52,10 +48,9 @@ final class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
   @override
   void ensureExtensionLoaded(SqliteExtension extension) {
     final entrypoint = (extension as SqliteExtensionImpl)._resolveEntrypoint;
-    final functionPtr = entrypoint(ffiBindings.bindings.library);
+    final functionPtr = entrypoint(DynamicLibrary.executable());
 
-    final result =
-        ffiBindings.bindings.bindings.sqlite3_auto_extension(functionPtr);
+    final result = sqlite3_auto_extension(functionPtr);
     if (result != SqlError.SQLITE_OK) {
       throw SqliteException(result, 'Could not load extension');
     }
@@ -63,7 +58,7 @@ final class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
 
   @override
   Database fromPointer(Pointer<void> database) {
-    return wrapDatabase(FfiDatabase(ffiBindings.bindings, database.cast()));
+    return wrapDatabase(FfiDatabase(database.cast()));
   }
 }
 
@@ -80,8 +75,6 @@ class SqliteExtensionImpl implements SqliteExtension {
 final class FfiDatabaseImplementation extends DatabaseImplementation
     implements Database {
   final FfiDatabase ffiDatabase;
-
-  Bindings get _bindings => ffiDatabase.bindings.bindings;
 
   FfiDatabaseImplementation(RawSqliteBindings bindings, this.ffiDatabase)
       : super(bindings, ffiDatabase);
@@ -126,7 +119,7 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
   @visibleForTesting
   bool get isInMemory {
     final zDbName = Utf8Utils.allocateZeroTerminated('main');
-    final pFileName = _bindings.sqlite3_db_filename(ffiDatabase.db, zDbName);
+    final pFileName = sqlite3_db_filename(ffiDatabase.db, zDbName);
 
     zDbName.free();
 
@@ -141,16 +134,16 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
     final zDestDb = Utf8Utils.allocateZeroTerminated('main');
     final zSrcDb = Utf8Utils.allocateZeroTerminated('main');
 
-    final pBackup = _bindings.sqlite3_backup_init(
+    final pBackup = sqlite3_backup_init(
         toDatabase.handle.cast(), zDestDb, fromDatabase.handle.cast(), zSrcDb);
 
     if (!pBackup.isNullPointer) {
-      _bindings.sqlite3_backup_step(pBackup, -1);
-      _bindings.sqlite3_backup_finish(pBackup);
+      sqlite3_backup_step(pBackup, -1);
+      sqlite3_backup_finish(pBackup);
     }
 
     final extendedErrorCode =
-        _bindings.sqlite3_extended_errcode(toDatabase.handle.cast());
+        sqlite3_extended_errcode(toDatabase.handle.cast());
     final errorCode = extendedErrorCode & 0xFF;
 
     zDestDb.free();
@@ -169,16 +162,16 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
     final zDestDb = Utf8Utils.allocateZeroTerminated('main');
     final zSrcDb = Utf8Utils.allocateZeroTerminated('main');
 
-    final pBackup = _bindings.sqlite3_backup_init(
+    final pBackup = sqlite3_backup_init(
         toDatabase.handle.cast(), zDestDb, ffiDatabase.db, zSrcDb);
 
     int returnCode;
     if (!pBackup.isNullPointer) {
       do {
-        returnCode = _bindings.sqlite3_backup_step(pBackup, nPage);
+        returnCode = sqlite3_backup_step(pBackup, nPage);
 
-        final remaining = _bindings.sqlite3_backup_remaining(pBackup);
-        final count = _bindings.sqlite3_backup_pagecount(pBackup);
+        final remaining = sqlite3_backup_remaining(pBackup);
+        final count = sqlite3_backup_pagecount(pBackup);
 
         yield (count - remaining) / count;
 
@@ -192,11 +185,11 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
           returnCode == SqlError.SQLITE_BUSY ||
           returnCode == SqlError.SQLITE_LOCKED);
 
-      _bindings.sqlite3_backup_finish(pBackup);
+      sqlite3_backup_finish(pBackup);
     }
 
     final extendedErrorCode =
-        _bindings.sqlite3_extended_errcode(toDatabase.handle.cast());
+        sqlite3_extended_errcode(toDatabase.handle.cast());
     final errorCode = extendedErrorCode & 0xFF;
 
     zDestDb.free();

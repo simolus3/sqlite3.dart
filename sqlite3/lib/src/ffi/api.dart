@@ -1,17 +1,12 @@
 import 'dart:ffi';
 
-import '../../open.dart';
 import '../database.dart';
 import '../sqlite3.dart';
 import '../statement.dart';
 import 'implementation.dart';
 
-Sqlite3? _sqlite3;
-
 /// Provides access to `sqlite3` functions, such as opening new databases.
-Sqlite3 get sqlite3 {
-  return _sqlite3 ??= FfiSqlite3(open.openSqlite());
-}
+Sqlite3 sqlite3 = FfiSqlite3();
 
 /// Provides access to `sqlite3` functions, such as opening new databases.
 abstract interface class Sqlite3 implements CommonSqlite3 {

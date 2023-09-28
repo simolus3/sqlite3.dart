@@ -174,7 +174,15 @@ jobs:
     - name: Test
       run: |
         dart pub get
-        dart test -P ci
+        dart --enable-experiment=native-assets test -P ci
+      working-directory: sqlite3/
+
+    - name: Test against system sqlite3
+      env:
+        sqlite3__source: system
+      run: |
+        dart pub get
+        dart --enable-experiment=native-assets test -P ci
       working-directory: sqlite3/
 
     - name: Web tests

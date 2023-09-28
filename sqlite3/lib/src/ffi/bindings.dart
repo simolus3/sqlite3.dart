@@ -7,90 +7,88 @@ import '../constants.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
 import 'memory.dart';
+
+// the alias reduces the diff between the native-asset variant and main. It
+// should be removed once we move to natives exclusively.
+import 'sqlite3.g.dart' as bindings;
 import 'sqlite3.g.dart';
 
-// ignore_for_file: non_constant_identifier_names
-
-class BindingsWithLibrary {
-  // sqlite3_prepare_v3 was added in 3.20.0
-  static const int _firstVersionForV3 = 3020000;
-
-  final Bindings bindings;
-  final DynamicLibrary library;
-
+class SupportedSqliteFeatures {
+  final bool supportsColumnMetadata;
   final bool supportsPrepareV3;
-  final bool supportsColumnTableName;
 
-  factory BindingsWithLibrary(DynamicLibrary library) {
-    final bindings = Bindings(library);
+  SupportedSqliteFeatures({
+    required this.supportsColumnMetadata,
+    required this.supportsPrepareV3,
+  });
+
+  static SupportedSqliteFeatures features = _detect();
+
+  static SupportedSqliteFeatures _detect() {
     var hasColumnMetadata = false;
 
-    if (library.providesSymbol('sqlite3_compileoption_get')) {
-      var i = 0;
-      String? lastOption;
-      do {
-        final ptr = bindings.sqlite3_compileoption_get(i);
+    var i = 0;
+    String? lastOption;
+    do {
+      final ptr = sqlite3_compileoption_get(i);
 
-        if (!ptr.isNullPointer) {
-          lastOption = ptr.readString();
+      if (!ptr.isNullPointer) {
+        lastOption = ptr.readString();
 
-          if (lastOption == 'ENABLE_COLUMN_METADATA') {
-            hasColumnMetadata = true;
-            break;
-          }
-        } else {
-          lastOption = null;
+        if (lastOption == 'ENABLE_COLUMN_METADATA') {
+          hasColumnMetadata = true;
+          break;
         }
+      } else {
+        lastOption = null;
+      }
 
-        i++;
-      } while (lastOption != null);
-    }
+      i++;
+    } while (lastOption != null);
 
-    return BindingsWithLibrary._(
-      bindings,
-      library,
-      bindings.sqlite3_libversion_number() >= _firstVersionForV3,
-      hasColumnMetadata,
+    return SupportedSqliteFeatures(
+      supportsColumnMetadata: hasColumnMetadata,
+      supportsPrepareV3: sqlite3_libversion_number() >= _firstVersionForV3,
     );
   }
 
-  BindingsWithLibrary._(this.bindings, this.library, this.supportsPrepareV3,
-      this.supportsColumnTableName);
+  // sqlite3_prepare_v3 was added in 3.20.0
+  static const int _firstVersionForV3 = 3020000;
 }
 
+// ignore_for_file: non_constant_identifier_names
+
 final class FfiBindings extends RawSqliteBindings {
-  final BindingsWithLibrary bindings;
-
-  FfiBindings(this.bindings);
-
   @override
   String? get sqlite3_temp_directory {
-    return bindings.bindings.sqlite3_temp_directory.readNullableString();
+    return bindings
+        .sqlite3_dart_temp_directory(0, nullPtr())
+        .readNullableString();
   }
 
   @override
   set sqlite3_temp_directory(String? value) {
     if (value == null) {
-      bindings.bindings.sqlite3_temp_directory = nullPtr();
+      bindings.sqlite3_dart_temp_directory(1, nullPtr());
     } else {
-      bindings.bindings.sqlite3_temp_directory =
-          Utf8Utils.allocateZeroTerminated(value);
+      bindings.sqlite3_dart_temp_directory(
+          1, Utf8Utils.allocateZeroTerminated(value));
     }
   }
 
   @override
   String sqlite3_errstr(int extendedErrorCode) {
-    return bindings.bindings.sqlite3_errstr(extendedErrorCode).readString();
+    return bindings.sqlite3_errstr(extendedErrorCode).readString();
   }
 
   @override
   String sqlite3_libversion() {
-    return bindings.bindings.sqlite3_libversion().readString();
+    return bindings.sqlite3_libversion().readString();
   }
 
   @override
   int sqlite3_libversion_number() {
-    return bindings.bindings.sqlite3_libversion_number();
+    return bindings.sqlite3_libversion_number();
   }
 
   @override
@@ -102,9 +100,8 @@ final class FfiBindings extends RawSqliteBindings {
         ? nullPtr<sqlite3_char>()
         : Utf8Utils.allocateZeroTerminated(zVfs);
 
-    final resultCode =
-        bindings.bindings.sqlite3_open_v2(namePtr, outDb, flags, vfsPtr);
-    final result = SqliteResult(resultCode, FfiDatabase(bindings, outDb.value));
+    final resultCode = bindings.sqlite3_open_v2(namePtr, outDb, flags, vfsPtr);
+    final result = SqliteResult(resultCode, FfiDatabase(outDb.value));
 
     namePtr.free();
     outDb.free();
@@ -115,53 +112,52 @@ final class FfiBindings extends RawSqliteBindings {
 
   @override
   String sqlite3_sourceid() {
-    return bindings.bindings.sqlite3_sourceid().readString();
+    return bindings.sqlite3_sourceid().readString();
   }
 }
 
 final class FfiDatabase extends RawSqliteDatabase {
-  final BindingsWithLibrary bindings;
   final Pointer<sqlite3> db;
   NativeCallable<_UpdateHook>? _installedUpdateHook;
 
-  FfiDatabase(this.bindings, this.db);
+  FfiDatabase(this.db);
 
   @override
   int sqlite3_close_v2() {
-    return bindings.bindings.sqlite3_close_v2(db);
+    return bindings.sqlite3_close_v2(db);
   }
 
   @override
   String sqlite3_errmsg() {
-    return bindings.bindings.sqlite3_errmsg(db).readString();
+    return bindings.sqlite3_errmsg(db).readString();
   }
 
   @override
   int sqlite3_extended_errcode() {
-    return bindings.bindings.sqlite3_extended_errcode(db);
+    return bindings.sqlite3_extended_errcode(db);
   }
 
   @override
   void sqlite3_extended_result_codes(int onoff) {
-    bindings.bindings.sqlite3_extended_result_codes(db, onoff);
+    bindings.sqlite3_extended_result_codes(db, onoff);
   }
 
   @override
-  int sqlite3_changes() => bindings.bindings.sqlite3_changes(db);
+  int sqlite3_changes() => bindings.sqlite3_changes(db);
 
   @override
   int sqlite3_exec(String sql) {
     final sqlPtr = Utf8Utils.allocateZeroTerminated(sql);
 
-    final result = bindings.bindings
-        .sqlite3_exec(db, sqlPtr, nullPtr(), nullPtr(), nullPtr());
+    final result =
+        bindings.sqlite3_exec(db, sqlPtr, nullPtr(), nullPtr(), nullPtr());
     sqlPtr.free();
     return result;
   }
 
   @override
   int sqlite3_last_insert_rowid() {
-    return bindings.bindings.sqlite3_last_insert_rowid(db);
+    return bindings.sqlite3_last_insert_rowid(db);
   }
 
   @override
@@ -174,8 +170,7 @@ final class FfiDatabase extends RawSqliteDatabase {
     required RawCollation collation,
   }) {
     final name = allocateBytes(collationName, additionalLength: 1);
-    final bindings = this.bindings.bindings;
-    final compare = collation.toNative(bindings);
+    final compare = collation.toNative();
 
     final result = bindings.sqlite3_create_collation_v2(
       db,
@@ -202,11 +197,10 @@ final class FfiDatabase extends RawSqliteDatabase {
   }) {
     final functionNamePtr = allocateBytes(functionName, additionalLength: 1);
 
-    final bindings = this.bindings.bindings;
-    final step = xStep.toNative(bindings);
-    final $final = xFinal.toNative(bindings, true);
-    final value = xValue.toNative(bindings, false);
-    final inverse = xInverse.toNative(bindings);
+    final step = xStep.toNative();
+    final $final = xFinal.toNative(true);
+    final value = xValue.toNative(false);
+    final inverse = xInverse.toNative();
 
     final result = bindings.sqlite3_create_window_function(
       db,
@@ -235,10 +229,9 @@ final class FfiDatabase extends RawSqliteDatabase {
   }) {
     final functionNamePtr = allocateBytes(functionName, additionalLength: 1);
 
-    final bindings = this.bindings.bindings;
-    final func = xFunc?.toNative(bindings);
-    final step = xStep?.toNative(bindings);
-    final $final = xFinal?.toNative(bindings, true);
+    final func = xFunc?.toNative();
+    final step = xStep?.toNative();
+    final $final = xFinal?.toNative(true);
 
     final result = bindings.sqlite3_create_function_v2(
       db,
@@ -264,11 +257,10 @@ final class FfiDatabase extends RawSqliteDatabase {
     final previous = _installedUpdateHook;
 
     if (hook == null) {
-      bindings.bindings.sqlite3_update_hook(db, nullPtr(), nullPtr());
+      bindings.sqlite3_update_hook(db, nullPtr(), nullPtr());
     } else {
       final native = _installedUpdateHook = hook.toNative();
-      bindings.bindings
-          .sqlite3_update_hook(db, native.nativeFunction, nullPtr());
+      bindings.sqlite3_update_hook(db, native.nativeFunction, nullPtr());
     }
 
     previous?.close();
@@ -276,7 +268,7 @@ final class FfiDatabase extends RawSqliteDatabase {
 
   @override
   int sqlite3_db_config(int op, int value) {
-    final result = bindings.bindings.sqlite3_db_config(
+    final result = bindings.sqlite3_dart_db_config(
       db,
       op,
       value,
@@ -329,8 +321,8 @@ final class FfiStatementCompiler extends RawStatementCompiler {
       int byteOffset, int length, int prepFlag) {
     final int result;
 
-    if (database.bindings.supportsPrepareV3) {
-      result = database.bindings.bindings.sqlite3_prepare_v3(
+    if (SupportedSqliteFeatures.features.supportsPrepareV3) {
+      result = sqlite3_prepare_v3(
         database.db,
         sql.elementAt(byteOffset).cast(),
         length,
@@ -345,7 +337,7 @@ final class FfiStatementCompiler extends RawStatementCompiler {
         'not support prepare_v3',
       );
 
-      result = database.bindings.bindings.sqlite3_prepare_v2(
+      result = sqlite3_prepare_v2(
         database.db,
         sql.elementAt(byteOffset).cast(),
         length,
@@ -364,13 +356,11 @@ final class FfiStatementCompiler extends RawStatementCompiler {
 
 final class FfiStatement extends RawSqliteStatement {
   final FfiDatabase database;
-  final Bindings bindings;
   final Pointer<sqlite3_stmt> stmt;
 
   final List<Pointer> _allocatedArguments = [];
 
-  FfiStatement(this.database, this.stmt)
-      : bindings = database.bindings.bindings;
+  FfiStatement(this.database, this.stmt);
 
   @override
   void deallocateArguments() {
@@ -504,14 +494,13 @@ final class FfiStatement extends RawSqliteStatement {
 
   @override
   bool get supportsReadingTableNameForColumn =>
-      database.bindings.supportsColumnTableName;
+      SupportedSqliteFeatures.features.supportsColumnMetadata;
 }
 
 final class FfiValue extends RawSqliteValue {
-  final Bindings bindings;
   final Pointer<sqlite3_value> value;
 
-  FfiValue(this.bindings, this.value);
+  FfiValue(this.value);
 
   @override
   Uint8List sqlite3_value_blob() {
@@ -546,10 +535,9 @@ final class FfiContext extends RawSqliteContext {
   static int _aggregateContextId = 1;
   static final Map<int, AggregateContext<Object?>> _contexts = {};
 
-  final Bindings bindings;
   final Pointer<sqlite3_context> context;
 
-  FfiContext(this.bindings, this.context);
+  FfiContext(this.context);
 
   Pointer<Int64> get _rawAggregateContext {
     final agCtxPtr = bindings
@@ -665,13 +653,12 @@ class _ValueList extends ListBase<FfiValue> {
   @override
   int length;
   final Pointer<Pointer<sqlite3_value>> args;
-  final Bindings bindings;
 
-  _ValueList(this.length, this.args, this.bindings);
+  _ValueList(this.length, this.args);
 
   @override
   FfiValue operator [](int index) {
-    return FfiValue(bindings, args.elementAt(index).value);
+    return FfiValue(args.elementAt(index).value);
   }
 
   @override
@@ -687,18 +674,18 @@ typedef _UpdateHook = Void Function(
     Pointer<Void>, Int, Pointer<sqlite3_char>, Pointer<sqlite3_char>, Int64);
 
 extension on RawXFunc {
-  NativeCallable<_XFunc> toNative(Bindings bindings) {
+  NativeCallable<_XFunc> toNative() {
     return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx, int nArgs,
         Pointer<Pointer<sqlite3_value>> args) {
-      return this(FfiContext(bindings, ctx), _ValueList(nArgs, args, bindings));
+      return this(FfiContext(ctx), _ValueList(nArgs, args));
     });
   }
 }
 
 extension on RawXFinal {
-  NativeCallable<_XFinal> toNative(Bindings bindings, bool clean) {
+  NativeCallable<_XFinal> toNative(bool clean) {
     return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx) {
-      final context = FfiContext(bindings, ctx);
+      final context = FfiContext(ctx);
       final res = this(context);
       if (clean) context.freeContext();
       return res;
@@ -707,7 +694,7 @@ extension on RawXFinal {
 }
 
 extension on RawCollation {
-  NativeCallable<_XCompare> toNative(Bindings bindings) {
+  NativeCallable<_XCompare> toNative() {
     return NativeCallable.isolateLocal(
       (
         Pointer<Void> _,
