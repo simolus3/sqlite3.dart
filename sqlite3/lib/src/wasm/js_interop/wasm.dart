@@ -15,8 +15,20 @@ class _ResultObject {
   external _WasmInstance get instance;
 }
 
-@JS('WebAssembly.instantiateStreaming')
-external Object instantiateStreaming(Object source, Object imports);
+@JS()
+class WebAssembly {
+  static Object get _instance => getProperty(globalThis, 'WebAssembly');
+
+  @JS()
+  external static Object instantiate(Uint8List bytecode, Object imports);
+
+  @JS()
+  external static Object instantiateStreaming(Object source, Object imports);
+
+  static bool get supportsInstantiateStreaming {
+    return hasProperty(_instance, 'instantiateStreaming');
+  }
+}
 
 class WasmInstance {
   final Map<String, Function> functions = {};
@@ -49,8 +61,15 @@ class WasmInstance {
       });
     });
 
-    final native = await promiseToFuture<_ResultObject>(
-        instantiateStreaming(response, importsJs));
+    final Object promise;
+    if (WebAssembly.supportsInstantiateStreaming) {
+      promise = WebAssembly.instantiateStreaming(response, importsJs);
+    } else {
+      final bytes = (await response.arrayBuffer()).asUint8List();
+      promise = WebAssembly.instantiate(bytes, importsJs);
+    }
+
+    final native = await promiseToFuture<_ResultObject>(promise);
     return WasmInstance._(native.instance);
   }
 }

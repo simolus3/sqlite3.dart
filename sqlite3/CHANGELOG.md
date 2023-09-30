@@ -1,3 +1,7 @@
+## 2.1.1-dev
+
+- Support browsers without support for `WebAssembly.instantiateStreaming`.
+
 ## 2.1.0
 
 - Add `config` getter to `CommonDatabase` to access `sqlite3_db_config`.
