@@ -140,14 +140,49 @@ apps.
 Note: Compiling sqlite3 to WebAssembly is not necessary for users of this package,
 just grab the `.wasm` from the latest release on GitHub.
 
-You'll need a clang toolchain capable of compiling to WebAssembly and a libc
-suitable for it (I use wasi in `/usr/share/wasi-sysroot`).
+#### Setup
+
+##### Linux
+
+On Linux, you need a LLVM based toolchain capable of compiling to WebAssembly.
+On Arch Linux, the `wasi-compiler-rt` and `wasi-libc` packages are enough for this.
+On other distros, you may have to download the sysroot and compiler builtins from their
+respective package managers or directly from the WASI SDK releases.
+
+With wasi in `/usr/share/wasi-sysroot` and the default clang compiler having the
+required builtins, you can setup the build with:
+
+```
+cmake -S assets/wasm -B .dart_tool/sqlite3_build --toolchain toolchain.cmake
+```
+
+##### macOS
+
+On macOS, I'm installing `cmake`, `llvm` and `binaryen` through Homebrew. Afterwards, you can download the
+wasi sysroot and the compiler runtimes from the Wasi SDK project:
+
+```
+curl -sL https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/libclang_rt.builtins-wasm32-wasi-20.0.tar.gz | \
+  tar x -zf - -C /opt/homebrew/opt/llvm/lib/clang/17*
+
+curl -sS -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sysroot-20.0.tar.gz | \
+  sudo tar x -zf - -C /opt
+```
+
+Replace `clang/17` with the correct directory if you're using a different version.
+
+Then, set up the build with
+
+```
+cmake -Dwasi_sysroot=/opt/wasi-sysroot -Dclang=/opt/homebrew/opt/llvm/bin/clang -S assets/wasm -B .dart_tool/sqlite3_build --toolchain toolchain.cmake
+```
+
+#### Building
 
 In this directory, run:
 
 ```
-cmake -S assets/wasm -B .dart_tool/sqlite3_build --toolchain toolchain.cmake
 cmake --build .dart_tool/sqlite3_build/ -t output -j
 ```
 
-(Of course, you can also run the build in any other directory).
+(Of course, you can also run the build in any other directory than `.dart_tool/sqite3_build` if you want to).
