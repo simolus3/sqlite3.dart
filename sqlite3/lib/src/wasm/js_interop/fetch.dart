@@ -1,7 +1,4 @@
-import 'dart:typed_data';
-
 import 'package:js/js.dart';
-import 'package:js/js_util.dart';
 
 @JS()
 @staticInterop
@@ -36,13 +33,4 @@ class Response {
       Object /* Blob|BufferSource|FormData|ReadableStream|URLSearchParams|UVString */
           body,
       ResponseInit init);
-}
-
-extension ResponseMethods on Response {
-  @JS('arrayBuffer')
-  external Object _arrayBuffer();
-
-  Future<ByteBuffer> arrayBuffer() {
-    return promiseToFuture(_arrayBuffer());
-  }
 }
