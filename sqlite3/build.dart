@@ -27,8 +27,9 @@ enum SqliteSource {
   static const defaultSource = vendored;
 
   static SqliteSource fromConfig(Config config) {
-    final value = config.optionalString('sqlite3.source',
-        validValues: ['url', 'system', 'vendored']);
+    final value = config.optionalString('sqlite3.source', validValues: [
+      for (final option in values) option.name,
+    ]);
 
     if (value == null) {
       return defaultSource;

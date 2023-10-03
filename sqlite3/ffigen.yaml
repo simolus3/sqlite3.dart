@@ -13,8 +13,9 @@ macros:
   include: ['sqlite3.*']
 functions:
   include: ['sqlite3.*']
-  # replaced with variadic helper
-  exclude: ['sqlite3_db_config']
+  variadic-arguments:
+    sqlite3_db_config:
+      - [int, int*]
 globals:
   include: ['sqlite3.*']
 

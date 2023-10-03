@@ -268,7 +268,7 @@ final class FfiDatabase extends RawSqliteDatabase {
 
   @override
   int sqlite3_db_config(int op, int value) {
-    final result = bindings.sqlite3_dart_db_config(
+    final result = bindings.sqlite3_db_config(
       db,
       op,
       value,

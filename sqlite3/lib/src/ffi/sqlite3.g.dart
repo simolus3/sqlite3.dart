@@ -575,6 +575,22 @@ external int sqlite3_auto_extension(
 );
 
 @ffi.Native<
+    ffi.Int Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Int,
+        ffi.VarArgs<
+            (
+              ffi.Int,
+              ffi.Pointer<ffi.Int>,
+            )>)>(symbol: 'sqlite3_db_config')
+external int sqlite3_db_config(
+  ffi.Pointer<sqlite3> db,
+  int op,
+  int va,
+  ffi.Pointer<ffi.Int> va1,
+);
+
+@ffi.Native<
         ffi.Pointer<sqlite3_char> Function(ffi.Int, ffi.Pointer<sqlite3_char>)>(
     symbol: 'sqlite3_dart_temp_directory')
 external ffi.Pointer<sqlite3_char> sqlite3_dart_temp_directory(
