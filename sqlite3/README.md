@@ -111,12 +111,10 @@ import 'package:sqlite3/common.dart';
 import 'package:sqlite3/wasm.dart';
 
 Future<WasmSqlite3> loadSqlite() async {
-  final fs = await IndexedDbFileSystem.open('my_app');
-
-  return await WasmSqlite3.loadFromUrl(
-      Uri.parse('sqlite.wasm'),
-      environment: SqliteEnvironment(fileSystem: fs),
-  );
+  final sqlite = await WasmSqlite3.loadFromUrl(Uri.parse('sqlite.wasm'));
+  final fileSystem = await IndexedDbFileSystem.open(dbName: 'my_app');
+  sqlite.registerVirtualFileSystem(fileSystem, makeDefault: true);
+  return sqlite;
 }
 ```
 
@@ -126,6 +124,9 @@ in `package:sqlite3/sqlite3.dart`, databases can be opened in similar ways.
 An example for such web folder is in `example/web/` of this repo.
 To view the example, copy a compiled `sqlite3.wasm` file to `web/sqlite3.wasm` in this directory.
 Then, run `dart run build_runner serve example:8080` and  visit `http://localhost:8080/web/` in a browser.
+
+Another `example/multiplatform/` uses common interface to `sqlite3` on web and native platforms.
+To run this example, merge its files into a Flutter app.
 
 ### Sharing code between web and a Dart VM
 
