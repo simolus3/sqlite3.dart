@@ -113,7 +113,7 @@ jobs:
       working-directory: sqlite3
 
     - name: Analyze
-      run: dart analyze --fatal-infos
+      run: dart analyze --fatal-infos lib/ test/
       working-directory: ${{ matrix.package }}
 
   test:
