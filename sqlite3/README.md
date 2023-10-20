@@ -111,7 +111,7 @@ import 'package:sqlite3/common.dart';
 import 'package:sqlite3/wasm.dart';
 
 Future<WasmSqlite3> loadSqlite() async {
-  final sqlite = await WasmSqlite3.loadFromUrl(Uri.parse('sqlite.wasm'));
+  final sqlite = await WasmSqlite3.loadFromUrl(Uri.parse('sqlite3.wasm'));
   final fileSystem = await IndexedDbFileSystem.open(dbName: 'my_app');
   sqlite.registerVirtualFileSystem(fileSystem, makeDefault: true);
   return sqlite;
