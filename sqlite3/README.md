@@ -141,6 +141,9 @@ apps.
 Note: Compiling sqlite3 to WebAssembly is not necessary for users of this package,
 just grab the `.wasm` from the latest release on GitHub.
 
+This section describes how to compile the WebAssembly modules from source. This
+uses a LLVM-based toolchain with components of the WASI SDK for C runtime components.
+
 #### Setup
 
 ##### Linux
@@ -185,5 +188,7 @@ In this directory, run:
 ```
 cmake --build .dart_tool/sqlite3_build/ -t output -j
 ```
+
+The `output` target copies `sqlite3.wasm` and `sqlite3.debug.wasm` to `example/web`.
 
 (Of course, you can also run the build in any other directory than `.dart_tool/sqite3_build` if you want to).
