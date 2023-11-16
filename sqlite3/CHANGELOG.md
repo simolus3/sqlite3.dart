@@ -1,3 +1,8 @@
+## 2.1.1-dev
+
+- Use `NativeCallable`s for user-defined functions, collations and update
+  streams.
+
 ## 2.1.0
 
 - Add `config` getter to `CommonDatabase` to access `sqlite3_db_config`.
