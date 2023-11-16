@@ -32,8 +32,8 @@ int sqlite3_changes(sqlite3 *db);
 int sqlite3_exec(sqlite3 *db, sqlite3_char *sql, void *callback, void *argToCb,
                  sqlite3_char **errorOut);
 void *sqlite3_update_hook(sqlite3 *,
-                          void (*)(void *, int, char const *, char const *,
-                                   int64_t),
+                          void (*)(void *, int, sqlite3_char const *,
+                                   sqlite3_char const *, int64_t),
                           void *);
 
 // Statements
@@ -82,13 +82,18 @@ int sqlite3_value_bytes(sqlite3_value *value);
 
 typedef struct sqlite3_context sqlite3_context;
 
-int sqlite3_create_function_v2(sqlite3 *db, sqlite3_char *zFunctionName,
-                               int nArg, int eTextRep, void *pApp, void *xFunc,
-                               void *xStep, void *xFinal, void *xDestroy);
-int sqlite3_create_window_function(sqlite3 *db, sqlite3_char *zFunctionName,
-                                   int nArg, int eTextRep, void *pApp,
-                                   void *xStep, void *xFinal, void *xValue,
-                                   void *xInverse, void *xDestroy);
+int sqlite3_create_function_v2(
+    sqlite3 *db, sqlite3_char *zFunctionName, int nArg, int eTextRep,
+    void *pApp, void (*xFunc)(sqlite3_context *, int, sqlite3_value **),
+    void (*xStep)(sqlite3_context *, int, sqlite3_value **),
+    void (*xFinal)(sqlite3_context *), void (*xDestroy)(void *));
+int sqlite3_create_window_function(
+    sqlite3 *db, sqlite3_char *zFunctionName, int nArg, int eTextRep,
+    void *pApp, void (*xStep)(sqlite3_context *, int, sqlite3_value **),
+    void (*xFinal)(sqlite3_context *), void (*xValue)(sqlite3_context *),
+
+    void (*xInverse)(sqlite3_context *, int, sqlite3_value **),
+    void (*xDestroy)(void *));
 
 void *sqlite3_aggregate_context(sqlite3_context *ctx, int nBytes);
 
@@ -104,7 +109,10 @@ void sqlite3_result_text(sqlite3_context *ctx, sqlite3_char *data, int length,
 
 // Collations
 int sqlite3_create_collation_v2(sqlite3 *, sqlite3_char *zName, int eTextRep,
-                                void *pArg, int *xCompare, void *xDestroy);
+                                void *pArg,
+                                int (*xCompare)(void *, int, const void *, int,
+                                                const void *),
+                                void (*xDestroy)(void *));
 
 // Backup
 sqlite3_backup *sqlite3_backup_init(sqlite3 *pDestDb, sqlite3_char *zDestDb,

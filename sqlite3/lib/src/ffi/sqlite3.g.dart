@@ -266,8 +266,12 @@ class Bindings {
     ffi.Pointer<sqlite3> arg0,
     ffi.Pointer<
             ffi.NativeFunction<
-                ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Int,
-                    ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>, ffi.Int64)>>
+                ffi.Void Function(
+                    ffi.Pointer<ffi.Void>,
+                    ffi.Int,
+                    ffi.Pointer<sqlite3_char>,
+                    ffi.Pointer<sqlite3_char>,
+                    ffi.Int64)>>
         arg1,
     ffi.Pointer<ffi.Void> arg2,
   ) {
@@ -287,8 +291,8 @@ class Bindings {
                       ffi.Void Function(
                           ffi.Pointer<ffi.Void>,
                           ffi.Int,
-                          ffi.Pointer<ffi.Char>,
-                          ffi.Pointer<ffi.Char>,
+                          ffi.Pointer<sqlite3_char>,
+                          ffi.Pointer<sqlite3_char>,
                           ffi.Int64)>>,
               ffi.Pointer<ffi.Void>)>>('sqlite3_update_hook');
   late final _sqlite3_update_hook = _sqlite3_update_hookPtr.asFunction<
@@ -299,8 +303,8 @@ class Bindings {
                   ffi.Void Function(
                       ffi.Pointer<ffi.Void>,
                       ffi.Int,
-                      ffi.Pointer<ffi.Char>,
-                      ffi.Pointer<ffi.Char>,
+                      ffi.Pointer<sqlite3_char>,
+                      ffi.Pointer<sqlite3_char>,
                       ffi.Int64)>>,
           ffi.Pointer<ffi.Void>)>();
 
@@ -800,10 +804,21 @@ class Bindings {
     int nArg,
     int eTextRep,
     ffi.Pointer<ffi.Void> pApp,
-    ffi.Pointer<ffi.Void> xFunc,
-    ffi.Pointer<ffi.Void> xStep,
-    ffi.Pointer<ffi.Void> xFinal,
-    ffi.Pointer<ffi.Void> xDestroy,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
+                    ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>
+        xFunc,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
+                    ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>
+        xStep,
+    ffi.Pointer<
+            ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>>
+        xFinal,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
+        xDestroy,
   ) {
     return _sqlite3_create_function_v2(
       db,
@@ -818,18 +833,34 @@ class Bindings {
     );
   }
 
-  late final _sqlite3_create_function_v2Ptr = _lookup<
-      ffi.NativeFunction<
-          ffi.Int Function(
-              ffi.Pointer<sqlite3>,
-              ffi.Pointer<sqlite3_char>,
-              ffi.Int,
-              ffi.Int,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>)>>('sqlite3_create_function_v2');
+  late final _sqlite3_create_function_v2Ptr =
+      _lookup<
+              ffi.NativeFunction<
+                  ffi.Int Function(
+                      ffi.Pointer<sqlite3>,
+                      ffi.Pointer<sqlite3_char>,
+                      ffi.Int,
+                      ffi.Int,
+                      ffi.Pointer<ffi.Void>,
+                      ffi.Pointer<
+                          ffi.NativeFunction<
+                              ffi.Void Function(
+                                  ffi.Pointer<sqlite3_context>,
+                                  ffi.Int,
+                                  ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>,
+                      ffi.Pointer<
+                          ffi.NativeFunction<
+                              ffi.Void Function(
+                                  ffi.Pointer<sqlite3_context>,
+                                  ffi.Int,
+                                  ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>,
+                      ffi.Pointer<
+                          ffi.NativeFunction<
+                              ffi.Void Function(ffi.Pointer<sqlite3_context>)>>,
+                      ffi.Pointer<
+                          ffi.NativeFunction<
+                              ffi.Void Function(ffi.Pointer<ffi.Void>)>>)>>(
+          'sqlite3_create_function_v2');
   late final _sqlite3_create_function_v2 =
       _sqlite3_create_function_v2Ptr.asFunction<
           int Function(
@@ -838,10 +869,20 @@ class Bindings {
               int,
               int,
               ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>)>();
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
+                          ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
+                          ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Void Function(ffi.Pointer<sqlite3_context>)>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Void Function(ffi.Pointer<ffi.Void>)>>)>();
 
   int sqlite3_create_window_function(
     ffi.Pointer<sqlite3> db,
@@ -849,11 +890,24 @@ class Bindings {
     int nArg,
     int eTextRep,
     ffi.Pointer<ffi.Void> pApp,
-    ffi.Pointer<ffi.Void> xStep,
-    ffi.Pointer<ffi.Void> xFinal,
-    ffi.Pointer<ffi.Void> xValue,
-    ffi.Pointer<ffi.Void> xInverse,
-    ffi.Pointer<ffi.Void> xDestroy,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
+                    ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>
+        xStep,
+    ffi.Pointer<
+            ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>>
+        xFinal,
+    ffi.Pointer<
+            ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>>
+        xValue,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
+                    ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>
+        xInverse,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
+        xDestroy,
   ) {
     return _sqlite3_create_window_function(
       db,
@@ -869,19 +923,37 @@ class Bindings {
     );
   }
 
-  late final _sqlite3_create_window_functionPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Int Function(
-              ffi.Pointer<sqlite3>,
-              ffi.Pointer<sqlite3_char>,
-              ffi.Int,
-              ffi.Int,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>)>>('sqlite3_create_window_function');
+  late final _sqlite3_create_window_functionPtr =
+      _lookup<
+              ffi.NativeFunction<
+                  ffi.Int Function(
+                      ffi.Pointer<sqlite3>,
+                      ffi.Pointer<sqlite3_char>,
+                      ffi.Int,
+                      ffi.Int,
+                      ffi.Pointer<ffi.Void>,
+                      ffi.Pointer<
+                          ffi.NativeFunction<
+                              ffi.Void Function(
+                                  ffi.Pointer<sqlite3_context>,
+                                  ffi.Int,
+                                  ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>,
+                      ffi.Pointer<
+                          ffi.NativeFunction<
+                              ffi.Void Function(ffi.Pointer<sqlite3_context>)>>,
+                      ffi.Pointer<
+                          ffi.NativeFunction<
+                              ffi.Void Function(ffi.Pointer<sqlite3_context>)>>,
+                      ffi.Pointer<
+                          ffi.NativeFunction<
+                              ffi.Void Function(
+                                  ffi.Pointer<sqlite3_context>,
+                                  ffi.Int,
+                                  ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>,
+                      ffi.Pointer<
+                          ffi.NativeFunction<
+                              ffi.Void Function(ffi.Pointer<ffi.Void>)>>)>>(
+          'sqlite3_create_window_function');
   late final _sqlite3_create_window_function =
       _sqlite3_create_window_functionPtr.asFunction<
           int Function(
@@ -890,11 +962,23 @@ class Bindings {
               int,
               int,
               ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Void>)>();
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
+                          ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Void Function(ffi.Pointer<sqlite3_context>)>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Void Function(ffi.Pointer<sqlite3_context>)>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
+                          ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Void Function(ffi.Pointer<ffi.Void>)>>)>();
 
   ffi.Pointer<ffi.Void> sqlite3_aggregate_context(
     ffi.Pointer<sqlite3_context> ctx,
@@ -1049,8 +1133,13 @@ class Bindings {
     ffi.Pointer<sqlite3_char> zName,
     int eTextRep,
     ffi.Pointer<ffi.Void> pArg,
-    ffi.Pointer<ffi.Int> xCompare,
-    ffi.Pointer<ffi.Void> xDestroy,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void>, ffi.Int,
+                    ffi.Pointer<ffi.Void>, ffi.Int, ffi.Pointer<ffi.Void>)>>
+        xCompare,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
+        xDestroy,
   ) {
     return _sqlite3_create_collation_v2(
       arg0,
@@ -1063,14 +1152,24 @@ class Bindings {
   }
 
   late final _sqlite3_create_collation_v2Ptr = _lookup<
-      ffi.NativeFunction<
-          ffi.Int Function(
-              ffi.Pointer<sqlite3>,
-              ffi.Pointer<sqlite3_char>,
-              ffi.Int,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Int>,
-              ffi.Pointer<ffi.Void>)>>('sqlite3_create_collation_v2');
+          ffi.NativeFunction<
+              ffi.Int Function(
+                  ffi.Pointer<sqlite3>,
+                  ffi.Pointer<sqlite3_char>,
+                  ffi.Int,
+                  ffi.Pointer<ffi.Void>,
+                  ffi.Pointer<
+                      ffi.NativeFunction<
+                          ffi.Int Function(
+                              ffi.Pointer<ffi.Void>,
+                              ffi.Int,
+                              ffi.Pointer<ffi.Void>,
+                              ffi.Int,
+                              ffi.Pointer<ffi.Void>)>>,
+                  ffi.Pointer<
+                      ffi.NativeFunction<
+                          ffi.Void Function(ffi.Pointer<ffi.Void>)>>)>>(
+      'sqlite3_create_collation_v2');
   late final _sqlite3_create_collation_v2 =
       _sqlite3_create_collation_v2Ptr.asFunction<
           int Function(
@@ -1078,8 +1177,17 @@ class Bindings {
               ffi.Pointer<sqlite3_char>,
               int,
               ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Int>,
-              ffi.Pointer<ffi.Void>)>();
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void>,
+                          ffi.Int,
+                          ffi.Pointer<ffi.Void>,
+                          ffi.Int,
+                          ffi.Pointer<ffi.Void>)>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Void Function(ffi.Pointer<ffi.Void>)>>)>();
 
   ffi.Pointer<sqlite3_backup> sqlite3_backup_init(
     ffi.Pointer<sqlite3> pDestDb,

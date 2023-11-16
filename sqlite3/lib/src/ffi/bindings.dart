@@ -61,9 +61,7 @@ class BindingsWithLibrary {
 final class FfiBindings extends RawSqliteBindings {
   final BindingsWithLibrary bindings;
 
-  FfiBindings(this.bindings) {
-    DartCallbacks.bindingsForStore = bindings.bindings;
-  }
+  FfiBindings(this.bindings);
 
   @override
   String? get sqlite3_temp_directory {
@@ -124,6 +122,7 @@ final class FfiBindings extends RawSqliteBindings {
 final class FfiDatabase extends RawSqliteDatabase {
   final BindingsWithLibrary bindings;
   final Pointer<sqlite3> db;
+  NativeCallable<_UpdateHook>? _installedUpdateHook;
 
   FfiDatabase(this.bindings, this.db);
 
@@ -175,16 +174,16 @@ final class FfiDatabase extends RawSqliteDatabase {
     required RawCollation collation,
   }) {
     final name = allocateBytes(collationName, additionalLength: 1);
-    final id =
-        DartCallbacks.register(RegisteredFunctionSet(collation: collation));
+    final bindings = this.bindings.bindings;
+    final compare = collation.toNative(bindings);
 
-    final result = bindings.bindings.sqlite3_create_collation_v2(
+    final result = bindings.sqlite3_create_collation_v2(
       db,
       name.cast(),
       eTextRep,
-      Pointer.fromAddress(id),
-      DartCallbacks.xCompare.cast(),
-      DartCallbacks.xDestroy.cast(),
+      nullPtr(),
+      compare.nativeFunction,
+      _xDestroy([compare]),
     );
     name.free();
 
@@ -202,24 +201,24 @@ final class FfiDatabase extends RawSqliteDatabase {
     required RawXStep xInverse,
   }) {
     final functionNamePtr = allocateBytes(functionName, additionalLength: 1);
-    final id = DartCallbacks.register(RegisteredFunctionSet(
-      xStep: xStep,
-      xFinal: xFinal,
-      xValue: xValue,
-      xInverse: xInverse,
-    ));
 
-    final result = bindings.bindings.sqlite3_create_window_function(
+    final bindings = this.bindings.bindings;
+    final step = xStep.toNative(bindings);
+    final $final = xFinal.toNative(bindings, true);
+    final value = xValue.toNative(bindings, false);
+    final inverse = xInverse.toNative(bindings);
+
+    final result = bindings.sqlite3_create_window_function(
       db,
       functionNamePtr.cast(),
       nArg,
       eTextRep,
-      Pointer.fromAddress(id),
-      DartCallbacks.xStep,
-      DartCallbacks.xFinal,
-      DartCallbacks.xValue,
-      DartCallbacks.xInverse,
-      DartCallbacks.xDestroy,
+      nullPtr(),
+      step.nativeFunction,
+      $final.nativeFunction,
+      value.nativeFunction,
+      inverse.nativeFunction,
+      _xDestroy([step, $final, value, inverse]),
     );
     functionNamePtr.free();
     return result;
@@ -235,22 +234,26 @@ final class FfiDatabase extends RawSqliteDatabase {
     RawXFinal? xFinal,
   }) {
     final functionNamePtr = allocateBytes(functionName, additionalLength: 1);
-    final id = DartCallbacks.register(RegisteredFunctionSet(
-      xFunc: xFunc,
-      xStep: xStep,
-      xFinal: xFinal,
-    ));
 
-    final result = bindings.bindings.sqlite3_create_function_v2(
+    final bindings = this.bindings.bindings;
+    final func = xFunc?.toNative(bindings);
+    final step = xStep?.toNative(bindings);
+    final $final = xFinal?.toNative(bindings, true);
+
+    final result = bindings.sqlite3_create_function_v2(
       db,
       functionNamePtr.cast(),
       nArg,
       eTextRep,
-      Pointer.fromAddress(id),
-      xFunc != null ? DartCallbacks.xFunc : nullPtr(),
-      xStep != null ? DartCallbacks.xStep : nullPtr(),
-      xFinal != null ? DartCallbacks.xFinal : nullPtr(),
-      DartCallbacks.xDestroy,
+      nullPtr(),
+      func?.nativeFunction ?? nullPtr(),
+      step?.nativeFunction ?? nullPtr(),
+      $final?.nativeFunction ?? nullPtr(),
+      _xDestroy([
+        if (func != null) func,
+        if (step != null) step,
+        if ($final != null) $final,
+      ]),
     );
     functionNamePtr.free();
     return result;
@@ -258,13 +261,17 @@ final class FfiDatabase extends RawSqliteDatabase {
 
   @override
   void sqlite3_update_hook(RawUpdateHook? hook) {
-    DartCallbacks.installedUpdateHook = hook;
+    final previous = _installedUpdateHook;
 
-    bindings.bindings.sqlite3_update_hook(
-      db,
-      (hook == null ? nullptr : DartCallbacks.updateCallback).cast(),
-      nullPtr(),
-    );
+    if (hook == null) {
+      bindings.bindings.sqlite3_update_hook(db, nullPtr(), nullPtr());
+    } else {
+      final native = _installedUpdateHook = hook.toNative();
+      bindings.bindings
+          .sqlite3_update_hook(db, native.nativeFunction, nullPtr());
+    }
+
+    previous?.close();
   }
 
   @override
@@ -281,6 +288,21 @@ final class FfiDatabase extends RawSqliteDatabase {
   @override
   RawStatementCompiler newCompiler(List<int> utf8EncodedSql) {
     return FfiStatementCompiler(this, allocateBytes(utf8EncodedSql));
+  }
+
+  static Pointer<NativeFunction<Void Function(Pointer<Void>)>> _xDestroy(
+      List<NativeCallable> callables) {
+    void destroy(Pointer<Void> _) {
+      for (final callable in callables) {
+        callable.close();
+      }
+    }
+
+    final callable =
+        NativeCallable<Void Function(Pointer<Void>)>.isolateLocal(destroy);
+    callables.add(callable);
+
+    return callable.nativeFunction;
   }
 }
 
@@ -521,6 +543,9 @@ final class FfiValue extends RawSqliteValue {
 }
 
 final class FfiContext extends RawSqliteContext {
+  static int _aggregateContextId = 1;
+  static final Map<int, AggregateContext<Object?>> _contexts = {};
+
   final Bindings bindings;
   final Pointer<sqlite3_context> context;
 
@@ -543,13 +568,14 @@ final class FfiContext extends RawSqliteContext {
   @override
   AggregateContext<Object?>? get dartAggregateContext {
     final agCtxPtr = _rawAggregateContext;
+    final value = agCtxPtr.value;
 
     // Ok, we have a pointer (that sqlite3 zeroes out for us). Our state counter
     // starts at one, so if it's still zero we don't have a Dart context yet.
-    if (agCtxPtr.value == 0) {
+    if (value == 0) {
       return null;
     } else {
-      return DartCallbacks.aggregateContexts[agCtxPtr.value];
+      return _contexts[value];
     }
   }
 
@@ -557,9 +583,8 @@ final class FfiContext extends RawSqliteContext {
   set dartAggregateContext(AggregateContext<Object?>? value) {
     final ptr = _rawAggregateContext;
 
-    final id = DartCallbacks.aggregateContextId++;
-    DartCallbacks.aggregateContexts[id] = ArgumentError.checkNotNull(value);
-
+    final id = _aggregateContextId++;
+    _contexts[id] = ArgumentError.checkNotNull(value);
     ptr.value = id;
   }
 
@@ -609,6 +634,11 @@ final class FfiContext extends RawSqliteContext {
         Pointer.fromAddress(SqlSpecialDestructor.SQLITE_TRANSIENT));
     ptr.free();
   }
+
+  void freeContext() {
+    final ctxId = _rawAggregateContext.value;
+    _contexts.remove(ctxId);
+  }
 }
 
 class RegisteredFunctionSet {
@@ -631,152 +661,85 @@ class RegisteredFunctionSet {
   });
 }
 
-/// Helper class to use abitrary functions as sqlite callbacks.
-///
-/// `dart:ffi`'s `Pointer.fromFunction` only supports static top-level functions
-/// (in particular, no closures). All sqlite functions with callbacks allow us
-/// to provide an application-specific `void*` pointer that will be forwarded to
-/// the callback when invoked. We use an incrementing pointer for that, as it
-/// allows us to identify functions.
-class DartCallbacks {
-  static late Bindings bindingsForStore;
-
-  static int _id = 0;
-  static final Map<int, RegisteredFunctionSet> functions =
-      <int, RegisteredFunctionSet>{};
-
-  static int aggregateContextId = 1;
-  static final Map<int, AggregateContext<Object?>> aggregateContexts = {};
-
-  static RawUpdateHook? installedUpdateHook;
-
-  static int register(RegisteredFunctionSet set) {
-    final id = _id++;
-    functions[id] = set;
-    return id;
-  }
-
-  static void _xFunc(
-    Pointer<sqlite3_context> context,
-    int argCount,
-    Pointer<Pointer<sqlite3_value>> args,
-  ) {
-    final functionId = bindingsForStore.sqlite3_user_data(context).address;
-    final target = functions[functionId]!.xFunc!;
-
-    target(FfiContext(bindingsForStore, context), _ValueList(argCount, args));
-  }
-
-  static Pointer<Void> xFunc = Pointer.fromFunction<
-          Void Function(Pointer<sqlite3_context>, Int,
-              Pointer<Pointer<sqlite3_value>>)>(_xFunc)
-      .cast();
-
-  static void _xStep(
-    Pointer<sqlite3_context> context,
-    int argCount,
-    Pointer<Pointer<sqlite3_value>> args,
-  ) {
-    final functionId = bindingsForStore.sqlite3_user_data(context).address;
-    final target = functions[functionId]!.xStep!;
-
-    target(FfiContext(bindingsForStore, context), _ValueList(argCount, args));
-  }
-
-  static Pointer<Void> xStep = Pointer.fromFunction<
-          Void Function(Pointer<sqlite3_context>, Int,
-              Pointer<Pointer<sqlite3_value>>)>(_xStep)
-      .cast();
-
-  static void _xFinal(
-    Pointer<sqlite3_context> context,
-  ) {
-    final functionId = bindingsForStore.sqlite3_user_data(context).address;
-    final target = functions[functionId]!.xFinal!;
-
-    target(FfiContext(bindingsForStore, context));
-  }
-
-  static Pointer<Void> xFinal =
-      Pointer.fromFunction<Void Function(Pointer<sqlite3_context>)>(_xFinal)
-          .cast();
-
-  static void _xValue(
-    Pointer<sqlite3_context> context,
-  ) {
-    final functionId = bindingsForStore.sqlite3_user_data(context).address;
-    final target = functions[functionId]!.xValue!;
-
-    target(FfiContext(bindingsForStore, context));
-  }
-
-  static Pointer<Void> xValue =
-      Pointer.fromFunction<Void Function(Pointer<sqlite3_context>)>(_xValue)
-          .cast();
-
-  static void _xInverse(
-    Pointer<sqlite3_context> context,
-    int argCount,
-    Pointer<Pointer<sqlite3_value>> args,
-  ) {
-    final functionId = bindingsForStore.sqlite3_user_data(context).address;
-    final target = functions[functionId]!.xInverse!;
-
-    target(FfiContext(bindingsForStore, context), _ValueList(argCount, args));
-  }
-
-  static Pointer<Void> xInverse = Pointer.fromFunction<
-          Void Function(Pointer<sqlite3_context>, Int,
-              Pointer<Pointer<sqlite3_value>>)>(_xInverse)
-      .cast();
-
-  static void _xDestroy(Pointer<Void> data) {
-    functions.remove(data.address);
-  }
-
-  static Pointer<Void> xDestroy =
-      Pointer.fromFunction<Void Function(Pointer<Void>)>(_xDestroy).cast();
-
-  static void _updateCallback(Pointer<Void> data, int kind,
-      Pointer<sqlite3_char> db, Pointer<sqlite3_char> table, int rowid) {
-    final tableName = table.readString();
-    installedUpdateHook?.call(kind, tableName, rowid);
-  }
-
-  static final Pointer<NativeType> updateCallback = Pointer.fromFunction<
-          Void Function(Pointer<Void>, Int32, Pointer<sqlite3_char>,
-              Pointer<sqlite3_char>, Int64)>(_updateCallback)
-      .cast();
-
-  static int _xCompare(Pointer<Void> app, int lengthA, Pointer<Void> a,
-      int lengthB, Pointer<Void> b) {
-    final function = functions[app.address]!.collation!;
-
-    final dartA = a.cast<sqlite3_char>().readNullableString(lengthA);
-    final dartB = b.cast<sqlite3_char>().readNullableString(lengthB);
-
-    return function(dartA, dartB);
-  }
-
-  static final Pointer<NativeType> xCompare = Pointer.fromFunction<
-          Int Function(Pointer<Void>, Int, Pointer<Void>, Int,
-              Pointer<Void>)>(_xCompare, 0)
-      .cast();
-}
-
 class _ValueList extends ListBase<FfiValue> {
   @override
   int length;
   final Pointer<Pointer<sqlite3_value>> args;
+  final Bindings bindings;
 
-  _ValueList(this.length, this.args);
+  _ValueList(this.length, this.args, this.bindings);
 
   @override
   FfiValue operator [](int index) {
-    return FfiValue(
-        DartCallbacks.bindingsForStore, args.elementAt(index).value);
+    return FfiValue(bindings, args.elementAt(index).value);
   }
 
   @override
   void operator []=(int index, FfiValue value) {}
+}
+
+typedef _XFunc = Void Function(
+    Pointer<sqlite3_context>, Int, Pointer<Pointer<sqlite3_value>>);
+typedef _XFinal = Void Function(Pointer<sqlite3_context>);
+typedef _XCompare = Int Function(
+    Pointer<Void>, Int, Pointer<Void>, Int, Pointer<Void>);
+typedef _UpdateHook = Void Function(
+    Pointer<Void>, Int, Pointer<sqlite3_char>, Pointer<sqlite3_char>, Int64);
+
+extension on RawXFunc {
+  NativeCallable<_XFunc> toNative(Bindings bindings) {
+    return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx, int nArgs,
+        Pointer<Pointer<sqlite3_value>> args) {
+      return this(FfiContext(bindings, ctx), _ValueList(nArgs, args, bindings));
+    });
+  }
+}
+
+extension on RawXFinal {
+  NativeCallable<_XFinal> toNative(Bindings bindings, bool clean) {
+    return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx) {
+      final context = FfiContext(bindings, ctx);
+      final res = this(context);
+      if (clean) context.freeContext();
+      return res;
+    });
+  }
+}
+
+extension on RawCollation {
+  NativeCallable<_XCompare> toNative(Bindings bindings) {
+    return NativeCallable.isolateLocal(
+      (
+        Pointer<Void> _,
+        int lengthA,
+        Pointer<Void> a,
+        int lengthB,
+        Pointer<Void> b,
+      ) {
+        final dartA = a.cast<sqlite3_char>().readNullableString(lengthA);
+        final dartB = b.cast<sqlite3_char>().readNullableString(lengthB);
+
+        return this(dartA, dartB);
+      },
+      exceptionalReturn: 0,
+    );
+  }
+}
+
+extension on RawUpdateHook {
+  NativeCallable<_UpdateHook> toNative() {
+    return NativeCallable.isolateLocal(
+      (Pointer<Void> _, int kind, Pointer<sqlite3_char> db,
+          Pointer<sqlite3_char> table, int rowid) {
+        final tableName = table.readString();
+        this(kind, tableName, rowid);
+
+        // This closure needs to return `void` exactly to make the FFI analyzer
+        // happy.
+        return _returnsVoid();
+      },
+    );
+  }
+
+  static void _returnsVoid() {}
 }
