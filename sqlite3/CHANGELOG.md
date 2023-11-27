@@ -1,5 +1,7 @@
-## 2.1.1-dev
+## 2.2.0-dev
 
+- Add `updatedRows` getter to eventually replace `getUpdatedRows()` method.
+- Clarify documentation on `lastInsertRowId` and `updatedRows`.
 - Use `NativeCallable`s for user-defined functions, collations and update
   streams.
 

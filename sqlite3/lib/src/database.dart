@@ -1,5 +1,3 @@
-import 'package:meta/meta.dart';
-
 import 'functions.dart';
 import 'result_set.dart';
 import 'statement.dart';
@@ -18,11 +16,22 @@ abstract class CommonDatabase {
   /// The application defined version of this database.
   abstract int userVersion;
 
-  /// Returns the row id of the last inserted row.
+  /// The row id of the most recent successful insert statement on this database
+  /// connection.
+  ///
+  /// This does not consider `WITHOUT ROWID` tables and won't reliably detect
+  /// inserts made by triggers. For details, see the [sqlite3 docs](https://sqlite.org/c3ref/last_insert_rowid.html).
   int get lastInsertRowId;
+
+  /// The amount of rows inserted, updated or deleted by the last `INSERT`,
+  /// `UPDATE` or `DELETE` statement, respectively.
+  ///
+  /// For more details, see the [sqlite3 docs](https://sqlite.org/c3ref/changes.html).
+  int get updatedRows;
 
   /// The amount of rows affected by the last `INSERT`, `UPDATE` or `DELETE`
   /// statement.
+  @Deprecated('Use updatedRows instead')
   int getUpdatedRows();
 
   /// An async stream of data changes happening on this database.
@@ -40,7 +49,6 @@ abstract class CommonDatabase {
   ///
   /// See also:
   ///  - [Data Change Notification Callbacks](https://www.sqlite.org/c3ref/update_hook.html)
-  @experimental
   Stream<SqliteUpdate> get updates;
 
   /// Executes the [sql] statement with the provided [parameters] and ignores

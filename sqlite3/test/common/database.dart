@@ -34,11 +34,13 @@ void testDatabase(
     database.dispose(); // shouldn't throw or crash
   });
 
-  test('getUpdatedRows', () {
+  test('updated rows', () {
     database
       ..execute('CREATE TABLE foo (bar INT);')
       ..execute('INSERT INTO foo VALUES (3), (4);');
 
+    expect(database.updatedRows, 2);
+    // ignore: deprecated_member_use_from_same_package
     expect(database.getUpdatedRows(), 2);
   });
 

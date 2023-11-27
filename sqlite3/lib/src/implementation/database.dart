@@ -260,7 +260,10 @@ base class DatabaseImplementation implements CommonDatabase {
   }
 
   @override
-  int getUpdatedRows() => database.sqlite3_changes();
+  int get updatedRows => database.sqlite3_changes();
+
+  @override
+  int getUpdatedRows() => updatedRows;
 
   @override
   int get lastInsertRowId => database.sqlite3_last_insert_rowid();
