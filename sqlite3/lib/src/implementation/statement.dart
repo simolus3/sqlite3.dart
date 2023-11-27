@@ -231,34 +231,22 @@ base class StatementImplementation extends CommonPreparedStatement {
     _latestArguments = paramsAsList;
   }
 
-  void _bindParam(Object? param, int i) {
-    // TODO: Replace with switch expression after https://github.com/dart-lang/sdk/issues/52234
-    switch (param) {
-      case null:
-        statement.sqlite3_bind_null(i);
-      case int():
-        statement.sqlite3_bind_int64(i, param);
-      case BigInt():
-        statement.sqlite3_bind_int64BigInt(i, param.checkRange);
-      case bool():
-        statement.sqlite3_bind_int64(i, param ? 1 : 0);
-      case double():
-        statement.sqlite3_bind_double(i, param);
-      case String():
-        statement.sqlite3_bind_text(i, param);
-      case List<int>():
-        statement.sqlite3_bind_blob64(i, param);
-      case CustomStatementParameter():
-        param.applyTo(this, i);
-      default:
-        throw ArgumentError.value(
-          param,
-          'params[$i]',
-          'Allowed parameters must either be null or bool, int, num, String or '
-              'List<int>.',
-        );
-    }
-  }
+  void _bindParam(Object? param, int i) => switch (param) {
+        null => statement.sqlite3_bind_null(i),
+        int() => statement.sqlite3_bind_int64(i, param),
+        BigInt() => statement.sqlite3_bind_int64BigInt(i, param.checkRange),
+        bool() => statement.sqlite3_bind_int64(i, param ? 1 : 0),
+        double() => statement.sqlite3_bind_double(i, param),
+        String() => statement.sqlite3_bind_text(i, param),
+        List<int>() => statement.sqlite3_bind_blob64(i, param),
+        CustomStatementParameter() => param.applyTo(this, i),
+        _ => throw ArgumentError.value(
+            param,
+            'params[$i]',
+            'Allowed parameters must either be null or bool, int, num, String or '
+                'List<int>.',
+          )
+      };
 
   void _bindParams(StatementParameters parameters) {
     switch (parameters) {
