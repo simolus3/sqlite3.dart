@@ -53,10 +53,14 @@ abstract class CommonDatabase {
 
   /// Executes the [sql] statement with the provided [parameters] and ignores
   /// the result.
+  ///
+  /// For the types supported in [parameters], see [StatementParameters].
   void execute(String sql, [List<Object?> parameters = const []]);
 
   /// Prepares the [sql] select statement and runs it with the provided
   /// [parameters].
+  ///
+  /// For the types supported in [parameters], see [StatementParameters].
   ResultSet select(String sql, [List<Object?> parameters = const []]);
 
   /// Compiles the [sql] statement to execute it later.

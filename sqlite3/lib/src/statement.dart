@@ -17,6 +17,7 @@ abstract class CommonPreparedStatement {
   /// If the [parameters] list does not match the amount of parameters in the
   /// original SQL statement ([parameterCount]), an [ArgumentError] will be
   /// thrown.
+  /// See [StatementParameters] for a list of types supported by this library.
   /// If sqlite3 reports an error while running this statement, a
   /// [SqliteException] will be thrown.
   /// {@endtemplate}
@@ -28,8 +29,10 @@ abstract class CommonPreparedStatement {
   /// If the [parameters] list does not match the amount of parameters in the
   /// original SQL statement ([parameterCount]), an [ArgumentError] will be
   /// thrown.
+  /// See [StatementParameters] for a list of types supported by this library.
   /// If sqlite3 reports an error while running this statement, a
   /// [SqliteException] will be thrown.
+  ///
   /// {@endtemplate}
   ResultSet selectWith(StatementParameters parameters);
 
@@ -40,6 +43,7 @@ abstract class CommonPreparedStatement {
   /// If the [parameters] list does not match the amount of parameters in the
   /// original SQL statement ([parameterCount]), an [ArgumentError] will be
   /// thrown.
+  /// See [StatementParameters] for a list of types supported by this library.
   ///
   /// If sqlite3 reports an error while running this statement, it will be
   /// thrown by a call to [Iterator.moveNext].
