@@ -107,6 +107,35 @@ void main() {
       db2.dispose();
     });
 
+    group('backup memory to disk', () {
+      var inputs = [-1, 1, 5, 1024];
+
+      for (var nPage in inputs) {
+        test('nPage = $nPage', () async {
+          final db1 = sqlite3.openInMemory();
+          db1.execute('CREATE TABLE a(b INTEGER);');
+          db1.execute('INSERT INTO a VALUES (1);');
+
+          final db2 = sqlite3.open(path);
+
+          final progressStream = db1.backup(db2, nPage: nPage);
+          await expectLater(progressStream, emitsDone);
+
+          //Should not be included in backup
+          db1.execute('INSERT INTO a VALUES (2);');
+
+          db1.dispose();
+          db2.dispose();
+
+          final db3 = sqlite3.open(path);
+
+          expect(db3.select('SELECT * FROM a'), hasLength(1));
+
+          db3.dispose();
+        });
+      }
+    });
+
     group('backup disk to disk', () {
       var inputs = [-1, 1, 5, 1024];
       for (var nPage in inputs) {
@@ -144,35 +173,6 @@ void main() {
           if (File(pathFrom).existsSync()) {
             File(pathFrom).deleteSync();
           }
-        });
-      }
-    });
-
-    group('backup memory to disk', () {
-      var inputs = [-1, 1, 5, 1024];
-
-      for (var nPage in inputs) {
-        test('nPage = $nPage', () async {
-          final db1 = sqlite3.openInMemory();
-          db1.execute('CREATE TABLE a(b INTEGER);');
-          db1.execute('INSERT INTO a VALUES (1);');
-
-          final db2 = sqlite3.open(path);
-
-          final progressStream = db1.backup(db2, nPage: nPage);
-          await expectLater(progressStream, emitsDone);
-
-          //Should not be included in backup
-          db1.execute('INSERT INTO a VALUES (2);');
-
-          db1.dispose();
-          db2.dispose();
-
-          final db3 = sqlite3.open(path);
-
-          expect(db3.select('SELECT * FROM a'), hasLength(1));
-
-          db3.dispose();
         });
       }
     });
