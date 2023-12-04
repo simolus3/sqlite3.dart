@@ -93,12 +93,12 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
   }
 
   @override
-  Stream<double> backup(Database toDatabase) {
+  Stream<double> backup(Database toDatabase, {int nPage = 5}) {
     if (isInMemory) {
       _loadOrSaveInMemoryDatabase(toDatabase, true);
       return const Stream.empty();
     } else {
-      return _backupDatabase(toDatabase);
+      return _backupDatabase(toDatabase, nPage);
     }
   }
 
@@ -165,7 +165,7 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
   }
 
   /// Ported from https://www.sqlite.org/backup.html Example 2
-  Stream<double> _backupDatabase(Database toDatabase) async* {
+  Stream<double> _backupDatabase(Database toDatabase, int nPage) async* {
     final zDestDb = Utf8Utils.allocateZeroTerminated('main');
     final zSrcDb = Utf8Utils.allocateZeroTerminated('main');
 
@@ -175,7 +175,7 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
     int returnCode;
     if (!pBackup.isNullPointer) {
       do {
-        returnCode = _bindings.sqlite3_backup_step(pBackup, 5);
+        returnCode = _bindings.sqlite3_backup_step(pBackup, nPage);
 
         final remaining = _bindings.sqlite3_backup_remaining(pBackup);
         final count = _bindings.sqlite3_backup_pagecount(pBackup);

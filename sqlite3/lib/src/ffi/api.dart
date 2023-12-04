@@ -120,8 +120,13 @@ abstract class Database extends CommonDatabase {
   /// To simply await the backup operation as a future, call [Stream.drain] on
   /// the returned stream.
   ///
+  /// [nPage] is the number of pages backed-up before releasing locks.  A
+  /// larger value increase speed of backup, but will cause longer read and write
+  /// locks on the source/destination databases.
+  /// See https://www.sqlite.org/c3ref/backup_finish.html#sqlite3backupstep for details
+  ///
   /// See https://www.sqlite.org/c3ref/backup_finish.html
-  Stream<double> backup(Database toDatabase);
+  Stream<double> backup(Database toDatabase, {int nPage = 5});
 }
 
 /// A prepared statement.
