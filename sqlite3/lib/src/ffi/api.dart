@@ -125,7 +125,7 @@ abstract class Database extends CommonDatabase {
   /// longer to aquire locks on the source and destination databases.  A value of -1
   /// can be used to backup the entire database in a single step.
   /// See https://www.sqlite.org/c3ref/backup_finish.html#sqlite3backupstep for details.
-  /// 
+  ///
   /// See https://www.sqlite.org/c3ref/backup_finish.html
   Stream<double> backup(Database toDatabase, {int nPage = 5});
 }
