@@ -107,66 +107,7 @@ void main() {
       db2.dispose();
     });
 
-    test('backup memory to disk', () async {
-      final db1 = sqlite3.openInMemory();
-      db1.execute('CREATE TABLE a(b INTEGER);');
-      db1.execute('INSERT INTO a VALUES (1);');
-
-      final db2 = sqlite3.open(path);
-
-      final progressStream = db1.backup(db2);
-      await expectLater(progressStream, emitsDone);
-
-      //Should not be included in backup
-      db1.execute('INSERT INTO a VALUES (2);');
-
-      db1.dispose();
-      db2.dispose();
-
-      final db3 = sqlite3.open(path);
-
-      expect(db3.select('SELECT * FROM a'), hasLength(1));
-
-      db3.dispose();
-    });
-
-    test('backup disk to disk', () async {
-      final pathFrom = d.path('test_from.db');
-      Directory(dirname(pathFrom)).createSync(recursive: true);
-
-      if (File(pathFrom).existsSync()) {
-        File(pathFrom).deleteSync();
-      }
-
-      final db1 = sqlite3.open(pathFrom);
-
-      db1.execute('CREATE TABLE a(b INTEGER);');
-      db1.execute('INSERT INTO a VALUES (1);');
-
-      final db2 = sqlite3.open(path);
-
-      final progressStream = db1.backup(db2);
-      await expectLater(
-          progressStream, emitsInOrder(<Matcher>[emitsThrough(1), emitsDone]));
-
-      //Should not be included in backup
-      db1.execute('INSERT INTO a VALUES (2);');
-
-      db1.dispose();
-      db2.dispose();
-
-      final db3 = sqlite3.open(path);
-
-      expect(db3.select('SELECT * FROM a'), hasLength(1));
-
-      db3.dispose();
-
-      if (File(pathFrom).existsSync()) {
-        File(pathFrom).deleteSync();
-      }
-    });
-
-    group('backup disk to disk w/ custom nPage', () {
+    group('backup disk to disk', () {
       var inputs = [-1, 1, 5, 1024];
       for (var nPage in inputs) {
         test('nPage = $nPage', () async {
@@ -207,7 +148,7 @@ void main() {
       }
     });
 
-    group('backup memory to disk w/ custom nPage', () {
+    group('backup memory to disk', () {
       var inputs = [-1, 1, 5, 1024];
 
       for (var nPage in inputs) {
