@@ -107,62 +107,73 @@ void main() {
       db2.dispose();
     });
 
-    test('backup memory to disk', () async {
-      final db1 = sqlite3.openInMemory();
-      db1.execute('CREATE TABLE a(b INTEGER);');
-      db1.execute('INSERT INTO a VALUES (1);');
+    group('backup memory to disk', () {
+      var inputs = [-1, 1, 5, 1024];
 
-      final db2 = sqlite3.open(path);
+      for (var nPage in inputs) {
+        test('nPage = $nPage', () async {
+          final db1 = sqlite3.openInMemory();
+          db1.execute('CREATE TABLE a(b INTEGER);');
+          db1.execute('INSERT INTO a VALUES (1);');
 
-      final progressStream = db1.backup(db2);
-      await expectLater(progressStream, emitsDone);
+          final db2 = sqlite3.open(path);
 
-      //Should not be included in backup
-      db1.execute('INSERT INTO a VALUES (2);');
+          final progressStream = db1.backup(db2, nPage: nPage);
+          await expectLater(progressStream, emitsDone);
 
-      db1.dispose();
-      db2.dispose();
+          //Should not be included in backup
+          db1.execute('INSERT INTO a VALUES (2);');
 
-      final db3 = sqlite3.open(path);
+          db1.dispose();
+          db2.dispose();
 
-      expect(db3.select('SELECT * FROM a'), hasLength(1));
+          final db3 = sqlite3.open(path);
 
-      db3.dispose();
+          expect(db3.select('SELECT * FROM a'), hasLength(1));
+
+          db3.dispose();
+        });
+      }
     });
 
-    test('backup disk to disk', () async {
-      final pathFrom = d.path('test_from.db');
-      Directory(dirname(pathFrom)).createSync(recursive: true);
+    group('backup disk to disk', () {
+      var inputs = [-1, 1, 5, 1024];
+      for (var nPage in inputs) {
+        test('nPage = $nPage', () async {
+          final pathFrom = d.path('test_from.db');
+          Directory(dirname(pathFrom)).createSync(recursive: true);
 
-      if (File(pathFrom).existsSync()) {
-        File(pathFrom).deleteSync();
-      }
+          if (File(pathFrom).existsSync()) {
+            File(pathFrom).deleteSync();
+          }
 
-      final db1 = sqlite3.open(pathFrom);
+          final db1 = sqlite3.open(pathFrom);
 
-      db1.execute('CREATE TABLE a(b INTEGER);');
-      db1.execute('INSERT INTO a VALUES (1);');
+          db1.execute('CREATE TABLE a(b INTEGER);');
+          db1.execute('INSERT INTO a VALUES (1);');
 
-      final db2 = sqlite3.open(path);
+          final db2 = sqlite3.open(path);
 
-      final progressStream = db1.backup(db2);
-      await expectLater(
-          progressStream, emitsInOrder(<Matcher>[emitsThrough(1), emitsDone]));
+          final progressStream = db1.backup(db2, nPage: nPage);
+          await expectLater(progressStream,
+              emitsInOrder(<Matcher>[emitsThrough(1), emitsDone]));
 
-      //Should not be included in backup
-      db1.execute('INSERT INTO a VALUES (2);');
+          //Should not be included in backup
+          db1.execute('INSERT INTO a VALUES (2);');
 
-      db1.dispose();
-      db2.dispose();
+          db1.dispose();
+          db2.dispose();
 
-      final db3 = sqlite3.open(path);
+          final db3 = sqlite3.open(path);
 
-      expect(db3.select('SELECT * FROM a'), hasLength(1));
+          expect(db3.select('SELECT * FROM a'), hasLength(1));
 
-      db3.dispose();
+          db3.dispose();
 
-      if (File(pathFrom).existsSync()) {
-        File(pathFrom).deleteSync();
+          if (File(pathFrom).existsSync()) {
+            File(pathFrom).deleteSync();
+          }
+        });
       }
     });
   });
