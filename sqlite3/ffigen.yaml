@@ -18,3 +18,5 @@ functions:
       - [int, int*]
 globals:
   include: ['sqlite3.*']
+
+ffi-native:
