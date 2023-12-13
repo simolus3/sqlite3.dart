@@ -4,7 +4,7 @@ output: 'lib/src/ffi/sqlite3.g.dart'
 name: Bindings
 description: Auto-generated, internal bindings to sqlite3
 headers:
-  entry-points: [assets/sqlite3.h, assets/dart_workarounds.h]
+  entry-points: [assets/sqlite3.h]
 preamble: '// ignore_for_file: type=lint'
 exclude-all-by-default: true
 structs:

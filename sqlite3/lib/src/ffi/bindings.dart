@@ -61,19 +61,15 @@ class SupportedSqliteFeatures {
 final class FfiBindings extends RawSqliteBindings {
   @override
   String? get sqlite3_temp_directory {
-    return bindings
-        .sqlite3_dart_temp_directory(0, nullPtr())
-        .readNullableString();
+    return bindings.sqlite3_temp_directory.readNullableString();
   }
 
   @override
   set sqlite3_temp_directory(String? value) {
-    if (value == null) {
-      bindings.sqlite3_dart_temp_directory(1, nullPtr());
-    } else {
-      bindings.sqlite3_dart_temp_directory(
-          1, Utf8Utils.allocateZeroTerminated(value));
-    }
+    bindings.sqlite3_temp_directory = switch (value) {
+      null => nullPtr(),
+      _ => Utf8Utils.allocateZeroTerminated(value),
+    };
   }
 
   @override
