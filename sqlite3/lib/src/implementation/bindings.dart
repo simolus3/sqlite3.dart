@@ -105,6 +105,7 @@ abstract base class RawSqliteDatabase {
   });
 
   int sqlite3_db_config(int op, int value);
+  int sqlite3_get_autocommit();
 }
 
 /// A stateful wrapper around multiple `sqlite3_prepare` invocations.

@@ -247,6 +247,11 @@ final class WasmDatabase extends RawSqliteDatabase {
   }
 
   @override
+  int sqlite3_get_autocommit() {
+    return bindings.sqlite3_get_autocommit(db);
+  }
+
+  @override
   int sqlite3_db_config(int op, int value) {
     return bindings.sqlite3_db_config(db, op, value);
   }
