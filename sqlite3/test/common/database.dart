@@ -762,6 +762,14 @@ void testDatabase(
       );
     });
   });
+
+  test('getAutocommit', () {
+    expect(database.getAutocommit(), equals(true));
+    database.execute('BEGIN');
+    expect(database.getAutocommit(), equals(false));
+    database.execute('ROLLBACK');
+    expect(database.getAutocommit(), equals(true));
+  });
 }
 
 /// Aggregate function that counts the length of all string parameters it
