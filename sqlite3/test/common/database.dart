@@ -763,12 +763,12 @@ void testDatabase(
     });
   });
 
-  test('getAutocommit', () {
-    expect(database.getAutocommit(), equals(true));
+  test('autocommit', () {
+    expect(database.autocommit, equals(true));
     database.execute('BEGIN');
-    expect(database.getAutocommit(), equals(false));
+    expect(database.autocommit, equals(false));
     database.execute('ROLLBACK');
-    expect(database.getAutocommit(), equals(true));
+    expect(database.autocommit, equals(true));
   });
 }
 

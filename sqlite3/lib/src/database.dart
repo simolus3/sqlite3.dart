@@ -182,7 +182,7 @@ abstract class CommonDatabase {
   /// autocommit by default, except when inside a transaction.
   ///
   /// For details, see https://www.sqlite.org/c3ref/get_autocommit.html
-  bool getAutocommit();
+  bool get autocommit;
 
   /// Closes this database and releases associated resources.
   void dispose();

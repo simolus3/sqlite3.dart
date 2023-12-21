@@ -269,7 +269,7 @@ base class DatabaseImplementation implements CommonDatabase {
   int get lastInsertRowId => database.sqlite3_last_insert_rowid();
 
   @override
-  bool getAutocommit() {
+  bool get autocommit {
     return database.sqlite3_get_autocommit() != 0;
   }
 
