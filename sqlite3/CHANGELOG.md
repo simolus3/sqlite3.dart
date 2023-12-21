@@ -1,5 +1,6 @@
-## 2.3.0-dev
+## 2.3.0
 
+- Add the `autocommit` getter on databases wrapping `sqlite3_get_autocommit`.
 - Improve the error message in the exception when opening a database fails.
 
 ## 2.2.0
