@@ -7,6 +7,8 @@ import 'package:sqlite3/src/ffi/implementation.dart';
 import 'package:test/test.dart';
 import 'package:test_descriptor/test_descriptor.dart' as d;
 
+import '../common/utils.dart';
+
 /// Additional tests to `common_database_test.dart` that aren't supported on
 /// the web.
 void main() {
@@ -31,7 +33,7 @@ void main() {
     // Opening a non-existent database should fail
     expect(
       () => sqlite3.open(path, mode: OpenMode.readOnly),
-      throwsA(isA<SqliteException>()),
+      throwsSqlError(SqlError.SQLITE_CANTOPEN, SqlError.SQLITE_CANTOPEN),
     );
 
     // Open in read-write mode to create the database
@@ -46,13 +48,20 @@ void main() {
     // Change the user version to test read-only mode
     expect(
       () => db.userVersion = 2,
-      throwsA(isA<SqliteException>()),
+      throwsSqlError(SqlError.SQLITE_READONLY, SqlError.SQLITE_READONLY),
     );
 
     // Check that it has not changed
     expect(db.userVersion, 1);
 
     db.dispose();
+  });
+
+  test('throws meaningful exception for open failure', () {
+    final path = d.path('nested/does/not/exist.db');
+
+    expect(() => sqlite3.open(path),
+        throwsSqlError(SqlError.SQLITE_CANTOPEN, SqlError.SQLITE_CANTOPEN));
   });
 
   group('backup', () {

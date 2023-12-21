@@ -136,6 +136,17 @@ version in `package:sqlite3/wasm.dart`.
 By having shared code depend on the common interfaces, it can be used for both native and web
 apps.
 
+### Testing
+
+To run the tests of this package with wasm, either download the `sqlite3.wasm` file from the
+GitHub releases to `example/web` or compile it yourself (see [compiling](#compiling) below).
+
+To run tests on the Dart VM, Firefox and Chrome, use:
+
+```
+dart test -P full
+```
+
 ### Compiling
 
 Note: Compiling sqlite3 to WebAssembly is not necessary for users of this package,

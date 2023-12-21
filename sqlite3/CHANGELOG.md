@@ -1,7 +1,13 @@
-## 2.2.0-dev
+## 2.3.0-dev
+
+- Improve the error message in the exception when opening a database fails.
+
+## 2.2.0
 
 - Add `updatedRows` getter to eventually replace `getUpdatedRows()` method.
 - Clarify documentation on `lastInsertRowId` and `updatedRows`.
+- Allow customizing the amount of pages to lock at a time in `backup`. A larger
+  amount will result in better backup performance.
 - Use `NativeCallable`s for user-defined functions, collations and update
   streams.
 
