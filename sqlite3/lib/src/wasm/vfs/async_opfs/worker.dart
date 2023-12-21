@@ -413,7 +413,7 @@ class VfsWorker {
     if (syncHandle != null) {
       _log('Closing sync handle for ${handle.fullPath}');
       handle.syncHandle = null;
-      _implicitlyHeldLocks.remove(syncHandle);
+      _implicitlyHeldLocks.remove(handle);
       handle.explicitlyLocked = false;
       syncHandle.close();
     }

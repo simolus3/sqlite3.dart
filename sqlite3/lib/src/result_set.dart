@@ -52,8 +52,7 @@ sealed class Cursor {
 /// only reliable after [moveNext] was called once (regardless of its return
 /// value).
 abstract class IteratingCursor extends Cursor implements Iterator<Row> {
-  IteratingCursor(List<String> columnNames, List<String?>? tableNames)
-      : super(columnNames, tableNames);
+  IteratingCursor(super._columnNames, super.tableNames);
 }
 
 /// Stores the full result of a select statement.
@@ -66,8 +65,7 @@ final class ResultSet extends Cursor
   /// The raw row data.
   final List<List<Object?>> rows;
 
-  ResultSet(List<String> columnNames, List<String?>? tableNames, this.rows)
-      : super(columnNames, tableNames);
+  ResultSet(super._columnNames, super.tableNames, this.rows);
 
   @override
   Iterator<Row> get iterator => _ResultIterator(this);

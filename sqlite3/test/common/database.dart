@@ -319,8 +319,10 @@ void testDatabase(
     expect(result[0], {'1': 1, '2': 2});
     expect(result[1], {'1': 3, '2': 4});
 
+    // ignore: collection_methods_unrelated_type
     expect(result[0][0], 1);
     expect(result[0]['1'], 1);
+    // ignore: collection_methods_unrelated_type
     expect(result[0][1], 2);
     expect(result[0]['2'], 2);
   });
