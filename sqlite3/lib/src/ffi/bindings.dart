@@ -286,6 +286,11 @@ final class FfiDatabase extends RawSqliteDatabase {
   }
 
   @override
+  int sqlite3_get_autocommit() {
+    return bindings.bindings.sqlite3_get_autocommit(db);
+  }
+
+  @override
   RawStatementCompiler newCompiler(List<int> utf8EncodedSql) {
     return FfiStatementCompiler(this, allocateBytes(utf8EncodedSql));
   }

@@ -308,6 +308,20 @@ class Bindings {
                       ffi.Int64)>>,
           ffi.Pointer<ffi.Void>)>();
 
+  int sqlite3_get_autocommit(
+    ffi.Pointer<sqlite3> db,
+  ) {
+    return _sqlite3_get_autocommit(
+      db,
+    );
+  }
+
+  late final _sqlite3_get_autocommitPtr =
+      _lookup<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3>)>>(
+          'sqlite3_get_autocommit');
+  late final _sqlite3_get_autocommit = _sqlite3_get_autocommitPtr
+      .asFunction<int Function(ffi.Pointer<sqlite3>)>();
+
   int sqlite3_prepare_v2(
     ffi.Pointer<sqlite3> db,
     ffi.Pointer<sqlite3_char> zSql,

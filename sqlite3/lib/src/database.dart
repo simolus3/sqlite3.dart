@@ -178,6 +178,12 @@ abstract class CommonDatabase {
     bool directOnly = true,
   });
 
+  /// Checks whether the connection is in autocommit mode. The connection is in
+  /// autocommit by default, except when inside a transaction.
+  ///
+  /// For details, see https://www.sqlite.org/c3ref/get_autocommit.html
+  bool get autocommit;
+
   /// Closes this database and releases associated resources.
   void dispose();
 }
