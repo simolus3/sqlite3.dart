@@ -304,7 +304,8 @@ final class FfiDatabase extends RawSqliteDatabase {
     }
 
     final callable =
-        NativeCallable<Void Function(Pointer<Void>)>.isolateLocal(destroy);
+        NativeCallable<Void Function(Pointer<Void>)>.isolateLocal(destroy)
+          ..keepIsolateAlive = false;
     callables.add(callable);
 
     return callable.nativeFunction;
@@ -696,7 +697,8 @@ extension on RawXFunc {
     return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx, int nArgs,
         Pointer<Pointer<sqlite3_value>> args) {
       return this(FfiContext(bindings, ctx), _ValueList(nArgs, args, bindings));
-    });
+    })
+      ..keepIsolateAlive = false;
   }
 }
 
@@ -707,7 +709,8 @@ extension on RawXFinal {
       final res = this(context);
       if (clean) context.freeContext();
       return res;
-    });
+    })
+      ..keepIsolateAlive = false;
   }
 }
 
@@ -727,7 +730,7 @@ extension on RawCollation {
         return this(dartA, dartB);
       },
       exceptionalReturn: 0,
-    );
+    )..keepIsolateAlive = false;
   }
 }
 
@@ -743,7 +746,7 @@ extension on RawUpdateHook {
         // happy.
         return _returnsVoid();
       },
-    );
+    )..keepIsolateAlive = false;
   }
 
   static void _returnsVoid() {}

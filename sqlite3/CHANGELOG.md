@@ -1,3 +1,8 @@
+## 2.3.1-dev
+
+- Set `NativeCallable.keepIsolateAlive` to `false` for callables managed by
+  this package.
+
 ## 2.3.0
 
 - Add the `autocommit` getter on databases wrapping `sqlite3_get_autocommit`.
