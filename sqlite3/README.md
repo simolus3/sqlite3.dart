@@ -100,7 +100,7 @@ To use this package on the web, you need:
   Note thaat, for this package, __sqlite3 has to be compiled in a special way__.
   Existing WebAssembly files from e.g. sql.js will not work with `package:sqlite3/wasm.dart`.
 - A file system implementation, since websites can't by default access the host's file system.
- This package provides `FileSystem.inMemory()` and an `IndexedDbFileSystem` implementation.
+ This package provides `InMemoryFileSystem` and an `IndexedDbFileSystem` implementation.
 
 After putting `sqlite3.wasm` under the `web/` directory of your project, you can
 open and use `sqlite3` like this:
