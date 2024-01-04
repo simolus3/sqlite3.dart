@@ -34,8 +34,9 @@ extension FreePointerExtension on Pointer {
 Pointer<Uint8> allocateBytes(List<int> bytes, {int additionalLength = 0}) {
   final ptr = allocate.allocate<Uint8>(bytes.length + additionalLength);
 
-  final data = Uint8List(bytes.length + additionalLength)..setAll(0, bytes);
-  ptr.asTypedList(bytes.length + additionalLength).setAll(0, data);
+  ptr.asTypedList(bytes.length + additionalLength)
+    ..setAll(0, bytes)
+    ..fillRange(bytes.length, bytes.length + additionalLength, 0);
 
   return ptr;
 }
