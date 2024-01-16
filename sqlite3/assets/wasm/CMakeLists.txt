@@ -10,14 +10,14 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
   FetchContent_Declare(
     sqlite3
     # NOTE: When changing this, also update `test/wasm/sqlite3_test.dart`
-    URL https://sqlite.org/2023/sqlite-autoconf-3440000.tar.gz
+    URL https://sqlite.org/2024/sqlite-autoconf-3450000.tar.gz
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
   )
 else()
   FetchContent_Declare(
     sqlite3
     # NOTE: When changing this, also update `test/wasm/sqlite3_test.dart`
-    URL https://sqlite.org/2023/sqlite-autoconf-3440000.tar.gz
+    URL https://sqlite.org/2024/sqlite-autoconf-3450000.tar.gz
   )
 endif()
 

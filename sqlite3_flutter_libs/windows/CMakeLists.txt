@@ -29,13 +29,13 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
   # We can't really ask users to use a cmake that recent, so there's this if here.
   FetchContent_Declare(
     sqlite3
-    URL https://sqlite.org/2023/sqlite-autoconf-3440000.tar.gz
+    URL https://sqlite.org/2024/sqlite-autoconf-3450000.tar.gz
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
   )
 else()
   FetchContent_Declare(
     sqlite3
-    URL https://sqlite.org/2023/sqlite-autoconf-3440000.tar.gz
+    URL https://sqlite.org/2024/sqlite-autoconf-3450000.tar.gz
   )
 endif()
 FetchContent_MakeAvailable(sqlite3)
@@ -53,6 +53,7 @@ target_compile_definitions(sqlite3 PRIVATE
   SQLITE_DEFAULT_MEMSTATUS=0
   SQLITE_TEMP_STORE=2
   SQLITE_MAX_EXPR_DEPTH=0
+  SQLITE_STRICT_SUBTYPE=1
   SQLITE_OMIT_AUTHORIZATION
   SQLITE_OMIT_DECLTYPE
   SQLITE_OMIT_DEPRECATED

@@ -1,3 +1,7 @@
+## 0.5.19
+
+- Upgrade sqlite to version `3.45.0`.
+
 ## 0.5.18
 
 - Upgrade sqlite to version `3.44.0`.
