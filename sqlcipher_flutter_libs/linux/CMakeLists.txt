@@ -6,7 +6,7 @@ project(${PROJECT_NAME} LANGUAGES C CXX)
 # not be changed
 set(PLUGIN_NAME "sqlcipher_flutter_libs_plugin")
 
-set(OPENSSL_USE_STATIC_LIBS TRUE)
+option(OPENSSL_USE_STATIC_LIBS "Whether to prefer linking to OpenSSL statically" ON)
 find_package(OpenSSL REQUIRED)
 
 # Using a prebuilt sqlcipher amalgation because building it requires TCL/TK which no one has.
