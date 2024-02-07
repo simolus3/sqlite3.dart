@@ -107,6 +107,14 @@ The official SQLCipher builds don't do that.
 To avoid your app relying on double-quoted strings in SQL, you should test your app on Linux or Windows before release if you
 target these platforms.
 
+On Android, iOS, macOS and Windows, SQLCipher uses native crypto libraries shipped with the operating system.
+On Linux, a statically linked version of OpenSSL is included with your app by default. If you prefer to link
+OpenSSL statically, add this to `linux/CMakeLists.txt`:
+
+```
+set(OPENSSL_USE_STATIC_LIBS OFF)
+```
+
 ## Problems on Android 6
 
 There appears to be a problem when loading native libraries on Android 6 (see [this issue](https://github.com/simolus3/moor/issues/895#issuecomment-720195005)).

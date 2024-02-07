@@ -27,7 +27,7 @@ set(OPENSSL_USE_STATIC_LIBS TRUE)
 find_package(OpenSSL REQUIRED)
 
 # Using a prebuilt sqlcipher amalgation because building it requires TCL/TK which no one has.
-file(DOWNLOAD "https://storage.googleapis.com/simon-public-euw3/assets/sqlcipher/v4_5_5.c" "${CMAKE_CURRENT_BINARY_DIR}/sqlcipher.c" EXPECTED_HASH SHA512=04e71c0fa7a1e4736bc464e3b7379128d3d33bf149f3839f55729ad8fba9a916a6ca4118c75aa7e9c6a9133d71d4c1f59a13a7db029974865418aa565ecb2dc5)
+file(DOWNLOAD "https://storage.googleapis.com/simon-public-euw3/assets/sqlcipher/v4_5_6.c" "${CMAKE_CURRENT_BINARY_DIR}/sqlcipher.c" EXPECTED_HASH SHA512=939ae692239adc0581211a37ed9ffa8b37c8f771c830977ecb06dc6accc4c3db767ce6abeaf91133815e2ae837785affa92f4c95b2e68cb6d563bd761f3e0cb1)
 
 add_library(sqlite3 SHARED "sqlite3_flutter.c")
 target_include_directories(sqlite3 PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")

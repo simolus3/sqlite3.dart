@@ -38,5 +38,5 @@ android {
 }
 
 dependencies {
-    implementation "net.zetetic:sqlcipher-android:4.5.5"
+    implementation "net.zetetic:sqlcipher-android:4.5.6"
 }

@@ -1,3 +1,9 @@
+## 0.6.1
+
+- Update SQLCipher to `4.5.6`.
+- For Linux builds, you can now include `set(OPENSSL_USE_STATIC_LIBS OFF)` in your
+  `CMakeLists.txt` to link OpenSSL dynamically.
+
 ## 0.6.0
 
 - Update SQLCipher to `4.5.5` (https://www.zetetic.net/blog/2023/08/31/sqlcipher-4.5.5-release/)
