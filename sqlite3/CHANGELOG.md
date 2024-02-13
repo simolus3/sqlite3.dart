@@ -1,5 +1,6 @@
-## 2.3.1-dev
+## 2.4.0
 
+- Add `isReadOnly` and `isExplain` getters to prepared statements.
 - Set `NativeCallable.keepIsolateAlive` to `false` for callables managed by
   this package.
 

@@ -11,6 +11,19 @@ abstract class CommonPreparedStatement {
   /// Returns the amount of parameters in this prepared statement.
   int get parameterCount;
 
+  /// Returns whether this statement makes no direct changes to the contents of
+  /// the database file.
+  ///
+  /// See also: https://www.sqlite.org/c3ref/stmt_readonly.html
+  bool get isReadOnly;
+
+  /// Whether this statement is either an `EXPLAIN` or an `EXPLAIN QUERY PLAN`
+  /// statement.
+  ///
+  /// This uses `sqlite3_stmt_isexplain`, which is documented here:
+  /// https://www.sqlite.org/c3ref/stmt_isexplain.html
+  bool get isExplain;
+
   /// {@template pkg_sqlite3_stmt_execute}
   /// Executes this statement, ignoring result rows if there are any.
   ///

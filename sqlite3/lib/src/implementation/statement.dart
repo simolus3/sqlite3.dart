@@ -307,6 +307,12 @@ base class StatementImplementation extends CommonPreparedStatement {
   int get parameterCount => statement.sqlite3_bind_parameter_count();
 
   @override
+  bool get isReadOnly => statement.sqlite3_stmt_readonly() != 0;
+
+  @override
+  bool get isExplain => statement.sqlite3_stmt_isexplain() != 0;
+
+  @override
   ResultSet selectMap(Map<String, Object?> parameters) {
     _ensureNotFinalized();
 

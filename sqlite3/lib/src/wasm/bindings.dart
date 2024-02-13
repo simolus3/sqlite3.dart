@@ -351,6 +351,16 @@ final class WasmStatement extends RawSqliteStatement {
   }
 
   @override
+  int sqlite3_stmt_isexplain() {
+    return bindings.sqlite3_stmt_isexplain(stmt);
+  }
+
+  @override
+  int sqlite3_stmt_readonly() {
+    return bindings.sqlite3_stmt_readonly(stmt);
+  }
+
+  @override
   int sqlite3_bind_parameter_index(String name) {
     final namePtr = bindings.allocateZeroTerminated(name);
 

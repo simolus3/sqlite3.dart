@@ -77,6 +77,32 @@ void testPreparedStatements(
     expect(stmt.select, throwsStateError);
   });
 
+  test('parameterCount', () {
+    final opened = sqlite3.openInMemory();
+    addTearDown(opened.dispose);
+
+    expect(opened.prepare('SELECT 1').parameterCount, 0);
+    expect(opened.prepare('SELECT 1, ?2 AS r').parameterCount, 2);
+  });
+
+  test('isReadOnly', () {
+    final opened = sqlite3.openInMemory()
+      ..execute('CREATE TABLE tbl (a TEXT);');
+    addTearDown(opened.dispose);
+
+    expect(opened.prepare('SELECT 1').isReadOnly, isTrue);
+    expect(opened.prepare('UPDATE tbl SET a = a || ?').isReadOnly, isFalse);
+  });
+
+  test('isExplain', () {
+    final opened = sqlite3.openInMemory()
+      ..execute('CREATE TABLE tbl (a TEXT);');
+    addTearDown(opened.dispose);
+
+    expect(opened.prepare('SELECT 1').isExplain, isFalse);
+    expect(opened.prepare('EXPLAIN SELECT 1').isExplain, isTrue);
+  });
+
   Uint8List? insertBlob(Uint8List? value) {
     final opened = sqlite3.openInMemory();
     opened.execute('CREATE TABLE tbl (x BLOB);');

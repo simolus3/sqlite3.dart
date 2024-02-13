@@ -432,6 +432,34 @@ class Bindings {
   late final _sqlite3_reset =
       _sqlite3_resetPtr.asFunction<int Function(ffi.Pointer<sqlite3_stmt>)>();
 
+  int sqlite3_stmt_isexplain(
+    ffi.Pointer<sqlite3_stmt> pStmt,
+  ) {
+    return _sqlite3_stmt_isexplain(
+      pStmt,
+    );
+  }
+
+  late final _sqlite3_stmt_isexplainPtr =
+      _lookup<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>>(
+          'sqlite3_stmt_isexplain');
+  late final _sqlite3_stmt_isexplain = _sqlite3_stmt_isexplainPtr
+      .asFunction<int Function(ffi.Pointer<sqlite3_stmt>)>();
+
+  int sqlite3_stmt_readonly(
+    ffi.Pointer<sqlite3_stmt> pStmt,
+  ) {
+    return _sqlite3_stmt_readonly(
+      pStmt,
+    );
+  }
+
+  late final _sqlite3_stmt_readonlyPtr =
+      _lookup<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>>(
+          'sqlite3_stmt_readonly');
+  late final _sqlite3_stmt_readonly = _sqlite3_stmt_readonlyPtr
+      .asFunction<int Function(ffi.Pointer<sqlite3_stmt>)>();
+
   int sqlite3_column_count(
     ffi.Pointer<sqlite3_stmt> pStmt,
   ) {

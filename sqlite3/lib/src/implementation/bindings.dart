@@ -164,6 +164,8 @@ abstract base class RawSqliteStatement {
   Uint8List sqlite3_column_bytes(int index);
 
   int sqlite3_bind_parameter_count();
+  int sqlite3_stmt_readonly();
+  int sqlite3_stmt_isexplain();
 }
 
 abstract base class RawSqliteContext {
