@@ -1,3 +1,7 @@
+## 2.4.1-dev
+
+- Allow version `0.7.x` of the `js` package.
+
 ## 2.4.0
 
 - Add `isReadOnly` and `isExplain` getters to prepared statements.
