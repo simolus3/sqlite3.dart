@@ -24,7 +24,7 @@ topics:
 dependencies:
   collection: ^1.15.0
   ffi: '>=1.2.1 <3.0.0'
-  js: ^0.7.0
+  js: '>=0.6.4 <0.8.0'
   meta: ^1.3.0
   path: ^1.8.0
 
