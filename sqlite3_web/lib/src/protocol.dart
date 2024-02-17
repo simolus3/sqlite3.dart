@@ -21,9 +21,14 @@ enum MessageType<T extends Message> {
   runQuery<RunQuery>(),
   fileSystemExists<FileSystemExistsQuery>(),
   fileSystemAccess<FileSystemAccess>(),
+  updateRequest<UpdateStreamRequest>(),
   simpleSuccessResponse<SimpleSuccessResponse>(),
   rowsResponse<RowsResponse>(),
-  errorResponse<ErrorResponse>();
+  errorResponse<ErrorResponse>(),
+  closeDatabase<CloseDatabase>(),
+  notifyUpdate<UpdateNotification>(),
+  close<CloseMessage>(),
+  ;
 
   static final Map<String, MessageType> byName = values.asNameMap();
 }
@@ -33,6 +38,7 @@ enum MessageType<T extends Message> {
 /// Since we're using unsafe JS interop here, these can't be mangled by dart2js.
 /// Thus, we should keep them short.
 class _UniqueFieldNames {
+  static const action = 'a';
   static const buffer = 'b';
   static const columnNames = 'c';
   static const databaseId = 'd';
@@ -40,14 +46,17 @@ class _UniqueFieldNames {
   static const errorMessage = 'e';
   static const fileType = 'f';
   static const id = 'i';
+  static const updateKind = 'k';
   static const tableNames = 'n';
   static const parameters = 'p';
   static const storageMode = 's';
   static const sql = 's'; // not used in same message
   static const type = 't';
   static const wasmUri = 'u';
+  static const updateTableName = 'u';
   static const responseData = 'r';
   static const returnRows = 'r';
+  static const updateRowId = 'r';
   static const rows = 'r'; // no clash, used on different message types
 }
 
@@ -64,10 +73,14 @@ sealed class Message {
       MessageType.runQuery => RunQuery.deserialize(object),
       MessageType.fileSystemExists => FileSystemExistsQuery.deserialize(object),
       MessageType.fileSystemAccess => FileSystemAccess.deserialize(object),
+      MessageType.closeDatabase => CloseDatabase.deserialize(object),
+      MessageType.updateRequest => UpdateStreamRequest.deserialize(object),
       MessageType.simpleSuccessResponse =>
         SimpleSuccessResponse.deserialize(object),
       MessageType.rowsResponse => RowsResponse.deserialize(object),
       MessageType.errorResponse => ErrorResponse.deserialize(object),
+      MessageType.close => CloseMessage.deserialize(object),
+      MessageType.notifyUpdate => UpdateNotification.deserialize(object),
     };
   }
 
@@ -95,6 +108,8 @@ sealed class Message {
     sendTo((msg, transfer) => worker.postMessage(msg, transfer));
   }
 }
+
+sealed class Notification extends Message {}
 
 sealed class Request extends Message {
   /// A unique id, incremented by each endpoint when making requests over the
@@ -274,7 +289,9 @@ final class FileSystemAccess extends Request {
     object[_UniqueFieldNames.buffer] = buffer;
     object[_UniqueFieldNames.fileType] = fsType.index.toJS;
 
-    if (buffer case var buffer?) {
+    // false positive? dart2js seems to emit a null check as it should
+    // ignore: pattern_never_matches_value_type
+    if (buffer case final buffer?) {
       transferred.add(buffer);
     }
   }
@@ -318,6 +335,18 @@ final class RunQuery extends Request {
         <JSAny?>[for (final parameter in parameters) parameter.jsify()].toJS;
     object[_UniqueFieldNames.returnRows] = returnRows.toJS;
   }
+}
+
+class CloseDatabase extends Request {
+  CloseDatabase({required super.requestId, required super.databaseId});
+
+  factory CloseDatabase.deserialize(JSObject object) {
+    return CloseDatabase(
+        requestId: object.requestId, databaseId: object.databaseId);
+  }
+
+  @override
+  MessageType<Message> get type => MessageType.closeDatabase;
 }
 
 final class SimpleSuccessResponse extends Response {
@@ -430,6 +459,86 @@ final class ErrorResponse extends Response {
   RemoteException interpretAsError() {
     return RemoteException(message: message);
   }
+}
+
+final class UpdateStreamRequest extends Request {
+  /// When true, the client is requesting to be informed about updates happening
+  /// on the database identified by this request.
+  ///
+  /// When false, the client is requesting to no longer be informed about these
+  /// updates.
+  final bool action;
+
+  UpdateStreamRequest(
+      {required this.action,
+      required super.requestId,
+      required super.databaseId});
+
+  factory UpdateStreamRequest.deserialize(JSObject object) {
+    return UpdateStreamRequest(
+      action: (object[_UniqueFieldNames.action] as JSBoolean).toDart,
+      requestId: object.requestId,
+      databaseId: object.databaseId,
+    );
+  }
+
+  @override
+  MessageType<Message> get type => MessageType.updateRequest;
+
+  @override
+  void serialize(JSObject object, List<JSObject> transferred) {
+    super.serialize(object, transferred);
+    object[_UniqueFieldNames.action] = action.toJS;
+  }
+}
+
+final class UpdateNotification extends Notification {
+  final SqliteUpdate update;
+  final int databaseId;
+
+  UpdateNotification({required this.update, required this.databaseId});
+
+  factory UpdateNotification.deserialize(JSObject object) {
+    return UpdateNotification(
+      update: SqliteUpdate(
+        SqliteUpdateKind.values[
+            (object[_UniqueFieldNames.updateKind] as JSNumber).toDartInt],
+        (object[_UniqueFieldNames.updateTableName] as JSString).toDart,
+        (object[_UniqueFieldNames.updateRowId] as JSNumber).toDartInt,
+      ),
+      databaseId: object.databaseId,
+    );
+  }
+
+  @override
+  MessageType<Message> get type => MessageType.notifyUpdate;
+
+  @override
+  void serialize(JSObject object, List<JSObject> transferred) {
+    super.serialize(object, transferred);
+    object[_UniqueFieldNames.databaseId] = databaseId.toJS;
+    object[_UniqueFieldNames.updateKind] = update.kind.index.toJS;
+    object[_UniqueFieldNames.updateTableName] = update.tableName.toJS;
+    object[_UniqueFieldNames.updateRowId] = update.rowId.toJS;
+  }
+}
+
+/// Signals that one endpoint will close the channel and stop receiving messages
+/// on it.
+///
+/// On browsers that support the web lock API, we're also able to detect
+/// channels closing due to their JS context shutting down, but this
+/// notification is used for the "clean" case in which communication channels
+/// are closed in code.
+final class CloseMessage extends Message {
+  CloseMessage();
+
+  factory CloseMessage.deserialize(JSObject object) {
+    return CloseMessage();
+  }
+
+  @override
+  MessageType<Message> get type => MessageType.close;
 }
 
 extension on JSObject {

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:js_interop';
 import 'package:sqlite3/wasm.dart';
 import 'package:stream_channel/stream_channel.dart';
-import 'package:web/web.dart' hide Response, Request;
+import 'package:web/web.dart' hide Notification, Response, Request;
 
 import 'api.dart';
 import 'channel.dart';
@@ -76,7 +76,7 @@ final class Shared extends WorkerEnvironment {
       subscriptions.add(
           EventStreamProviders.connectEvent.forTarget(scope).listen((event) {
         for (final port in (event as MessageEvent).ports.toDart) {
-          handlePort(port as MessagePort);
+          handlePort(port);
         }
       }));
 
@@ -89,10 +89,25 @@ final class Shared extends WorkerEnvironment {
   }
 }
 
+/// A database opened by a client.
+final class _ConnectionDatabase {
+  final DatabaseState database;
+  StreamSubscription<SqliteUpdate>? updates;
+
+  _ConnectionDatabase(this.database);
+
+  Future<void> close() async {
+    updates?.cancel();
+    updates = null;
+
+    await database.decrementRefCount();
+  }
+}
+
 final class _ClientConnection extends ProtocolChannel
     implements ClientConnection {
   final WorkerRunner _runner;
-  final List<int> _openedDatabases = [];
+  final List<_ConnectionDatabase> _openedDatabases = [];
 
   @override
   final int id;
@@ -105,8 +120,9 @@ final class _ClientConnection extends ProtocolChannel
         super(channel) {
     closed.whenComplete(() async {
       for (final id in _openedDatabases) {
-        _runner.openedDatabases[id]!.decrementRefCount();
+        await id.close();
       }
+      _openedDatabases.clear();
     });
   }
 
@@ -119,7 +135,7 @@ final class _ClientConnection extends ProtocolChannel
         JSAny? response;
 
         if (database != null) {
-          response = await (await database.opened)
+          response = await (await database.database.opened)
               .handleCustomRequest(this, request.payload);
         } else {
           response = await _runner._controller
@@ -136,7 +152,7 @@ final class _ClientConnection extends ProtocolChannel
           database =
               _runner.findDatabase(request.databaseName, request.storageMode);
           await database.opened;
-          _openedDatabases.add(database.id);
+          _openedDatabases.add(_ConnectionDatabase(database));
           return SimpleSuccessResponse(
               response: database.id.toJS, requestId: request.requestId);
         } catch (e) {
@@ -148,7 +164,7 @@ final class _ClientConnection extends ProtocolChannel
           rethrow;
         }
       case RunQuery():
-        final openedDatabase = await database!.opened;
+        final openedDatabase = await database!.database.opened;
 
         if (request.returnRows) {
           return RowsResponse(
@@ -161,11 +177,38 @@ final class _ClientConnection extends ProtocolChannel
           return SimpleSuccessResponse(
               response: null, requestId: request.requestId);
         }
+      case UpdateStreamRequest(action: true):
+        if (database!.updates == null) {
+          final rawDatabase = await database.database.opened;
+          database.updates ??= rawDatabase.database.updates.listen((event) {
+            sendNotification(UpdateNotification(
+                update: event, databaseId: database.database.id));
+          });
+        }
+        return SimpleSuccessResponse(
+            response: null, requestId: request.requestId);
+      case UpdateStreamRequest(action: false):
+        if (database!.updates != null) {
+          database.updates?.cancel();
+          database.updates = null;
+        }
+        return SimpleSuccessResponse(
+            response: null, requestId: request.requestId);
+      case CloseDatabase():
+        _openedDatabases.remove(database!);
+        await database.close();
+        return SimpleSuccessResponse(
+            response: null, requestId: request.requestId);
       case FileSystemExistsQuery():
         throw UnimplementedError();
       case FileSystemAccess():
         throw UnimplementedError();
     }
+  }
+
+  @override
+  void handleNotification(Notification notification) {
+    // There aren't supposed to be any notifications from the client.
   }
 
   @override
@@ -176,14 +219,9 @@ final class _ClientConnection extends ProtocolChannel
     return response.response;
   }
 
-  DatabaseState? _databaseFor(Request request) {
+  _ConnectionDatabase? _databaseFor(Request request) {
     if (request.databaseId case final id?) {
-      if (!_openedDatabases.contains(id)) {
-        throw ArgumentError(
-            "Connection is referencing database it didn't open.");
-      }
-
-      return _runner.openedDatabases[id]!;
+      return _openedDatabases.firstWhere((e) => e.database.id == id);
     } else {
       return null;
     }

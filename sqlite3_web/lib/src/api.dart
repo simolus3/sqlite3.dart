@@ -1,7 +1,6 @@
 import 'dart:js_interop';
 import 'dart:typed_data';
 
-import 'package:sqlite3/common.dart';
 import 'package:sqlite3/wasm.dart';
 import 'package:web/web.dart';
 

@@ -1,7 +1,8 @@
+import 'dart:async';
 import 'dart:js_interop';
 
 import 'package:sqlite3/common.dart';
-import 'package:web/web.dart' hide Response, Request, FileSystem;
+import 'package:web/web.dart' hide Response, Request, FileSystem, Notification;
 
 import 'api.dart';
 import 'channel.dart';
@@ -11,12 +12,45 @@ final class RemoteDatabase implements Database {
   final WorkerConnection connection;
   final int databaseId;
 
-  RemoteDatabase({required this.connection, required this.databaseId});
+  StreamSubscription<Notification>? _notificationSubscription;
+  final StreamController<SqliteUpdate> _updates = StreamController.broadcast();
+
+  RemoteDatabase({required this.connection, required this.databaseId}) {
+    _updates
+      ..onListen = (() {
+        _notificationSubscription ??=
+            connection.notifications.stream.listen((notification) {
+          if (notification case UpdateNotification()) {
+            if (notification.databaseId == databaseId) {
+              _updates.add(notification.update);
+            }
+          }
+        });
+
+        _requestUpdates(true);
+      })
+      ..onCancel = (() {
+        _notificationSubscription?.cancel();
+        _notificationSubscription = null;
+
+        _requestUpdates(false);
+      });
+  }
+
+  void _requestUpdates(bool sendUpdates) {
+    connection.sendRequest(
+      UpdateStreamRequest(
+          action: sendUpdates, requestId: 0, databaseId: databaseId),
+      MessageType.simpleSuccessResponse,
+    );
+  }
 
   @override
-  Future<void> dispose() {
-    // TODO: implement dispose
-    throw UnimplementedError();
+  Future<void> dispose() async {
+    _updates.close();
+    await connection.sendRequest(
+        CloseDatabase(requestId: 0, databaseId: databaseId),
+        MessageType.simpleSuccessResponse);
   }
 
   @override
@@ -66,7 +100,7 @@ final class RemoteDatabase implements Database {
   }
 
   @override
-  Stream<SqliteUpdate> get updates => throw UnimplementedError();
+  Stream<SqliteUpdate> get updates => _updates.stream;
 
   @override
   Future<int> get userVersion async {
@@ -76,12 +110,22 @@ final class RemoteDatabase implements Database {
 }
 
 final class WorkerConnection extends ProtocolChannel {
-  WorkerConnection(super.channel);
+  final StreamController<Notification> notifications =
+      StreamController.broadcast();
+
+  WorkerConnection(super.channel) {
+    closed.whenComplete(notifications.close);
+  }
 
   @override
   Future<Response> handleRequest(Request request) {
     // TODO: implement handleRequest
     throw UnimplementedError();
+  }
+
+  @override
+  void handleNotification(Notification notification) {
+    notifications.add(notification);
   }
 }
 

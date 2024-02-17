@@ -191,6 +191,9 @@ abstract class CommonDatabase {
 /// The kind of an [SqliteUpdate] received through a [CommonDatabase.updates]
 /// stream.
 enum SqliteUpdateKind {
+  // Note: Changing the order of these fields is a breaking change, as they're
+  // used in the sqlite3_web protocol.
+
   /// Notification for a new row being inserted into the database.
   insert,
 

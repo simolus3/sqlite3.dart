@@ -5,12 +5,12 @@ homepage: https://github.com/simolus3/sqlite3.dart/tree/main/sqlite3_web
 repository: https://github.com/simolus3/sqlite3.dart
 
 environment:
-  sdk: ^3.2.5
+  sdk: ^3.3.0
 
 dependencies:
   sqlite3:
   stream_channel: ^2.1.2
-  web: ^0.4.2
+  web: ^0.5.0
 
 dev_dependencies:
   lints: ^2.1.0

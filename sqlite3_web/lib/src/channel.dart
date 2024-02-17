@@ -3,7 +3,7 @@ import 'dart:js_interop';
 import 'dart:math';
 
 import 'package:stream_channel/stream_channel.dart';
-import 'package:web/web.dart' hide Request, Response;
+import 'package:web/web.dart' hide Request, Response, Notification;
 
 import 'locks.dart';
 import 'protocol.dart';
@@ -12,18 +12,15 @@ const _disconnectMessage = '_disconnect';
 final Random _random = Random();
 
 @JS()
-@staticInterop
 @anonymous
-class WebEndpoint {
+extension type WebEndpoint._(JSObject _) implements JSObject {
+  external MessagePort get port;
+  external String? get lockName;
+
   external factory WebEndpoint({
     required MessagePort port,
     required String? lockName,
   });
-}
-
-extension ConnectTo on WebEndpoint {
-  external MessagePort get port;
-  external String? get lockName;
 
   StreamChannel<Message> connect() {
     return _channel(port, lockName, null);
@@ -136,6 +133,10 @@ abstract class ProtocolChannel {
         }
 
         _channel.sink.add(response);
+      case Notification():
+        handleNotification(message);
+      case CloseMessage():
+        _channel.sink.close();
     }
   }
 
@@ -162,4 +163,15 @@ abstract class ProtocolChannel {
   }
 
   Future<Response> handleRequest(Request request);
+
+  void sendNotification(Notification notification) {
+    _channel.sink.add(notification);
+  }
+
+  void handleNotification(Notification notification);
+
+  Future<void> close() async {
+    _channel.sink.add(CloseMessage());
+    await _channel.sink.close();
+  }
 }

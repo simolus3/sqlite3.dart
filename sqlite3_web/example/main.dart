@@ -8,6 +8,11 @@ void main() async {
 
   final database = await sqlite.connect(
       'test', StorageMode.inMemory, AccessMode.throughDedicatedWorker);
+
+  database.updates.listen(print);
+
   print('has database');
-  print(await database.select('select 1'));
+
+  await database.execute('create table foo (bar)');
+  await database.execute('insert into foo VALUES (?)', ['Hello worker!']);
 }
