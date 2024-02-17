@@ -338,7 +338,7 @@ final class FfiStatementCompiler extends RawStatementCompiler {
     if (database.bindings.supportsPrepareV3) {
       result = database.bindings.bindings.sqlite3_prepare_v3(
         database.db,
-        sql.elementAt(byteOffset).cast(),
+        (sql + byteOffset).cast(),
         length,
         prepFlag,
         stmtOut,
@@ -353,7 +353,7 @@ final class FfiStatementCompiler extends RawStatementCompiler {
 
       result = database.bindings.bindings.sqlite3_prepare_v2(
         database.db,
-        sql.elementAt(byteOffset).cast(),
+        (sql + byteOffset).cast(),
         length,
         stmtOut,
         pzTail,
@@ -687,7 +687,7 @@ class _ValueList extends ListBase<FfiValue> {
 
   @override
   FfiValue operator [](int index) {
-    return FfiValue(bindings, args.elementAt(index).value);
+    return FfiValue(bindings, args[index]);
   }
 
   @override
