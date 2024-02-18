@@ -30,7 +30,6 @@ enum MessageType<T extends Message> {
   errorResponse<ErrorResponse>(),
   closeDatabase<CloseDatabase>(),
   notifyUpdate<UpdateNotification>(),
-  close<CloseMessage>(),
   ;
 
   static final Map<String, MessageType> byName = values.asNameMap();
@@ -89,7 +88,6 @@ sealed class Message {
         SimpleSuccessResponse.deserialize(object),
       MessageType.rowsResponse => RowsResponse.deserialize(object),
       MessageType.errorResponse => ErrorResponse.deserialize(object),
-      MessageType.close => CloseMessage.deserialize(object),
       MessageType.notifyUpdate => UpdateNotification.deserialize(object),
     };
   }
@@ -165,11 +163,34 @@ sealed class Response extends Message {
   }
 }
 
+enum FileSystemImplementation {
+  opfsShared('s'),
+  opfsLocks('l'),
+  indexedDb('i'),
+  inMemory('m');
+
+  final String jsRepresentation;
+
+  const FileSystemImplementation(this.jsRepresentation);
+
+  JSString get toJS => jsRepresentation.toJS;
+
+  static FileSystemImplementation fromJS(JSString js) {
+    final toDart = js.toDart;
+
+    for (final entry in values) {
+      if (entry.jsRepresentation == toDart) return entry;
+    }
+
+    throw ArgumentError('Unknown FS implementation: $toDart');
+  }
+}
+
 final class OpenRequest extends Request {
   final Uri wasmUri;
 
   final String databaseName;
-  final StorageMode storageMode;
+  final FileSystemImplementation storageMode;
 
   OpenRequest({
     required super.requestId,
@@ -180,8 +201,8 @@ final class OpenRequest extends Request {
 
   factory OpenRequest.deserialize(JSObject object) {
     return OpenRequest(
-      storageMode: StorageMode.values[
-          (object[_UniqueFieldNames.storageMode] as JSNumber).toDartInt],
+      storageMode: FileSystemImplementation.fromJS(
+          object[_UniqueFieldNames.storageMode] as JSString),
       databaseName: (object[_UniqueFieldNames.databaseName] as JSString).toDart,
       wasmUri:
           Uri.parse((object[_UniqueFieldNames.wasmUri] as JSString).toDart),
@@ -196,7 +217,7 @@ final class OpenRequest extends Request {
   void serialize(JSObject object, List<JSObject> transferred) {
     super.serialize(object, transferred);
     object[_UniqueFieldNames.databaseName] = databaseName.toJS;
-    object[_UniqueFieldNames.storageMode] = storageMode.index.toJS;
+    object[_UniqueFieldNames.storageMode] = storageMode.toJS;
     object[_UniqueFieldNames.wasmUri] = wasmUri.toString().toJS;
   }
 }
@@ -506,7 +527,7 @@ class CompatibilityCheck extends Request {
   @override
   final MessageType<CompatibilityCheck> type;
 
-  final String databaseName;
+  final String? databaseName;
 
   CompatibilityCheck({
     required super.requestId,
@@ -519,7 +540,8 @@ class CompatibilityCheck extends Request {
     return CompatibilityCheck(
       type: type,
       requestId: object.requestId,
-      databaseName: (object[_UniqueFieldNames.databaseName] as JSString).toDart,
+      databaseName:
+          (object[_UniqueFieldNames.databaseName] as JSString?)?.toDart,
     );
   }
 
@@ -536,28 +558,8 @@ class CompatibilityCheck extends Request {
   @override
   void serialize(JSObject object, List<JSObject> transferred) {
     super.serialize(object, transferred);
-    object[_UniqueFieldNames.databaseName] = databaseName.toJS;
+    object[_UniqueFieldNames.databaseName] = databaseName?.toJS;
   }
-}
-
-@JS()
-@anonymous
-extension type _CompatibilityResultJs._(JSObject object) implements JSObject {
-  external factory _CompatibilityResultJs({
-    required JSArray a,
-    required JSBoolean b,
-    required JSBoolean c,
-    required JSBoolean d,
-    required JSBoolean e,
-    required JSBoolean f,
-  });
-
-  external JSArray<JSString> get a; // existingDatabases
-  external JSBoolean get b; // sharedCanSpawnDedicated
-  external JSBoolean get c; // canUseOpfs
-  external JSBoolean get d; // canUseIndexedDb
-  external JSBoolean get e; // dedicatedWorkersCanNest
-  external JSBoolean get f; // supportsSharedArrayBuffers
 }
 
 final class CompatibilityResult {
@@ -584,13 +586,6 @@ final class CompatibilityResult {
   /// On some browsers, IndexedDB is not available in private/incognito tabs.
   final bool canUseIndexedDb;
 
-  /// Whether dedicated workers can spawn their own dedicated worker.
-  ///
-  /// For us, this can be useful to setup a synchronous channel to host an OPFS
-  /// filesystem between threads. Some older Safari versions don't allow this
-  /// though.
-  final bool dedicatedWorkersCanNest;
-
   /// Whether dedicated workers can use shared array buffers and the atomics
   /// API.
   ///
@@ -604,15 +599,13 @@ final class CompatibilityResult {
     required this.sharedCanSpawnDedicated,
     required this.canUseOpfs,
     required this.canUseIndexedDb,
-    required this.dedicatedWorkersCanNest,
     required this.supportsSharedArrayBuffers,
   });
 
   factory CompatibilityResult.fromJS(JSObject result) {
-    final asResult = result as _CompatibilityResultJs;
     final existing = <ExistingDatabase>[];
 
-    final encodedExisting = asResult.a.toDart;
+    final encodedExisting = (result['a'] as JSArray<JSString>).toDart;
     for (var i = 0; i < encodedExisting.length / 2; i++) {
       final mode = StorageMode.values.byName(encodedExisting[i * 2].toDart);
       final name = encodedExisting[i * 2 + 1].toDart;
@@ -622,11 +615,10 @@ final class CompatibilityResult {
 
     return CompatibilityResult(
       existingDatabases: existing,
-      sharedCanSpawnDedicated: result.b.toDart,
-      canUseOpfs: result.c.toDart,
-      canUseIndexedDb: result.d.toDart,
-      dedicatedWorkersCanNest: result.e.toDart,
-      supportsSharedArrayBuffers: result.f.toDart,
+      sharedCanSpawnDedicated: (result['b'] as JSBoolean).toDart,
+      canUseOpfs: (result['c'] as JSBoolean).toDart,
+      canUseIndexedDb: (result['d'] as JSBoolean).toDart,
+      supportsSharedArrayBuffers: (result['e'] as JSBoolean).toDart,
     );
   }
 
@@ -638,14 +630,27 @@ final class CompatibilityResult {
       ],
     ];
 
-    return _CompatibilityResultJs(
-      a: encodedDatabases.toJS,
-      b: sharedCanSpawnDedicated.toJS,
-      c: canUseOpfs.toJS,
-      d: canUseIndexedDb.toJS,
-      e: dedicatedWorkersCanNest.toJS,
-      f: dedicatedWorkersCanNest.toJS,
-    );
+    return JSObject()
+      ..['a'] = encodedDatabases.toJS
+      ..['b'] = sharedCanSpawnDedicated.toJS
+      ..['c'] = canUseOpfs.toJS
+      ..['d'] = canUseIndexedDb.toJS
+      ..['e'] = supportsSharedArrayBuffers.toJS;
+  }
+
+  Iterable<MissingBrowserFeature> get impliedMissingFeatures sync* {
+    if (!sharedCanSpawnDedicated) {
+      yield MissingBrowserFeature.dedicatedWorkersInSharedWorkers;
+    }
+    if (!canUseOpfs) {
+      yield MissingBrowserFeature.fileSystemAccess;
+    }
+    if (!canUseIndexedDb) {
+      yield MissingBrowserFeature.indexedDb;
+    }
+    if (!supportsSharedArrayBuffers) {
+      yield MissingBrowserFeature.sharedArrayBuffers;
+    }
   }
 }
 
@@ -678,24 +683,6 @@ final class UpdateNotification extends Notification {
     object[_UniqueFieldNames.updateTableName] = update.tableName.toJS;
     object[_UniqueFieldNames.updateRowId] = update.rowId.toJS;
   }
-}
-
-/// Signals that one endpoint will close the channel and stop receiving messages
-/// on it.
-///
-/// On browsers that support the web lock API, we're also able to detect
-/// channels closing due to their JS context shutting down, but this
-/// notification is used for the "clean" case in which communication channels
-/// are closed in code.
-final class CloseMessage extends Message {
-  CloseMessage();
-
-  factory CloseMessage.deserialize(JSObject object) {
-    return CloseMessage();
-  }
-
-  @override
-  MessageType<Message> get type => MessageType.close;
 }
 
 extension on JSObject {

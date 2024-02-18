@@ -135,8 +135,6 @@ abstract class ProtocolChannel {
         _channel.sink.add(response);
       case Notification():
         handleNotification(message);
-      case CloseMessage():
-        _channel.sink.close();
     }
   }
 
@@ -171,7 +169,38 @@ abstract class ProtocolChannel {
   void handleNotification(Notification notification);
 
   Future<void> close() async {
-    _channel.sink.add(CloseMessage());
     await _channel.sink.close();
+  }
+}
+
+extension InjectErrors<T> on StreamChannel<T> {
+  /// Returns a stream channel reporting error events from [target] through its
+  /// [StreamChannel.stream].
+  StreamChannel<T> injectErrorsFrom(EventTarget target) {
+    return changeStream((original) {
+      return Stream.multi((listener) {
+        // Listen to the original stream...
+        final upstreamSubscription = original.listen(
+          listener.addSync,
+          onDone: listener.closeSync,
+          onError: listener.addErrorSync,
+          cancelOnError: false,
+        );
+
+        // And also to errors which are forwarded to the listener
+        final errorSubscription = EventStreamProviders.errorEvent
+            .forTarget(target)
+            .listen(listener.addErrorSync);
+
+        // Don't pause the error subscription, but propagate pauses upstream.
+        listener
+          ..onPause = upstreamSubscription.pause
+          ..onResume = upstreamSubscription.resume
+          ..onCancel = () async {
+            await upstreamSubscription.cancel();
+            await errorSubscription.cancel();
+          };
+      });
+    });
   }
 }

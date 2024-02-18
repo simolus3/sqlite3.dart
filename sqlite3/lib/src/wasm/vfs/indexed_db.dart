@@ -414,17 +414,18 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
   final Set<String> _inMemoryOnlyFiles = {};
   final Map<String, int> _knownFileIds = {};
 
-  IndexedDbFileSystem._(String dbName)
+  IndexedDbFileSystem._(String dbName, {String vfsName = 'indexeddb'})
       : _asynchronous = AsynchronousIndexedDbFileSystem(dbName),
         _memory = InMemoryFileSystem(),
-        super(name: 'indexeddb');
+        super(name: vfsName);
 
   /// Loads an IndexedDB file system identified by the [dbName].
   ///
   /// Each file system with a different name will store an independent file
   /// system.
-  static Future<IndexedDbFileSystem> open({required String dbName}) async {
-    final fs = IndexedDbFileSystem._(dbName);
+  static Future<IndexedDbFileSystem> open(
+      {required String dbName, String vfsName = 'indexeddb'}) async {
+    final fs = IndexedDbFileSystem._(dbName, vfsName: vfsName);
     await fs._asynchronous.open();
     await fs._readFiles();
     return fs;

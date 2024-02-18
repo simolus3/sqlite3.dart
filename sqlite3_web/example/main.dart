@@ -6,6 +6,11 @@ void main() async {
     wasmModule: Uri.parse('sqlite3.wasm'),
   );
 
+  final features = await sqlite.runFeatureDetection();
+  print('got features: $features');
+
+  return;
+
   final database = await sqlite.connect(
       'test', StorageMode.inMemory, AccessMode.throughDedicatedWorker);
 

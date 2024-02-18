@@ -64,8 +64,9 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
   final Map<FileType, FileSystemSyncAccessHandle> _files;
   final InMemoryFileSystem _memory = InMemoryFileSystem();
 
-  SimpleOpfsFileSystem._(this._metaHandle, this._files)
-      : super(name: 'simple-opfs');
+  SimpleOpfsFileSystem._(this._metaHandle, this._files,
+      {String vfsName = 'simple-opfs'})
+      : super(name: vfsName);
 
   /// Loads an [SimpleOpfsFileSystem] in the desired [path] under the root directory
   /// for OPFS as given by `navigator.storage.getDirectory()` in JavaScript.
@@ -73,7 +74,8 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
   /// Throws a [VfsException] if OPFS is not available - please note that
   /// this file system implementation requires a recent browser and only works
   /// in dedicated web workers.
-  static Future<SimpleOpfsFileSystem> loadFromStorage(String path) async {
+  static Future<SimpleOpfsFileSystem> loadFromStorage(String path,
+      {String vfsName = 'simple-opfs'}) async {
     final storage = storageManager;
     if (storage == null) {
       throw VfsException(SqlError.SQLITE_ERROR);
@@ -85,7 +87,7 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
       opfsDirectory = await opfsDirectory.getDirectory(segment, create: true);
     }
 
-    return inDirectory(opfsDirectory);
+    return inDirectory(opfsDirectory, vfsName: vfsName);
   }
 
   /// Loads an [SimpleOpfsFileSystem] in the desired [root] directory, which must be
@@ -93,7 +95,9 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
   ///
   /// [FileSystemDirectoryHandle]: https://developer.mozilla.org/en-US/docs/Web/API/FileSystemDirectoryHandle
   static Future<SimpleOpfsFileSystem> inDirectory(
-      FileSystemDirectoryHandle root) async {
+    FileSystemDirectoryHandle root, {
+    String vfsName = 'simple-opfs',
+  }) async {
     Future<FileSystemSyncAccessHandle> open(String name) async {
       final handle = await root.openFile(name, create: true);
       return await handle.createSyncAccessHandle().toDart;
@@ -105,7 +109,7 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
       for (final type in FileType.values) type: await open(type.name)
     };
 
-    return SimpleOpfsFileSystem._(meta, files);
+    return SimpleOpfsFileSystem._(meta, files, vfsName: vfsName);
   }
 
   void _markExists(FileType type, bool exists) {

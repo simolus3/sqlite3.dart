@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 import 'package:sqlite3/common.dart';
-import 'package:web/web.dart' hide Response, Request, FileSystem, Notification;
+import 'package:web/web.dart'
+    hide Response, Request, FileSystem, Notification, Lock;
 
 import 'api.dart';
 import 'channel.dart';
 import 'protocol.dart';
+import 'shared.dart';
 
 final class RemoteDatabase implements Database {
   final WorkerConnection connection;
@@ -130,26 +133,123 @@ final class WorkerConnection extends ProtocolChannel {
 }
 
 final class DatabaseClient implements WebSqlite {
-  final Worker _worker;
+  final Uri workerUri;
   final Uri wasmUri;
 
-  DatabaseClient(this._worker, this.wasmUri);
+  final Lock _startWorkersLock = Lock();
+  bool _startedWorkers = false;
+  WorkerConnection? _connectionToDedicated;
+  WorkerConnection? _connectionToShared;
+  final Set<MissingBrowserFeature> _missingFeatures = {};
+
+  DatabaseClient(this.workerUri, this.wasmUri);
+
+  Future<void> startWorkers() {
+    return _startWorkersLock.synchronized(() async {
+      if (_startedWorkers) {
+        return;
+      }
+      _startedWorkers = true;
+
+      if (globalContext.has('Worker')) {
+        final dedicated = Worker(
+          workerUri.toString(),
+          WorkerOptions(name: 'sqlite3_worker'),
+        );
+
+        final (endpoint, channel) = await createChannel();
+        endpoint.postToWorker(dedicated);
+
+        _connectionToDedicated =
+            WorkerConnection(channel.injectErrorsFrom(dedicated));
+      } else {
+        _missingFeatures.add(MissingBrowserFeature.dedicatedWorkers);
+      }
+
+      if (globalContext.has('SharedWorker')) {
+        final shared = SharedWorker(workerUri.toString());
+        shared.port.start();
+
+        final (endpoint, channel) = await createChannel();
+        endpoint.postToPort(shared.port);
+
+        _connectionToShared =
+            WorkerConnection(channel.injectErrorsFrom(shared));
+      } else {
+        _missingFeatures.add(MissingBrowserFeature.sharedWorkers);
+      }
+    });
+  }
+
+  @override
+  Future<FeatureDetectionResult> runFeatureDetection(
+      {String? databaseName}) async {
+    await startWorkers();
+
+    final existing = <ExistingDatabase>{};
+
+    if (_connectionToDedicated case final connection?) {
+      final response = await connection.sendRequest(
+        CompatibilityCheck(
+          requestId: 0,
+          type: MessageType.dedicatedCompatibilityCheck,
+          databaseName: databaseName,
+        ),
+        MessageType.simpleSuccessResponse,
+      );
+      final result = CompatibilityResult.fromJS(response.response as JSObject);
+      existing.addAll(result.existingDatabases);
+
+      if (!result.canUseIndexedDb) {
+        _missingFeatures.add(MissingBrowserFeature.indexedDb);
+      }
+      if (!result.canUseOpfs) {
+        _missingFeatures.add(MissingBrowserFeature.fileSystemAccess);
+      }
+      if (!result.supportsSharedArrayBuffers) {
+        _missingFeatures.add(MissingBrowserFeature.sharedArrayBuffers);
+      }
+    }
+
+    if (_connectionToShared case final connection?) {
+      final response = await connection.sendRequest(
+        CompatibilityCheck(
+          requestId: 0,
+          type: MessageType.sharedCompatibilityCheck,
+          databaseName: databaseName,
+        ),
+        MessageType.simpleSuccessResponse,
+      );
+      final result = CompatibilityResult.fromJS(response.response as JSObject);
+      if (!result.sharedCanSpawnDedicated) {
+        _missingFeatures
+            .add(MissingBrowserFeature.dedicatedWorkersInSharedWorkers);
+      }
+      if (!result.canUseIndexedDb) {
+        _missingFeatures.add(MissingBrowserFeature.indexedDb);
+      }
+    }
+
+    return FeatureDetectionResult(
+      missingFeatures: _missingFeatures.toList(),
+      existingDatabases: existing.toList(),
+    );
+  }
 
   @override
   Future<Database> connect(
       String name, StorageMode type, AccessMode access) async {
-    final (endpoint, channel) = await createChannel();
-    endpoint.postToWorker(_worker);
+    await startWorkers();
 
     await Future.delayed(Duration(milliseconds: 100));
 
-    final connection = WorkerConnection(channel);
+    final connection = _connectionToDedicated!;
     final data = await connection.sendRequest(
       OpenRequest(
         requestId: 0,
         wasmUri: wasmUri,
         databaseName: name,
-        storageMode: type,
+        storageMode: FileSystemImplementation.inMemory,
       ),
       MessageType.simpleSuccessResponse,
     );

@@ -81,7 +81,7 @@ final class Shared extends WorkerEnvironment {
         port.start();
 
         subscriptions.add(
-            EventStreamProviders.messageEvent.forTarget(scope).listen((event) {
+            EventStreamProviders.messageEvent.forTarget(port).listen((event) {
           listener.addSync(event.data as WebEndpoint);
         }));
       }
@@ -250,10 +250,14 @@ final class DatabaseState {
   final WorkerRunner runner;
   final int id;
   final String name;
-  final StorageMode mode;
+  final FileSystemImplementation mode;
   int refCount = 1;
 
   Future<WorkerDatabase>? _database;
+
+  /// Runs additional async work, such as flushing the VFS to IndexedDB when
+  /// the database is closed.
+  FutureOr<void> Function()? closeHandler;
 
   DatabaseState(
       {required this.id,
@@ -262,15 +266,32 @@ final class DatabaseState {
       required this.mode});
 
   Future<WorkerDatabase> get opened async {
-    if (_database == null) {
+    final database = _database ??= Future.sync(() async {
       final sqlite3 = await runner._sqlite3!;
       final vfsName = 'vfs-web-$id';
 
-      sqlite3.registerVirtualFileSystem(InMemoryFileSystem(name: vfsName));
-      _database = runner._controller.openDatabase(sqlite3, vfsName);
-    }
+      switch (mode) {
+        case FileSystemImplementation.opfsLocks:
+          break;
+        case FileSystemImplementation.opfsShared:
+          final simple = await SimpleOpfsFileSystem.loadFromStorage(
+              pathForOpfs(name),
+              vfsName: vfsName);
+          closeHandler = simple.close;
+          break;
+        case FileSystemImplementation.indexedDb:
+          final idb =
+              await IndexedDbFileSystem.open(dbName: name, vfsName: vfsName);
+          sqlite3.registerVirtualFileSystem(idb);
+          closeHandler = idb.close;
+        case FileSystemImplementation.inMemory:
+          sqlite3.registerVirtualFileSystem(InMemoryFileSystem(name: vfsName));
+      }
 
-    return await _database!;
+      return await runner._controller.openDatabase(sqlite3, vfsName);
+    });
+
+    return await database;
   }
 
   Future<void> decrementRefCount() async {
@@ -323,13 +344,9 @@ final class WorkerRunner {
 
       final supportsOpfs =
           check.shouldCheckOpfsCompatibility ? await checkOpfsSupport() : false;
-      final supportsIndexedDb = check.shouldCheckOpfsCompatibility
+      final supportsIndexedDb = check.shouldCheckIndexedDbCompatbility
           ? await checkIndexedDbSupport()
           : false;
-      final workersCanNest =
-          check.type == MessageType.dedicatedCompatibilityCheck
-              ? globalContext.has('Worker')
-              : false;
       final sharedCanSpawnDedicated =
           check.type == MessageType.sharedCompatibilityCheck
               ? globalContext.has('Worker')
@@ -340,7 +357,6 @@ final class WorkerRunner {
         sharedCanSpawnDedicated: sharedCanSpawnDedicated,
         canUseOpfs: supportsOpfs,
         canUseIndexedDb: supportsIndexedDb,
-        dedicatedWorkersCanNest: workersCanNest,
         supportsSharedArrayBuffers: globalContext.has('SharedArrayBuffer'),
       );
     });
@@ -365,7 +381,7 @@ final class WorkerRunner {
     }
   }
 
-  DatabaseState findDatabase(String name, StorageMode mode) {
+  DatabaseState findDatabase(String name, FileSystemImplementation mode) {
     for (final existing in openedDatabases.values) {
       if (existing.refCount != 0 &&
           existing.name == name &&
@@ -447,6 +463,12 @@ Future<List<String>> opfsDatabases() async {
     await for (final entry in directory.list())
       if (entry.isDirectory) entry.name,
   ];
+}
+
+/// Constructs the path used by drift to store a database in the origin-private
+/// section of the agent's file system.
+String pathForOpfs(String databaseName) {
+  return 'drift_db/$databaseName';
 }
 
 /// Deletes the OPFS folder storing a database with the given [databaseName] if

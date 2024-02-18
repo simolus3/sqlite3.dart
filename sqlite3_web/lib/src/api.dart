@@ -2,7 +2,6 @@ import 'dart:js_interop';
 import 'dart:typed_data';
 
 import 'package:sqlite3/wasm.dart';
-import 'package:web/web.dart';
 
 import 'client.dart';
 import 'worker.dart';
@@ -90,7 +89,64 @@ abstract base class DatabaseController {
       ClientConnection connection, JSAny? request);
 }
 
+/// An enumeration of features not supported by the current browsers.
+///
+/// While this information may not be useful to end users, it can be used to
+/// understand why a particular file system implementation is unavailable.
+enum MissingBrowserFeature {
+  /// The browser is missing support for [shared workers].
+  ///
+  /// [shared workers]: https://developer.mozilla.org/en-US/docs/Web/API/SharedWorker
+  sharedWorkers,
+
+  /// The browser is missing support for [web workers] in general.
+  ///
+  /// [web workers]: https://developer.mozilla.org/en-US/docs/Web/API/Worker
+  dedicatedWorkers,
+
+  /// The browser doesn't allow shared workers to spawn dedicated workers in
+  /// their context.
+  ///
+  /// While the specification for web workers explicitly allows this, this
+  /// feature is only implemented by Firefox at the time of writing.
+  dedicatedWorkersInSharedWorkers,
+
+  /// The browser does not support a synchronous version of the [File System API]
+  ///
+  /// [File System API]: https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API
+  fileSystemAccess,
+
+  /// The browser does not support IndexedDB.
+  indexedDb,
+
+  /// The browser does not support shared array buffers and `Atomics.wait`.
+  ///
+  /// To enable this feature in most browsers, you need to serve your app with
+  /// two [special headers](https://web.dev/coop-coep/).
+  sharedArrayBuffers,
+}
+
+final class FeatureDetectionResult {
+  /// A list of features that were probed and found to be unsupported in the
+  /// current browser.
+  final List<MissingBrowserFeature> missingFeatures;
+
+  final List<ExistingDatabase> existingDatabases;
+
+  FeatureDetectionResult({
+    required this.missingFeatures,
+    required this.existingDatabases,
+  });
+
+  @override
+  String toString() {
+    return 'Existing: $existingDatabases, missing: $missingFeatures';
+  }
+}
+
 abstract class WebSqlite {
+  Future<FeatureDetectionResult> runFeatureDetection({String? databaseName});
+
   Future<Database> connect(String name, StorageMode type, AccessMode access);
 
   static void workerEntrypoint({
@@ -103,6 +159,6 @@ abstract class WebSqlite {
     required Uri worker,
     required Uri wasmModule,
   }) async {
-    return DatabaseClient(Worker(worker.path), wasmModule);
+    return DatabaseClient(worker, wasmModule);
   }
 }

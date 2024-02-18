@@ -1,7 +1,5 @@
-import 'dart:html';
 import 'dart:js_interop';
 
-import 'package:js/js.dart';
 import 'package:path/path.dart' as p show url;
 import 'package:web/web.dart'
     show
@@ -24,7 +22,7 @@ void _log(String message) {
 
 @JS()
 @anonymous
-class WorkerOptions {
+extension type WorkerOptions._raw(JSObject _) implements JSObject {
   external int get clientVersion;
   external String get root;
   external SharedArrayBuffer get synchronizationBuffer;

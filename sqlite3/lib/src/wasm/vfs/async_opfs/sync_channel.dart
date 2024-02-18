@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:html';
+import 'dart:js_interop';
 import 'dart:typed_data';
 
 import '../../js_interop.dart';
@@ -24,7 +24,8 @@ class RequestResponseSynchronizer {
   /// A int32 view over [buffer], required for atomics to work.
   final Int32List int32View;
 
-  RequestResponseSynchronizer._(this.buffer) : int32View = buffer.asInt32List();
+  RequestResponseSynchronizer._(this.buffer)
+      : int32View = buffer.toDart.asInt32List();
 
   factory RequestResponseSynchronizer([SharedArrayBuffer? buffer]) {
     if (buffer != null && buffer.byteLength != byteLength) {
@@ -76,8 +77,8 @@ class MessageSerializer {
   final Uint8List byteView;
 
   MessageSerializer(this.buffer)
-      : dataView = buffer.asByteData(metaOffset, metaSize),
-        byteView = buffer.asUint8List();
+      : dataView = buffer.toDart.asByteData(metaOffset, metaSize),
+        byteView = buffer.toDart.asUint8List();
 
   void write(Message message) {
     if (message is EmptyMessage) {
@@ -96,12 +97,12 @@ class MessageSerializer {
   }
 
   Uint8List viewByteRange(int offset, int length) {
-    return buffer.asUint8List(offset, length);
+    return buffer.toDart.asUint8List(offset, length);
   }
 
   String _readString(int offset) {
     final length = dataView.getInt32(offset);
-    return utf8.decode(buffer.asUint8List(offset + 4, length));
+    return utf8.decode(buffer.toDart.asUint8List(offset + 4, length));
   }
 
   void _writeString(int offset, String data) {
