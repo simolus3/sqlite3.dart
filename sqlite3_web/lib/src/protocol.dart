@@ -16,6 +16,9 @@ import 'api.dart';
 typedef PostMessage = void Function(JSAny? msg, JSObject transfer);
 
 enum MessageType<T extends Message> {
+  dedicatedCompatibilityCheck<CompatibilityCheck>(),
+  sharedCompatibilityCheck<CompatibilityCheck>(),
+  dedicatedInSharedCompatibilityCheck<CompatibilityCheck>(),
   custom<CustomRequest>(),
   open<OpenRequest>(),
   runQuery<RunQuery>(),
@@ -68,6 +71,13 @@ sealed class Message {
         .byName[(object[_UniqueFieldNames.type] as JSString).toDart]!;
 
     return switch (type) {
+      MessageType.dedicatedCompatibilityCheck => CompatibilityCheck.deserialize(
+          MessageType.dedicatedCompatibilityCheck, object),
+      MessageType.sharedCompatibilityCheck => CompatibilityCheck.deserialize(
+          MessageType.sharedCompatibilityCheck, object),
+      MessageType.dedicatedInSharedCompatibilityCheck =>
+        CompatibilityCheck.deserialize(
+            MessageType.dedicatedInSharedCompatibilityCheck, object),
       MessageType.custom => CustomRequest.deserialize(object),
       MessageType.open => OpenRequest.deserialize(object),
       MessageType.runQuery => RunQuery.deserialize(object),
@@ -489,6 +499,153 @@ final class UpdateStreamRequest extends Request {
   void serialize(JSObject object, List<JSObject> transferred) {
     super.serialize(object, transferred);
     object[_UniqueFieldNames.action] = action.toJS;
+  }
+}
+
+class CompatibilityCheck extends Request {
+  @override
+  final MessageType<CompatibilityCheck> type;
+
+  final String databaseName;
+
+  CompatibilityCheck({
+    required super.requestId,
+    required this.type,
+    required this.databaseName,
+  });
+
+  factory CompatibilityCheck.deserialize(
+      MessageType<CompatibilityCheck> type, JSObject object) {
+    return CompatibilityCheck(
+      type: type,
+      requestId: object.requestId,
+      databaseName: (object[_UniqueFieldNames.databaseName] as JSString).toDart,
+    );
+  }
+
+  bool get shouldCheckOpfsCompatibility {
+    return type == MessageType.dedicatedCompatibilityCheck ||
+        type == MessageType.dedicatedInSharedCompatibilityCheck;
+  }
+
+  bool get shouldCheckIndexedDbCompatbility {
+    return type == MessageType.dedicatedCompatibilityCheck ||
+        type == MessageType.sharedCompatibilityCheck;
+  }
+
+  @override
+  void serialize(JSObject object, List<JSObject> transferred) {
+    super.serialize(object, transferred);
+    object[_UniqueFieldNames.databaseName] = databaseName.toJS;
+  }
+}
+
+@JS()
+@anonymous
+extension type _CompatibilityResultJs._(JSObject object) implements JSObject {
+  external factory _CompatibilityResultJs({
+    required JSArray a,
+    required JSBoolean b,
+    required JSBoolean c,
+    required JSBoolean d,
+    required JSBoolean e,
+    required JSBoolean f,
+  });
+
+  external JSArray<JSString> get a; // existingDatabases
+  external JSBoolean get b; // sharedCanSpawnDedicated
+  external JSBoolean get c; // canUseOpfs
+  external JSBoolean get d; // canUseIndexedDb
+  external JSBoolean get e; // dedicatedWorkersCanNest
+  external JSBoolean get f; // supportsSharedArrayBuffers
+}
+
+final class CompatibilityResult {
+  final List<ExistingDatabase> existingDatabases;
+
+  // Fields set when a shared worker replies.
+
+  /// Whether shared workers are allowed to spawn dedicated workers.
+  ///
+  /// As far as the web standard goes, they're supposed to. It allows us to
+  /// spawn a dedicated worker using OPFS in the context of a shared worker,
+  /// which is a very reliable storage implementation. Sadly, only Firefox has
+  /// implemented this feature.
+  final bool sharedCanSpawnDedicated;
+
+  /// Whether dedicated workers can use OPFS.
+  ///
+  /// The file system API is only available in dedicated workers, so if they
+  /// can't use it, the browser just likely doesn't support that API.
+  final bool canUseOpfs;
+
+  /// Whether IndexedDB is available to shared workers.
+  ///
+  /// On some browsers, IndexedDB is not available in private/incognito tabs.
+  final bool canUseIndexedDb;
+
+  /// Whether dedicated workers can spawn their own dedicated worker.
+  ///
+  /// For us, this can be useful to setup a synchronous channel to host an OPFS
+  /// filesystem between threads. Some older Safari versions don't allow this
+  /// though.
+  final bool dedicatedWorkersCanNest;
+
+  /// Whether dedicated workers can use shared array buffers and the atomics
+  /// API.
+  ///
+  /// This is required for the synchronous channel used to host an OPFS
+  /// filesystem between threads. However, it is only available when the page is
+  /// served with special headers for security purposes.
+  final bool supportsSharedArrayBuffers;
+
+  CompatibilityResult({
+    required this.existingDatabases,
+    required this.sharedCanSpawnDedicated,
+    required this.canUseOpfs,
+    required this.canUseIndexedDb,
+    required this.dedicatedWorkersCanNest,
+    required this.supportsSharedArrayBuffers,
+  });
+
+  factory CompatibilityResult.fromJS(JSObject result) {
+    final asResult = result as _CompatibilityResultJs;
+    final existing = <ExistingDatabase>[];
+
+    final encodedExisting = asResult.a.toDart;
+    for (var i = 0; i < encodedExisting.length / 2; i++) {
+      final mode = StorageMode.values.byName(encodedExisting[i * 2].toDart);
+      final name = encodedExisting[i * 2 + 1].toDart;
+
+      existing.add((mode, name));
+    }
+
+    return CompatibilityResult(
+      existingDatabases: existing,
+      sharedCanSpawnDedicated: result.b.toDart,
+      canUseOpfs: result.c.toDart,
+      canUseIndexedDb: result.d.toDart,
+      dedicatedWorkersCanNest: result.e.toDart,
+      supportsSharedArrayBuffers: result.f.toDart,
+    );
+  }
+
+  JSObject get toJS {
+    final encodedDatabases = <JSString>[
+      for (final existing in existingDatabases) ...[
+        existing.$1.name.toJS,
+        existing.$2.toJS
+      ],
+    ];
+
+    return _CompatibilityResultJs(
+      a: encodedDatabases.toJS,
+      b: sharedCanSpawnDedicated.toJS,
+      c: canUseOpfs.toJS,
+      d: canUseIndexedDb.toJS,
+      e: dedicatedWorkersCanNest.toJS,
+      f: dedicatedWorkersCanNest.toJS,
+    );
   }
 }
 

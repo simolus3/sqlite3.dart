@@ -1,12 +1,25 @@
 import 'dart:async';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'package:sqlite3/wasm.dart';
 import 'package:stream_channel/stream_channel.dart';
-import 'package:web/web.dart' hide Notification, Response, Request;
+import 'package:web/web.dart'
+    show
+        DedicatedWorkerGlobalScope,
+        SharedWorkerGlobalScope,
+        EventStreamProviders,
+        MessagePort,
+        MessageEvent,
+        FileSystemDirectoryHandle,
+        FileSystemFileHandle,
+        FileSystemSyncAccessHandle;
+// ignore: implementation_imports
+import 'package:sqlite3/src/wasm/js_interop/file_system_access.dart';
 
 import 'api.dart';
 import 'channel.dart';
 import 'protocol.dart';
+import 'shared.dart';
 
 sealed class WorkerEnvironment {
   WorkerEnvironment._();
@@ -131,6 +144,11 @@ final class _ClientConnection extends ProtocolChannel
     final database = _databaseFor(request);
 
     switch (request) {
+      case CompatibilityCheck():
+        return SimpleSuccessResponse(
+          response: (await _runner.checkCompatibility(request)).toJS,
+          requestId: request.requestId,
+        );
       case CustomRequest():
         JSAny? response;
 
@@ -277,6 +295,9 @@ final class WorkerRunner {
   Future<WasmSqlite3>? _sqlite3;
   Uri? _wasmUri;
 
+  final Lock _compatibilityCheckLock = Lock();
+  CompatibilityResult? _compatibilityResult;
+
   WorkerRunner(this._controller) : _environment = WorkerEnvironment();
 
   void handleRequests() async {
@@ -290,6 +311,39 @@ final class WorkerRunner {
         runner: this, channel: channel, id: _nextConnectionId++);
     _connections.add(connection);
     connection.closed.whenComplete(() => _connections.remove(connection));
+  }
+
+  Future<CompatibilityResult> checkCompatibility(CompatibilityCheck check) {
+    return _compatibilityCheckLock.synchronized(() async {
+      if (_compatibilityResult != null) {
+        // todo: We may have to update information about existing databases
+        // as they come and go
+        return _compatibilityResult!;
+      }
+
+      final supportsOpfs =
+          check.shouldCheckOpfsCompatibility ? await checkOpfsSupport() : false;
+      final supportsIndexedDb = check.shouldCheckOpfsCompatibility
+          ? await checkIndexedDbSupport()
+          : false;
+      final workersCanNest =
+          check.type == MessageType.dedicatedCompatibilityCheck
+              ? globalContext.has('Worker')
+              : false;
+      final sharedCanSpawnDedicated =
+          check.type == MessageType.sharedCompatibilityCheck
+              ? globalContext.has('Worker')
+              : false;
+
+      return CompatibilityResult(
+        existingDatabases: const [], // todo
+        sharedCanSpawnDedicated: sharedCanSpawnDedicated,
+        canUseOpfs: supportsOpfs,
+        canUseIndexedDb: supportsIndexedDb,
+        dedicatedWorkersCanNest: workersCanNest,
+        supportsSharedArrayBuffers: globalContext.has('SharedArrayBuffer'),
+      );
+    });
   }
 
   Future<void> loadWasmModule(Uri uri) async {
@@ -328,5 +382,85 @@ final class WorkerRunner {
       name: name,
       mode: mode,
     );
+  }
+}
+
+/// Checks whether the OPFS API is likely to be correctly implemented in the
+/// current browser.
+///
+/// Since OPFS uses the synchronous file system access API, this method can only
+/// return true when called in a dedicated worker.
+Future<bool> checkOpfsSupport() async {
+  final storage = storageManager;
+  if (storage == null) return false;
+
+  const testFileName = '_drift_feature_detection';
+
+  FileSystemDirectoryHandle? opfsRoot;
+  FileSystemFileHandle? fileHandle;
+  JSObject? openedFile;
+
+  try {
+    opfsRoot = await storage.directory;
+
+    fileHandle = await opfsRoot.openFile(testFileName, create: true);
+    openedFile = await fileHandle.createSyncAccessHandle().toDart;
+
+    // In earlier versions of the OPFS standard, some methods like `getSize()`
+    // on a sync file handle have actually been asynchronous. We don't support
+    // Browsers that implement the outdated spec.
+    final getSizeResult = openedFile.callMethod('getSize'.toJS);
+    if (getSizeResult.typeofEquals('object')) {
+      // Returned a promise, that's no good.
+      await (getSizeResult as JSPromise).toDart;
+      return false;
+    }
+
+    return true;
+  } on Object {
+    return false;
+  } finally {
+    if (openedFile != null) {
+      (openedFile as FileSystemSyncAccessHandle).close();
+    }
+
+    if (opfsRoot != null && fileHandle != null) {
+      await opfsRoot.remove(testFileName);
+    }
+  }
+}
+
+/// Collects all drift OPFS databases.
+Future<List<String>> opfsDatabases() async {
+  final storage = storageManager;
+  if (storage == null) return const [];
+
+  var directory = await storage.directory;
+  try {
+    directory = await directory.getDirectory('drift_db');
+  } on Object {
+    // The drift_db folder doesn't exist, so there aren't any databases.
+    return const [];
+  }
+
+  return [
+    await for (final entry in directory.list())
+      if (entry.isDirectory) entry.name,
+  ];
+}
+
+/// Deletes the OPFS folder storing a database with the given [databaseName] if
+/// such folder exists.
+Future<void> deleteDatabaseInOpfs(String databaseName) async {
+  final storage = storageManager;
+  if (storage == null) return;
+
+  var directory = await storage.directory;
+  try {
+    directory = await directory.getDirectory('drift_db');
+    await directory.remove(databaseName, recursive: true);
+  } on Object {
+    // fine, an error probably means that the database didn't exist in the first
+    // place.
   }
 }

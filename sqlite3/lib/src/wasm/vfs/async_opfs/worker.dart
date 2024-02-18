@@ -1,7 +1,14 @@
 import 'dart:html';
+import 'dart:js_interop';
 
 import 'package:js/js.dart';
 import 'package:path/path.dart' as p show url;
+import 'package:web/web.dart'
+    show
+        FileSystemDirectoryHandle,
+        FileSystemFileHandle,
+        FileSystemSyncAccessHandle,
+        FileSystemReadWriteOptions;
 
 import '../../../constants.dart';
 import '../../../vfs.dart';
@@ -116,7 +123,7 @@ class VfsWorker {
   Future<void> _xDelete(NameAndInt32Flags options) async {
     final resolved = await _resolvePath(options.name);
     try {
-      await resolved.directory.removeEntry(resolved.filename);
+      await resolved.directory.remove(resolved.filename);
     } catch (e) {
       _log('Could not delete entry: $e');
       throw const VfsException(SqlExtendedError.SQLITE_IOERR_DELETE);
@@ -165,7 +172,8 @@ class VfsWorker {
     assert(bufferLength <= MessageSerializer.dataSize);
 
     final syncHandle = await _openForSynchronousAccess(file);
-    final bytesRead = syncHandle.read(messages.viewByteRange(0, bufferLength),
+    final bytesRead = syncHandle.readDart(
+        messages.viewByteRange(0, bufferLength),
         FileSystemReadWriteOptions(at: offset));
 
     return Flags(bytesRead, 0, 0);
@@ -178,7 +186,7 @@ class VfsWorker {
     assert(bufferLength <= MessageSerializer.dataSize);
 
     final syncHandle = await _openForSynchronousAccess(file);
-    final bytesWritten = syncHandle.write(
+    final bytesWritten = syncHandle.writeDart(
         messages.viewByteRange(0, bufferLength),
         FileSystemReadWriteOptions(at: offset));
 
@@ -199,7 +207,7 @@ class VfsWorker {
 
     _closeSyncHandle(file);
     if (file.deleteOnClose) {
-      await file.directory.removeEntry(file.filename);
+      await file.directory.remove(file.filename);
     }
   }
 
@@ -377,7 +385,7 @@ class VfsWorker {
     while (true) {
       try {
         final handle =
-            file.syncHandle = await file.file.createSyncAccessHandle();
+            file.syncHandle = await file.file.createSyncAccessHandle().toDart;
 
         // We've locked the file simply because we've created an (exclusive)
         // synchronous access handle. If there was no explicit lock on this

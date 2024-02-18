@@ -7,6 +7,8 @@ import 'package:web/web.dart';
 import 'client.dart';
 import 'worker.dart';
 
+typedef ExistingDatabase = (StorageMode, String);
+
 enum FileType {
   database,
   journal,
@@ -59,12 +61,6 @@ abstract class Database {
 
   Future<void> execute(String sql, [List<Object?> parameters = const []]);
   Future<ResultSet> select(String sql, [List<Object?> parameters = const []]);
-}
-
-abstract class HostedDatabase {
-  Iterable<ClientConnection> get currentConnections;
-  CommonDatabase get database;
-  VirtualFileSystem get vfs;
 }
 
 abstract class ClientConnection {

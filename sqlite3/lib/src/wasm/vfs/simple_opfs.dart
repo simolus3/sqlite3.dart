@@ -1,7 +1,13 @@
+import 'dart:js_interop';
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
+import 'package:web/web.dart'
+    show
+        FileSystemDirectoryHandle,
+        FileSystemSyncAccessHandle,
+        FileSystemReadWriteOptions;
 
 import '../../constants.dart';
 import '../../vfs.dart';
@@ -86,11 +92,11 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
   /// a Dart wrapper around a [FileSystemDirectoryHandle].
   ///
   /// [FileSystemDirectoryHandle]: https://developer.mozilla.org/en-US/docs/Web/API/FileSystemDirectoryHandle
-  static Future<SimpleOpfsFileSystem> inDirectory(Object root) async {
+  static Future<SimpleOpfsFileSystem> inDirectory(
+      FileSystemDirectoryHandle root) async {
     Future<FileSystemSyncAccessHandle> open(String name) async {
-      final handle = await (root as FileSystemDirectoryHandle)
-          .openFile(name, create: true);
-      return await handle.createSyncAccessHandle();
+      final handle = await root.openFile(name, create: true);
+      return await handle.createSyncAccessHandle().toDart;
     }
 
     final meta = await open('meta');
@@ -104,7 +110,7 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
 
   void _markExists(FileType type, bool exists) {
     _existsList[type.index] = exists ? 1 : 0;
-    _metaHandle.write(_existsList, FileSystemReadWriteOptions(at: 0));
+    _metaHandle.writeDart(_existsList, FileSystemReadWriteOptions(at: 0));
   }
 
   FileType? _recognizeType(String path) {
@@ -117,7 +123,7 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
     if (type == null) {
       return _memory.xAccess(path, flags);
     } else {
-      _metaHandle.read(_existsList, FileSystemReadWriteOptions(at: 0));
+      _metaHandle.readDart(_existsList, FileSystemReadWriteOptions(at: 0));
       return _existsList[type.index];
     }
   }
@@ -148,7 +154,7 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
     final create = (flags & SqlFlag.SQLITE_OPEN_CREATE) != 0;
     final deleteOnClose = (flags & SqlFlag.SQLITE_OPEN_DELETEONCLOSE) != 0;
 
-    _metaHandle.read(_existsList, FileSystemReadWriteOptions(at: 0));
+    _metaHandle.readDart(_existsList, FileSystemReadWriteOptions(at: 0));
     final existsAlready = _existsList[recognized.index] != 0;
 
     final syncHandle = _files[recognized]!;
@@ -193,7 +199,7 @@ class _SimpleOpfsFile extends BaseVfsFile {
 
   @override
   int readInto(Uint8List buffer, int offset) {
-    return syncHandle.read(buffer, FileSystemReadWriteOptions(at: offset));
+    return syncHandle.readDart(buffer, FileSystemReadWriteOptions(at: offset));
   }
 
   @override
@@ -237,8 +243,8 @@ class _SimpleOpfsFile extends BaseVfsFile {
 
   @override
   void xWrite(Uint8List buffer, int fileOffset) {
-    final bytesWritten =
-        syncHandle.write(buffer, FileSystemReadWriteOptions(at: fileOffset));
+    final bytesWritten = syncHandle.writeDart(
+        buffer, FileSystemReadWriteOptions(at: fileOffset));
 
     if (bytesWritten < buffer.length) {
       throw const VfsException(SqlExtendedError.SQLITE_IOERR_WRITE);
