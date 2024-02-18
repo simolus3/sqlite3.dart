@@ -25,14 +25,6 @@ extension type WebEndpoint._(JSObject _) implements JSObject {
   StreamChannel<Message> connect() {
     return _channel(port, lockName, null);
   }
-
-  void postToPort(MessagePort port) {
-    port.postMessage(this as JSObject, <JSAny>[this.port as JSObject].toJS);
-  }
-
-  void postToWorker(Worker worker) {
-    worker.postMessage(this as JSObject, <JSAny>[port as JSObject].toJS);
-  }
 }
 
 Future<(WebEndpoint, StreamChannel<Message>)> createChannel() async {
@@ -127,7 +119,10 @@ abstract class ProtocolChannel {
 
         try {
           response = await handleRequest(message);
-        } catch (e) {
+        } catch (e, s) {
+          console.error('Error in worker: ${e.toString()}'.toJS);
+          console.error('Original trace: $s'.toJS);
+
           response = ErrorResponse(
               message: e.toString(), requestId: message.requestId);
         }
@@ -135,6 +130,8 @@ abstract class ProtocolChannel {
         _channel.sink.add(response);
       case Notification():
         handleNotification(message);
+      case StartFileSystemServer():
+        throw StateError('Should only be a top-level message');
     }
   }
 

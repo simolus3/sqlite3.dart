@@ -1,3 +1,7 @@
+// https://github.com/dart-lang/sdk/issues/54801
+@JS()
+library;
+
 import 'dart:js_interop';
 
 import 'package:path/path.dart' as p show url;

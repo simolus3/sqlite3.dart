@@ -12,7 +12,8 @@ import 'package:web/web.dart'
         MessageEvent,
         FileSystemDirectoryHandle,
         FileSystemFileHandle,
-        FileSystemSyncAccessHandle;
+        FileSystemSyncAccessHandle,
+        Worker;
 // ignore: implementation_imports
 import 'package:sqlite3/src/wasm/js_interop/file_system_access.dart';
 
@@ -33,13 +34,13 @@ sealed class WorkerEnvironment {
     }
   }
 
-  Stream<WebEndpoint> get connectRequests;
-
-  Stream<StreamChannel<Message>> get incomingConnections {
-    return connectRequests.asyncMap((endpoint) {
-      return endpoint.connect();
-    });
-  }
+  /// Messages outside of a connection being posted to the worker or a connect
+  /// port of a shared worker.
+  ///
+  /// We're not using them for actual channels, but instead have clients
+  /// setup message ports which are then forwarded to workers using these
+  /// top-level requests.
+  Stream<Message> get topLevelRequests;
 }
 
 final class Dedicated extends WorkerEnvironment {
@@ -50,10 +51,10 @@ final class Dedicated extends WorkerEnvironment {
         super._();
 
   @override
-  Stream<WebEndpoint> get connectRequests {
-    return EventStreamProviders.messageEvent
-        .forTarget(scope)
-        .map((event) => event.data as WebEndpoint);
+  Stream<Message> get topLevelRequests {
+    return EventStreamProviders.messageEvent.forTarget(scope).map((event) {
+      return Message.deserialize(event.data as JSObject);
+    });
   }
 }
 
@@ -65,7 +66,7 @@ final class Shared extends WorkerEnvironment {
         super._();
 
   @override
-  Stream<WebEndpoint> get connectRequests {
+  Stream<Message> get topLevelRequests {
     // Listen for connect events, then watch each connected port to send a a
     // connect message.
     // Tabs will only use one message port to this worker, but may use multiple
@@ -82,7 +83,7 @@ final class Shared extends WorkerEnvironment {
 
         subscriptions.add(
             EventStreamProviders.messageEvent.forTarget(port).listen((event) {
-          listener.addSync(event.data as WebEndpoint);
+          listener.addSync(Message.deserialize(event.data as JSObject));
         }));
       }
 
@@ -149,6 +150,13 @@ final class _ClientConnection extends ProtocolChannel
           response: (await _runner.checkCompatibility(request)).toJS,
           requestId: request.requestId,
         );
+      case ConnectRequest():
+        final inner = _runner.useOrSpawnInnerWorker();
+        ConnectRequest(endpoint: request.endpoint, requestId: 0)
+            .sendToWorker(inner);
+
+        return SimpleSuccessResponse(
+            response: null, requestId: request.requestId);
       case CustomRequest():
         JSAny? response;
 
@@ -258,6 +266,7 @@ final class DatabaseState {
   /// Runs additional async work, such as flushing the VFS to IndexedDB when
   /// the database is closed.
   FutureOr<void> Function()? closeHandler;
+  VirtualFileSystem? vfs;
 
   DatabaseState(
       {required this.id,
@@ -272,22 +281,31 @@ final class DatabaseState {
 
       switch (mode) {
         case FileSystemImplementation.opfsLocks:
-          break;
+          final options = WasmVfs.createOptions(root: pathForOpfs(name));
+          final worker = Worker(Uri.base.toString());
+
+          StartFileSystemServer(options: options).sendToWorker(worker);
+
+          // Wait for the server worker to report that it's ready
+          await EventStreamProviders.messageEvent.forTarget(worker).first;
+
+          final wasmVfs =
+              vfs = WasmVfs(workerOptions: options, vfsName: vfsName);
+          closeHandler = wasmVfs.close;
         case FileSystemImplementation.opfsShared:
-          final simple = await SimpleOpfsFileSystem.loadFromStorage(
+          final simple = vfs = await SimpleOpfsFileSystem.loadFromStorage(
               pathForOpfs(name),
               vfsName: vfsName);
           closeHandler = simple.close;
-          break;
         case FileSystemImplementation.indexedDb:
-          final idb =
+          final idb = vfs =
               await IndexedDbFileSystem.open(dbName: name, vfsName: vfsName);
-          sqlite3.registerVirtualFileSystem(idb);
           closeHandler = idb.close;
         case FileSystemImplementation.inMemory:
-          sqlite3.registerVirtualFileSystem(InMemoryFileSystem(name: vfsName));
+          vfs = InMemoryFileSystem(name: vfsName);
       }
 
+      sqlite3.registerVirtualFileSystem(vfs!);
       return await runner._controller.openDatabase(sqlite3, vfsName);
     });
 
@@ -300,7 +318,17 @@ final class DatabaseState {
     }
   }
 
-  Future<void> close() async {}
+  Future<void> close() async {
+    final sqlite3 = await runner._sqlite3!;
+    final database = await _database!;
+
+    database.database.dispose();
+    if (vfs case final vfs?) {
+      sqlite3.unregisterVirtualFileSystem(vfs);
+    }
+
+    await closeHandler?.call();
+  }
 }
 
 final class WorkerRunner {
@@ -319,11 +347,23 @@ final class WorkerRunner {
   final Lock _compatibilityCheckLock = Lock();
   CompatibilityResult? _compatibilityResult;
 
+  /// For shared workers, a dedicated inner worker allowing tabs to connect to
+  /// a shared context that can use synchronous JS APIs.
+  Worker? _innerWorker;
+
   WorkerRunner(this._controller) : _environment = WorkerEnvironment();
 
   void handleRequests() async {
-    await for (final channel in _environment.incomingConnections) {
-      _accept(channel);
+    await for (final message in _environment.topLevelRequests) {
+      if (message is ConnectRequest) {
+        final channel = message.endpoint.connect();
+        _accept(channel);
+      } else if (message is StartFileSystemServer) {
+        final worker = await VfsWorker.create(message.options);
+        // Inform the requester that the VFS is ready
+        (_environment as Dedicated).scope.postMessage(true.toJS);
+        await worker.start();
+      }
     }
   }
 
@@ -358,6 +398,7 @@ final class WorkerRunner {
         canUseOpfs: supportsOpfs,
         canUseIndexedDb: supportsIndexedDb,
         supportsSharedArrayBuffers: globalContext.has('SharedArrayBuffer'),
+        dedicatedWorkersCanNest: globalContext.has('Worker'),
       );
     });
   }
@@ -378,6 +419,7 @@ final class WorkerRunner {
         throw error!;
       });
       await future;
+      _wasmUri = uri;
     }
   }
 
@@ -398,6 +440,10 @@ final class WorkerRunner {
       name: name,
       mode: mode,
     );
+  }
+
+  Worker useOrSpawnInnerWorker() {
+    return _innerWorker ??= Worker(Uri.base.toString());
   }
 }
 

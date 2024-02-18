@@ -1,3 +1,6 @@
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
+
 import 'package:sqlite3_web/sqlite3_web.dart';
 
 void main() async {
@@ -9,15 +12,25 @@ void main() async {
   final features = await sqlite.runFeatureDetection();
   print('got features: $features');
 
-  return;
+  globalContext['open'] =
+      (JSString name, JSString storage, JSString accessMode) {
+    return Future(() async {
+      final database = await sqlite.connect(
+          name.toDart,
+          StorageMode.values.byName(storage.toDart),
+          AccessMode.values.byName(accessMode.toDart));
 
-  final database = await sqlite.connect(
-      'test', StorageMode.inMemory, AccessMode.throughDedicatedWorker);
+      database.updates.listen((update) {
+        print('Update on $name: $update');
+      });
 
-  database.updates.listen(print);
+      return database.toJSBox;
+    }).toJS;
+  }.toJS;
 
-  print('has database');
-
-  await database.execute('create table foo (bar)');
-  await database.execute('insert into foo VALUES (?)', ['Hello worker!']);
+  globalContext['execute'] = (JSBoxedDartObject database, JSString sql) {
+    return Future(() async {
+      await (database.toDart as Database).execute(sql.toDart);
+    }).toJS;
+  }.toJS;
 }

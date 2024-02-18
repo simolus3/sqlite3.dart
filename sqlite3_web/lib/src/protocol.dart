@@ -3,16 +3,14 @@ import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
 import 'package:sqlite3/common.dart';
+import 'package:sqlite3/wasm.dart' as wasm_vfs;
 import 'package:web/web.dart';
 
 import 'api.dart';
+import 'channel.dart';
 
 /// Signature of a function allowing structured data to be sent between JS
 /// contexts.
-///
-/// This is implemented by [WorkerExtension.postMessage],
-/// [MessagePortExtension.postMessage] and
-/// [DedicatedWorkerGlobalScopeExtension.postMessage].
 typedef PostMessage = void Function(JSAny? msg, JSObject transfer);
 
 enum MessageType<T extends Message> {
@@ -24,6 +22,8 @@ enum MessageType<T extends Message> {
   runQuery<RunQuery>(),
   fileSystemExists<FileSystemExistsQuery>(),
   fileSystemAccess<FileSystemAccess>(),
+  connect<ConnectRequest>(),
+  startFileSystemServer<StartFileSystemServer>(),
   updateRequest<UpdateStreamRequest>(),
   simpleSuccessResponse<SimpleSuccessResponse>(),
   rowsResponse<RowsResponse>(),
@@ -79,9 +79,12 @@ sealed class Message {
             MessageType.dedicatedInSharedCompatibilityCheck, object),
       MessageType.custom => CustomRequest.deserialize(object),
       MessageType.open => OpenRequest.deserialize(object),
+      MessageType.startFileSystemServer =>
+        StartFileSystemServer.deserialize(object),
       MessageType.runQuery => RunQuery.deserialize(object),
       MessageType.fileSystemExists => FileSystemExistsQuery.deserialize(object),
       MessageType.fileSystemAccess => FileSystemAccess.deserialize(object),
+      MessageType.connect => ConnectRequest.deserialize(object),
       MessageType.closeDatabase => CloseDatabase.deserialize(object),
       MessageType.updateRequest => UpdateStreamRequest.deserialize(object),
       MessageType.simpleSuccessResponse =>
@@ -219,6 +222,63 @@ final class OpenRequest extends Request {
     object[_UniqueFieldNames.databaseName] = databaseName.toJS;
     object[_UniqueFieldNames.storageMode] = storageMode.toJS;
     object[_UniqueFieldNames.wasmUri] = wasmUri.toString().toJS;
+  }
+}
+
+/// Requests the receiving end of this message to connect to the channel
+/// reachable through [endpoint].
+///
+/// This message it sent to dedicated and shared workers under their top-level
+/// receive handler.
+/// This can also be a request as part of an existing communication channel. In
+/// that form, the client asks the receiver to forward the connect request to
+/// a nested context. In particular, this is used for different tabs to connect
+/// to a dedicated worker spawned by a shared worker.
+/// As only dedicated workers can use synchronous file system APIs, this allows
+/// different tabs to share a dedicated worker hosting a database with OPFS,
+/// which is by far the most efficient way access dabases.
+final class ConnectRequest extends Request {
+  /// The endpoint under which the client is reachable.
+  final WebEndpoint endpoint;
+
+  ConnectRequest({required super.requestId, required this.endpoint});
+
+  factory ConnectRequest.deserialize(JSObject object) {
+    return ConnectRequest(
+      requestId: object.requestId,
+      endpoint: object[_UniqueFieldNames.responseData] as WebEndpoint,
+    );
+  }
+
+  @override
+  MessageType<Message> get type => MessageType.connect;
+
+  @override
+  void serialize(JSObject object, List<JSObject> transferred) {
+    super.serialize(object, transferred);
+    object[_UniqueFieldNames.responseData] = endpoint;
+    transferred.add(endpoint.port);
+  }
+}
+
+final class StartFileSystemServer extends Message {
+  final wasm_vfs.WorkerOptions options;
+
+  StartFileSystemServer({required this.options});
+
+  factory StartFileSystemServer.deserialize(JSObject object) {
+    return StartFileSystemServer(
+        options:
+            object[_UniqueFieldNames.responseData] as wasm_vfs.WorkerOptions);
+  }
+
+  @override
+  MessageType<Message> get type => MessageType.startFileSystemServer;
+
+  @override
+  void serialize(JSObject object, List<JSObject> transferred) {
+    super.serialize(object, transferred);
+    object[_UniqueFieldNames.responseData] = options;
   }
 }
 
@@ -594,12 +654,19 @@ final class CompatibilityResult {
   /// served with special headers for security purposes.
   final bool supportsSharedArrayBuffers;
 
+  /// Whether dedicated workers can spawn their own dedicated workers.
+  ///
+  /// We need two dedicated workers with a synchronous channel between them to
+  /// host an OPFS filesystem.
+  final bool dedicatedWorkersCanNest;
+
   CompatibilityResult({
     required this.existingDatabases,
     required this.sharedCanSpawnDedicated,
     required this.canUseOpfs,
     required this.canUseIndexedDb,
     required this.supportsSharedArrayBuffers,
+    required this.dedicatedWorkersCanNest,
   });
 
   factory CompatibilityResult.fromJS(JSObject result) {
@@ -619,6 +686,7 @@ final class CompatibilityResult {
       canUseOpfs: (result['c'] as JSBoolean).toDart,
       canUseIndexedDb: (result['d'] as JSBoolean).toDart,
       supportsSharedArrayBuffers: (result['e'] as JSBoolean).toDart,
+      dedicatedWorkersCanNest: (result['f'] as JSBoolean).toDart,
     );
   }
 
@@ -635,22 +703,8 @@ final class CompatibilityResult {
       ..['b'] = sharedCanSpawnDedicated.toJS
       ..['c'] = canUseOpfs.toJS
       ..['d'] = canUseIndexedDb.toJS
-      ..['e'] = supportsSharedArrayBuffers.toJS;
-  }
-
-  Iterable<MissingBrowserFeature> get impliedMissingFeatures sync* {
-    if (!sharedCanSpawnDedicated) {
-      yield MissingBrowserFeature.dedicatedWorkersInSharedWorkers;
-    }
-    if (!canUseOpfs) {
-      yield MissingBrowserFeature.fileSystemAccess;
-    }
-    if (!canUseIndexedDb) {
-      yield MissingBrowserFeature.indexedDb;
-    }
-    if (!supportsSharedArrayBuffers) {
-      yield MissingBrowserFeature.sharedArrayBuffers;
-    }
+      ..['e'] = supportsSharedArrayBuffers.toJS
+      ..['f'] = dedicatedWorkersCanNest.toJS;
   }
 }
 

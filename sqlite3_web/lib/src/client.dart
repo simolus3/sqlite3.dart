@@ -140,6 +140,7 @@ final class DatabaseClient implements WebSqlite {
   bool _startedWorkers = false;
   WorkerConnection? _connectionToDedicated;
   WorkerConnection? _connectionToShared;
+  WorkerConnection? _connectionToDedicatedInShared;
   final Set<MissingBrowserFeature> _missingFeatures = {};
 
   DatabaseClient(this.workerUri, this.wasmUri);
@@ -158,7 +159,8 @@ final class DatabaseClient implements WebSqlite {
         );
 
         final (endpoint, channel) = await createChannel();
-        endpoint.postToWorker(dedicated);
+        ConnectRequest(endpoint: endpoint, requestId: 0)
+            .sendToWorker(dedicated);
 
         _connectionToDedicated =
             WorkerConnection(channel.injectErrorsFrom(dedicated));
@@ -171,13 +173,29 @@ final class DatabaseClient implements WebSqlite {
         shared.port.start();
 
         final (endpoint, channel) = await createChannel();
-        endpoint.postToPort(shared.port);
+        ConnectRequest(endpoint: endpoint, requestId: 0)
+            .sendToPort(shared.port);
 
         _connectionToShared =
             WorkerConnection(channel.injectErrorsFrom(shared));
       } else {
         _missingFeatures.add(MissingBrowserFeature.sharedWorkers);
       }
+    });
+  }
+
+  Future<WorkerConnection> _connectToDedicatedInShared() {
+    return _startWorkersLock.synchronized(() async {
+      if (_connectionToDedicatedInShared case final conn?) {
+        return conn;
+      }
+
+      final (endpoint, channel) = await createChannel();
+      await _connectionToShared!.sendRequest(
+          ConnectRequest(requestId: 0, endpoint: endpoint),
+          MessageType.simpleSuccessResponse);
+
+      return _connectionToDedicatedInShared = WorkerConnection(channel);
     });
   }
 
@@ -208,6 +226,9 @@ final class DatabaseClient implements WebSqlite {
       }
       if (!result.supportsSharedArrayBuffers) {
         _missingFeatures.add(MissingBrowserFeature.sharedArrayBuffers);
+      }
+      if (!result.dedicatedWorkersCanNest) {
+        _missingFeatures.add(MissingBrowserFeature.dedicatedWorkersCanNest);
       }
     }
 
@@ -241,21 +262,50 @@ final class DatabaseClient implements WebSqlite {
       String name, StorageMode type, AccessMode access) async {
     await startWorkers();
 
-    await Future.delayed(Duration(milliseconds: 100));
+    WorkerConnection connection;
+    bool shared;
+    switch (access) {
+      case AccessMode.throughSharedWorker:
+        if (type == StorageMode.opfs) {
+          // Shared workers don't support OPFS, but we can spawn a dedicated
+          // worker inside of the shared worker and connect to that one.
+          connection = await _connectToDedicatedInShared();
+        } else {
+          connection = _connectionToShared!;
+        }
 
-    final connection = _connectionToDedicated!;
-    final data = await connection.sendRequest(
+        shared = true;
+      case AccessMode.throughDedicatedWorker:
+        connection = _connectionToDedicated!;
+        shared = false;
+      case AccessMode.inCurrentContext:
+        throw UnimplementedError('todo: Open database locally');
+    }
+
+    final response = await connection.sendRequest(
       OpenRequest(
         requestId: 0,
         wasmUri: wasmUri,
         databaseName: name,
-        storageMode: FileSystemImplementation.inMemory,
+        storageMode: type.resolveToVfs(shared),
       ),
       MessageType.simpleSuccessResponse,
     );
-
     return RemoteDatabase(
-        connection: connection,
-        databaseId: (data.response as JSNumber).toDartInt);
+      connection: connection,
+      databaseId: (response.response as JSNumber).toDartInt,
+    );
+  }
+}
+
+extension on StorageMode {
+  FileSystemImplementation resolveToVfs(bool shared) {
+    return switch (this) {
+      StorageMode.opfs => shared
+          ? FileSystemImplementation.opfsShared
+          : FileSystemImplementation.opfsLocks,
+      StorageMode.indexedDb => FileSystemImplementation.indexedDb,
+      StorageMode.inMemory => FileSystemImplementation.inMemory,
+    };
   }
 }

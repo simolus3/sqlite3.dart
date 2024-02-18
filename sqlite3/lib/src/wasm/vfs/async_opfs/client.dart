@@ -22,11 +22,12 @@ final class WasmVfs extends BaseVirtualFileSystem {
     super.random,
     required WorkerOptions workerOptions,
     this.chroot = '/',
+    String vfsName = 'dart-sqlite3-vfs',
   })  : synchronizer =
             RequestResponseSynchronizer(workerOptions.synchronizationBuffer),
         serializer = MessageSerializer(workerOptions.communicationBuffer),
         pathContext = p.Context(style: p.Style.url, current: chroot),
-        super(name: 'dart-sqlite3-vfs');
+        super(name: vfsName);
 
   Res _runInWorker<Req extends Message, Res extends Message>(
       WorkerOperation<Req, Res> operation, Req requestData) {

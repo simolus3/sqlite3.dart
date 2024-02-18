@@ -111,6 +111,10 @@ enum MissingBrowserFeature {
   /// feature is only implemented by Firefox at the time of writing.
   dedicatedWorkersInSharedWorkers,
 
+  /// The browser doesn't allow dedicated workers to spawn their own dedicated
+  /// workers.
+  dedicatedWorkersCanNest,
+
   /// The browser does not support a synchronous version of the [File System API]
   ///
   /// [File System API]: https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API
