@@ -21,7 +21,7 @@ Future<bool> checkIndexedDbSupport() async {
   try {
     const name = 'drift_mock_db';
 
-    final mockDb = await idb.open(name).complete<IDBDatabase>();
+    final mockDb = await idb.open(name).completeOpen<IDBDatabase>();
     mockDb.close();
     idb.deleteDatabase(name);
   } catch (error) {
@@ -95,6 +95,24 @@ extension CompleteIdbRequest on IDBRequest {
       completer.complete(result as T);
     });
     EventStreamProviders.errorEvent.forTarget(this).listen((event) {
+      completer.completeError(error ?? event);
+    });
+
+    return completer.future;
+  }
+}
+
+extension CompleteOpenIdbRequest on IDBRequest {
+  Future<T> completeOpen<T extends JSAny?>() {
+    final completer = Completer<T>.sync();
+
+    EventStreamProviders.successEvent.forTarget(this).listen((event) {
+      completer.complete(result as T);
+    });
+    EventStreamProviders.errorEvent.forTarget(this).listen((event) {
+      completer.completeError(error ?? event);
+    });
+    EventStreamProviders.blockedEvent.forTarget(this).listen((event) {
       completer.completeError(error ?? event);
     });
 

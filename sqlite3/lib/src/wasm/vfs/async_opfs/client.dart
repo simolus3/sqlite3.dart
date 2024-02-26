@@ -1,7 +1,8 @@
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:js/js_util.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../constants.dart';
@@ -85,7 +86,7 @@ final class WasmVfs extends BaseVirtualFileSystem {
   }
 
   static bool get supportsAtomicsAndSharedMemory {
-    return Atomics.supported && hasProperty(globalThis, 'SharedArrayBuffer');
+    return Atomics.supported && globalContext.has('SharedArrayBuffer');
   }
 
   static WorkerOptions createOptions({String root = 'pkg_sqlite3_db/'}) {

@@ -1,5 +1,8 @@
-import 'dart:js_util';
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
+
+import 'package:web/web.dart' as web;
 
 import '../implementation/sqlite3.dart';
 import '../vfs.dart';
@@ -27,12 +30,11 @@ final class WasmSqlite3 extends Sqlite3Implementation {
   ///
   /// [pgk release]: https://github.com/simolus3/sqlite3.dart/releases
   static Future<WasmSqlite3> load(Uint8List source) {
-    final headers = newObject<Object>();
-    setProperty(headers, 'content-type', 'application/wasm');
+    final headers = JSObject()..['content-type'] = 'application/wasm'.toJS;
 
-    final fakeResponse = Response(
-      source,
-      ResponseInit(headers: headers),
+    final fakeResponse = web.Response(
+      source.toJS,
+      web.ResponseInit(headers: headers),
     );
 
     return _load(fakeResponse);
@@ -52,25 +54,25 @@ final class WasmSqlite3 extends Sqlite3Implementation {
     Uri uri, {
     Map<String, String>? headers,
   }) async {
-    FetchOptions? options;
+    web.RequestInit? options;
 
     if (headers != null) {
-      final headersJs = newObject<Object>();
+      final headersJs = JSObject();
       headers.forEach((key, value) {
-        setProperty(headersJs, key, value);
+        headersJs[key] = value.toJS;
       });
 
-      options = FetchOptions(headers: headers);
+      options = web.RequestInit(headers: headersJs);
     }
 
     final jsUri = uri.isAbsolute
-        ? URL.absolute(uri.toString())
-        : URL.relative(uri.toString(), Uri.base.toString());
-    final response = await promiseToFuture<Response>(fetch(jsUri, options));
+        ? web.URL(uri.toString())
+        : web.URL(uri.toString(), Uri.base.toString());
+    final response = await fetch(jsUri, options).toDart;
     return _load(response);
   }
 
-  static Future<WasmSqlite3> _load(Response fetchResponse) async {
+  static Future<WasmSqlite3> _load(web.Response fetchResponse) async {
     final bindings = await WasmBindings.instantiateAsync(fetchResponse);
     return WasmSqlite3._(bindings);
   }

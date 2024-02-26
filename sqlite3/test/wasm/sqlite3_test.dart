@@ -1,11 +1,11 @@
 @Tags(['wasm'])
-import 'dart:html';
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 import 'package:http/http.dart' as http;
-import 'package:js/js.dart';
-import 'package:js/js_util.dart';
 import 'package:sqlite3/wasm.dart';
 import 'package:test/test.dart';
+import 'package:web/web.dart' as web;
 
 import 'utils.dart';
 
@@ -71,35 +71,42 @@ void main() {
 
         final uri = 'http://localhost:$port/worker.dart.js';
         wasmUri = 'http://localhost:$port/sqlite3.wasm';
-        final blob =
-            Blob(<String>['importScripts("$uri");'], 'application/javascript');
+        final blob = web.Blob(['importScripts("$uri");'.toJS].toJS,
+            web.BlobPropertyBag(type: 'application/javascript'));
 
-        workerUri = _createObjectURL(blob);
+        workerUri = web.URL.createObjectURL(blob);
       });
 
       // See worker.dart for the supported backends
       for (final backend in ['memory', 'opfs-simple', 'opfs', 'indexeddb']) {
         final requiresSab = backend == 'opfs';
         final missingSab =
-            requiresSab && !hasProperty(globalThis, 'SharedArrayBuffer');
+            requiresSab && globalContext.has('SharedArrayBuffer');
 
         test(
           backend,
           () async {
-            final worker = Worker(workerUri);
+            final worker = web.Worker(workerUri);
 
-            worker.onError.listen((event) {
-              if (event is ErrorEvent) {
+            web.EventStreamProviders.errorEvent
+                .forTarget(worker)
+                .listen((error) {
+              if (error.instanceOfString('ErrorEvent')) {
+                final event = error as web.ErrorEvent;
                 fail('Error ${event.message} - ${event.error}');
               } else {
-                fail(event.toString());
+                fail(error.toString());
               }
             });
-            // Inform the worker about the test we want to run
-            worker.postMessage([backend, wasmUri]);
 
-            final response = (await worker.onMessage.first).data as List;
-            final status = response[0] as bool;
+            // Inform the worker about the test we want to run
+            worker.postMessage([backend.toJS, wasmUri.toJS].toJS);
+
+            final response = (await web.EventStreamProviders.messageEvent
+                    .forTarget(worker)
+                    .first)
+                .data as JSArray;
+            final status = response.toDart[0] as bool;
 
             if (!status) {
               throw 'Exception in worker: $response';
@@ -119,6 +126,3 @@ void main() {
     },
   );
 }
-
-@JS('URL.createObjectURL')
-external String _createObjectURL(Blob blob);

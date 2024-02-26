@@ -1,79 +1,83 @@
-import 'dart:typed_data';
+@JS()
+library;
 
-import 'package:js/js.dart';
-import 'package:js/js_util.dart';
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
-import 'fetch.dart';
+import 'core.dart';
+
+import 'package:web/web.dart' as web;
 
 @JS('WebAssembly.Instance')
-class _WasmInstance {
-  external Object get exports;
+extension type _WasmInstance._(JSObject _) implements JSObject {
+  external JSObject get exports;
 }
 
-@JS()
-class _ResultObject {
+extension type _ResultObject._(JSObject _) implements JSObject {
   external _WasmInstance get instance;
 }
 
 @JS('WebAssembly.instantiateStreaming')
-external Object instantiateStreaming(Object source, Object imports);
+external JSPromise<_ResultObject> _instantiateStreaming(
+    JSAny? source, JSObject imports);
 
 class WasmInstance {
-  final Map<String, Function> functions = {};
+  final Map<String, JSFunction> functions = {};
   final Map<String, Global> globals = {};
 
   WasmInstance._(_WasmInstance nativeInstance) {
-    for (final key in objectKeys(nativeInstance.exports).cast<String>()) {
-      final value = getProperty<Object>(nativeInstance.exports, key);
+    for (final rawKey in WrappedJSObject.keys(nativeInstance.exports).toDart) {
+      final key = (rawKey as JSString).toDart;
+      final value = nativeInstance.exports.getProperty(rawKey);
 
-      if (value is Function) {
-        functions[key] = value;
-      } else if (value is Global) {
-        globals[key] = value;
+      if (value.typeofEquals('function')) {
+        functions[key] = value as JSFunction;
+      } else if (value.instanceof(_globalConstructor)) {
+        globals[key] = value as Global;
       }
     }
   }
 
   static Future<WasmInstance> load(
-    Response response,
-    Map<String, Map<String, Object>> imports,
+    web.Response response,
+    Map<String, Map<String, JSAny?>> imports,
   ) async {
-    final importsJs = newObject<Object>();
+    final importsJs = JSObject();
 
     imports.forEach((module, moduleImports) {
-      final moduleJs = newObject<Object>();
-      setProperty(importsJs, module, moduleJs);
+      final moduleJs = JSObject();
+      importsJs[module] = moduleJs;
 
       moduleImports.forEach((name, value) {
-        setProperty(moduleJs, name, value);
+        moduleJs[name] = value;
       });
     });
 
-    final native = await promiseToFuture<_ResultObject>(
-        instantiateStreaming(response, importsJs));
+    final native = await _instantiateStreaming(response, importsJs).toDart;
     return WasmInstance._(native.instance);
   }
 }
 
 @JS()
-@anonymous
-class MemoryDescriptor {
-  external factory MemoryDescriptor(
-      {required int initial, int? maximum, bool? shared});
+extension type MemoryDescriptor._(JSObject _) implements JSObject {
+  external factory MemoryDescriptor({
+    required JSNumber initial,
+    JSNumber? maximum,
+    JSBoolean? shared,
+  });
 }
 
 @JS('WebAssembly.Memory')
-@staticInterop
-class Memory {
+extension type Memory._(JSObject _) implements JSObject {
   external factory Memory(MemoryDescriptor descriptor);
-}
 
-extension MemoryApi on Memory {
-  @JS()
-  external ByteBuffer get buffer;
+  external JSArrayBuffer get buffer;
 }
 
 @JS('WebAssembly.Global')
-class Global {
-  external int value;
+external JSFunction get _globalConstructor;
+
+@JS('WebAssembly.Global')
+extension type Global._(JSObject _) implements JSObject {
+  external JSNumber value;
 }

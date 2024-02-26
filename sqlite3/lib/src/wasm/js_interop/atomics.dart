@@ -2,11 +2,40 @@ import 'dart:typed_data';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
+@JS('Int32Array')
+external JSFunction _int32Array;
+
+@JS('Uint8Array')
+external JSFunction _uint8Array;
+
+@JS('DataView')
+external JSFunction _dataView;
+
 @JS()
-extension type SharedArrayBuffer._(JSArrayBuffer _) implements JSArrayBuffer {
+extension type SharedArrayBuffer._(JSObject _) implements JSObject {
   external factory SharedArrayBuffer(int length);
 
   external int get byteLength;
+
+  Int32List asInt32List() {
+    return _int32Array.callAsConstructor<JSInt32Array>(this).toDart;
+  }
+
+  ByteData asByteData(int offset, int length) {
+    return _dataView
+        .callAsConstructor<JSDataView>(this, offset.toJS, length.toJS)
+        .toDart;
+  }
+
+  Uint8List asUint8List() {
+    return _uint8Array.callAsConstructor<JSUint8Array>(this).toDart;
+  }
+
+  Uint8List asUint8ListSlice(int offset, int length) {
+    return _uint8Array
+        .callAsConstructor<JSUint8Array>(this, offset.toJS, length.toJS)
+        .toDart;
+  }
 }
 
 @JS('Atomics')

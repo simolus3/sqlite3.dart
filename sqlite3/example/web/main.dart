@@ -11,6 +11,9 @@ Future<void> main() async {
 
     final sqlite3 =
         await WasmSqlite3.loadFromUrl(Uri.parse('sqlite3.debug.wasm'));
+
+    print(sqlite3.version);
+
     sqlite3.registerVirtualFileSystem(
       await IndexedDbFileSystem.open(dbName: 'sqlite3-example'),
       makeDefault: true,

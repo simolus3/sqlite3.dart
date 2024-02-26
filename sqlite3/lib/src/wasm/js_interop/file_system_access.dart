@@ -65,8 +65,8 @@ extension FileSystemDirectoryHandleApi on FileSystemDirectoryHandle {
   }
 
   Stream<FileSystemHandle> list() {
-    return AsyncJavaScriptIteratable<List<Object?>>(this)
-        .map((data) => data[1] as FileSystemHandle);
+    return AsyncJavaScriptIteratable<JSArray>(this)
+        .map((data) => data.toDart[1] as FileSystemHandle);
   }
 
   Stream<FileSystemHandle> getFilesRecursively() async* {
