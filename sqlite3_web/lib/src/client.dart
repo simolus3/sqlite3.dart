@@ -205,6 +205,7 @@ final class DatabaseClient implements WebSqlite {
     await startWorkers();
 
     final existing = <ExistingDatabase>{};
+    final available = <(StorageMode, AccessMode)>[];
 
     if (_connectionToDedicated case final connection?) {
       final response = await connection.sendRequest(
@@ -217,18 +218,32 @@ final class DatabaseClient implements WebSqlite {
       );
       final result = CompatibilityResult.fromJS(response.response as JSObject);
       existing.addAll(result.existingDatabases);
+      available.add((StorageMode.inMemory, AccessMode.throughDedicatedWorker));
 
-      if (!result.canUseIndexedDb) {
+      if (result.canUseIndexedDb) {
+        available
+            .add((StorageMode.indexedDb, AccessMode.throughDedicatedWorker));
+      } else {
         _missingFeatures.add(MissingBrowserFeature.indexedDb);
       }
-      if (!result.canUseOpfs) {
-        _missingFeatures.add(MissingBrowserFeature.fileSystemAccess);
-      }
-      if (!result.supportsSharedArrayBuffers) {
-        _missingFeatures.add(MissingBrowserFeature.sharedArrayBuffers);
-      }
-      if (!result.dedicatedWorkersCanNest) {
-        _missingFeatures.add(MissingBrowserFeature.dedicatedWorkersCanNest);
+
+      // For the OPFS storage layer in dedicated workers, we're spawning two
+      // nested workers communicating through a synchronous channel created by
+      // Atomics and SharedArrayBuffers.
+      if (result.canUseOpfs &&
+          result.supportsSharedArrayBuffers &&
+          result.dedicatedWorkersCanNest) {
+        available.add((StorageMode.opfs, AccessMode.throughDedicatedWorker));
+      } else {
+        if (!result.canUseOpfs) {
+          _missingFeatures.add(MissingBrowserFeature.fileSystemAccess);
+        }
+        if (!result.supportsSharedArrayBuffers) {
+          _missingFeatures.add(MissingBrowserFeature.sharedArrayBuffers);
+        }
+        if (!result.dedicatedWorkersCanNest) {
+          _missingFeatures.add(MissingBrowserFeature.dedicatedWorkersCanNest);
+        }
       }
     }
 
@@ -242,18 +257,29 @@ final class DatabaseClient implements WebSqlite {
         MessageType.simpleSuccessResponse,
       );
       final result = CompatibilityResult.fromJS(response.response as JSObject);
+
+      if (result.canUseIndexedDb) {
+        available.add((StorageMode.indexedDb, AccessMode.throughSharedWorker));
+      } else {
+        _missingFeatures.add(MissingBrowserFeature.indexedDb);
+      }
+
+      if (result.canUseOpfs) {
+        available.add((StorageMode.opfs, AccessMode.throughSharedWorker));
+      } else {
+        _missingFeatures.add(MissingBrowserFeature.fileSystemAccess);
+      }
+
       if (!result.sharedCanSpawnDedicated) {
         _missingFeatures
             .add(MissingBrowserFeature.dedicatedWorkersInSharedWorkers);
-      }
-      if (!result.canUseIndexedDb) {
-        _missingFeatures.add(MissingBrowserFeature.indexedDb);
       }
     }
 
     return FeatureDetectionResult(
       missingFeatures: _missingFeatures.toList(),
       existingDatabases: existing.toList(),
+      availableImplementations: available,
     );
   }
 
@@ -295,6 +321,64 @@ final class DatabaseClient implements WebSqlite {
       connection: connection,
       databaseId: (response.response as JSNumber).toDartInt,
     );
+  }
+
+  @override
+  Future<ConnectToRecommendedResult> connectToRecommended(String name) async {
+    final probed = await runFeatureDetection(databaseName: name);
+
+    // If we have an existing database in storage, we want to keep using that
+    // format to avoid data loss (e.g. after a browser update that enables a
+    // otherwise preferred storage implementation). In the future, we might want
+    // to consider migrating between storage implementations as well.
+    final availableImplementations = probed.availableImplementations.toList();
+
+    checkExisting:
+    for (final (location, name) in probed.existingDatabases) {
+      if (name == name) {
+        // If any of the implementations for this location is still availalable,
+        // we want to use it instead of another location.
+        final locationIsAccessible =
+            availableImplementations.any((e) => e.$1 == location);
+        if (locationIsAccessible) {
+          availableImplementations.removeWhere((e) => e.$1 != location);
+          break checkExisting;
+        }
+      }
+    }
+
+    // Enum values are ordered by preferrability, so just pick the best option
+    // left.
+    availableImplementations.sort(_preferrableMode);
+
+    final (storage, access) = availableImplementations.firstOrNull ??
+        (StorageMode.inMemory, AccessMode.inCurrentContext);
+    final database = await connect(name, storage, access);
+
+    return ConnectToRecommendedResult(
+      database: database,
+      features: probed,
+      storage: storage,
+      access: access,
+    );
+  }
+
+  /// Compares available ways to access databases by the performance and
+  /// and reliability of the implementation.
+  ///
+  /// Returns negative values if `a` is more preferrable than `b` and positive
+  /// values if `b` is more preferrable than `a`.
+  static int _preferrableMode(
+      (StorageMode, AccessMode) a, (StorageMode, AccessMode) b) {
+    // First, prefer OPFS (an actual file system API) over IndexedDB, a custom
+    // file system implementation.
+    if (a.$1 != b.$1) {
+      return a.$1.index.compareTo(b.$2.index);
+    }
+
+    // In a storage API, prefer shared workers which cause less contention
+    // because we can actually share database resources between tabs.
+    return a.$2.index.compareTo(a.$2.index);
   }
 }
 

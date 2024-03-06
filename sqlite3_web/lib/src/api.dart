@@ -137,21 +137,41 @@ final class FeatureDetectionResult {
 
   final List<ExistingDatabase> existingDatabases;
 
+  final List<(StorageMode, AccessMode)> availableImplementations;
+
   FeatureDetectionResult({
     required this.missingFeatures,
     required this.existingDatabases,
+    required this.availableImplementations,
   });
 
   @override
   String toString() {
-    return 'Existing: $existingDatabases, missing: $missingFeatures';
+    return 'Existing: $existingDatabases, available: '
+        '$availableImplementations, missing: $missingFeatures';
   }
+}
+
+final class ConnectToRecommendedResult {
+  final Database database;
+  final FeatureDetectionResult features;
+  final StorageMode storage;
+  final AccessMode access;
+
+  ConnectToRecommendedResult({
+    required this.database,
+    required this.features,
+    required this.storage,
+    required this.access,
+  });
 }
 
 abstract class WebSqlite {
   Future<FeatureDetectionResult> runFeatureDetection({String? databaseName});
 
   Future<Database> connect(String name, StorageMode type, AccessMode access);
+
+  Future<ConnectToRecommendedResult> connectToRecommended(String name);
 
   static void workerEntrypoint({
     required DatabaseController controller,

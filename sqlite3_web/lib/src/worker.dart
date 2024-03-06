@@ -363,6 +363,11 @@ final class WorkerRunner {
         // Inform the requester that the VFS is ready
         (_environment as Dedicated).scope.postMessage(true.toJS);
         await worker.start();
+      } else if (message is CompatibilityCheck) {
+        // A compatibility check message is sent to dedicated workers inside of
+        // shared workers, we respond through the top-level port.
+        final result = await checkCompatibility(message);
+        (_environment as Dedicated).scope.postMessage(result.toJS);
       }
     }
   }
@@ -382,15 +387,32 @@ final class WorkerRunner {
         return _compatibilityResult!;
       }
 
-      final supportsOpfs =
+      var supportsOpfs =
           check.shouldCheckOpfsCompatibility ? await checkOpfsSupport() : false;
       final supportsIndexedDb = check.shouldCheckIndexedDbCompatbility
           ? await checkIndexedDbSupport()
           : false;
-      final sharedCanSpawnDedicated =
-          check.type == MessageType.sharedCompatibilityCheck
-              ? globalContext.has('Worker')
-              : false;
+
+      var sharedCanSpawnDedicated = false;
+
+      if (check.type == MessageType.sharedCompatibilityCheck) {
+        if (globalContext.has('Worker')) {
+          sharedCanSpawnDedicated = true;
+
+          final worker = useOrSpawnInnerWorker();
+          CompatibilityCheck(
+            databaseName: check.databaseName,
+            type: MessageType.dedicatedInSharedCompatibilityCheck,
+            requestId: 0,
+          ).sendToWorker(worker);
+
+          final response =
+              await EventStreamProviders.messageEvent.forTarget(worker).first;
+          final result = CompatibilityResult.fromJS(response.data as JSObject);
+
+          supportsOpfs = result.canUseOpfs;
+        }
+      }
 
       return CompatibilityResult(
         existingDatabases: const [], // todo
