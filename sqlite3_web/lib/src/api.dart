@@ -60,6 +60,8 @@ abstract class Database {
 
   Future<void> execute(String sql, [List<Object?> parameters = const []]);
   Future<ResultSet> select(String sql, [List<Object?> parameters = const []]);
+
+  Future<JSAny?> customRequest(JSAny? request);
 }
 
 abstract class ClientConnection {

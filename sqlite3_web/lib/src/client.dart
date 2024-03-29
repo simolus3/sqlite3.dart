@@ -57,6 +57,15 @@ final class RemoteDatabase implements Database {
   }
 
   @override
+  Future<JSAny?> customRequest(JSAny? request) async {
+    final response = await connection.sendRequest(
+      CustomRequest(requestId: 0, payload: request, databaseId: databaseId),
+      MessageType.simpleSuccessResponse,
+    );
+    return response.response;
+  }
+
+  @override
   Future<void> execute(String sql,
       [List<Object?> parameters = const []]) async {
     await connection.sendRequest(
