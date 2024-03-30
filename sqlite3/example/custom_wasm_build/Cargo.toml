@@ -9,5 +9,9 @@ crate-type = ["staticlib"]
 [dependencies]
 
 [build-dependencies]
-bindgen = "0.69.4"
 cc = "1.0.46"
+cmake = "0.1.50"
+
+[profile.release]
+opt-level = "z"
+lto=true

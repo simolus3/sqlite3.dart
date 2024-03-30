@@ -26,30 +26,27 @@ FetchContent_MakeAvailable(sqlite3)
 set(wasm_visibility "__attribute__((visibility(\"default\")))")
 
 macro(base_sqlite3_target name)
-    add_library(${name}_lib STATIC
-      "${sqlite3_SOURCE_DIR}/sqlite3.c"
-      helpers.c
+    add_executable(${name}
+        "${sqlite3_SOURCE_DIR}/sqlite3.c"
+        os_web.c
+        helpers.c
     )
 
-    add_executable(${name} os_web.c $<TARGET_OBJECTS:${name}_lib>)
-
     target_link_options(${name} PRIVATE -nostartfiles -Wl,--import-memory -Wl,--no-entry -Wl,--export-dynamic)
-    target_include_directories(${name}_lib PRIVATE "${PROJECT_SOURCE_DIR}/")
-    target_include_directories(${name}_lib PRIVATE ${sqlite3_SOURCE_DIR})
+    target_include_directories(${name} PRIVATE "${PROJECT_SOURCE_DIR}/")
     target_include_directories(${name} PRIVATE ${sqlite3_SOURCE_DIR})
-    target_compile_definitions(${name}_lib PRIVATE
+    target_compile_definitions(${name} PRIVATE
         _HAVE_SQLITE_CONFIG_H
         SQLITE_API=${wasm_visibility}
     )
-    set_property(TARGET ${name}_lib PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     set_property(TARGET ${name} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 endmacro()
 
 base_sqlite3_target(sqlite3_debug)
 file(DOWNLOAD https://raw.githubusercontent.com/sqlite/sqlite/master/src/test_vfstrace.c "${CMAKE_BINARY_DIR}/vfstrace.c")
-target_sources(sqlite3_debug_lib PRIVATE "${CMAKE_BINARY_DIR}/vfstrace.c")
+target_sources(sqlite3_debug PRIVATE "${CMAKE_BINARY_DIR}/vfstrace.c")
 target_compile_options(sqlite3_debug PRIVATE -g)
-target_compile_definitions(sqlite3_debug_lib PRIVATE SQLITE_ENABLE_VFSTRACE SQLITE_ENABLE_API_ARMOR)
+target_compile_definitions(sqlite3_debug PRIVATE SQLITE_ENABLE_VFSTRACE SQLITE_ENABLE_API_ARMOR)
 set_target_properties(sqlite3_debug PROPERTIES OUTPUT_NAME "sqlite3" SUFFIX ".debug.wasm")
 
 base_sqlite3_target(sqlite3_opt)
