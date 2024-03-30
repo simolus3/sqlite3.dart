@@ -14,9 +14,13 @@ void main(List<String> args) {
     }
   }
 
-  final process = Process.runSync('clang', [
+  final clang = Platform.environment['CC'] ?? 'clang';
+  final sysroot =
+      Platform.environment['WASI_SYSROOT'] ?? '/usr/share/wasi-sysroot';
+
+  final process = Process.runSync(clang, [
     '--target=wasm32-unknown-wasi',
-    '--sysroot=/usr/share/wasi-sysroot',
+    '--sysroot=$sysroot',
     '-flto',
     ...entries,
     '-o',

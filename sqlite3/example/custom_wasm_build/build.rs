@@ -3,23 +3,24 @@ use std::{env, path::PathBuf};
 use cmake::Config;
 
 fn main() {
-    let sysroot = "/usr/share/wasi-sysroot";
+    let sysroot =
+        env::var("WASI_SYSROOT").unwrap_or_else(|_| "/usr/share/wasi-sysroot".to_string());
 
     let cmake_dir = Config::new("../../assets/wasm/")
         .configure_arg("--toolchain")
         .configure_arg(std::fs::canonicalize("../../assets/wasm/toolchain.cmake").unwrap())
+        .define("wasi_sysroot", &sysroot)
         .build_target("sqlite3_opt_lib")
-        .build_target("sqlite3_debug") // We only need the sources
+        .build_target("help") // We only need the sources
         .build();
     let sqlite3_src = cmake_dir.join("build/_deps/sqlite3-src/");
 
     let mut c_build = cc::Build::new();
     let objects = c_build
-        .compiler("clang")
         .target("wasm32-unknown-wasi")
         .cargo_warnings(false)
         .flag("--sysroot")
-        .flag(sysroot)
+        .flag(&sysroot)
         .file(sqlite3_src.join("sqlite3.c"))
         .file("../../assets/wasm/helpers.c")
         .flag("-flto=thin")
