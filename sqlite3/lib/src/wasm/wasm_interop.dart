@@ -159,7 +159,13 @@ class WasmBindings {
         _sqlite3_stmt_isexplain = instance.functions['sqlite3_stmt_isexplain']!,
         _sqlite3_stmt_readonly = instance.functions['sqlite3_stmt_readonly']!,
         _sqlite3_db_config = instance.functions['dart_sqlite3_db_config_int'],
-        _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']! {
+        _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']!
+  // Note when adding new fields: We remove functions from the wasm module that
+  // aren't referenced in Dart. We consider a symbol used when it appears in a
+  // string literal in an initializer of this constructor (`tool/wasm_dce.dart`).
+  // Keep in mind that new symbols can only be tested with release wasm builds
+  // after adding them here and re-running the sqlite3 wasm build.
+  {
     values.bindings = this;
   }
 

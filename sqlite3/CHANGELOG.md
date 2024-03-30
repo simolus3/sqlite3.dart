@@ -1,6 +1,8 @@
 ## 2.4.1-dev
 
 - Allow version `0.7.x` of the `js` package.
+- Reduce size of `sqlite3.wasm` bundle by removing symbols not referenced in
+  Dart.
 
 ## 2.4.0
 

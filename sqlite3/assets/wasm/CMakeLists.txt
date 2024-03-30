@@ -53,7 +53,9 @@ base_sqlite3_target(sqlite3_opt)
 target_compile_options(sqlite3_opt PRIVATE -Oz)
 set_target_properties(sqlite3_opt PROPERTIES OUTPUT_NAME "sqlite3" SUFFIX ".tmp.wasm")
 add_custom_command(TARGET sqlite3_opt POST_BUILD
-    COMMAND wasm-opt sqlite3.tmp.wasm -O4 -o sqlite3.wasm
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../../
+    COMMAND dart run tool/wasm_dce.dart ${CMAKE_CURRENT_BINARY_DIR}/sqlite3.tmp.wasm ${CMAKE_CURRENT_BINARY_DIR}/sqlite3.dce.wasm
+    COMMAND wasm-opt ${CMAKE_CURRENT_BINARY_DIR}/sqlite3.dce.wasm -O4 -o ${CMAKE_CURRENT_BINARY_DIR}/sqlite3.wasm
 )
 
 add_custom_target(output)

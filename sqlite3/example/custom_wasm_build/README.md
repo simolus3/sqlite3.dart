@@ -61,3 +61,6 @@ CC=/path/to/clang dart run link.dart target/wasm32-wasi/release
 
 As an additional transformation step, running `wasm-opt -O4` on the resulting
 WASM file may optimize it further.
+Similarly, running `dart run tool/wasm_dce.dart <input.wasm> <output.wasm>` in
+the `sqlite3` source directory will remove functions not directly or indirectly
+used by the Dart package, reduzing bundle size.
