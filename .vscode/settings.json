@@ -1,5 +1,5 @@
 {
     "rust-analyzer.linkedProjects": [
-        "sqlite3/assets/sqlite_wasm_dart/Cargo.toml"
+        "sqlite3/example/custom_wasm_build/Cargo.toml"
     ]
 }
