@@ -1,12 +1,13 @@
 [package]
-name = "sqlite_wasm_dart"
+name = "custom_wasm_build"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["staticlib"]
 
 [dependencies]
 
 [build-dependencies]
+bindgen = "0.69.4"
 cc = "1.0.46"
