@@ -1,0 +1,5 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "sqlite3/example/custom_wasm_build/Cargo.toml"
+    ]
+}

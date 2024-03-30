@@ -203,3 +203,19 @@ cmake --build .dart_tool/sqlite3_build/ -t output -j
 The `output` target copies `sqlite3.wasm` and `sqlite3.debug.wasm` to `example/web`.
 
 (Of course, you can also run the build in any other directory than `.dart_tool/sqite3_build` if you want to).
+
+### Customizing the WASM module
+
+The build scripts in this repository, which are also used for the default distribution of `sqlite3.wasm`
+attached to releases, are designed to mirror the options used by `sqlite3_flutter_libs`.
+If you want to use different options, or include custom extensions in the WASM module, you can customize
+the build setup.
+
+To use regular sqlite3 sources with different compile-time options, alter `assets/wasm/sqlite_cfg.h` and
+re-run the build as described in [compiling](#compiling).
+Including additional extensions written in C is possible by adapting the `CMakeLists.txt` in
+`assets/wasm`.
+
+A simple example demonstrating how to include Rust-based extensions is included in `example/custom_wasm_build`.
+The readme in that directory explains the build process in detail, but you still need the WASI/Clang toolchains
+described in the [setup section](#linux).
