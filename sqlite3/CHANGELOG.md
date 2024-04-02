@@ -1,4 +1,4 @@
-## 2.4.1-dev
+## 2.4.1
 
 - Allow version `0.7.x` of the `js` package.
 - Reduce size of `sqlite3.wasm` bundle by removing symbols not referenced in
