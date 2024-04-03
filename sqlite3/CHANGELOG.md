@@ -1,3 +1,8 @@
+## 2.4.2
+
+- Fix string and blob arguments to prepared statements never being
+  deallocated ([#225](https://github.com/simolus3/sqlite3.dart/issues/225)).
+
 ## 2.4.1+1
 
 - Allow version `0.7.x` of the `js` package.

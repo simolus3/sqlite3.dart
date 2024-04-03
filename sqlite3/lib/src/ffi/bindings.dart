@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:ffi';
 import 'dart:typed_data';
 
+import 'package:meta/meta.dart';
+
 import '../constants.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
@@ -377,6 +379,9 @@ final class FfiStatement extends RawSqliteStatement {
 
   FfiStatement(this.database, this.stmt)
       : bindings = database.bindings.bindings;
+
+  @visibleForTesting
+  List<Pointer> get allocatedArguments => _allocatedArguments;
 
   @override
   void deallocateArguments() {

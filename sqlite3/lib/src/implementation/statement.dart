@@ -11,7 +11,6 @@ final class FinalizableStatement extends FinalizablePart {
   final RawSqliteStatement statement;
 
   bool _inResetState = true;
-  bool _hasAllocatedArguments = false;
   bool _closed = false;
 
   FinalizableStatement(this.statement);
@@ -34,10 +33,7 @@ final class FinalizableStatement extends FinalizablePart {
   }
 
   void _deallocateArguments() {
-    if (_hasAllocatedArguments) {
-      _hasAllocatedArguments = false;
-      statement.deallocateArguments();
-    }
+    statement.deallocateArguments();
   }
 }
 
