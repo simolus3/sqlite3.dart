@@ -33,6 +33,10 @@ abstract class CommonPreparedStatement {
   /// See [StatementParameters] for a list of types supported by this library.
   /// If sqlite3 reports an error while running this statement, a
   /// [SqliteException] will be thrown.
+  ///
+  /// To run a statement and also obtaining returned rows, use [selectWith] or
+  /// [iterateWith]. It is safe to call these methods on statements that aren't
+  /// `SELECT` statements (such as writes with a `RETURNING` clause) too.
   /// {@endtemplate}
   void executeWith(StatementParameters parameters);
 
@@ -46,6 +50,9 @@ abstract class CommonPreparedStatement {
   /// If sqlite3 reports an error while running this statement, a
   /// [SqliteException] will be thrown.
   ///
+  /// This statement doesn't have to be a `SELECT` statement for [selectWith] to
+  /// be useful - writes with `RETURNING` clauses also return rows which can
+  /// be fetched via [selectWith].
   /// {@endtemplate}
   ResultSet selectWith(StatementParameters parameters);
 

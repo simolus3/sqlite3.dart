@@ -51,16 +51,27 @@ abstract class CommonDatabase {
   ///  - [Data Change Notification Callbacks](https://www.sqlite.org/c3ref/update_hook.html)
   Stream<SqliteUpdate> get updates;
 
-  /// Executes the [sql] statement with the provided [parameters] and ignores
-  /// the result.
+  /// Executes the [sql] statement with the provided [parameters], ignoring any
+  /// rows returned by the statement.
   ///
   /// For the types supported in [parameters], see [StatementParameters].
+  /// To view rows returned by a statement, run it with [select]. Statements
+  /// that aren't `SELECT`s in SQL but still return rows (such as updates with
+  /// a `RETURNING` clause) can still be safely executed with [select].
   void execute(String sql, [List<Object?> parameters = const []]);
 
-  /// Prepares the [sql] select statement and runs it with the provided
-  /// [parameters].
+  /// Prepares the [sql] statement and runs it with the provided [parameters],
+  /// returning all rows returned by the statement.
   ///
   /// For the types supported in [parameters], see [StatementParameters].
+  /// The statement doesn't have to be an SQL `SELECT` statement. Any statement
+  /// that returns rows (e.g. writes with a `RETURNING` clause) can be executed
+  /// with [select].
+  ///
+  /// This method fully runs the statement, buffers all rows and then returns
+  /// them at once in a [ResultSet]. This package also supports stepping through
+  /// a result set row-by-row. To do that, first prepare the statement with
+  /// [prepare] and then call [CommonPreparedStatement.iterateWith].
   ResultSet select(String sql, [List<Object?> parameters = const []]);
 
   /// Compiles the [sql] statement to execute it later.
