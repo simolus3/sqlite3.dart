@@ -1,3 +1,7 @@
+## 0.6.2
+
+- Update SQLCipher to `4.5.7`.
+
 ## 0.6.1
 
 - Update SQLCipher to `4.5.6`.
