@@ -1,7 +1,10 @@
-## 2.4.3-dev
+## 2.4.3
 
 - Migrate away from legacy web APIs: `dart:html`, `dart:js`, `dart:indexeddb`
   and `package:js` are no longer imported from this package.
+- Experimentally support being compiled to WebAssembly. Strong caveats apply,
+  please check [#230](https://github.com/simolus3/sqlite3.dart/issues/230)
+  before relying on this!
 
 ## 2.4.2
 

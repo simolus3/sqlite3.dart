@@ -20,7 +20,10 @@ For a more complete example on how to use this library, see the [example](https:
 
 You can use this library on any platform where you can obtain a `DynamicLibrary` with symbols
 from `sqlite3`.
-In addition, this package experimentally supports the web through WebAssembly.
+In addition, this package supports running on the web by accessing a sqlite3
+build compiled to WebAssembly.
+Web support is only official supported for `dartdevc` and `dart2js`. Support
+for `dart2wasm` [is experimental and incomplete](https://github.com/simolus3/sqlite3.dart/issues/230).
 
 Here's how to use this library on the most popular platforms:
 
@@ -90,6 +93,10 @@ On the web (but only on the web), `BigInt` is supported as well.
 This package experimentally supports being used on the web with a bit of setup.
 The web version binds to a custom version of sqlite3 compiled to WebAssembly without
 Emscripten or any JavaScript glue code.
+
+Please note that stable web support for `package:sqlite3` is restricted to Dart
+being compiled to JavaScript. Support for `dart2wasm` is experimental. The API
+is identical, but the implementation [is severly limited](https://github.com/simolus3/sqlite3.dart/issues/230).
 
 ### Setup
 
