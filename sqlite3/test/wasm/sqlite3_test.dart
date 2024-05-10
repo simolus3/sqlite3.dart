@@ -3,6 +3,7 @@ library;
 
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
 import 'package:sqlite3/wasm.dart';
@@ -21,7 +22,7 @@ void main() {
           sqlite3 = await loadSqlite3();
         } else {
           final channel = spawnHybridUri('/test/wasm/asset_server.dart');
-          final port = await channel.stream.first as int;
+          final port = (await channel.stream.first as double).toInt();
 
           final sqliteWasm =
               Uri.parse('http://localhost:$port/example/web/sqlite3.wasm');
@@ -33,8 +34,12 @@ void main() {
           }
 
           sqlite3 = await WasmSqlite3.load(response.bodyBytes);
-          sqlite3.registerVirtualFileSystem(InMemoryFileSystem(),
-              makeDefault: true);
+          sqlite3.registerVirtualFileSystem(
+            // Not using the default Random.secure() because it's not supported
+            // by dart2wasm
+            InMemoryFileSystem(random: Random()),
+            makeDefault: true,
+          );
         }
       });
 
@@ -69,7 +74,7 @@ void main() {
 
       setUpAll(() async {
         final channel = spawnHybridUri('/test/wasm/worker_server.dart');
-        final port = await channel.stream.first as int;
+        final port = (await channel.stream.first as double).toInt();
 
         final uri = 'http://localhost:$port/worker.dart.js';
         wasmUri = 'http://localhost:$port/sqlite3.wasm';
@@ -108,9 +113,9 @@ void main() {
                     .forTarget(worker)
                     .first)
                 .data as JSArray;
-            final status = response.toDart[0] as bool;
+            final status = response.toDart[0] as JSBoolean;
 
-            if (!status) {
+            if (!status.toDart) {
               throw 'Exception in worker: $response';
             }
           },
@@ -122,6 +127,8 @@ void main() {
             if (backend == 'opfs')
               'chrome || edge':
                   Skip('todo: Always times out in GitHub actions'),
+            if (backend == 'opfs')
+              'firefox': Skip('todo: Currently broken in firefox'),
           },
         );
       }

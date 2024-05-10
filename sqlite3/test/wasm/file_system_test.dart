@@ -14,15 +14,21 @@ import 'utils.dart';
 const _fsRoot = '/test';
 
 Future<void> main() async {
+  // dart2wasm does not currently support Random.secure(), so we have to use
+  // this as a fallback.
+  final random = Random();
+
   group('in memory', () {
-    _testWith(() => InMemoryFileSystem());
+    _testWith(() => InMemoryFileSystem(random: random));
   });
 
   group('indexed db', () {
-    _testWith(() => IndexedDbFileSystem.open(dbName: _randomName()));
+    _testWith(
+        () => IndexedDbFileSystem.open(dbName: _randomName(), random: random));
 
     test('example with frequent writes', () async {
-      final fileSystem = await IndexedDbFileSystem.open(dbName: 'test');
+      final fileSystem =
+          await IndexedDbFileSystem.open(dbName: 'test', random: random);
       final sqlite3 = await loadSqlite3(fileSystem);
       final database = sqlite3.open('test');
       expect(database.userVersion, 0);
@@ -57,12 +63,13 @@ Future<void> main() async {
       // file-system should save reasonably quickly
       await fileSystem.close().timeout(const Duration(seconds: 1));
 
-      final fileSystem2 = await IndexedDbFileSystem.open(dbName: 'test');
+      final fileSystem2 =
+          await IndexedDbFileSystem.open(dbName: 'test', random: random);
       final sqlite32 = await loadSqlite3(fileSystem2);
       final database2 = sqlite32.open('test');
       expect(database2.userVersion, 1);
       expect(database2.select('SELECT * FROM users'), hasLength(200));
-    });
+    }, onPlatform: {'wasm': Skip('Broken on dart2wasm')});
   });
 }
 

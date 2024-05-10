@@ -107,7 +107,8 @@ class AsynchronousIndexedDbFileSystem {
     while (await iterator.moveNext()) {
       final row = iterator.current;
 
-      result[row.key! as String] = row.primaryKey! as int;
+      result[(row.key! as JSString).toDart] =
+          (row.primaryKey! as JSNumber).toDartInt;
     }
     return result;
   }
@@ -154,7 +155,8 @@ class AsynchronousIndexedDbFileSystem {
         .cursorIterator<web.IDBCursorWithValue>();
     while (await reader.moveNext()) {
       final row = reader.current;
-      final rowOffset = (row.key! as List)[1] as int;
+      final key = (row.key as JSArray).toDart;
+      final rowOffset = (key[1] as JSNumber).toDartInt;
       final length = min(_blockSize, file.length - rowOffset);
 
       // We can't have an async suspension in here because that would close the
@@ -417,9 +419,10 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
   final Set<String> _inMemoryOnlyFiles = {};
   final Map<String, int> _knownFileIds = {};
 
-  IndexedDbFileSystem._(String dbName, {String vfsName = 'indexeddb'})
+  IndexedDbFileSystem._(String dbName,
+      {String vfsName = 'indexeddb', super.random})
       : _asynchronous = AsynchronousIndexedDbFileSystem(dbName),
-        _memory = InMemoryFileSystem(),
+        _memory = InMemoryFileSystem(random: random),
         super(name: vfsName);
 
   /// Loads an IndexedDB file system identified by the [dbName].
@@ -427,8 +430,10 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
   /// Each file system with a different name will store an independent file
   /// system.
   static Future<IndexedDbFileSystem> open(
-      {required String dbName, String vfsName = 'indexeddb'}) async {
-    final fs = IndexedDbFileSystem._(dbName, vfsName: vfsName);
+      {required String dbName,
+      String vfsName = 'indexeddb',
+      Random? random}) async {
+    final fs = IndexedDbFileSystem._(dbName, vfsName: vfsName, random: random);
     await fs._asynchronous.open();
     await fs._readFiles();
     return fs;
