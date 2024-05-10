@@ -1,81 +1,68 @@
+/// Very regrettably, `package:drift` imports this exact file and because it
+/// used to define FileSystem Access API bindings before we've migrated these to
+/// `package:web`.
+///
+/// To avoid breaking drift, we're exporting the subset of APIs used by drift
+/// to keep that working. This file is not used anywhere in this package and
+/// will be removed in the next major release.
+@Deprecated('Do not import this at all')
+library;
+
 import 'dart:js_interop';
-import 'dart:js_interop_unsafe';
-import 'dart:typed_data';
 
-import 'package:web/web.dart';
-
+import 'package:web/web.dart' as web;
 import 'core.dart';
+import 'new_file_system_access.dart' as fixed;
 
-@JS('navigator')
-external Navigator get _navigator;
+typedef FileSystemDirectoryHandle = LegacyDirectoryHandle;
+typedef FileSystemFileHandle = LegacyFileHandle;
+typedef FileSystemSyncAccessHandle = LegacySyncFileHandle;
 
-StorageManager? get storageManager {
-  final navigator = _navigator;
-
-  if (navigator.has('storage')) {
-    return navigator.storage;
-  }
-
-  return null;
+LegacyStorageManager? get storageManager {
+  final raw = fixed.storageManager;
+  return raw != null ? LegacyStorageManager(raw) : null;
 }
 
-extension StorageManagerApi on StorageManager {
-  Future<FileSystemDirectoryHandle> get directory => getDirectory().toDart;
+extension type LegacyStorageManager(web.StorageManager inner) {
+  Future<FileSystemDirectoryHandle> get directory async =>
+      FileSystemDirectoryHandle(await inner.directory);
 }
 
-extension FileSystemSyncAccessHandleApi on FileSystemSyncAccessHandle {
-  int readDart(Uint8List buffer, [FileSystemReadWriteOptions? options]) {
-    if (options == null) {
-      return read(buffer.toJS);
-    } else {
-      return read(buffer.toJS, options);
-    }
+extension type LegacyHandle(web.FileSystemHandle inner) {
+  bool get isDirectory => inner.isDirectory;
+
+  String get name => inner.name;
+}
+
+extension type LegacyDirectoryHandle(web.FileSystemDirectoryHandle inner) {
+  Future<LegacyFileHandle> openFile(String name, {bool create = false}) async {
+    return LegacyFileHandle(await inner.openFile(name, create: create));
   }
 
-  int writeDart(Uint8List buffer, [FileSystemReadWriteOptions? options]) {
-    if (options == null) {
-      return write(buffer.toJS);
-    } else {
-      return write(buffer.toJS, options);
-    }
+  Future<void> removeEntry(String name, {bool recursive = false}) async {
+    await fixed.FileSystemDirectoryHandleApi(inner)
+        .remove(name, recursive: recursive);
+  }
+
+  Future<LegacyDirectoryHandle> getDirectory(String name) async {
+    return LegacyDirectoryHandle(await inner.getDirectory(name));
+  }
+
+  Stream<LegacyHandle> list() {
+    return AsyncJavaScriptIteratable<JSArray>(inner)
+        .map((data) => LegacyHandle(data.toDart[1] as web.FileSystemHandle));
   }
 }
 
-extension FileSystemHandleApi on FileSystemHandle {
-  bool get isFile => kind == 'file';
-
-  bool get isDirectory => kind == 'directory';
+extension type LegacyFileHandle(web.FileSystemFileHandle inner) {
+  Future<LegacySyncFileHandle> createSyncAccessHandle() async {
+    final raw = await inner.createSyncAccessHandle().toDart;
+    return LegacySyncFileHandle(raw);
+  }
 }
 
-extension FileSystemDirectoryHandleApi on FileSystemDirectoryHandle {
-  Future<FileSystemFileHandle> openFile(String name, {bool create = false}) {
-    return getFileHandle(name, FileSystemGetFileOptions(create: create)).toDart;
-  }
-
-  Future<FileSystemDirectoryHandle> getDirectory(String name,
-      {bool create = false}) {
-    return getDirectoryHandle(
-            name, FileSystemGetDirectoryOptions(create: create))
-        .toDart;
-  }
-
-  Future<void> remove(String name, {bool recursive = false}) {
-    return removeEntry(name, FileSystemRemoveOptions(recursive: recursive))
-        .toDart;
-  }
-
-  Stream<FileSystemHandle> list() {
-    return AsyncJavaScriptIteratable<JSArray>(this)
-        .map((data) => data.toDart[1] as FileSystemHandle);
-  }
-
-  Stream<FileSystemHandle> getFilesRecursively() async* {
-    await for (final entry in list()) {
-      if (entry.isFile) {
-        yield entry;
-      } else if (entry.isDirectory) {
-        yield* (entry as FileSystemDirectoryHandle).getFilesRecursively();
-      }
-    }
+extension type LegacySyncFileHandle(web.FileSystemSyncAccessHandle inner) {
+  void close() {
+    inner.close();
   }
 }

@@ -15,7 +15,7 @@ import 'package:web/web.dart'
         FileSystemSyncAccessHandle,
         Worker;
 // ignore: implementation_imports
-import 'package:sqlite3/src/wasm/js_interop/file_system_access.dart';
+import 'package:sqlite3/src/wasm/js_interop/new_file_system_access.dart';
 
 import 'api.dart';
 import 'channel.dart';

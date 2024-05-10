@@ -9,7 +9,7 @@ import 'package:web/web.dart' show Blob;
 export 'js_interop/atomics.dart';
 export 'js_interop/core.dart';
 export 'js_interop/fetch.dart';
-export 'js_interop/file_system_access.dart';
+export 'js_interop/new_file_system_access.dart';
 export 'js_interop/indexed_db.dart';
 export 'js_interop/typed_data.dart';
 export 'js_interop/wasm.dart';
