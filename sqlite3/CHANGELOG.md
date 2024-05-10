@@ -1,3 +1,8 @@
+## 2.4.3-dev
+
+- Migrate away from legacy web APIs: `dart:html`, `dart:js`, `dart:indexeddb`
+  and `package:js` are no longer imported from this package.
+
 ## 2.4.2
 
 - Fix string and blob arguments to prepared statements never being
