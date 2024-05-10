@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:html';
 import 'dart:typed_data';
 
 import '../../js_interop.dart';
@@ -96,12 +95,12 @@ class MessageSerializer {
   }
 
   Uint8List viewByteRange(int offset, int length) {
-    return buffer.asUint8List(offset, length);
+    return buffer.asUint8ListSlice(offset, length);
   }
 
   String _readString(int offset) {
     final length = dataView.getInt32(offset);
-    return utf8.decode(buffer.asUint8List(offset + 4, length));
+    return utf8.decode(buffer.asUint8ListSlice(offset + 4, length));
   }
 
   void _writeString(int offset, String data) {

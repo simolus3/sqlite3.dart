@@ -1,38 +1,39 @@
 import 'dart:async';
-import 'dart:html';
-import 'dart:js_util';
 
-import 'package:js/js.dart';
+import 'dart:js_interop';
+
 import 'package:sqlite3/wasm.dart';
+import 'package:web/web.dart' as web;
 
-@JS('Worker')
-external Function get _worker;
+@JS('Array')
+extension type _Array._(JSArray _) implements JSArray {
+  external static bool isArray(JSAny? e);
+}
 
 void main() {
-  final scope = DedicatedWorkerGlobalScope.instance;
+  final scope = (globalContext as web.DedicatedWorkerGlobalScope);
 
   runZonedGuarded(() {
-    scope.onMessage.listen((event) {
-      // We're not calling .data because we don't want the result to be Dartified,
-      // we want to keep the anonymous JS object.
-      final rawData = getProperty<Object>(event, 'data');
-
-      if (rawData is List) {
-        final backend = rawData[0] as String;
-        final wasmUri = Uri.parse(rawData[1] as String);
+    scope.onmessage = Zone.current.bindUnaryCallback((web.MessageEvent event) {
+      final rawData = event.data;
+      if (_Array.isArray(rawData)) {
+        final backend = ((rawData as JSArray).toDart[0] as JSString).toDart;
+        final wasmUri = Uri.parse((rawData.toDart[1] as JSString).toDart);
 
         _startTest(backend, wasmUri);
       } else {
         _startOpfsServer(rawData as WorkerOptions);
       }
-    });
+    }).toJS;
   }, (error, stack) {
     // Inform the calling test in sqlite3_test.dart about the error
-    scope.postMessage([false, error.toString(), stack.toString()]);
+    scope.postMessage(
+        [false.toJS, error.toString().toJS, stack.toString().toJS].toJS);
   });
 }
 
 Future<void> _startTest(String fsImplementation, Uri wasmUri) async {
+  final scope = (globalContext as web.DedicatedWorkerGlobalScope);
   Future<void> test;
 
   switch (fsImplementation) {
@@ -68,12 +69,11 @@ Future<void> _startTest(String fsImplementation, Uri wasmUri) async {
           // server needed for synchronous access.
           final options = WasmVfs.createOptions();
 
-          final worker = callConstructor<Worker>(
-              _worker, [DedicatedWorkerGlobalScope.instance.location]);
+          final worker = web.Worker(scope.location.href);
           worker.postMessage(options);
 
           // Wait for the worker to acknowledge it being ready
-          await worker.onMessage.first;
+          await web.EventStreamProviders.messageEvent.forTarget(worker).first;
 
           return WasmVfs(workerOptions: options);
         },
@@ -84,19 +84,20 @@ Future<void> _startTest(String fsImplementation, Uri wasmUri) async {
       );
       break;
     default:
-      DedicatedWorkerGlobalScope.instance.postMessage([false]);
+      scope.postMessage([false.toJS].toJS);
       return;
   }
 
   await test;
-  DedicatedWorkerGlobalScope.instance.postMessage([true]);
+  scope.postMessage([true.toJS].toJS);
 }
 
 Future<void> _startOpfsServer(WorkerOptions options) async {
   final worker = await VfsWorker.create(options);
 
   // Inform the worker running the test that we're on it
-  DedicatedWorkerGlobalScope.instance.postMessage(true);
+  (globalContext as web.DedicatedWorkerGlobalScope)
+      .postMessage([true.toJS].toJS);
   await worker.start();
 }
 

@@ -1,110 +1,72 @@
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
-import 'package:js/js.dart';
-import 'package:js/js_util.dart';
+import 'package:web/web.dart';
 
 import 'core.dart';
 
-StorageManager? get storageManager {
-  final navigator = getProperty<_Navigator>(self, 'navigator');
+@JS('navigator')
+external Navigator get _navigator;
 
-  if (hasProperty(navigator, 'storage')) {
-    return getProperty(navigator, 'storage');
+StorageManager? get storageManager {
+  final navigator = _navigator;
+
+  if (navigator.has('storage')) {
+    return navigator.storage;
   }
 
   return null;
 }
 
-@JS()
-@staticInterop
-class _Navigator {}
-
-@JS()
-@staticInterop
-class StorageManager {}
-
-@JS()
-@staticInterop
-class FileSystemHandle {}
-
-@JS()
-@staticInterop
-class FileSystemDirectoryHandle extends FileSystemHandle {}
-
-@JS()
-@staticInterop
-class FileSystemFileHandle extends FileSystemHandle {}
-
-@JS()
-@staticInterop
-class FileSystemSyncAccessHandle {}
-
-@JS()
-@anonymous
-class _GetFileHandleOptions {
-  external factory _GetFileHandleOptions({bool? create});
-}
-
-@JS()
-@anonymous
-class _RemoveEntryOptions {
-  external factory _RemoveEntryOptions({bool? recursive});
-}
-
-@JS()
-@anonymous
-class FileSystemReadWriteOptions {
-  external factory FileSystemReadWriteOptions({int? at});
-}
-
 extension StorageManagerApi on StorageManager {
-  @JS('getDirectory')
-  external Object _getDirectory();
+  Future<FileSystemDirectoryHandle> get directory => getDirectory().toDart;
+}
 
-  Future<FileSystemDirectoryHandle> get directory =>
-      promiseToFuture(_getDirectory());
+extension FileSystemSyncAccessHandleApi on FileSystemSyncAccessHandle {
+  int readDart(Uint8List buffer, [FileSystemReadWriteOptions? options]) {
+    if (options == null) {
+      return read(buffer.toJS);
+    } else {
+      return read(buffer.toJS, options);
+    }
+  }
+
+  int writeDart(Uint8List buffer, [FileSystemReadWriteOptions? options]) {
+    if (options == null) {
+      return write(buffer.toJS);
+    } else {
+      return write(buffer.toJS, options);
+    }
+  }
 }
 
 extension FileSystemHandleApi on FileSystemHandle {
-  String get name => getProperty(this, 'name');
-
-  String get kind => getProperty(this, 'kind');
-
   bool get isFile => kind == 'file';
 
   bool get isDirectory => kind == 'directory';
 }
 
 extension FileSystemDirectoryHandleApi on FileSystemDirectoryHandle {
-  @JS('getFileHandle')
-  external Object _getFileHandle(String name, _GetFileHandleOptions options);
-
-  @JS('getDirectoryHandle')
-  external Object _getDirectoryHandle(
-      String name, _GetFileHandleOptions options);
-
-  @JS('removeEntry')
-  external Object _removeEntry(String name, _RemoveEntryOptions options);
-
   Future<FileSystemFileHandle> openFile(String name, {bool create = false}) {
-    return promiseToFuture(
-        _getFileHandle(name, _GetFileHandleOptions(create: create)));
+    return getFileHandle(name, FileSystemGetFileOptions(create: create)).toDart;
   }
 
   Future<FileSystemDirectoryHandle> getDirectory(String name,
       {bool create = false}) {
-    return promiseToFuture(
-        _getDirectoryHandle(name, _GetFileHandleOptions(create: create)));
+    return getDirectoryHandle(
+            name, FileSystemGetDirectoryOptions(create: create))
+        .toDart;
   }
 
-  Future<void> removeEntry(String name, {bool recursive = false}) {
-    return promiseToFuture(
-        _removeEntry(name, _RemoveEntryOptions(recursive: recursive)));
+  Future<void> remove(String name, {bool recursive = false}) {
+    return removeEntry(name, FileSystemRemoveOptions(recursive: recursive))
+        .toDart;
   }
 
   Stream<FileSystemHandle> list() {
-    return AsyncJavaScriptIteratable<List<Object?>>(this)
-        .map((data) => data[1] as FileSystemHandle);
+    return AsyncJavaScriptIteratable<JSArray>(this)
+        .map((data) => data.toDart[1] as FileSystemHandle);
   }
 
   Stream<FileSystemHandle> getFilesRecursively() async* {
@@ -116,33 +78,4 @@ extension FileSystemDirectoryHandleApi on FileSystemDirectoryHandle {
       }
     }
   }
-}
-
-extension FileSystemFileHandleApi on FileSystemFileHandle {
-  @JS('createSyncAccessHandle')
-  external Object _createSyncAccessHandle();
-
-  Future<FileSystemSyncAccessHandle> createSyncAccessHandle() {
-    return promiseToFuture(_createSyncAccessHandle());
-  }
-}
-
-extension FileSystemFileSyncAccessHandleApi on FileSystemSyncAccessHandle {
-  @JS()
-  external void close();
-
-  @JS()
-  external void flush();
-
-  @JS()
-  external int read(TypedData buffer, [FileSystemReadWriteOptions? options]);
-
-  @JS()
-  external int write(TypedData buffer, [FileSystemReadWriteOptions? options]);
-
-  @JS()
-  external void truncate(int newSize);
-
-  @JS()
-  external int getSize();
 }
