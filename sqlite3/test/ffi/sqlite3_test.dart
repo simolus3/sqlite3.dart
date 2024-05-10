@@ -1,4 +1,6 @@
 @Tags(['ffi'])
+library;
+
 import 'dart:ffi';
 import 'dart:io';
 

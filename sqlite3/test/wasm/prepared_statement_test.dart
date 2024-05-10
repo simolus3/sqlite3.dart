@@ -1,4 +1,6 @@
 @Tags(['wasm'])
+library;
+
 import 'package:test/scaffolding.dart';
 
 import '../common/prepared_statement.dart';

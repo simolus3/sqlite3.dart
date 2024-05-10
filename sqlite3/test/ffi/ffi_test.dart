@@ -1,4 +1,6 @@
 @Tags(['ffi'])
+library;
+
 import 'dart:ffi';
 
 import 'package:sqlite3/src/ffi/memory.dart';

@@ -1,4 +1,6 @@
 @Tags(['wasm'])
+library;
+
 import 'dart:async';
 import 'dart:developer';
 import 'dart:math';

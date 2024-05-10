@@ -1,4 +1,6 @@
 @Tags(['wasm'])
+library;
+
 import 'package:test/test.dart';
 
 import '../common/database.dart';

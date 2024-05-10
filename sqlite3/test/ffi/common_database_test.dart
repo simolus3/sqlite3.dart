@@ -1,4 +1,6 @@
 @Tags(['ffi'])
+library;
+
 import 'package:sqlite3/open.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/scaffolding.dart';
