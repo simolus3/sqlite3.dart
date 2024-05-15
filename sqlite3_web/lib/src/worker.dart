@@ -306,7 +306,16 @@ final class DatabaseState {
       }
 
       sqlite3.registerVirtualFileSystem(vfs!);
-      return await runner._controller.openDatabase(sqlite3, vfsName);
+      return await runner._controller.openDatabase(
+        sqlite3,
+        // We're currently using /database as the in-VFS path. This is because
+        // we need to pre-open persistent files in SimpleOpfsFileSystem, and
+        // that VFS only stores `/database` and `/database-journal`.
+        // We still provide support for multiple databases by keeping multiple
+        // VFS instances around.
+        '/database',
+        vfsName,
+      );
     });
 
     return await database;

@@ -4,7 +4,7 @@ import 'dart:js_interop_unsafe';
 import 'package:sqlite3_web/sqlite3_web.dart';
 
 void main() async {
-  final sqlite = await WebSqlite.open(
+  final sqlite = WebSqlite.open(
     worker: Uri.parse('worker.dart.js'),
     wasmModule: Uri.parse('sqlite3.wasm'),
   );
