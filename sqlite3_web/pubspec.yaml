@@ -8,7 +8,7 @@ environment:
   sdk: ^3.3.0
 
 dependencies:
-  sqlite3:
+  sqlite3: ^2.4.3
   stream_channel: ^2.1.2
   web: ^0.5.0
 
