@@ -1,6 +1,7 @@
-import 'dart:typed_data';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+
+import 'typed_data.dart';
 
 @JS('Int32Array')
 external JSFunction _int32Array;
@@ -17,24 +18,22 @@ extension type SharedArrayBuffer._(JSObject _) implements JSObject {
 
   external int get byteLength;
 
-  Int32List asInt32List() {
-    return _int32Array.callAsConstructor<JSInt32Array>(this).toDart;
+  SafeI32Array asInt32List() {
+    return SafeI32Array(_int32Array.callAsConstructor<JSInt32Array>(this));
   }
 
-  ByteData asByteData(int offset, int length) {
-    return _dataView
-        .callAsConstructor<JSDataView>(this, offset.toJS, length.toJS)
-        .toDart;
+  SafeDataView asByteData(int offset, int length) {
+    return SafeDataView(_dataView.callAsConstructor<JSDataView>(
+        this, offset.toJS, length.toJS));
   }
 
-  Uint8List asUint8List() {
-    return _uint8Array.callAsConstructor<JSUint8Array>(this).toDart;
+  SafeU8Array asUint8List() {
+    return SafeU8Array(_uint8Array.callAsConstructor<JSUint8Array>(this));
   }
 
-  Uint8List asUint8ListSlice(int offset, int length) {
-    return _uint8Array
-        .callAsConstructor<JSUint8Array>(this, offset.toJS, length.toJS)
-        .toDart;
+  SafeU8Array asUint8ListSlice(int offset, int length) {
+    return SafeU8Array(_uint8Array.callAsConstructor<JSUint8Array>(
+        this, offset.toJS, length.toJS));
   }
 }
 
@@ -66,27 +65,27 @@ class Atomics {
     return globalContext.has('Atomics');
   }
 
-  static String wait(Int32List typedArray, int index, int value) {
-    return _Atomics.wait(typedArray.toJS, index, value).toDart;
+  static String wait(SafeI32Array typedArray, int index, int value) {
+    return _Atomics.wait(typedArray.inner, index, value).toDart;
   }
 
   static String waitWithTimeout(
-      Int32List typedArray, int index, int value, int timeOutInMillis) {
+      SafeI32Array typedArray, int index, int value, int timeOutInMillis) {
     return _Atomics.waitWithTimeout(
-            typedArray.toJS, index, value, timeOutInMillis)
+            typedArray.inner, index, value, timeOutInMillis)
         .toDart;
   }
 
-  static void notify(Int32List typedArray, int index,
+  static void notify(SafeI32Array typedArray, int index,
       [num count = double.infinity]) {
-    _Atomics.notify(typedArray.toJS, index, count);
+    _Atomics.notify(typedArray.inner, index, count);
   }
 
-  static int store(Int32List typedArray, int index, int value) {
-    return _Atomics.store(typedArray.toJS, index, value);
+  static int store(SafeI32Array typedArray, int index, int value) {
+    return _Atomics.store(typedArray.inner, index, value);
   }
 
-  static int load(Int32List typedArray, int index) {
-    return _Atomics.load(typedArray.toJS, index);
+  static int load(SafeI32Array typedArray, int index) {
+    return _Atomics.load(typedArray.inner, index);
   }
 }

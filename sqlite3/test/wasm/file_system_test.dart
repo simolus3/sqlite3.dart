@@ -3,10 +3,12 @@ library;
 
 import 'dart:async';
 import 'dart:developer';
+import 'dart:js_interop';
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:sqlite3/wasm.dart';
+import 'package:sqlite3/src/wasm/js_interop/typed_data.dart';
 import 'package:test/test.dart';
 
 import 'utils.dart';
@@ -142,12 +144,12 @@ Future<void> _testWith(FutureOr<VirtualFileSystem> Function() open) async {
     file.xTruncate(0);
     expect(file.xFileSize(), 0);
 
-    file.xWrite(Uint8List.fromList([1, 2, 3]), 0);
+    file.xWrite(SafeU8Array(Uint8List.fromList([1, 2, 3]).toJS), 0);
     expect(file.xFileSize(), 3);
 
-    final target = Uint8List(3);
+    final target = SafeU8Array.allocate(3);
     file.xRead(target, 0);
-    expect(target, [1, 2, 3]);
+    expect(target.inner.toDart, [1, 2, 3]);
   });
 }
 

@@ -1,5 +1,4 @@
 import 'dart:js_interop';
-import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
@@ -10,7 +9,7 @@ import 'package:web/web.dart'
         FileSystemReadWriteOptions;
 
 import '../../constants.dart';
-import '../../vfs.dart';
+import '../vfs.dart';
 import '../js_interop.dart';
 import 'memory.dart';
 
@@ -59,7 +58,7 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
   // done asynchronously.
 
   final FileSystemSyncAccessHandle _metaHandle;
-  final Uint8List _existsList = Uint8List(FileType.values.length);
+  final SafeU8Array _existsList = SafeU8Array.allocate(FileType.values.length);
 
   final Map<FileType, FileSystemSyncAccessHandle> _files;
   final InMemoryFileSystem _memory = InMemoryFileSystem();
@@ -202,7 +201,7 @@ class _SimpleOpfsFile extends BaseVfsFile {
   _SimpleOpfsFile(this.vfs, this.type, this.syncHandle, this.deleteOnClose);
 
   @override
-  int readInto(Uint8List buffer, int offset) {
+  int readInto(SafeU8Array buffer, int offset) {
     return syncHandle.readDart(buffer, FileSystemReadWriteOptions(at: offset));
   }
 
@@ -246,7 +245,7 @@ class _SimpleOpfsFile extends BaseVfsFile {
   }
 
   @override
-  void xWrite(Uint8List buffer, int fileOffset) {
+  void xWrite(SafeU8Array buffer, int fileOffset) {
     final bytesWritten = syncHandle.writeDart(
         buffer, FileSystemReadWriteOptions(at: fileOffset));
 

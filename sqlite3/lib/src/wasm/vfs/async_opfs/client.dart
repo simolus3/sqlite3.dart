@@ -1,12 +1,11 @@
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
 
 import '../../../constants.dart';
-import '../../../vfs.dart';
+import '../../vfs.dart';
 import '../../js_interop.dart';
 import '../utils.dart';
 import 'sync_channel.dart';
@@ -113,7 +112,7 @@ class WasmFile extends BaseVfsFile {
   }
 
   @override
-  int readInto(Uint8List buffer, int offset) {
+  int readInto(SafeU8Array buffer, int offset) {
     var remainingBytes = buffer.length;
     var totalBytesRead = 0;
 
@@ -129,7 +128,8 @@ class WasmFile extends BaseVfsFile {
       final bytesRead = result.flag0;
 
       // Copy read bytes into result buffer.
-      buffer.set(vfs.serializer.viewByteRange(0, bytesRead), totalBytesRead);
+      buffer.set(
+          vfs.serializer.byteView.subarray(0, bytesRead).inner, totalBytesRead);
 
       totalBytesRead += bytesRead;
       if (bytesRead < bytesToRead) {
@@ -194,7 +194,7 @@ class WasmFile extends BaseVfsFile {
   }
 
   @override
-  void xWrite(Uint8List buffer, int fileOffset) {
+  void xWrite(SafeU8Array buffer, int fileOffset) {
     var remainingBytes = buffer.length;
     var totalBytesWritten = 0;
 
@@ -205,8 +205,8 @@ class WasmFile extends BaseVfsFile {
 
       final subBuffer = bytesToWrite == remainingBytes
           ? buffer
-          : buffer.buffer.asUint8List(buffer.offsetInBytes, bytesToWrite);
-      vfs.serializer.byteView.set(subBuffer, 0);
+          : buffer.subarray(0, bytesToWrite);
+      vfs.serializer.byteView.set(subBuffer.inner, 0);
 
       vfs._runInWorker(WorkerOperation.xWrite,
           Flags(fd, fileOffset + totalBytesWritten, bytesToWrite));
