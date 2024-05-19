@@ -1,1 +1,2 @@
-export 'src/api.dart';
+export 'src/types.dart';
+export 'src/database.dart';

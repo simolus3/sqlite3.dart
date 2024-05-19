@@ -6,8 +6,9 @@ import 'package:sqlite3/common.dart';
 import 'package:web/web.dart'
     hide Response, Request, FileSystem, Notification, Lock;
 
-import 'api.dart';
+import 'types.dart';
 import 'channel.dart';
+import 'database.dart';
 import 'protocol.dart';
 import 'shared.dart';
 
@@ -279,6 +280,7 @@ final class DatabaseClient implements WebSqlite {
         _missingFeatures.add(MissingBrowserFeature.fileSystemAccess);
       }
 
+      available.add((StorageMode.inMemory, AccessMode.throughSharedWorker));
       if (!result.sharedCanSpawnDedicated) {
         _missingFeatures
             .add(MissingBrowserFeature.dedicatedWorkersInSharedWorkers);

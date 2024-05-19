@@ -6,7 +6,7 @@ import 'package:sqlite3/common.dart';
 import 'package:sqlite3/wasm.dart' as wasm_vfs;
 import 'package:web/web.dart';
 
-import 'api.dart';
+import 'types.dart';
 import 'channel.dart';
 
 /// Signature of a function allowing structured data to be sent between JS

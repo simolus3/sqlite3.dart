@@ -23,6 +23,7 @@ targets:
         enabled: true
         generate_for:
           - example/worker.dart
+          - web/worker.dart
         options:
           compiler: dart2js
       build_web_compilers:dart2js_archive_extractor:
@@ -34,9 +35,11 @@ targets:
         generate_for:
           include:
             - "example/**"
+            - web/**
           # This one is compiled in the other target
           exclude:
             - "example/worker.dart"
+            - web/worker.dart
       # We have a designated target for this step.
       build_web_compilers:dart2js_archive_extractor:
         enabled: false

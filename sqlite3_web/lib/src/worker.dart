@@ -17,7 +17,7 @@ import 'package:web/web.dart'
 // ignore: implementation_imports
 import 'package:sqlite3/src/wasm/js_interop/new_file_system_access.dart';
 
-import 'api.dart';
+import 'database.dart';
 import 'channel.dart';
 import 'protocol.dart';
 import 'shared.dart';
