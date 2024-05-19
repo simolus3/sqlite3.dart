@@ -2,7 +2,6 @@
 library;
 
 import 'dart:async';
-import 'dart:developer';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -107,7 +106,6 @@ Future<void> _testWith(FutureOr<VirtualFileSystem> Function() open) async {
       final path = '$_fsRoot/foo$i.txt';
       paths.add(path);
 
-      debugger();
       fs.createFile(path);
       expect(fs.exists(path), isTrue);
     }
