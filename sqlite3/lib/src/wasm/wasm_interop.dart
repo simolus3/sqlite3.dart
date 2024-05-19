@@ -485,7 +485,7 @@ int _runVfs(void Function() body) {
 
 extension WrappedMemory on Memory {
   SafeI32Array get asInt32 => SafeI32Array.entireBufferView(buffer);
-  SafeU8Array get asBytes => SafeU8Array.entireBufferView(buffer);
+  SafeU8Array get asBytes => buffer.asUint8Array();
 
   int strlen(int address) {
     assert(address != 0, 'Null pointer dereference');
@@ -516,10 +516,7 @@ extension WrappedMemory on Memory {
 
   String readString(int address, [int? length]) {
     assert(address != 0, 'Null pointer dereference');
-
-    final buffer =
-        asBytes.subarray(address, address + (length ?? strlen(address)));
-    return utf8.decode(buffer.inner.toDart);
+    return utf8.decode(copyOrViewRange(address, length ?? strlen(address)));
   }
 
   String? readNullableString(int address, [int? length]) {
@@ -528,6 +525,14 @@ extension WrappedMemory on Memory {
   }
 
   Uint8List copyRange(Pointer pointer, int length) {
+    return Uint8List.fromList(copyOrViewRange(pointer, length));
+  }
+
+  /// Views a memory region starting at [pointer] with length [length].
+  ///
+  /// The returned [Uint8List] is a view over the native memory when compiled
+  /// with dart2js/DDC and a copy when compiled with dart2wasm.
+  Uint8List copyOrViewRange(Pointer pointer, int length) {
     return asBytes.subarray(pointer, pointer + length).inner.toDart;
   }
 }
@@ -601,7 +606,7 @@ class _InjectedValues {
           final vfs = callbacks.registeredVfs[vfsId]!;
 
           return _runVfs(() {
-            vfs.xRandomness(SafeU8Array.bufferView(memory.buffer, zOut, nByte));
+            vfs.xRandomness(memory.buffer.asUint8Array(zOut, nByte));
           });
         }).toJS,
         'xSleep': ((int vfsId, int micros) {
@@ -634,14 +639,14 @@ class _InjectedValues {
         'xRead': ((int fd, Pointer target, int amount, JSBigInt offset) {
           final file = callbacks.openedFiles[fd]!;
           return _runVfs(() {
-            file.xRead(SafeU8Array.bufferView(memory.buffer, target, amount),
+            file.xRead(memory.buffer.asUint8Array(target, amount),
                 JsBigInt(offset).asDartInt);
           });
         }).toJS,
         'xWrite': ((int fd, Pointer source, int amount, JSBigInt offset) {
           final file = callbacks.openedFiles[fd]!;
           return _runVfs(() {
-            file.xWrite(SafeU8Array.bufferView(memory.buffer, source, amount),
+            file.xWrite(memory.buffer.asUint8Array(source, amount),
                 JsBigInt(offset).asDartInt);
           });
         }).toJS,

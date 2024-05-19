@@ -9,8 +9,17 @@ import 'core.dart';
 // dart2wasm. This causes issues that are very hard to find, so we should be
 // very explicit about where we copy and explain why that's safe.
 
-extension type SafeBuffer(JSArrayBuffer inner) implements JSObject {}
+extension type SafeBuffer(JSArrayBuffer inner) implements JSObject {
+  SafeU8Array asUint8Array([int offsetInBytes = 0, int? length]) {
+    return switch (length) {
+      null => SafeU8Array._bufferView(this, offsetInBytes),
+      var length =>
+        SafeU8Array._bufferViewWithLength(this, offsetInBytes, length),
+    };
+  }
+}
 
+@JS('DataView')
 extension type SafeDataView(JSDataView inner) implements JSObject {
   @JS('')
   external factory SafeDataView.entireBufferView(SafeBuffer buffer);
@@ -21,15 +30,16 @@ extension type SafeDataView(JSDataView inner) implements JSObject {
   external void setBigInt64(int offset, JsBigInt value, bool littleEndian);
 }
 
+@JS('Uint8Array')
 extension type SafeU8Array(JSUint8Array inner) implements JSObject {
   @JS('')
   external factory SafeU8Array.allocate(int length);
 
   @JS('')
-  external factory SafeU8Array.entireBufferView(SafeBuffer buffer);
+  external factory SafeU8Array._bufferView(SafeBuffer buffer, int byteOffset);
 
   @JS('')
-  external factory SafeU8Array.bufferView(
+  external factory SafeU8Array._bufferViewWithLength(
       SafeBuffer buffer, int byteOffset, int length);
 
   external void set(JSTypedArray array, int targetOffset);
@@ -46,8 +56,23 @@ extension type SafeU8Array(JSUint8Array inner) implements JSObject {
   void operator []=(int index, int value) {
     setProperty(index.toJS, value.toJS);
   }
+
+  /// Implementation of [List.setRange] for wrapped u8 arrays.
+  void setRange(int start, int end, SafeU8Array other, [int skipCount = 0]) {
+    if (skipCount == 0 && end - start == other.length) {
+      set(other.inner, start);
+    } else {
+      set(other.subarray(skipCount, skipCount + (end - start)).inner, start);
+    }
+  }
+
+  /// Implementation of [List.setAll] for wrapped u8 arrays.
+  void setAll(int index, SafeU8Array other) {
+    set(other.inner, index);
+  }
 }
 
+@JS('Int32Array')
 extension type SafeI32Array(JSInt32Array inner) implements JSObject {
   @JS('')
   external factory SafeI32Array.entireBufferView(SafeBuffer buffer);

@@ -69,7 +69,7 @@ class _InMemoryFile extends BaseVfsFile {
     if (file == null || file.length <= offset) return 0;
 
     final available = min(buffer.length, file.length - offset);
-    buffer.set(file.subarray(offset, offset + available).inner, 0);
+    buffer.setRange(0, available, file, offset);
     return available;
   }
 
@@ -104,7 +104,7 @@ class _InMemoryFile extends BaseVfsFile {
 
     final result = SafeU8Array.allocate(size);
     if (file != null) {
-      result.set(file.inner, 0);
+      result.setRange(0, min(size, file.length), file);
     }
 
     vfs.fileData[path] = result;
@@ -122,12 +122,12 @@ class _InMemoryFile extends BaseVfsFile {
 
     if (increasedSize <= 0) {
       // Can write directy
-      file.set(buffer.inner, fileOffset);
+      file.setRange(fileOffset, fileOffset + buffer.length, buffer);
     } else {
       // We need to grow the file first
       final newFile = SafeU8Array.allocate(file.length + increasedSize)
-        ..set(file.inner, 0)
-        ..set(buffer.inner, fileOffset);
+        ..setAll(0, file)
+        ..setAll(fileOffset, buffer);
       vfs.fileData[path] = newFile;
     }
   }

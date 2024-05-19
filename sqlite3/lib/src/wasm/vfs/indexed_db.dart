@@ -162,7 +162,7 @@ class AsynchronousIndexedDbFileSystem {
       // transaction. Launch the reader now and wait for all reads later.
       readOperations.add(Future.sync(() async {
         final data = await (row.value as web.Blob).byteBuffer();
-        result.set(SafeU8Array.bufferView(data, 0, length).inner, rowOffset);
+        result.setAll(rowOffset, data.asUint8Array(0, length));
       }));
     }
     await Future.wait(readOperations);
@@ -203,8 +203,8 @@ class AsynchronousIndexedDbFileSystem {
         readOperations.add(Future.sync(() async {
           final data = await blob.byteBuffer();
 
-          target.set(
-              SafeU8Array.bufferView(data, startInRow, lengthToCopy).inner, 0);
+          target.setRange(
+              0, lengthToCopy, data.asUint8Array(startInRow, lengthToCopy));
         }));
 
         if (lengthToCopy >= target.length) {
@@ -222,8 +222,7 @@ class AsynchronousIndexedDbFileSystem {
         readOperations.add(Future.sync(() async {
           final data = await blob.byteBuffer();
 
-          target.set(SafeU8Array.bufferView(data, 0, lengthToCopy).inner,
-              startInTarget);
+          target.setAll(startInTarget, data.asUint8Array(0, lengthToCopy));
         }));
 
         if (lengthToCopy >= target.length - startInTarget) {
@@ -344,21 +343,19 @@ class _FileWriteRequest {
       if (originalContent.length > blockOffset) {
         // We might only be changing parts of a block, so copy the original data
         // that would have been part of this block.
-        block.set(
-          originalContent
-              .subarray(
-                blockOffset,
-                min(originalContent.length, blockOffset + _blockLength),
-              )
-              .inner,
+        block.setAll(
           0,
+          originalContent.subarray(
+            blockOffset,
+            min(originalContent.length, blockOffset + _blockLength),
+          ),
         );
       }
 
       return block;
     });
 
-    block.set(data.inner, offsetInBlock);
+    block.setAll(offsetInBlock, data);
   }
 
   void addWrite(int offset, SafeU8Array data) {
