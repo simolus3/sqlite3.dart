@@ -13,7 +13,7 @@ import 'package:web/web.dart'
         FileSystemReadWriteOptions;
 
 import '../../../constants.dart';
-import '../../../vfs.dart';
+import '../../vfs.dart';
 import '../../js_interop.dart';
 import 'sync_channel.dart';
 
@@ -175,7 +175,7 @@ class VfsWorker {
 
     final syncHandle = await _openForSynchronousAccess(file);
     final bytesRead = syncHandle.readDart(
-        messages.viewByteRange(0, bufferLength),
+        messages.byteView.subarray(0, bufferLength),
         FileSystemReadWriteOptions(at: offset));
 
     return Flags(bytesRead, 0, 0);
@@ -189,7 +189,7 @@ class VfsWorker {
 
     final syncHandle = await _openForSynchronousAccess(file);
     final bytesWritten = syncHandle.writeDart(
-        messages.viewByteRange(0, bufferLength),
+        messages.byteView.subarray(0, bufferLength),
         FileSystemReadWriteOptions(at: offset));
 
     if (bytesWritten != bufferLength) {

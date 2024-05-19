@@ -1,7 +1,7 @@
 import 'dart:math';
-import 'dart:typed_data';
 
-import 'constants.dart';
+import '../constants.dart';
+import 'js_interop/typed_data.dart';
 
 /// An exception thrown by [VirtualFileSystem] implementations written in Dart
 /// to signal that an operation could not be completed.
@@ -68,7 +68,7 @@ abstract base class VirtualFileSystem {
   ///
   /// __Safety warning__: Target may be a direct view over native memory that
   /// must not be used after this function returns.
-  void xRandomness(Uint8List target);
+  void xRandomness(SafeU8Array target);
 
   /// Sleeps for the passed [duration].
   void xSleep(Duration duration);
@@ -95,7 +95,7 @@ abstract interface class VirtualFileSystemFile {
   ///
   /// __Safety warning__: Target may be a direct view over native memory that
   /// must not be used after this function returns.
-  void xRead(Uint8List target, int fileOffset);
+  void xRead(SafeU8Array target, int fileOffset);
 
   /// Writes the [buffer] into this file at [fileOffset], overwriting existing
   /// content or appending to it.
@@ -105,7 +105,7 @@ abstract interface class VirtualFileSystemFile {
   ///
   /// __Safety warning__: Target may be a direct view over native memory that
   /// must not be used after this function returns.
-  void xWrite(Uint8List buffer, int fileOffset);
+  void xWrite(SafeU8Array buffer, int fileOffset);
 
   /// Truncates this file to a size of [size].
   void xTruncate(int size);
@@ -139,7 +139,7 @@ abstract base class BaseVirtualFileSystem extends VirtualFileSystem {
         super(name);
 
   @override
-  void xRandomness(Uint8List target) {
+  void xRandomness(SafeU8Array target) {
     for (var i = 0; i < target.length; i++) {
       target[i] = random.nextInt(1 << 8);
     }
@@ -157,18 +157,18 @@ abstract class BaseVfsFile implements VirtualFileSystemFile {
   ///
   /// __Safety warning__: [bufer] may be a direct view over native memory that
   /// must not be used after this function returns.
-  int readInto(Uint8List buffer, int offset);
+  int readInto(SafeU8Array buffer, int offset);
 
   @override
   int get xDeviceCharacteristics => 0;
 
   @override
-  void xRead(Uint8List target, int fileOffset) {
+  void xRead(SafeU8Array target, int fileOffset) {
     final bytesRead = readInto(target, fileOffset);
 
     if (bytesRead < target.length) {
       // Remaining buffer must be filled with zeroes.
-      target.fillRange(bytesRead, target.length, 0);
+      target.fill(0, bytesRead, target.length);
 
       // And we need to return a short read error
       throw const VfsException(SqlExtendedError.SQLITE_IOERR_SHORT_READ);

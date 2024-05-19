@@ -5,13 +5,12 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:js_interop';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
 import 'package:web/web.dart' as web;
 
 import '../../constants.dart';
-import '../../vfs.dart';
+import '../vfs.dart';
 import '../js_interop.dart';
 import 'memory.dart';
 import 'utils.dart';
@@ -141,12 +140,12 @@ class AsynchronousIndexedDbFileSystem {
     });
   }
 
-  Future<Uint8List> readFully(int fileId) async {
+  Future<SafeU8Array> readFully(int fileId) async {
     final transaction = _database!.transaction(_storesJs, 'readonly');
     final blocks = transaction.objectStore(_blocksStore);
 
     final file = await _readFile(transaction, fileId);
-    final result = Uint8List(file.length);
+    final result = SafeU8Array.allocate(file.length);
 
     final readOperations = <Future<void>>[];
 
@@ -163,7 +162,7 @@ class AsynchronousIndexedDbFileSystem {
       // transaction. Launch the reader now and wait for all reads later.
       readOperations.add(Future.sync(() async {
         final data = await (row.value as web.Blob).byteBuffer();
-        result.setAll(rowOffset, data.asUint8List(0, length));
+        result.setAll(rowOffset, data.asUint8Array(0, length));
       }));
     }
     await Future.wait(readOperations);
@@ -171,7 +170,7 @@ class AsynchronousIndexedDbFileSystem {
     return result;
   }
 
-  Future<int> read(int fileId, int offset, Uint8List target) async {
+  Future<int> read(int fileId, int offset, SafeU8Array target) async {
     final transaction = _database!.transaction(_storesJs, 'readonly');
     final blocks = transaction.objectStore(_blocksStore);
 
@@ -205,10 +204,7 @@ class AsynchronousIndexedDbFileSystem {
           final data = await blob.byteBuffer();
 
           target.setRange(
-            0,
-            lengthToCopy,
-            data.asUint8List(startInRow, lengthToCopy),
-          );
+              0, lengthToCopy, data.asUint8Array(startInRow, lengthToCopy));
         }));
 
         if (lengthToCopy >= target.length) {
@@ -226,7 +222,7 @@ class AsynchronousIndexedDbFileSystem {
         readOperations.add(Future.sync(() async {
           final data = await blob.byteBuffer();
 
-          target.setAll(startInTarget, data.asUint8List(0, lengthToCopy));
+          target.setAll(startInTarget, data.asUint8Array(0, lengthToCopy));
         }));
 
         if (lengthToCopy >= target.length - startInTarget) {
@@ -244,14 +240,14 @@ class AsynchronousIndexedDbFileSystem {
     final blocks = transaction.objectStore(_blocksStore);
     final file = await _readFile(transaction, fileId);
 
-    Future<void> writeBlock(int blockStart, Uint8List block) async {
+    Future<void> writeBlock(int blockStart, SafeU8Array block) async {
       assert(block.length == _blockSize, 'Invalid block size');
 
       // Check if we're overriding (parts of) an existing block
       final cursor = await blocks
           .openCursor(web.IDBKeyRange.only([fileId.toJS, blockStart.toJS].toJS))
           .complete<web.IDBCursorWithValue?>();
-      final blob = web.Blob([block.toJS].toJS);
+      final blob = web.Blob([block].toJS);
 
       if (cursor == null) {
         // There isn't, let's write a new block
@@ -333,23 +329,25 @@ extension type _FileEntry._(JSObject _) implements JSObject {
 class _FileWriteRequest {
   static const _blockLength = AsynchronousIndexedDbFileSystem._blockSize;
 
-  final Uint8List originalContent;
-  final Map<int, Uint8List> replacedBlocks = {};
+  final SafeU8Array originalContent;
+  final Map<int, SafeU8Array> replacedBlocks = {};
   int newFileLength;
 
   _FileWriteRequest(this.originalContent)
       : newFileLength = originalContent.length;
 
-  void _updateBlock(int blockOffset, int offsetInBlock, Uint8List data) {
+  void _updateBlock(int blockOffset, int offsetInBlock, SafeU8Array data) {
     final block = replacedBlocks.putIfAbsent(blockOffset, () {
-      final block = Uint8List(_blockLength);
+      final block = SafeU8Array.allocate(_blockLength);
 
       if (originalContent.length > blockOffset) {
+        // We might only be changing parts of a block, so copy the original data
+        // that would have been part of this block.
         block.setAll(
           0,
-          originalContent.buffer.asUint8List(
-            originalContent.offsetInBytes + blockOffset,
-            min(_blockLength, originalContent.length - blockOffset),
+          originalContent.subarray(
+            blockOffset,
+            min(originalContent.length, blockOffset + _blockLength),
           ),
         );
       }
@@ -360,7 +358,7 @@ class _FileWriteRequest {
     block.setAll(offsetInBlock, data);
   }
 
-  void addWrite(int offset, Uint8List data) {
+  void addWrite(int offset, SafeU8Array data) {
     var offsetInData = 0;
     while (offsetInData < data.length) {
       final offsetInFile = offset + offsetInData;
@@ -379,8 +377,7 @@ class _FileWriteRequest {
         offsetInBlock = 0;
       }
 
-      final chunk = data.buffer
-          .asUint8List(data.offsetInBytes + offsetInData, bytesToWrite);
+      final chunk = data.subarray(offsetInData, offsetInData + bytesToWrite);
       offsetInData += bytesToWrite;
 
       _updateBlock(blockStart, offsetInBlock, chunk);
@@ -392,7 +389,7 @@ class _FileWriteRequest {
 
 class _OffsetAndBuffer {
   final int offset;
-  final Uint8List buffer;
+  final SafeU8Array buffer;
 
   _OffsetAndBuffer(this.offset, this.buffer);
 }
@@ -599,7 +596,7 @@ class _IndexedDbFile implements VirtualFileSystemFile {
   _IndexedDbFile(this.vfs, this.memoryFile, this.path);
 
   @override
-  void xRead(Uint8List target, int fileOffset) {
+  void xRead(SafeU8Array target, int fileOffset) {
     memoryFile.xRead(target, fileOffset);
   }
 
@@ -639,17 +636,18 @@ class _IndexedDbFile implements VirtualFileSystemFile {
   void xUnlock(int mode) => memoryFile.xUnlock(mode);
 
   @override
-  void xWrite(Uint8List buffer, int fileOffset) {
+  void xWrite(SafeU8Array buffer, int fileOffset) {
     vfs._checkClosed();
 
-    final previousContent = vfs._memory.fileData[path] ?? Uint8List(0);
+    final previousContent =
+        vfs._memory.fileData[path] ?? SafeU8Array.allocate(0);
     memoryFile.xWrite(buffer, fileOffset);
 
     if (!vfs._inMemoryOnlyFiles.contains(path)) {
       // We need to copy the buffer for the write because it will become invalid
       // after this synchronous method returns.
-      final copy = Uint8List(buffer.length);
-      copy.setAll(0, buffer);
+      final copy = SafeU8Array.allocate(buffer.length);
+      copy.set(buffer.inner, 0);
 
       vfs._submitWork(_WriteFileWorkItem(vfs, path, previousContent)
         ..writes.add(_OffsetAndBuffer(fileOffset, copy)));
@@ -768,7 +766,7 @@ final class _WriteFileWorkItem extends _IndexedDbWorkItem {
   final IndexedDbFileSystem fileSystem;
   final String path;
 
-  final Uint8List originalContent;
+  final SafeU8Array originalContent;
   final List<_OffsetAndBuffer> writes = [];
 
   _WriteFileWorkItem(this.fileSystem, this.path, this.originalContent);

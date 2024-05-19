@@ -187,17 +187,18 @@ class WasmBindings {
     return function;
   }
 
-  Pointer allocateBytes(List<int> bytes, {int additionalLength = 0}) {
+  Pointer allocateBytes(SafeU8Array bytes, {int additionalLength = 0}) {
     final ptr = malloc(bytes.length + additionalLength);
     memory.asBytes
-      ..setRange(ptr, ptr + bytes.length, bytes)
-      ..fillRange(ptr + bytes.length, ptr + bytes.length + additionalLength, 0);
+      ..set(bytes.inner, ptr)
+      ..fill(0, ptr + bytes.length, ptr + bytes.length + additionalLength);
 
     return ptr;
   }
 
   Pointer allocateZeroTerminated(String string) {
-    return allocateBytes(utf8.encode(string), additionalLength: 1);
+    return allocateBytes(SafeU8Array(utf8.encode(string).toJS),
+        additionalLength: 1);
   }
 
   Pointer malloc(int size) {
@@ -483,17 +484,15 @@ int _runVfs(void Function() body) {
 }
 
 extension WrappedMemory on Memory {
-  ByteBuffer get dartBuffer => buffer.toDart;
-
-  Uint8List get asBytes => buffer.toDart.asUint8List();
+  SafeI32Array get asInt32 => SafeI32Array.entireBufferView(buffer);
+  SafeU8Array get asBytes => buffer.asUint8Array();
 
   int strlen(int address) {
     assert(address != 0, 'Null pointer dereference');
-
-    final bytes = dartBuffer.asUint8List(address);
+    final bytes = asBytes;
 
     var length = 0;
-    while (bytes[length] != 0) {
+    while (bytes[address + length] != 0) {
       length++;
     }
 
@@ -502,36 +501,39 @@ extension WrappedMemory on Memory {
 
   int int32ValueOfPointer(Pointer pointer) {
     assert(pointer != 0, 'Null pointer dereference');
-    return dartBuffer.asInt32List()[pointer >> 2];
+    return asInt32[pointer >> 2];
   }
 
   void setInt32Value(Pointer pointer, int value) {
     assert(pointer != 0, 'Null pointer dereference');
-    dartBuffer.asInt32List()[pointer >> 2] = value;
+    asInt32[pointer >> 2] = value;
   }
 
   void setInt64Value(Pointer pointer, JsBigInt value) {
     assert(pointer != 0, 'Null pointer dereference');
-    dartBuffer.asByteData().setBigInt64(pointer, value, true);
+    SafeDataView.entireBufferView(buffer).setBigInt64(pointer, value, true);
   }
 
   String readString(int address, [int? length]) {
     assert(address != 0, 'Null pointer dereference');
-    return utf8
-        .decode(dartBuffer.asUint8List(address, length ?? strlen(address)));
+    return utf8.decode(copyOrViewRange(address, length ?? strlen(address)));
   }
 
   String? readNullableString(int address, [int? length]) {
     if (address == 0) return null;
-
-    return utf8
-        .decode(dartBuffer.asUint8List(address, length ?? strlen(address)));
+    return readString(address, length);
   }
 
   Uint8List copyRange(Pointer pointer, int length) {
-    final list = Uint8List(length);
-    list.setAll(0, dartBuffer.asUint8List(pointer, length));
-    return list;
+    return Uint8List.fromList(copyOrViewRange(pointer, length));
+  }
+
+  /// Views a memory region starting at [pointer] with length [length].
+  ///
+  /// The returned [Uint8List] is a view over the native memory when compiled
+  /// with dart2js/DDC and a copy when compiled with dart2wasm.
+  Uint8List copyOrViewRange(Pointer pointer, int length) {
+    return asBytes.subarray(pointer, pointer + length).inner.toDart;
   }
 }
 
@@ -596,7 +598,7 @@ class _InjectedValues {
             }
 
             memory.asBytes
-              ..setAll(zOut, encoded)
+              ..set(encoded.toJS, zOut)
               ..[zOut + encoded.length] = 0;
           });
         }).toJS,
@@ -604,7 +606,7 @@ class _InjectedValues {
           final vfs = callbacks.registeredVfs[vfsId]!;
 
           return _runVfs(() {
-            vfs.xRandomness(memory.buffer.toDart.asUint8List(zOut, nByte));
+            vfs.xRandomness(memory.buffer.asUint8Array(zOut, nByte));
           });
         }).toJS,
         'xSleep': ((int vfsId, int micros) {
@@ -637,14 +639,14 @@ class _InjectedValues {
         'xRead': ((int fd, Pointer target, int amount, JSBigInt offset) {
           final file = callbacks.openedFiles[fd]!;
           return _runVfs(() {
-            file.xRead(memory.buffer.toDart.asUint8List(target, amount),
+            file.xRead(memory.buffer.asUint8Array(target, amount),
                 JsBigInt(offset).asDartInt);
           });
         }).toJS,
         'xWrite': ((int fd, Pointer source, int amount, JSBigInt offset) {
           final file = callbacks.openedFiles[fd]!;
           return _runVfs(() {
-            file.xWrite(memory.buffer.toDart.asUint8List(source, amount),
+            file.xWrite(memory.buffer.asUint8Array(source, amount),
                 JsBigInt(offset).asDartInt);
           });
         }).toJS,

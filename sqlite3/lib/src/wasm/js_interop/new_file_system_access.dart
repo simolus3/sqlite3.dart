@@ -1,10 +1,10 @@
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
-import 'dart:typed_data';
 
 import 'package:web/web.dart';
 
 import 'core.dart';
+import 'typed_data.dart';
 
 @JS('navigator')
 external Navigator get _navigator;
@@ -24,19 +24,19 @@ extension StorageManagerApi on StorageManager {
 }
 
 extension FileSystemSyncAccessHandleApi on FileSystemSyncAccessHandle {
-  int readDart(Uint8List buffer, [FileSystemReadWriteOptions? options]) {
+  int readDart(SafeU8Array buffer, [FileSystemReadWriteOptions? options]) {
     if (options == null) {
-      return read(buffer.toJS);
+      return read(buffer);
     } else {
-      return read(buffer.toJS, options);
+      return read(buffer, options);
     }
   }
 
-  int writeDart(Uint8List buffer, [FileSystemReadWriteOptions? options]) {
+  int writeDart(SafeU8Array buffer, [FileSystemReadWriteOptions? options]) {
     if (options == null) {
-      return write(buffer.toJS);
+      return write(buffer);
     } else {
-      return write(buffer.toJS, options);
+      return write(buffer, options);
     }
   }
 }

@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:web/web.dart' as web;
 
 import '../implementation/sqlite3.dart';
-import '../vfs.dart';
+import 'vfs.dart';
 import 'bindings.dart';
 import 'js_interop.dart';
 import 'wasm_interop.dart';

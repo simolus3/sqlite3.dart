@@ -5,6 +5,7 @@ import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
 import 'core.dart';
+import 'typed_data.dart';
 
 import 'package:web/web.dart' as web;
 
@@ -71,7 +72,7 @@ extension type MemoryDescriptor._(JSObject _) implements JSObject {
 extension type Memory._(JSObject _) implements JSObject {
   external factory Memory(MemoryDescriptor descriptor);
 
-  external JSArrayBuffer get buffer;
+  external SafeBuffer get buffer;
 }
 
 @JS('WebAssembly.Global')

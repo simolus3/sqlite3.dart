@@ -1,12 +1,14 @@
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:js_interop';
 import 'dart:typed_data';
 
-import 'package:sqlite3/src/vfs.dart';
+import 'package:sqlite3/src/wasm/vfs.dart';
 
 import '../constants.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
+import 'js_interop/typed_data.dart';
 import 'wasm_interop.dart' as wasm;
 import 'wasm_interop.dart';
 
@@ -134,7 +136,7 @@ final class WasmDatabase extends RawSqliteDatabase {
 
   @override
   RawStatementCompiler newCompiler(List<int> utf8EncodedSql) {
-    final ptr = bindings.allocateBytes(utf8EncodedSql);
+    final ptr = bindings.allocateBytes(_viewOrCopyByteList(utf8EncodedSql));
 
     return WasmStatementCompiler(this, ptr);
   }
@@ -148,7 +150,8 @@ final class WasmDatabase extends RawSqliteDatabase {
     required int eTextRep,
     required RawCollation collation,
   }) {
-    final ptr = bindings.allocateBytes(collationName, additionalLength: 1);
+    final ptr = bindings.allocateBytes(SafeU8Array(collationName.toJS),
+        additionalLength: 1);
     final result = bindings.create_collation(
         db,
         ptr,
@@ -170,7 +173,8 @@ final class WasmDatabase extends RawSqliteDatabase {
     RawXStep? xStep,
     RawXFinal? xFinal,
   }) {
-    final ptr = bindings.allocateBytes(functionName, additionalLength: 1);
+    final ptr = bindings.allocateBytes(SafeU8Array(functionName.toJS),
+        additionalLength: 1);
 
     final int result;
     if (xFunc != null) {
@@ -209,7 +213,8 @@ final class WasmDatabase extends RawSqliteDatabase {
     required RawXFinal xValue,
     required RawXStep xInverse,
   }) {
-    final ptr = bindings.allocateBytes(functionName, additionalLength: 1);
+    final ptr = bindings.allocateBytes(SafeU8Array(functionName.toJS),
+        additionalLength: 1);
     final result = bindings.create_window_function(
         db,
         ptr,
@@ -319,7 +324,7 @@ final class WasmStatement extends RawSqliteStatement {
 
   @override
   void sqlite3_bind_blob64(int index, List<int> value) {
-    final ptr = bindings.allocateBytes(value);
+    final ptr = bindings.allocateBytes(_viewOrCopyByteList(value));
     _allocatedArguments.add(ptr);
 
     bindings.sqlite3_bind_blob64(stmt, index, ptr, value.length, 0);
@@ -373,7 +378,7 @@ final class WasmStatement extends RawSqliteStatement {
   @override
   void sqlite3_bind_text(int index, String value) {
     final encoded = utf8.encode(value);
-    final ptr = bindings.allocateBytes(encoded);
+    final ptr = bindings.allocateBytes(SafeU8Array(encoded.toJS));
     _allocatedArguments.add(ptr);
 
     bindings.sqlite3_bind_text(stmt, index, ptr, encoded.length, 0);
@@ -494,7 +499,7 @@ final class WasmContext extends RawSqliteContext {
 
   @override
   void sqlite3_result_blob64(List<int> blob) {
-    final ptr = bindings.allocateBytes(blob);
+    final ptr = bindings.allocateBytes(_viewOrCopyByteList(blob));
 
     bindings.sqlite3_result_blob64(
         context, ptr, blob.length, SqlSpecialDestructor.SQLITE_TRANSIENT);
@@ -509,7 +514,7 @@ final class WasmContext extends RawSqliteContext {
   @override
   void sqlite3_result_error(String message) {
     final encoded = utf8.encode(message);
-    final ptr = bindings.allocateBytes(encoded);
+    final ptr = bindings.allocateBytes(SafeU8Array(encoded.toJS));
 
     bindings.sqlite3_result_error(context, ptr, encoded.length);
     bindings.free(ptr);
@@ -533,7 +538,7 @@ final class WasmContext extends RawSqliteContext {
   @override
   void sqlite3_result_text(String text) {
     final encoded = utf8.encode(text);
-    final ptr = bindings.allocateBytes(encoded);
+    final ptr = bindings.allocateBytes(SafeU8Array(encoded.toJS));
 
     bindings.sqlite3_result_text(
         context, ptr, encoded.length, SqlSpecialDestructor.SQLITE_TRANSIENT);
@@ -600,5 +605,13 @@ class WasmValueList extends ListBase<WasmValue> {
   @override
   void operator []=(int index, WasmValue value) {
     throw UnsupportedError('Setting element in WasmValueList');
+  }
+}
+
+SafeU8Array _viewOrCopyByteList(List<int> bytes) {
+  if (bytes is Uint8List) {
+    return SafeU8Array(bytes.toJS);
+  } else {
+    return SafeU8Array(Uint8List.fromList(bytes).toJS);
   }
 }
