@@ -15,6 +15,8 @@ final class RemoteDatabase implements Database {
   final WorkerConnection connection;
   final int databaseId;
 
+  var _isClosed = false;
+
   StreamSubscription<Notification>? _notificationSubscription;
   final StreamController<SqliteUpdate> _updates = StreamController.broadcast();
 
@@ -41,15 +43,18 @@ final class RemoteDatabase implements Database {
   }
 
   void _requestUpdates(bool sendUpdates) {
-    connection.sendRequest(
-      UpdateStreamRequest(
-          action: sendUpdates, requestId: 0, databaseId: databaseId),
-      MessageType.simpleSuccessResponse,
-    );
+    if (!_isClosed) {
+      connection.sendRequest(
+        UpdateStreamRequest(
+            action: sendUpdates, requestId: 0, databaseId: databaseId),
+        MessageType.simpleSuccessResponse,
+      );
+    }
   }
 
   @override
   Future<void> dispose() async {
+    _isClosed = true;
     _updates.close();
     await connection.sendRequest(
         CloseDatabase(requestId: 0, databaseId: databaseId),
