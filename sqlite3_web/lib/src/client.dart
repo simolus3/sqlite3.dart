@@ -365,7 +365,7 @@ final class DatabaseClient implements WebSqlite {
 
     // Enum values are ordered by preferrability, so just pick the best option
     // left.
-    availableImplementations.sort(_preferrableMode);
+    availableImplementations.sort(preferrableMode);
 
     final (storage, access) = availableImplementations.firstOrNull ??
         (StorageMode.inMemory, AccessMode.inCurrentContext);
@@ -384,17 +384,17 @@ final class DatabaseClient implements WebSqlite {
   ///
   /// Returns negative values if `a` is more preferrable than `b` and positive
   /// values if `b` is more preferrable than `a`.
-  static int _preferrableMode(
+  static int preferrableMode(
       (StorageMode, AccessMode) a, (StorageMode, AccessMode) b) {
     // First, prefer OPFS (an actual file system API) over IndexedDB, a custom
     // file system implementation.
     if (a.$1 != b.$1) {
-      return a.$1.index.compareTo(b.$2.index);
+      return a.$1.index.compareTo(b.$1.index);
     }
 
     // In a storage API, prefer shared workers which cause less contention
     // because we can actually share database resources between tabs.
-    return a.$2.index.compareTo(a.$2.index);
+    return a.$2.index.compareTo(b.$2.index);
   }
 }
 
