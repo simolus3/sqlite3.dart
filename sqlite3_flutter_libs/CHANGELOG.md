@@ -1,5 +1,9 @@
 ## 0.5.22
 
+- Enable extension loading.
+
+## 0.5.22
+
 - Upgrade sqlite to version `3.46.0`.
 
 ## 0.5.21
@@ -41,7 +45,6 @@
 ## 0.5.12
 
 - Upgrade sqlite to version `3.40.0`.
-
 
 ## 0.5.11+1
 
