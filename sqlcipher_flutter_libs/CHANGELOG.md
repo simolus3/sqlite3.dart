@@ -1,6 +1,6 @@
 ## 0.6.3
 
-- Enable extension loading.
+- Enable extension loading on Windows and Linux.
 
 ## 0.6.2
 

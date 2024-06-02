@@ -1,6 +1,6 @@
 ## 0.5.22
 
-- Enable extension loading.
+- Enable extension loading on Windows and Linux.
 
 ## 0.5.22
 
