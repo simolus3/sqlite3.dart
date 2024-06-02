@@ -1,4 +1,4 @@
-## 0.5.22
+## 0.5.23
 
 - Enable extension loading on Windows and Linux.
 
