@@ -1,6 +1,7 @@
 ## 0.6.3
 
-- Enable extension loading on Windows and Linux.
+- Enable extension loading on Windows and Linux to match the compile options
+  used on other platforms.
 
 ## 0.6.2
 

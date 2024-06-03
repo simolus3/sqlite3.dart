@@ -1,6 +1,7 @@
 ## 0.5.23
 
-- Enable extension loading on Windows and Linux.
+- Enable extension loading on Windows and Linux to match the compile options
+  used on other platforms.
 
 ## 0.5.22
 
