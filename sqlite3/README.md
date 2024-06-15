@@ -184,14 +184,14 @@ On macOS, I'm installing `cmake`, `llvm` and `binaryen` through Homebrew. Afterw
 wasi sysroot and the compiler runtimes from the Wasi SDK project:
 
 ```
-curl -sL https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/libclang_rt.builtins-wasm32-wasi-20.0.tar.gz | \
-  tar x -zf - -C /opt/homebrew/opt/llvm/lib/clang/17*
+curl -sL https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/libclang_rt.builtins-wasm32-wasi-22.0.tar.gz | \
+  tar x -zf - -C /opt/homebrew/opt/llvm/lib/clang/18*
 
-curl -sS -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sysroot-20.0.tar.gz | \
+curl -sS -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/wasi-sysroot-22.0.tar.gz | \
   sudo tar x -zf - -C /opt
 ```
 
-Replace `clang/17` with the correct directory if you're using a different version.
+Replace `clang/18` with the correct directory if you're using a different version.
 
 Then, set up the build with
 
