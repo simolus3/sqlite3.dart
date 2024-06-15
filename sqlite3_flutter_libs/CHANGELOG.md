@@ -1,3 +1,7 @@
+## 0.5.24
+
+- Enable the [dbstat](https://www.sqlite.org/dbstat.html) compile-time option.
+
 ## 0.5.23
 
 - Enable extension loading on Windows and Linux to match the compile options

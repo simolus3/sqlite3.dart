@@ -43,6 +43,7 @@ target_link_libraries(${PLUGIN_NAME} PRIVATE flutter)
 
 # Note: Keep in sync with https://github.com/simolus3/sqlite-native-libraries/blob/master/sqlite3-native-library/cpp/CMakeLists.txt
 target_compile_definitions(${PLUGIN_NAME} PRIVATE
+  SQLITE_ENABLE_DBSTAT_VTAB
   SQLITE_ENABLE_FTS5
   SQLITE_ENABLE_RTREE
   SQLITE_DQS=0
