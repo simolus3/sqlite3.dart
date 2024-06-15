@@ -18,8 +18,7 @@ void main() {
   Future<void> handleEvent(web.MessageEvent event) async {
     final data = event.data;
 
-    // should be toDart, https://github.com/dart-lang/sdk/issues/55024
-    if (data.equals('start'.toJS) as bool) {
+    if (data.equals('start'.toJS).toDart) {
       final options = WasmVfs.createOptions();
       final worker = web.Worker(''); // Clone this worker
       worker.postMessage(options);

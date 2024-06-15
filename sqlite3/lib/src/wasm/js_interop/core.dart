@@ -33,10 +33,8 @@ extension type JsBigInt(JSBigInt _jsBigInt) implements JSBigInt {
     const maxSafeInteger = 9007199254740992;
     const minSafeInteger = -maxSafeInteger;
 
-    // These should use toDart instead of as bool after
-    //  https://github.com/dart-lang/sdk/issues/55024
-    return minSafeInteger.toJS.lessThanOrEqualTo(_jsBigInt) as bool &&
-        _jsBigInt.lessThanOrEqualTo(maxSafeInteger.toJS) as bool;
+    return minSafeInteger.toJS.lessThanOrEqualTo(_jsBigInt).toDart &&
+        _jsBigInt.lessThanOrEqualTo(maxSafeInteger.toJS).toDart;
   }
 
   Object toDart() {
