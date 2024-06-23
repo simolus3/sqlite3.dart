@@ -1,3 +1,8 @@
+## 2.4.4
+
+- Add a temporary workaround for [a Dart bug](https://github.com/dart-lang/sdk/issues/56064)
+  causing spurious exceptions when databases are closed and a debugger is attached.
+
 ## 2.4.3
 
 - Migrate away from legacy web APIs: `dart:html`, `dart:js`, `dart:indexeddb`

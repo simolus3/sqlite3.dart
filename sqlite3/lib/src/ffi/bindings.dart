@@ -299,10 +299,13 @@ final class FfiDatabase extends RawSqliteDatabase {
 
   static Pointer<NativeFunction<Void Function(Pointer<Void>)>> _xDestroy(
       List<NativeCallable> callables) {
-    void destroy(Pointer<Void> _) {
+    int destroy(Pointer<Void> _) {
       for (final callable in callables) {
         callable.close();
       }
+
+      // TODO: Remove and change to void after Dart 3.5 or https://github.com/dart-lang/sdk/issues/56064
+      return 0;
     }
 
     final callable =
@@ -711,7 +714,9 @@ extension on RawXFunc {
   NativeCallable<_XFunc> toNative(Bindings bindings) {
     return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx, int nArgs,
         Pointer<Pointer<sqlite3_value>> args) {
-      return this(FfiContext(bindings, ctx), _ValueList(nArgs, args, bindings));
+      this(FfiContext(bindings, ctx), _ValueList(nArgs, args, bindings));
+      // TODO: Remove and change to void after Dart 3.5 or https://github.com/dart-lang/sdk/issues/56064
+      return 0;
     })
       ..keepIsolateAlive = false;
   }
@@ -721,9 +726,10 @@ extension on RawXFinal {
   NativeCallable<_XFinal> toNative(Bindings bindings, bool clean) {
     return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx) {
       final context = FfiContext(bindings, ctx);
-      final res = this(context);
+      this(context);
       if (clean) context.freeContext();
-      return res;
+      // TODO: Remove and change to void after Dart 3.5 or https://github.com/dart-lang/sdk/issues/56064
+      return 0;
     })
       ..keepIsolateAlive = false;
   }
@@ -757,12 +763,9 @@ extension on RawUpdateHook {
         final tableName = table.readString();
         this(kind, tableName, rowid);
 
-        // This closure needs to return `void` exactly to make the FFI analyzer
-        // happy.
-        return _returnsVoid();
+        // TODO: Remove and change to void after Dart 3.5 or https://github.com/dart-lang/sdk/issues/56064
+        return 0;
       },
     )..keepIsolateAlive = false;
   }
-
-  static void _returnsVoid() {}
 }
