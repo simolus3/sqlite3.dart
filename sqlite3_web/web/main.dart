@@ -33,6 +33,8 @@ void main() {
     print('selected storage: ${database.storage} through ${database.access}');
     print('missing features: ${database.features.missingFeatures}');
   });
+
+  document.body!.children.add(DivElement()..id = 'ready');
 }
 
 void _addCallbackForWebDriver(
@@ -105,6 +107,6 @@ Future<JSAny?> _open(String? implementationName) async {
 }
 
 Future<JSAny?> _exec(String? sql) async {
-  database!.execute(sql!);
+  await database!.execute(sql!);
   return null;
 }

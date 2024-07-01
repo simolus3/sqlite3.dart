@@ -281,7 +281,9 @@ final class DatabaseClient implements WebSqlite {
 
       if (result.canUseOpfs) {
         available.add((StorageMode.opfs, AccessMode.throughSharedWorker));
-      } else {
+      } else if (result.sharedCanSpawnDedicated) {
+        // Only report OPFS as unavailable if we can spawn dedicated workers.
+        // If we can't, it's known that we can't use OPFS.
         _missingFeatures.add(MissingBrowserFeature.fileSystemAccess);
       }
 

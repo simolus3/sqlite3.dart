@@ -72,7 +72,7 @@ void main() {
   for (final browser in Browser.values) {
     group(browser.name, () {
       late Process driverProcess;
-      late DriftWebDriver driver;
+      late TestWebDriver driver;
 
       setUpAll(() async => driverProcess = await browser.spawnDriver());
       tearDownAll(() => driverProcess.kill());
@@ -83,8 +83,19 @@ void main() {
           uri: browser.driverUri,
         );
 
-        driver = DriftWebDriver(server, rawDriver);
+        driver = TestWebDriver(server, rawDriver);
         await driver.driver.get('http://localhost:8080/');
+
+        while (true) {
+          try {
+            // This element is created after main() has completed, make sure
+            // all the callbacks have been installed.
+            await driver.driver.findElement(By.id('ready'));
+            break;
+          } on NoSuchElementException {
+            continue;
+          }
+        }
       });
 
       tearDown(() => driver.driver.quit());
@@ -95,6 +106,16 @@ void main() {
         expect(result.missingFeatures, browser.missingFeatures);
         expect(result.impls, browser.availableImplementations);
       });
+
+      for (final (storage, access) in browser.availableImplementations) {
+        test('$storage through $access', () async {
+          await driver.openDatabase((storage, access));
+          await driver.execute('CREATE TABLE foo (bar TEXT);');
+          final event = driver.waitForUpdate();
+          await driver.execute("INSERT INTO foo (bar) VALUES ('hello');");
+          await event;
+        });
+      }
     });
   }
 }

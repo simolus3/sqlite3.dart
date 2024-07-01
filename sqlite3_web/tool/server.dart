@@ -98,11 +98,11 @@ class TestAssetServer {
   }
 }
 
-class DriftWebDriver {
+class TestWebDriver {
   final TestAssetServer server;
   final WebDriver driver;
 
-  DriftWebDriver(this.server, this.driver);
+  TestWebDriver(this.server, this.driver);
 
   Future<
       ({
