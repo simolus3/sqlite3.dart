@@ -120,11 +120,8 @@ jobs:
     needs: [analyze]
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-11, macos-12]
-#        dart: [stable, dev]
-        # Testing on Dart dev is currently disabled because it crashes on macOS,
-        # see https://github.com/dart-lang/sdk/issues/53928
-        dart: [stable]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        dart: [stable, dev]
 
     name: Unit tests with Dart ${{ matrix.dart }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
