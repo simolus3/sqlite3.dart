@@ -31,8 +31,8 @@ jobs:
           sudo tar x -zf - -C /opt
       - name: Compile sqlite3.wasm on macOS
         if: runner.os == 'macOS'
+        working-directory: ./sqlite3
         run: |
-          cd sqlite3
           cmake -Dwasi_sysroot=/opt/wasi-sysroot -Dclang=/opt/homebrew/opt/llvm/bin/clang -S assets/wasm -B .dart_tool/sqlite3_build --toolchain toolchain.cmake
           cmake --build .dart_tool/sqlite3_build/ -t output -j
       - name: Upload binary
