@@ -1,0 +1,83 @@
+name: Build and upload SQLite3 WASM
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  compile_sqlite3_wasm:
+    strategy:
+      matrix:
+        os: [macos-latest]
+
+    name: Compile sqlite3 wasm for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Setup Homebrew
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+          channel: "stable"
+      - name: Setup macOS
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake
+          brew install llvm
+          brew install binaryen
+          curl -sL https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/libclang_rt.builtins-wasm32-wasi-22.0.tar.gz | \
+          tar x -zf - -C /opt/homebrew/opt/llvm/lib/clang/18*
+          curl -sS -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/wasi-sysroot-22.0.tar.gz | \
+          sudo tar x -zf - -C /opt
+      - name: Install Rust Nightly
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2024-05-18
+          components: rust-src
+      - name: Set environment variable
+        run: |
+          echo "/opt/homebrew/opt/llvm/bin" >> $GITHUB_PATH
+      - name: Flutter pub get
+        working-directory: sqlite3
+        run: |
+          flutter pub get
+      - name: Compile sqlite3.wasm on macOS
+        if: runner.os == 'macOS'
+        working-directory: sqlite3
+        run: |
+          cmake -Dwasi_sysroot=/opt/wasi-sysroot -Dclang=/opt/homebrew/opt/llvm/bin/clang -S assets/wasm -B .dart_tool/sqlite3_build --toolchain toolchain.cmake
+          cmake --build .dart_tool/sqlite3_build/ -t output -j
+      - name: Upload sqlite3 binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite3.wasm
+          path: sqlite3/.dart_tool/sqlite3_build/sqlite3.wasm
+      - name: Upload sqlite3 debug binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite3.debug.wasm
+          path: sqlite3/.dart_tool/sqlite3_build/sqlite3.debug.wasm
+      - name: Upload sqlite3 binary
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          overwrite: true
+          file: sqlite3/.dart_tool/sqlite3_build/sqlite3.wasm
+          asset_name: sqlite3.wasm
+          body: "SQLite3 WASM binary"
+          tag: ${{ github.ref_name }}
+      - name: Upload sqlite3 debug binary
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          overwrite: true
+          file: sqlite3/.dart_tool/sqlite3_build/sqlite3.debug.wasm
+          asset_name: sqlite3.debug.wasm
+          tag: ${{ github.ref_name }}
