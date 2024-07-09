@@ -1,281 +1,41 @@
-name: CI
+name: Build SQLite3 WASM
 
 on:
   push:
-    branches: ['**']
+    branches: ["**"]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  compile_sqlite3:
+  compile_sqlite3_wasm:
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        os: [macos-latest]
 
-    name: Compile sqlite3 for ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    env:
-      SQLITE_YEAR: "2023"
-      SQLITE_VERSION: "3420000"
-
-    steps:
-    - uses: actions/cache@v4
-      id: cache_sqlite_build
-      with:
-        path: sqlite/out
-        key: sqlite-${{ runner.os }}-${{ env.SQLITE_VERSION }}
-    - name: Compile sqlite3 on Linux
-      if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Linux'
-      run: |
-        mkdir sqlite
-        cd sqlite
-        curl https://sqlite.org/$SQLITE_YEAR/sqlite-autoconf-$SQLITE_VERSION.tar.gz --output sqlite.tar.gz
-        tar zxvf sqlite.tar.gz
-        cd sqlite-autoconf-$SQLITE_VERSION
-        ./configure
-        make -j
-        mkdir ../out
-        cp sqlite3 ../out
-        cp .libs/libsqlite3.so ../out
-    - name: Compile sqlite3 on macOS
-      if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'macOS'
-      run: |
-        mkdir sqlite
-        cd sqlite
-        curl https://sqlite.org/$SQLITE_YEAR/sqlite-autoconf-$SQLITE_VERSION.tar.gz --output sqlite.tar.gz
-        tar zxvf sqlite.tar.gz
-        cd sqlite-autoconf-$SQLITE_VERSION
-        ./configure
-        make -j
-        mkdir ../out
-        cp sqlite3 ../out
-        cp .libs/libsqlite3.dylib ../out
-    - uses: ilammy/msvc-dev-cmd@v1
-      if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Windows'
-    - name: Compile sqlite3 on Windows
-      if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Windows'
-      run: |
-        mkdir sqlite
-        cd sqlite
-        curl https://sqlite.org/$Env:SQLITE_YEAR/sqlite-autoconf-$Env:SQLITE_VERSION.tar.gz --output sqlite.tar.gz
-        tar zxvf sqlite.tar.gz
-        cd sqlite-autoconf-$Env:SQLITE_VERSION
-        ./configure
-        nmake /f Makefile.msc sqlite3.c
-        "#define SQLITE_API __declspec(dllexport)" | Out-File -FilePath sqlite3e.c
-        '#include "sqlite3.c"' | Out-File -FilePath sqlite3e.c -Append
-        cl sqlite3e.c -link -dll -out:sqlite3.dll
-        mkdir ../out
-        cp sqlite3.dll ../out
-        cp sqlite3.h ../out
-        cp sqlite3ext.h ../out
-    - name: Upload built sqlite3 binaries
-      uses: actions/upload-artifact@v4
-      with:
-        name: sqlite3-${{ runner.os }}
-        path: sqlite/out
-        if-no-files-found: error
-        retention-days: 1
-
-  analyze:
-    needs: [compile_sqlite3]
-    strategy:
-      matrix:
-        package: [sqlite3]
-        dart: [stable]
-
-    name: Analyze on Dart ${{ matrix.dart }}
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: dart-lang/setup-dart@v1
-      with:
-        sdk: ${{ matrix.dart }}
-    - uses: actions/cache@v4
-      with:
-        path: "${{ env.PUB_CACHE }}"
-        key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
-        restore-keys: |
-          dart-dependencies-${{ matrix.dart }}-
-          dart-dependencies-
-
-    - name: Pub get
-      run: dart pub get
-      working-directory: ${{ matrix.package }}
-
-    - name: Format dart
-      run: dart format --set-exit-if-changed .
-      working-directory: ${{ matrix.package }}
-
-    - name: Format native
-      run: clang-format --Werror --dry-run --style=google assets/sqlite3.h assets/wasm/*.{c,h} test/**/*.c
-      if: ${{ matrix.package == 'sqlite3' }}
-      working-directory: sqlite3
-
-    - name: Analyze
-      run: dart analyze --fatal-infos lib/ test/
-      working-directory: ${{ matrix.package }}
-
-  test:
-    needs: [analyze]
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        dart: [stable, dev]
-
-    name: Unit tests with Dart ${{ matrix.dart }} on ${{ matrix.os }}
+    name: Compile sqlite3 wasm for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: dart-lang/setup-dart@v1
-      with:
-        sdk: ${{ matrix.dart }}
-
-    - name: Download compiled sqlite3
-      if: runner.os == 'Linux' || runner.os == 'Windows' || runner.os == 'macOS'
-      uses: actions/download-artifact@v4
-      with:
-        name: sqlite3-${{ runner.os }}
-        path: sqlite/out
-
-    - name: Install compiled sqlite3 (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        chmod a+x sqlite/out/sqlite3
-        realpath sqlite/out >> $GITHUB_PATH
-        echo "LD_LIBRARY_PATH=$(realpath sqlite/out)" >> $GITHUB_ENV
-    - name: Install compiled sqlite3 (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        chmod a+x sqlite/out/sqlite3
-        echo "$(pwd)/sqlite/out" >> $GITHUB_PATH
-        echo "DYLD_LIBRARY_PATH=$(pwd)/sqlite/out" >> $GITHUB_ENV
-    - uses: ilammy/msvc-dev-cmd@v1
-      if: runner.os == 'Windows'
-    - name: Install compiled sqlite3 (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        echo $env:path
-        Resolve-Path -Path "sqlite/out" >> $env:GITHUB_PATH
-        "INCLUDE=" + $env:INCLUDE + ";" + (Resolve-Path -Path "sqlite/out") >> $env:GITHUB_EN
-
-    - uses: actions/cache@v4
-      with:
-        path: "${{ env.PUB_CACHE }}"
-        key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
-        restore-keys: |
-          dart-dependencies-${{ matrix.dart }}-
-          dart-dependencies-
-
-    - name: Test
-      run: |
-        dart pub get
-        dart test -P ci
-      working-directory: sqlite3/
-
-    - name: Web tests
-      run: |
-        curl https://storage.googleapis.com/simon-public-euw3/assets/sqlite3/wasm/2.4.3/sqlite3.wasm -o example/web/sqlite3.wasm
-        dart test -P web -r expanded
-      # If browsers behave differently on different platforms, surely that's not our fault...
-      # So, only run browser tests on Linux to be faster.
-      # todo: Something broke Dart web tests in Dart 2.18, it looks like this is related to finalizers
-      if: runner.os == 'Linux'
-      working-directory: sqlite3/
-
-# The integration tests for android are currently broken (the emulator doesn't want to
-# start up...)
-#
-#  integration_test_android:
-#    runs-on: macos-latest
-#    needs: [test]
-#    strategy:
-#      matrix:
-#        test:
-#          - flutter_libs
-#          - sqlcipher_flutter
-#    steps:
-#      - uses: actions/checkout@v4
-#      - uses: subosito/flutter-action@v2
-#        with:
-#          channel: dev
-#      - name: pub get
-#        working-directory: "integration_tests/${{ matrix.test }}"
-#        run: flutter pub get
-#
-#      - name: run tests
-#        uses: reactivecircus/android-emulator-runner@v2
-#        with:
-#          api-level: 29
-#          script: flutter test integration_test
-#          working-directory: "integration_tests/${{ matrix.test }}"
-
-  integration_test_linux:
-    needs: [test]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2.4.0
-      - name: Setup Flutter
+      - name: Set up Homebrew
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+      - name: Compile sqlite3 on macOS
+        if: runner.os == 'macOS'
         run: |
-          flutter config --enable-linux-desktop
-          sudo apt-get update -y
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
-          flutter --version
-
-      - name: sqlite3 driver tests
-        run: "flutter pub get && xvfb-run -a flutter test integration_test"
-        working-directory: integration_tests/flutter_libs
-
-      - name: sqlcipher driver tests
-        run: "flutter pub get && xvfb-run -a flutter test integration_test"
-        working-directory: integration_tests/sqlcipher_flutter
-
-  # Shamelessly stolen from https://medium.com/flutter-community/run-flutter-driver-tests-on-github-actions-13c639c7e4ab
-
-  integration_test_ios:
-    needs: [test]
-    runs-on: macos-latest
-    steps:
-      - name: List simulators
-        run: "xcrun xctrace list devices"
-
-      - name: Start simulator
-        run: |
-          IPHONE12=$(xcrun xctrace list devices  2>&1 | grep -m 1 "iPhone 14 Pro" | awk -F'[()]' '{print $4}')
-          xcrun simctl boot $IPHONE12
-
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2.4.0
-
-      - name: Flutter version
-        run: flutter --version
-
-      - name: sqlite3 driver tests
-        run: "flutter pub get && flutter test integration_test"
-        working-directory: integration_tests/flutter_libs
-
-      - name: sqlcipher driver tests
-        run: "flutter pub get && flutter test integration_test"
-        working-directory: integration_tests/sqlcipher_flutter
-
-  integration_test_macos:
-    if: "false" # Temporarily disabled since it causes timeouts
-    needs: [test]
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2.4.0
-      - name: Setup Flutter
-        run: |
-          flutter config --enable-macos-desktop
-          flutter --version
-
-      - name: sqlite3 driver tests
-        run: "flutter pub get && flutter test integration_test"
-        working-directory: integration_tests/flutter_libs
-
-      - name: sqlcipher driver tests
-        run: "flutter pub get && flutter test integration_test"
-        working-directory: integration_tests/sqlcipher_flutter
+          brew install cmake
+          brew install llvm
+          brew install binaryen
+          curl -sL https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/libclang_rt.builtins-wasm32-wasi-22.0.tar.gz | \
+          tar x -zf - -C /opt/homebrew/opt/llvm/lib/clang/18*
+          curl https://sqlite.org/$SQLITE_YEAR/sqlite-autoconf-$SQLITE_VERSION.tar.gz --output sqlite.tar.gz
+          curl -sS -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/wasi-sysroot-22.0.tar.gz | \
+          sudo tar x -zf - -C /opt
+          cmake -Dwasi_sysroot=/opt/wasi-sysroot -Dclang=/opt/homebrew/opt/llvm/bin/clang -S assets/wasm -B .dart_tool/sqlite3_build --toolchain toolchain.cmake
+          cmake --build .dart_tool/sqlite3_build/ -t output -j
+      - name: Upload binary
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          overwrite: true
+          file: .dart_tool/sqlite3_build/sqlite3.wasm
+          asset_name: sqlite3.wasm
