@@ -37,6 +37,9 @@ jobs:
         with:
           toolchain: nightly-2024-05-18
           components: rust-src
+      - name: Set environment variable
+        run: |
+          echo "/opt/homebrew/opt/llvm/bin" >> $GITHUB_PATH
       - name: Compile sqlite3.wasm on macOS
         if: runner.os == 'macOS'
         working-directory: sqlite3
