@@ -22,9 +22,11 @@ jobs:
       - name: Setup Homebrew
         id: set-up-homebrew
         uses: Homebrew/actions/setup-homebrew@master
-      - name: Setup Dart
-        id: setup-dart
-        uses: dart-lang/setup-dart@v1
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+          channel: "stable"
       - name: Setup macOS
         if: runner.os == 'macOS'
         run: |
@@ -43,6 +45,10 @@ jobs:
       - name: Set environment variable
         run: |
           echo "/opt/homebrew/opt/llvm/bin" >> $GITHUB_PATH
+      - name: Flutter pub get
+        working-directory: sqlite3
+        run: |
+          flutter pub get
       - name: Compile sqlite3.wasm on macOS
         if: runner.os == 'macOS'
         working-directory: sqlite3
