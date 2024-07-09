@@ -15,6 +15,7 @@ runs:
         flutter-version: "3.x"
         channel: "stable"
     - name: Setup macOS
+      shell: bash
       run: |
         brew install cmake
         brew install llvm
