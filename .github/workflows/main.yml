@@ -32,6 +32,11 @@ jobs:
           tar x -zf - -C /opt/homebrew/opt/llvm/lib/clang/18*
           curl -sS -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/wasi-sysroot-22.0.tar.gz | \
           sudo tar x -zf - -C /opt
+      - name: Install Rust Nightly
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2024-05-18
+          components: rust-src
       - name: Compile sqlite3.wasm on macOS
         if: runner.os == 'macOS'
         working-directory: sqlite3
