@@ -1,0 +1,19 @@
+name: Build SQLite3 WASM
+
+on:
+  push:
+    branches: ["**"]
+
+jobs:
+  compile_sqlite3_wasm:
+    strategy:
+      matrix:
+        os: [macos-latest]
+
+    name: Compile sqlite3 wasm for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build wasm
+        uses: ./.github/actions/build-wasm

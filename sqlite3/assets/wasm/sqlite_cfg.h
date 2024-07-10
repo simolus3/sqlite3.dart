@@ -43,7 +43,7 @@
 // Disable things we don't need
 #define SQLITE_OMIT_DEPRECATED
 #define SQLITE_OMIT_PROGRESS_CALLBACK
-#define SQLITE_OMIT_AUTHORIZATION
+// #define SQLITE_OMIT_AUTHORIZATION // This breaks the powersync-core build
 #define SQLITE_UNTESTABLE
 #define SQLITE_OMIT_COMPILEOPTION_DIAGS
 #define SQLITE_OMIT_LOAD_EXTENSION
