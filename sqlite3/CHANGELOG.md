@@ -1,3 +1,8 @@
+## 2.4.5
+
+- Fix a bug in the OPFS-locks implementation causing a deadlock when the `xSleep`
+  VFS call is issued.
+
 ## 2.4.4
 
 - Add a temporary workaround for [a Dart bug](https://github.com/dart-lang/sdk/issues/56064)
