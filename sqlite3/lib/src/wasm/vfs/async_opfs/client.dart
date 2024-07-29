@@ -91,8 +91,7 @@ final class WasmVfs extends BaseVirtualFileSystem {
 
   static WorkerOptions createOptions({String root = 'pkg_sqlite3_db/'}) {
     return WorkerOptions(
-      synchronizationBuffer:
-          SharedArrayBuffer(RequestResponseSynchronizer.byteLength),
+      synchronizationBuffer: RequestResponseSynchronizer.createBuffer(),
       communicationBuffer: SharedArrayBuffer(MessageSerializer.totalSize),
       root: root,
     );

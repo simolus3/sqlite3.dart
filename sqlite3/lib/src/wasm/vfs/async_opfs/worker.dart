@@ -293,13 +293,15 @@ class VfsWorker {
         continue;
       }
 
-      final opcode = WorkerOperation.values[synchronizer.takeOpcode()];
-      Object? request;
       int rc;
+      WorkerOperation? opcode;
+      Object? request;
 
       try {
-        Message response;
+        opcode = WorkerOperation.values[synchronizer.takeOpcode()];
         request = opcode.readRequest(messages);
+
+        Message response;
 
         switch (opcode) {
           case WorkerOperation.xSleep:
