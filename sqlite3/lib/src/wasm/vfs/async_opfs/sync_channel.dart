@@ -13,7 +13,7 @@ class RequestResponseSynchronizer {
   static const _responseIndex = 1;
 
   // 2 32-bit slots for the int32 array
-  static const byteLength = 2 * 4;
+  static const _byteLength = 2 * 4;
 
   /// The shared array buffer used with atomics for synchronization.
   ///
@@ -26,17 +26,32 @@ class RequestResponseSynchronizer {
   RequestResponseSynchronizer._(this.buffer) : int32View = buffer.asInt32List();
 
   factory RequestResponseSynchronizer([SharedArrayBuffer? buffer]) {
-    if (buffer != null && buffer.byteLength != byteLength) {
-      throw ArgumentError('Must be $byteLength in length');
+    if (buffer != null && buffer.byteLength != _byteLength) {
+      throw ArgumentError('Must be $_byteLength in length');
     }
 
     return RequestResponseSynchronizer._(
-        buffer ?? SharedArrayBuffer(byteLength));
+        buffer ?? SharedArrayBuffer(_byteLength));
+  }
+
+  /// Creates a shared buffer and fills it with the initial state suitable for
+  /// a request synchronization channel.
+  static SharedArrayBuffer createBuffer() {
+    final buffer = SharedArrayBuffer(_byteLength);
+    final view = buffer.asInt32List();
+
+    // The server will wait for the request index to not be -1 to wait for a
+    // request. The initial value when allocating shared buffers is 0, which is
+    // also a valid opcode.
+    Atomics.store(view, _requestIndex, -1);
+
+    return buffer;
   }
 
   /// Send a request with the given [opcode], wait for the remote worker to
   /// process it and returns the response code.
   int requestAndWaitForResponse(int opcode) {
+    assert(opcode >= 0);
     Atomics.store(int32View, _responseIndex, -1);
     Atomics.store(int32View, _requestIndex, opcode);
     Atomics.notify(int32View, _requestIndex);
@@ -49,16 +64,17 @@ class RequestResponseSynchronizer {
 
   String waitForRequest() {
     return Atomics.waitWithTimeout(
-        int32View, _requestIndex, 0, asyncIdleWaitTimeMs);
+        int32View, _requestIndex, -1, asyncIdleWaitTimeMs);
   }
 
   int takeOpcode() {
     final opcode = Atomics.load(int32View, _requestIndex);
-    Atomics.store(int32View, _requestIndex, 0);
+    Atomics.store(int32View, _requestIndex, -1);
     return opcode;
   }
 
   void respond(int rc) {
+    assert(rc != -1);
     Atomics.store(int32View, _responseIndex, rc);
     Atomics.notify(int32View, _responseIndex);
   }
