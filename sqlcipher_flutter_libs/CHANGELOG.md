@@ -1,3 +1,7 @@
+## 0.6.4
+
+- Fix compilation on Android by upgrading `compileSdk` version.
+
 ## 0.6.3
 
 - Enable extension loading on Windows and Linux to match the compile options
