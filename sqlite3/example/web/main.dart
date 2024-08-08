@@ -26,6 +26,7 @@ Future<void> main() async {
       ..dispose();
 
     final db = sqlite3.open('/database');
+    print(db.select('select vec_version();'));
     print(db.select('SELECT * FROM foo'));
   });
 

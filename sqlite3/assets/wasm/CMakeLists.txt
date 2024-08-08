@@ -23,11 +23,20 @@ endif()
 
 FetchContent_MakeAvailable(sqlite3)
 
+FetchContent_Declare(
+  sqlite_vec
+  URL https://github.com/asg017/sqlite-vec/releases/download/v0.1.1/sqlite-vec-0.1.1-amalgamation.tar.gz
+  DOWNLOAD_EXTRACT_TIMESTAMP NEW
+)
+FetchContent_MakeAvailable(sqlite_vec)
+
 set(wasm_visibility "__attribute__((visibility(\"default\")))")
 
 macro(base_sqlite3_target name)
     add_executable(${name}
         "${sqlite3_SOURCE_DIR}/sqlite3.c"
+        "${sqlite_vec_SOURCE_DIR}/sqlite-vec.c"
+        mutex_shims.c
         os_web.c
         helpers.c
     )
@@ -35,10 +44,12 @@ macro(base_sqlite3_target name)
     target_link_options(${name} PRIVATE -nostartfiles -Wl,--import-memory -Wl,--no-entry -Wl,--export-dynamic)
     target_include_directories(${name} PRIVATE "${PROJECT_SOURCE_DIR}/")
     target_include_directories(${name} PRIVATE ${sqlite3_SOURCE_DIR})
+    target_include_directories(${name} PRIVATE ${sqlite_vec_SOURCE_DIR})
     target_compile_definitions(${name} PRIVATE
         _HAVE_SQLITE_CONFIG_H
         SQLITE_API=${wasm_visibility}
     )
+    target_compile_definitions(${name} PRIVATE SQLITE_VEC_OMIT_FS)
     set_property(TARGET ${name} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 endmacro()
 
