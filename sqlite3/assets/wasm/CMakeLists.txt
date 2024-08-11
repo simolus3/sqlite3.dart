@@ -32,7 +32,8 @@ macro(base_sqlite3_target name)
         helpers.c
     )
 
-    target_link_options(${name} PRIVATE -nostartfiles -Wl,--import-memory -Wl,--no-entry -Wl,--export-dynamic)
+    target_link_options(${name} PRIVATE -mexec-model=reactor -mcpu=generic -Wl,--import-memory -Wl,--no-entry -Wl,--export-dynamic)
+    target_compile_options(${name} PRIVATE -std=c23 -mcpu=generic)
     target_include_directories(${name} PRIVATE "${PROJECT_SOURCE_DIR}/")
     target_include_directories(${name} PRIVATE ${sqlite3_SOURCE_DIR})
     target_compile_definitions(${name} PRIVATE

@@ -54,6 +54,14 @@ class WasmInstance {
     });
 
     final native = await _instantiateStreaming(response, importsJs).toDart;
+
+    // If the module has an `_initialize` export, it needs to be called to run
+    // C constructors and set up memory.
+    final exports = native.instance.exports;
+    if (exports.has('_initialize')) {
+      (exports['_initialize'] as JSFunction).callAsFunction();
+    }
+
     return WasmInstance._(native.instance);
   }
 }

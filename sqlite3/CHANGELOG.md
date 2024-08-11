@@ -1,3 +1,7 @@
+## 2.4.6
+
+- WebAssembly: Call `_initialize` function of sqlite3 module if one is present.
+
 ## 2.4.5
 
 - Fix a bug in the OPFS-locks implementation causing a deadlock when the `xSleep`
