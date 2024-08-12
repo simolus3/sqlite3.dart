@@ -1,6 +1,7 @@
 ## 2.4.6
 
 - WebAssembly: Call `_initialize` function of sqlite3 module if one is present.
+- Support version 1.0.0 of `package:web`.
 
 ## 2.4.5
 
