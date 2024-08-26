@@ -54,6 +54,11 @@ final class RemoteDatabase implements Database {
   }
 
   @override
+  Future<void> get closed {
+    return connection.closed;
+  }
+
+  @override
   Future<void> dispose() async {
     _isClosed = true;
     _updates.close();
@@ -124,6 +129,16 @@ final class RemoteDatabase implements Database {
   Future<int> get userVersion async {
     final result = await select('pragma user_version;');
     return result.single[0] as int;
+  }
+
+  @override
+  Future<SqliteWebEndpoint> additionalConnection() async {
+    final response = await connection.sendRequest(
+      OpenAdditonalConnection(requestId: 0, databaseId: databaseId),
+      MessageType.endpointResponse,
+    );
+    final endpoint = response.endpoint;
+    return (endpoint.port, endpoint.lockName!);
   }
 }
 
@@ -298,6 +313,19 @@ final class DatabaseClient implements WebSqlite {
       missingFeatures: _missingFeatures.toList(),
       existingDatabases: existing.toList(),
       availableImplementations: available,
+    );
+  }
+
+  Future<Database> connectToExisting(SqliteWebEndpoint endpoint) async {
+    final channel = WorkerConnection(
+        WebEndpoint(port: endpoint.$1, lockName: endpoint.$2).connect());
+
+    return RemoteDatabase(
+      connection: channel,
+      // The database id for this pre-existing connection is always zero.
+      // It gets assigned by the worker handling the OpenAdditonalConnection
+      // request.
+      databaseId: 0,
     );
   }
 
