@@ -169,7 +169,7 @@ final class DatabaseClient implements WebSqlite {
 
       if (globalContext.has('Worker')) {
         final dedicated = Worker(
-          workerUri.toString(),
+          workerUri.toString().toJS,
           WorkerOptions(name: 'sqlite3_worker'),
         );
 
@@ -184,7 +184,7 @@ final class DatabaseClient implements WebSqlite {
       }
 
       if (globalContext.has('SharedWorker')) {
-        final shared = SharedWorker(workerUri.toString());
+        final shared = SharedWorker(workerUri.toString().toJS);
         shared.port.start();
 
         final (endpoint, channel) = await createChannel();

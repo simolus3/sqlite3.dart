@@ -282,7 +282,7 @@ final class DatabaseState {
       switch (mode) {
         case FileSystemImplementation.opfsLocks:
           final options = WasmVfs.createOptions(root: pathForOpfs(name));
-          final worker = Worker(Uri.base.toString());
+          final worker = Worker(Uri.base.toString().toJS);
 
           StartFileSystemServer(options: options).sendToWorker(worker);
 
@@ -474,7 +474,7 @@ final class WorkerRunner {
   }
 
   Worker useOrSpawnInnerWorker() {
-    return _innerWorker ??= Worker(Uri.base.toString());
+    return _innerWorker ??= Worker(Uri.base.toString().toJS);
   }
 }
 

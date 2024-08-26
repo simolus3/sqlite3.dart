@@ -10,7 +10,7 @@ environment:
 dependencies:
   sqlite3: ^2.4.3
   stream_channel: ^2.1.2
-  web: ^0.5.0
+  web: ^1.0.0
 
 dev_dependencies:
   lints: ^2.1.0

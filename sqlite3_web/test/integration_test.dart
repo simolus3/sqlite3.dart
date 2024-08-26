@@ -14,16 +14,25 @@ enum Browser {
       (StorageMode.opfs, AccessMode.throughSharedWorker)
     },
     missingFeatures: {MissingBrowserFeature.dedicatedWorkersInSharedWorkers},
+    defaultImplementation: (
+      StorageMode.opfs,
+      AccessMode.throughDedicatedWorker
+    ),
   ),
-  firefox(driverUriString: 'http://localhost:4444/');
+  firefox(
+    driverUriString: 'http://localhost:4444/',
+    defaultImplementation: (StorageMode.opfs, AccessMode.throughSharedWorker),
+  );
 
   final bool isChromium;
   final String driverUriString;
   final Set<(StorageMode, AccessMode)> unsupportedImplementations;
   final Set<MissingBrowserFeature> missingFeatures;
+  final (StorageMode, AccessMode) defaultImplementation;
 
   const Browser({
     required this.driverUriString,
+    required this.defaultImplementation,
     this.isChromium = false,
     this.unsupportedImplementations = const {},
     this.missingFeatures = const {},
@@ -81,6 +90,17 @@ void main() {
         final rawDriver = await createDriver(
           spec: browser.isChromium ? WebDriverSpec.JsonWire : WebDriverSpec.W3c,
           uri: browser.driverUri,
+          desired: {
+            'goog:chromeOptions': {
+              'args': [
+                '--headless=new',
+                '--disable-search-engine-choice-screen',
+              ],
+            },
+            'moz:firefoxOptions': {
+              'args': ['-headless']
+            },
+          },
         );
 
         driver = TestWebDriver(server, rawDriver);
@@ -105,6 +125,11 @@ void main() {
 
         expect(result.missingFeatures, browser.missingFeatures);
         expect(result.impls, browser.availableImplementations);
+      });
+
+      test('picks recommended option', () async {
+        final (storage, access) = await driver.openDatabase();
+        expect((storage, access), browser.defaultImplementation);
       });
 
       for (final (storage, access) in browser.availableImplementations) {

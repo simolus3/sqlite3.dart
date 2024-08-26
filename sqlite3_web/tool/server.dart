@@ -136,13 +136,28 @@ class TestWebDriver {
     );
   }
 
-  Future<void> openDatabase([(StorageMode, AccessMode)? implementation]) async {
+  Future<(StorageMode, AccessMode)> openDatabase(
+      [(StorageMode, AccessMode)? implementation]) async {
     final desc = switch (implementation) {
       null => null,
       (var storage, var access) => '${storage.name}:${access.name}'
     };
 
-    await driver.executeAsync('open(arguments[0], arguments[1])', [desc]);
+    final res = await driver
+        .executeAsync('open(arguments[0], arguments[1])', [desc]) as String?;
+
+    if (res == null) {
+      return implementation!;
+    } else {
+      // If we're using connectToRecommended, this returns the storage/access
+      // mode actually chosen.
+      final split = res.split(':');
+
+      return (
+        StorageMode.values.byName(split[0]),
+        AccessMode.values.byName(split[1])
+      );
+    }
   }
 
   Future<void> closeDatabase() async {

@@ -8,7 +8,7 @@ import 'package:sqlite3_web/sqlite3_web.dart';
 
 final sqlite3WasmUri = Uri.parse('sqlite3.wasm');
 final workerUri = Uri.parse('worker.dart.js');
-const databasName = 'database';
+const databaseName = 'database';
 
 WebSqlite? webSqlite;
 
@@ -28,7 +28,7 @@ void main() {
   document.getElementById('selfcheck')?.onClick.listen((event) async {
     print('starting');
     final sqlite = initializeSqlite();
-    final database = await sqlite.connectToRecommended(databasName);
+    final database = await sqlite.connectToRecommended(databaseName);
 
     print('selected storage: ${database.storage} through ${database.access}');
     print('missing features: ${database.features.missingFeatures}');
@@ -87,15 +87,17 @@ Future<JSAny?> _waitForUpdate(String? _) async {
 Future<JSAny?> _open(String? implementationName) async {
   final sqlite = initializeSqlite();
   Database db;
+  var returnValue = implementationName;
 
   if (implementationName != null) {
     final split = implementationName.split(':');
 
-    db = await sqlite.connect(databasName, StorageMode.values.byName(split[0]),
+    db = await sqlite.connect(databaseName, StorageMode.values.byName(split[0]),
         AccessMode.values.byName(split[1]));
   } else {
-    final result = await sqlite.connectToRecommended(databasName);
+    final result = await sqlite.connectToRecommended(databaseName);
     db = result.database;
+    returnValue = '${result.storage.name}:${result.access.name}';
   }
 
   // Make sure it works!
@@ -103,7 +105,7 @@ Future<JSAny?> _open(String? implementationName) async {
 
   updates = StreamQueue(db.updates);
   database = db;
-  return null;
+  return returnValue?.toJS;
 }
 
 Future<JSAny?> _exec(String? sql) async {
