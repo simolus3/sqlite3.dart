@@ -184,6 +184,17 @@ abstract class WebSqlite {
     return DatabaseClient(worker, wasmModule);
   }
 
+  /// Connects to an endpoint previously obtained with [Database.additionalConnection].
+  ///
+  /// As a [SqliteWebEndpoint] record only consists of fields that are
+  /// transferrable in JavaScript, these endpoints can be sent to other workers,
+  /// which can then call [connectToPort] to open a database connection
+  /// originally established by another JavaScript connection.
+  ///
+  /// Note that, depending on the access mode, the returned [Database] may only
+  /// be valid as long as the original [Database] where [Database.additionalConnection]
+  /// was called. This limitation does not exist for databases hosted by shared
+  /// workers.
   static Future<Database> connectToPort(SqliteWebEndpoint endpoint) {
     final client = DatabaseClient(Uri.base, Uri.base);
     return client.connectToExisting(endpoint);

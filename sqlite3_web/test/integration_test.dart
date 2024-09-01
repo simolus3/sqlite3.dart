@@ -103,6 +103,10 @@ void main() {
           },
         );
 
+        rawDriver.logs.get(LogType.browser).listen((entry) {
+          print('[console]: ${entry.message}');
+        });
+
         driver = TestWebDriver(server, rawDriver);
         await driver.driver.get('http://localhost:8080/');
 
@@ -136,9 +140,9 @@ void main() {
         test('$storage through $access', () async {
           await driver.openDatabase((storage, access));
           await driver.execute('CREATE TABLE foo (bar TEXT);');
-          final event = driver.waitForUpdate();
+          expect(await driver.countUpdateEvents(), 0);
           await driver.execute("INSERT INTO foo (bar) VALUES ('hello');");
-          await event;
+          expect(await driver.countUpdateEvents(), 1);
         });
       }
     });

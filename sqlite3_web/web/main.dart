@@ -3,7 +3,6 @@ import 'dart:html';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
-import 'package:async/async.dart';
 import 'package:sqlite3_web/sqlite3_web.dart';
 
 final sqlite3WasmUri = Uri.parse('sqlite3.wasm');
@@ -13,7 +12,7 @@ const databaseName = 'database';
 WebSqlite? webSqlite;
 
 Database? database;
-StreamQueue<void>? updates;
+int updates = 0;
 
 void main() {
   _addCallbackForWebDriver('detectImplementations', _detectImplementations);
@@ -21,9 +20,19 @@ void main() {
     await database?.dispose();
     return null;
   });
-  _addCallbackForWebDriver('wait_for_update', _waitForUpdate);
+  _addCallbackForWebDriver('get_updates', (arg) async {
+    return updates.toJS;
+  });
   _addCallbackForWebDriver('open', _open);
   _addCallbackForWebDriver('exec', _exec);
+  _addCallbackForWebDriver('test_second', (arg) async {
+    final endpoint = await database!.additionalConnection();
+    final second = await WebSqlite.connectToPort(endpoint);
+
+    await second.execute('SELECT 1');
+    await second.dispose();
+    return true.toJS;
+  });
 
   document.getElementById('selfcheck')?.onClick.listen((event) async {
     print('starting');
@@ -79,11 +88,6 @@ Future<JSString> _detectImplementations(String? _) async {
   }).toJS;
 }
 
-Future<JSAny?> _waitForUpdate(String? _) async {
-  await updates!.next;
-  return null;
-}
-
 Future<JSAny?> _open(String? implementationName) async {
   final sqlite = initializeSqlite();
   Database db;
@@ -103,7 +107,7 @@ Future<JSAny?> _open(String? implementationName) async {
   // Make sure it works!
   await db.select('SELECT database_host()');
 
-  updates = StreamQueue(db.updates);
+  db.updates.listen((_) => updates++);
   database = db;
   return returnValue?.toJS;
 }
