@@ -60,7 +60,7 @@ macro(base_sqlite3_target name debug)
       -mexec-model=reactor
       -fno-stack-protector -fno-stack-clash-protection
       -Wl,--import-memory
-      --sysroot /usr/share/wasi-sysroot
+      --sysroot ${wasi_sysroot}
       ${sources}
       @${CMAKE_CURRENT_BINARY_DIR}/required_symbols.txt
     DEPENDS ${sources} required_symbols
