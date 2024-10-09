@@ -7,9 +7,8 @@ fn main() {
         env::var("WASI_SYSROOT").unwrap_or_else(|_| "/usr/share/wasi-sysroot".to_string());
 
     let cmake_dir = Config::new("../../assets/wasm/")
-        .configure_arg("--toolchain")
-        .configure_arg(std::fs::canonicalize("../../assets/wasm/toolchain.cmake").unwrap())
         .define("wasi_sysroot", &sysroot)
+        .define("CMAKE_C_COMPILER_WORKS", "1")
         .build_target("sqlite3_opt_lib")
         .build_target("help") // We only need the sources
         .build();

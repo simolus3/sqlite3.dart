@@ -27,7 +27,7 @@ rustup target add wasm32-wasi
 ```
 
 Additionally, you need to download WASI compiler builtins and the associated libc
-as described in the [build instructions](https://github.com/simolus3/sqlite3.dart/tree/rust-wasm-build/sqlite3#compiling).
+as described in the [build instructions](https://github.com/simolus3/sqlite3.dart/tree/main/sqlite3#compiling).
 
 ## Building
 

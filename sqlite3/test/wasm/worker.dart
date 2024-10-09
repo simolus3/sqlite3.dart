@@ -69,7 +69,7 @@ Future<void> _startTest(String fsImplementation, Uri wasmUri) async {
           // server needed for synchronous access.
           final options = WasmVfs.createOptions();
 
-          final worker = web.Worker(scope.location.href);
+          final worker = web.Worker(scope.location.href.toJS);
           worker.postMessage(options);
 
           // Wait for the worker to acknowledge it being ready

@@ -20,7 +20,7 @@ void main() {
 
     if (data.equals('start'.toJS).toDart) {
       final options = WasmVfs.createOptions();
-      final worker = web.Worker(''); // Clone this worker
+      final worker = web.Worker(''.toJS); // Clone this worker
       worker.postMessage(options);
 
       // Now, wait for the worker to report that it has been initialized.

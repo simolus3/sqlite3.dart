@@ -93,7 +93,7 @@ void main() {
         test(
           backend,
           () async {
-            final worker = web.Worker(workerUri);
+            final worker = web.Worker(workerUri.toJS);
 
             web.EventStreamProviders.errorEvent
                 .forTarget(worker)

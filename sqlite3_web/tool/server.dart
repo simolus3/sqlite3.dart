@@ -136,24 +136,43 @@ class TestWebDriver {
     );
   }
 
-  Future<void> openDatabase([(StorageMode, AccessMode)? implementation]) async {
+  Future<(StorageMode, AccessMode)> openDatabase(
+      [(StorageMode, AccessMode)? implementation]) async {
     final desc = switch (implementation) {
       null => null,
       (var storage, var access) => '${storage.name}:${access.name}'
     };
 
-    await driver.executeAsync('open(arguments[0], arguments[1])', [desc]);
+    final res = await driver
+        .executeAsync('open(arguments[0], arguments[1])', [desc]) as String?;
+
+    // This returns the storage/access mode actually chosen.
+    final split = res!.split(':');
+
+    return (
+      StorageMode.values.byName(split[0]),
+      AccessMode.values.byName(split[1])
+    );
   }
 
   Future<void> closeDatabase() async {
     await driver.executeAsync("close('', arguments[0])", []);
   }
 
-  Future<void> waitForUpdate() async {
-    await driver.executeAsync('wait_for_update("", arguments[0])', []);
+  Future<int> countUpdateEvents() async {
+    final result =
+        await driver.executeAsync('get_updates("", arguments[0])', []);
+    return result as int;
   }
 
   Future<void> execute(String sql) async {
     await driver.executeAsync('exec(arguments[0], arguments[1])', [sql]);
+  }
+
+  Future<void> testSecond(String sql) async {
+    final res = await driver.executeAsync('test_second("", arguments[0])', []);
+    if (res != true) {
+      throw 'test_second failed! More information may be available in the console.';
+    }
   }
 }
