@@ -13,7 +13,7 @@ dependencies:
 
   uuid:
     path: ../
-  
+
   cupertino_icons: ^1.0.6
   sqlite3: ^2.4.6
   sqlite3_flutter_libs: ^0.5.24
