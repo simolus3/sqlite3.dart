@@ -26,5 +26,11 @@ dev_dependencies:
 
   flutter_lints: ^3.0.0
 
+dependency_overrides:
+  sqlite3:
+    path: ../../../
+  sqlite3_flutter_libs:
+    path: ../../../../sqlite3_flutter_libs
+
 flutter:
   uses-material-design: true
