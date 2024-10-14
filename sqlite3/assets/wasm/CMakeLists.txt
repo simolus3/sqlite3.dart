@@ -17,10 +17,11 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(sqlite3)
 
-set(POWERSYNC_A "${CMAKE_BINARY_DIR}/libpowersync-wasm.a")
-
 file(DOWNLOAD https://raw.githubusercontent.com/sqlite/sqlite/master/src/test_vfstrace.c "${CMAKE_BINARY_DIR}/vfstrace.c")
-file(DOWNLOAD https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v0.3.0/libpowersync-wasm.a "${POWERSYNC_A}")
+
+set(POWERSYNC_VERSION "0.3.0")
+set(POWERSYNC_A "${CMAKE_BINARY_DIR}/libpowersync-wasm.a")
+file(DOWNLOAD "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v${POWERSYNC_VERSION}/libpowersync-wasm.a" "${POWERSYNC_A}")
 
 # Generate symbols we need to export from the sqlite3.wasm build
 add_custom_command(
