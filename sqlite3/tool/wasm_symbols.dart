@@ -1,45 +1,21 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/src/dart/ast/ast.dart';
 
-void main(List<String> args) async {
-  if (args.length != 2) {
-    print(
-        'Removes elements from a WASM file that are not accessed by the Dart bindings.');
-    print('Usage: dart run tool/wasm_dce.dart in.wasm out.wasm');
-    exit(1);
-  }
-
+/// Writes flags for clang that will `-Wl,--export` all symbols used by the
+/// `sqlite3` Dart package.
+void main(List<String> args) {
   final file = File('lib/src/wasm/wasm_interop.dart');
   final ast = parseString(content: file.readAsStringSync(), path: file.path);
 
   final finder = _FindUsedSymbols();
   ast.unit.accept(finder);
 
-  final list = File('.dart_tool/used_wasm_symbols.json');
-  list.writeAsStringSync(json.encode([
-    for (final entry in finder.symbols)
-      {
-        'name': '_$entry',
-        'export': entry,
-        'root': true,
-      }
-  ]));
-
-  final process = await Process.start(
-    'wasm-metadce',
-    [
-      args[0],
-      '--graph-file=${list.path}',
-      '--output',
-      args[1],
-    ],
-    mode: ProcessStartMode.inheritStdio,
-  );
-  exit(await process.exitCode);
+  final output = File(args[0]);
+  output.writeAsStringSync(
+      finder.symbols.map((e) => '-Wl,--export=$e').join(' '));
 }
 
 class _FindUsedSymbols extends RecursiveAstVisitor<void> {

@@ -28,7 +28,9 @@ enum MessageType<T extends Message> {
   simpleSuccessResponse<SimpleSuccessResponse>(),
   rowsResponse<RowsResponse>(),
   errorResponse<ErrorResponse>(),
+  endpointResponse<EndpointResponse>(),
   closeDatabase<CloseDatabase>(),
+  openAdditionalConnection<OpenAdditonalConnection>(),
   notifyUpdate<UpdateNotification>(),
   ;
 
@@ -86,9 +88,12 @@ sealed class Message {
       MessageType.fileSystemAccess => FileSystemAccess.deserialize(object),
       MessageType.connect => ConnectRequest.deserialize(object),
       MessageType.closeDatabase => CloseDatabase.deserialize(object),
+      MessageType.openAdditionalConnection =>
+        OpenAdditonalConnection.deserialize(object),
       MessageType.updateRequest => UpdateStreamRequest.deserialize(object),
       MessageType.simpleSuccessResponse =>
         SimpleSuccessResponse.deserialize(object),
+      MessageType.endpointResponse => EndpointResponse.deserialize(object),
       MessageType.rowsResponse => RowsResponse.deserialize(object),
       MessageType.errorResponse => ErrorResponse.deserialize(object),
       MessageType.notifyUpdate => UpdateNotification.deserialize(object),
@@ -428,7 +433,7 @@ final class RunQuery extends Request {
   }
 }
 
-class CloseDatabase extends Request {
+final class CloseDatabase extends Request {
   CloseDatabase({required super.requestId, required super.databaseId});
 
   factory CloseDatabase.deserialize(JSObject object) {
@@ -438,6 +443,23 @@ class CloseDatabase extends Request {
 
   @override
   MessageType<Message> get type => MessageType.closeDatabase;
+}
+
+final class OpenAdditonalConnection extends Request {
+  OpenAdditonalConnection({
+    required super.requestId,
+    super.databaseId,
+  });
+
+  factory OpenAdditonalConnection.deserialize(JSObject object) {
+    return OpenAdditonalConnection(
+      requestId: object.requestId,
+      databaseId: object.databaseId,
+    );
+  }
+
+  @override
+  MessageType<Message> get type => MessageType.openAdditionalConnection;
 }
 
 final class SimpleSuccessResponse extends Response {
@@ -459,6 +481,29 @@ final class SimpleSuccessResponse extends Response {
   void serialize(JSObject object, List<JSObject> transferred) {
     super.serialize(object, transferred);
     object[_UniqueFieldNames.responseData] = response;
+  }
+}
+
+final class EndpointResponse extends Response {
+  final WebEndpoint endpoint;
+
+  EndpointResponse({required super.requestId, required this.endpoint});
+
+  factory EndpointResponse.deserialize(JSObject object) {
+    return EndpointResponse(
+      requestId: object.requestId,
+      endpoint: object[_UniqueFieldNames.responseData] as WebEndpoint,
+    );
+  }
+
+  @override
+  MessageType<Message> get type => MessageType.endpointResponse;
+
+  @override
+  void serialize(JSObject object, List<JSObject> transferred) {
+    super.serialize(object, transferred);
+    object[_UniqueFieldNames.responseData] = endpoint;
+    transferred.add(endpoint.port);
   }
 }
 

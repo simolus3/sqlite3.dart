@@ -1,6 +1,7 @@
 import 'dart:js_interop';
 
 import 'package:sqlite3/wasm.dart';
+import 'package:web/web.dart' hide FileSystem;
 
 import 'types.dart';
 import 'client.dart';
@@ -29,6 +30,16 @@ abstract base class DatabaseController {
       ClientConnection connection, JSAny? request);
 }
 
+/// An endpoint that can be used, by any running JavaScript context in the same
+/// website, to connect to an existing [Database].
+///
+/// These endpoints are created by calling [Database.additionalConnection] and
+/// consist of a [MessagePort] and a [String] internally identifying the
+/// connection. Both objects can be transferred over send ports towards another
+/// worker or context. That context can then use [WebSqlite.connectToPort] to
+/// connect to the port already opened.
+typedef SqliteWebEndpoint = (MessagePort, String);
+
 /// Abstraction over a database either available locally or in a remote worker.
 abstract class Database {
   FileSystem get fileSystem;
@@ -38,6 +49,15 @@ abstract class Database {
   /// Updates are only sent across worker channels while a subscription to this
   /// stream is active.
   Stream<SqliteUpdate> get updates;
+
+  /// A future that resolves when the database is closed.
+  ///
+  /// Typically, databases are closed because [dispose] is called. For databases
+  /// opened with [WebSqlite.connectToPort] however, it's possible that the
+  /// original worker hosting the database gets closed without this [Database]
+  /// instance being explicitly [dispose]d. In those cases, monitoring [closed]
+  /// is useful to react to databases closing.
+  Future<void> get closed;
 
   /// Closes this database and instructs the worker to release associated
   /// resources.
@@ -67,6 +87,12 @@ abstract class Database {
   /// Custom requests are handled by implementing `handleCustomRequest` in your
   /// `WorkerDatabase` subclass.
   Future<JSAny?> customRequest(JSAny? request);
+
+  /// Creates a [MessagePort] (a transferrable object that can be sent to
+  /// another JavaScript context like a worker) that can be used with
+  /// [WebSqlite.connectToPort] to open another instance of this database
+  /// remotely.
+  Future<SqliteWebEndpoint> additionalConnection();
 }
 
 /// A connection from a client from the perspective of a worker.
@@ -156,5 +182,21 @@ abstract class WebSqlite {
     required Uri wasmModule,
   }) {
     return DatabaseClient(worker, wasmModule);
+  }
+
+  /// Connects to an endpoint previously obtained with [Database.additionalConnection].
+  ///
+  /// As a [SqliteWebEndpoint] record only consists of fields that are
+  /// transferrable in JavaScript, these endpoints can be sent to other workers,
+  /// which can then call [connectToPort] to open a database connection
+  /// originally established by another JavaScript connection.
+  ///
+  /// Note that, depending on the access mode, the returned [Database] may only
+  /// be valid as long as the original [Database] where [Database.additionalConnection]
+  /// was called. This limitation does not exist for databases hosted by shared
+  /// workers.
+  static Future<Database> connectToPort(SqliteWebEndpoint endpoint) {
+    final client = DatabaseClient(Uri.base, Uri.base);
+    return client.connectToExisting(endpoint);
   }
 }

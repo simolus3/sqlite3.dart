@@ -175,7 +175,7 @@ With wasi in `/usr/share/wasi-sysroot` and the default clang compiler having the
 required builtins, you can setup the build with:
 
 ```
-cmake -S assets/wasm -B .dart_tool/sqlite3_build --toolchain toolchain.cmake
+cmake -S assets/wasm -B .dart_tool/sqlite3_build
 ```
 
 ##### macOS
@@ -196,7 +196,7 @@ Replace `clang/18` with the correct directory if you're using a different versio
 Then, set up the build with
 
 ```
-cmake -Dwasi_sysroot=/opt/wasi-sysroot -Dclang=/opt/homebrew/opt/llvm/bin/clang -S assets/wasm -B .dart_tool/sqlite3_build --toolchain toolchain.cmake
+cmake -Dwasi_sysroot=/opt/wasi-sysroot -Dclang=/opt/homebrew/opt/llvm/bin/clang -S assets/wasm -B .dart_tool/sqlite3_build
 ```
 
 #### Building

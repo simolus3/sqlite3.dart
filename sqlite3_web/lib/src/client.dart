@@ -54,6 +54,11 @@ final class RemoteDatabase implements Database {
   }
 
   @override
+  Future<void> get closed {
+    return connection.closed;
+  }
+
+  @override
   Future<void> dispose() async {
     _isClosed = true;
     _updates.close();
@@ -125,6 +130,16 @@ final class RemoteDatabase implements Database {
     final result = await select('pragma user_version;');
     return result.single[0] as int;
   }
+
+  @override
+  Future<SqliteWebEndpoint> additionalConnection() async {
+    final response = await connection.sendRequest(
+      OpenAdditonalConnection(requestId: 0, databaseId: databaseId),
+      MessageType.endpointResponse,
+    );
+    final endpoint = response.endpoint;
+    return (endpoint.port, endpoint.lockName!);
+  }
 }
 
 final class WorkerConnection extends ProtocolChannel {
@@ -169,7 +184,7 @@ final class DatabaseClient implements WebSqlite {
 
       if (globalContext.has('Worker')) {
         final dedicated = Worker(
-          workerUri.toString(),
+          workerUri.toString().toJS,
           WorkerOptions(name: 'sqlite3_worker'),
         );
 
@@ -184,7 +199,7 @@ final class DatabaseClient implements WebSqlite {
       }
 
       if (globalContext.has('SharedWorker')) {
-        final shared = SharedWorker(workerUri.toString());
+        final shared = SharedWorker(workerUri.toString().toJS);
         shared.port.start();
 
         final (endpoint, channel) = await createChannel();
@@ -298,6 +313,19 @@ final class DatabaseClient implements WebSqlite {
       missingFeatures: _missingFeatures.toList(),
       existingDatabases: existing.toList(),
       availableImplementations: available,
+    );
+  }
+
+  Future<Database> connectToExisting(SqliteWebEndpoint endpoint) async {
+    final channel = WorkerConnection(
+        WebEndpoint(port: endpoint.$1, lockName: endpoint.$2).connect());
+
+    return RemoteDatabase(
+      connection: channel,
+      // The database id for this pre-existing connection is always zero.
+      // It gets assigned by the worker handling the OpenAdditonalConnection
+      // request.
+      databaseId: 0,
     );
   }
 

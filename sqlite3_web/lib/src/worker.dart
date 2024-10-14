@@ -106,9 +106,11 @@ final class Shared extends WorkerEnvironment {
 /// A database opened by a client.
 final class _ConnectionDatabase {
   final DatabaseState database;
+  final int id;
+
   StreamSubscription<SqliteUpdate>? updates;
 
-  _ConnectionDatabase(this.database);
+  _ConnectionDatabase(this.database, [int? id]) : id = id ?? database.id;
 
   Future<void> close() async {
     updates?.cancel();
@@ -173,17 +175,19 @@ final class _ClientConnection extends ProtocolChannel
       case OpenRequest():
         await _runner.loadWasmModule(request.wasmUri);
         DatabaseState? database;
+        _ConnectionDatabase? connectionDatabase;
 
         try {
           database =
               _runner.findDatabase(request.databaseName, request.storageMode);
           await database.opened;
-          _openedDatabases.add(_ConnectionDatabase(database));
+          connectionDatabase = _ConnectionDatabase(database);
+          _openedDatabases.add(connectionDatabase);
           return SimpleSuccessResponse(
               response: database.id.toJS, requestId: request.requestId);
         } catch (e) {
           if (database != null) {
-            _openedDatabases.remove(database.id);
+            _openedDatabases.remove(connectionDatabase);
             await database.decrementRefCount();
           }
 
@@ -220,6 +224,16 @@ final class _ClientConnection extends ProtocolChannel
         }
         return SimpleSuccessResponse(
             response: null, requestId: request.requestId);
+      case OpenAdditonalConnection():
+        final database = _databaseFor(request)!.database;
+        database.refCount++;
+        final (endpoint, channel) = await createChannel();
+
+        final client = _runner._accept(channel);
+        client._openedDatabases.add(_ConnectionDatabase(database, 0));
+
+        return EndpointResponse(
+            requestId: request.requestId, endpoint: endpoint);
       case CloseDatabase():
         _openedDatabases.remove(database!);
         await database.close();
@@ -247,7 +261,7 @@ final class _ClientConnection extends ProtocolChannel
 
   _ConnectionDatabase? _databaseFor(Request request) {
     if (request.databaseId case final id?) {
-      return _openedDatabases.firstWhere((e) => e.database.id == id);
+      return _openedDatabases.firstWhere((e) => e.id == id);
     } else {
       return null;
     }
@@ -282,7 +296,7 @@ final class DatabaseState {
       switch (mode) {
         case FileSystemImplementation.opfsLocks:
           final options = WasmVfs.createOptions(root: pathForOpfs(name));
-          final worker = Worker(Uri.base.toString());
+          final worker = Worker(Uri.base.toString().toJS);
 
           StartFileSystemServer(options: options).sendToWorker(worker);
 
@@ -381,11 +395,13 @@ final class WorkerRunner {
     }
   }
 
-  void _accept(StreamChannel<Message> channel) {
+  _ClientConnection _accept(StreamChannel<Message> channel) {
     final connection = _ClientConnection(
         runner: this, channel: channel, id: _nextConnectionId++);
     _connections.add(connection);
     connection.closed.whenComplete(() => _connections.remove(connection));
+
+    return connection;
   }
 
   Future<CompatibilityResult> checkCompatibility(CompatibilityCheck check) {
@@ -474,7 +490,7 @@ final class WorkerRunner {
   }
 
   Worker useOrSpawnInnerWorker() {
-    return _innerWorker ??= Worker(Uri.base.toString());
+    return _innerWorker ??= Worker(Uri.base.toString().toJS);
   }
 }
 

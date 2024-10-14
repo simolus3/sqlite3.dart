@@ -1,3 +1,7 @@
+## 0.1.3
+
+- Support latest version of `package:web`.
+
 ## 0.1.2-wip
 
 - Fix preferred databases not being sorted correctly.
