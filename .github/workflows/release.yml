@@ -23,7 +23,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           overwrite: true
-          file: sqlite3/.dart_tool/sqlite3_build/sqlite3.wasm
+          file: sqlite3/.dart_tool/sqlite3_build/sqlite3_opt.wasm
           asset_name: sqlite3.wasm
           body: "PowerSync SQLite3 WASM binary"
           tag: ${{ github.ref_name }}
@@ -32,6 +32,6 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           overwrite: true
-          file: sqlite3/.dart_tool/sqlite3_build/sqlite3.debug.wasm
+          file: sqlite3/.dart_tool/sqlite3_build/sqlite3_debug.init.wasm
           asset_name: sqlite3.debug.wasm
           tag: ${{ github.ref_name }}
