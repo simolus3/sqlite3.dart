@@ -4,8 +4,6 @@ runs:
   using: "composite"
   steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Setup Homebrew
       id: set-up-homebrew
       uses: Homebrew/actions/setup-homebrew@master
