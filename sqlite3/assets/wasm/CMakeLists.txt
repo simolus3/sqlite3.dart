@@ -17,16 +17,10 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(sqlite3)
 
+set(POWERSYNC_A "${CMAKE_BINARY_DIR}/libpowersync-wasm.a")
+
 file(DOWNLOAD https://raw.githubusercontent.com/sqlite/sqlite/master/src/test_vfstrace.c "${CMAKE_BINARY_DIR}/vfstrace.c")
-
-get_filename_component(RS_LIB_DIR "${CMAKE_BINARY_DIR}/../../powersync-sqlite-core/" ABSOLUTE)
-set(RS_LIB "powersync")
-set(RS_WASM_TGT "wasm32-wasi")
-set(RS_WASM_TGT_DIR "${RS_LIB_DIR}/target/${RS_WASM_TGT}")
-
-set(RS_RELEASE_OUT "${RS_WASM_TGT_DIR}/wasm/")
-set(RS_RELEASE_OUT_DEPS "${RS_WASM_TGT_DIR}/wasm/deps")
-set(RS_RELEASE_EXTENSION_OUT "${RS_RELEASE_OUT}/powersync-extension.o")
+file(DOWNLOAD https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v0.3.0/libpowersync-wasm.a "${POWERSYNC_A}")
 
 # Generate symbols we need to export from the sqlite3.wasm build
 add_custom_command(
@@ -47,7 +41,6 @@ macro(base_sqlite3_target name debug)
     ${CMAKE_CURRENT_SOURCE_DIR}/os_web.c
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.c
     ${sqlite3_SOURCE_DIR}/sqlite3.c
-    ${RS_RELEASE_EXTENSION_OUT}
   )
   set(flags -Wall -Wextra -Wno-unused-parameter -Wno-unused-function)
 
@@ -71,6 +64,7 @@ macro(base_sqlite3_target name debug)
       -Wl,--import-memory
       --sysroot ${wasi_sysroot}
       ${sources}
+      ${POWERSYNC_A}
       @${CMAKE_CURRENT_BINARY_DIR}/required_symbols.txt
     DEPENDS ${sources} required_symbols
     VERBATIM
@@ -97,31 +91,10 @@ macro(base_sqlite3_target name debug)
   add_custom_target(${name} DEPENDS ${output})
 endmacro()
 
-# Script to use llc to get object code from bytecode
-set(objectcode_script "${CMAKE_CURRENT_BINARY_DIR}/loop_objectcode_script.sh")
-file(WRITE ${objectcode_script}
-  "cd ${RS_RELEASE_OUT_DEPS}\n"
-  "for filename in *.bc; do llc -march=wasm32 -filetype=obj $filename  -o $filename.o; done\n"
-  "wasm-ld -relocatable *.o -o ../powersync-extension.o"
-)
-
-add_custom_target(
-    powersync_core_bytecode
-    COMMAND ${CMAKE_COMMAND} -E env
-    "RUSTFLAGS=--emit=llvm-bc -C linker=true"
-    cargo build -p powersync_loadable --profile wasm --no-default-features --features \"powersync_core/static powersync_core/omit_load_extension sqlite_nostd/static sqlite_nostd/omit_load_extension\" -Z build-std=panic_abort,core,alloc --target ${RS_WASM_TGT}
-    WORKING_DIRECTORY ${RS_LIB_DIR}
-    # Converts bytecode to wasm object files
-    COMMAND sh ${objectcode_script}
-)
-
 base_sqlite3_target(sqlite3_debug true)
 base_sqlite3_target(sqlite3_opt false)
-
-add_dependencies(sqlite3_opt powersync_core_bytecode)
-add_dependencies(sqlite3_debug powersync_core_bytecode)
 
 add_custom_target(output)
 add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_opt.wasm ${PROJECT_SOURCE_DIR}/../../example/web/sqlite3.wasm)
 add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_debug.init.wasm ${PROJECT_SOURCE_DIR}/../../example/web/sqlite3.debug.wasm)
-add_dependencies(output sqlite3_debug sqlite3_opt powersync_core_bytecode)
+add_dependencies(output sqlite3_debug sqlite3_opt)
