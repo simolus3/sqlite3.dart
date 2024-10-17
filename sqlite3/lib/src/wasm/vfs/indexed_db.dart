@@ -8,6 +8,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
+import 'package:sqlite3/src/wasm/vfs/dynamic_buffer.dart';
 import 'package:web/web.dart' as web;
 
 import '../../constants.dart';
@@ -533,7 +534,11 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
       final name = entry.key;
       final fileId = entry.value;
 
-      _memory.fileData[name] = await _asynchronous.readFully(fileId);
+      final buffer = DynamicBuffer();
+      final data = await _asynchronous.readFully(fileId);
+      buffer.add(data);
+
+      _memory.fileData[name] = buffer;
     }
   }
 
@@ -642,7 +647,7 @@ class _IndexedDbFile implements VirtualFileSystemFile {
   void xWrite(Uint8List buffer, int fileOffset) {
     vfs._checkClosed();
 
-    final previousContent = vfs._memory.fileData[path] ?? Uint8List(0);
+    final previousContent = vfs._memory.fileData[path] ?? DynamicBuffer();
     memoryFile.xWrite(buffer, fileOffset);
 
     if (!vfs._inMemoryOnlyFiles.contains(path)) {
@@ -651,8 +656,9 @@ class _IndexedDbFile implements VirtualFileSystemFile {
       final copy = Uint8List(buffer.length);
       copy.setAll(0, buffer);
 
-      vfs._submitWork(_WriteFileWorkItem(vfs, path, previousContent)
-        ..writes.add(_OffsetAndBuffer(fileOffset, copy)));
+      vfs._submitWork(
+          _WriteFileWorkItem(vfs, path, previousContent.toUint8List())
+            ..writes.add(_OffsetAndBuffer(fileOffset, copy)));
     }
   }
 }

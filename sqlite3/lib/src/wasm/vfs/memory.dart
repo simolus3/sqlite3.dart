@@ -2,13 +2,14 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
+import 'dynamic_buffer.dart';
 
 import '../../constants.dart';
 import '../../vfs.dart';
 import 'utils.dart';
 
 final class InMemoryFileSystem extends BaseVirtualFileSystem {
-  final Map<String, Uint8List?> fileData = {};
+  final Map<String, DynamicBuffer?> fileData = {};
 
   InMemoryFileSystem({super.name = 'dart-memory', super.random});
 
@@ -34,7 +35,7 @@ final class InMemoryFileSystem extends BaseVirtualFileSystem {
       final create = flags & SqlFlag.SQLITE_OPEN_CREATE;
 
       if (create != 0) {
-        fileData[pathStr] = Uint8List(0);
+        fileData[pathStr] = DynamicBuffer();
       } else {
         throw VfsException(SqlError.SQLITE_CANTOPEN);
       }
@@ -69,7 +70,7 @@ class _InMemoryFile extends BaseVfsFile {
     if (file == null || file.length <= offset) return 0;
 
     final available = min(buffer.length, file.length - offset);
-    buffer.setRange(0, available, file, offset);
+    buffer.setRange(0, available, file.toUint8List(), offset);
     return available;
   }
 
@@ -102,12 +103,12 @@ class _InMemoryFile extends BaseVfsFile {
   void xTruncate(int size) {
     final file = vfs.fileData[path];
 
-    final result = Uint8List(size);
-    if (file != null) {
-      result.setRange(0, min(size, file.length), file);
+    if (file == null) {
+      vfs.fileData[path] = DynamicBuffer();
+      vfs.fileData[path]!.truncate(size);
+    } else {
+      file.truncate(size);
     }
-
-    vfs.fileData[path] = result;
   }
 
   @override
@@ -117,19 +118,12 @@ class _InMemoryFile extends BaseVfsFile {
 
   @override
   void xWrite(Uint8List buffer, int fileOffset) {
-    final file = vfs.fileData[path] ?? Uint8List(0);
-    final increasedSize = fileOffset + buffer.length - file.length;
+    var file = vfs.fileData[path];
 
-    if (increasedSize <= 0) {
-      // Can write directy
-      file.setRange(fileOffset, fileOffset + buffer.length, buffer);
-    } else {
-      // We need to grow the file first
-      final newFile = Uint8List(file.length + increasedSize)
-        ..setAll(0, file)
-        ..setAll(fileOffset, buffer);
-
-      vfs.fileData[path] = newFile;
+    if (file == null) {
+      file = DynamicBuffer();
+      vfs.fileData[path] = file;
     }
+    file.write(buffer, fileOffset);
   }
 }
