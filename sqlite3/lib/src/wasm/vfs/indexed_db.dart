@@ -648,20 +648,24 @@ class _IndexedDbFile implements VirtualFileSystemFile {
   void xWrite(Uint8List buffer, int fileOffset) {
     vfs._checkClosed();
 
+    if (vfs._inMemoryOnlyFiles.contains(path)) {
+      // There's nothing to persist, so we just forward the write to the in-
+      // memory buffer.
+      memoryFile.xWrite(buffer, fileOffset);
+      return;
+    }
+
     final previousContent = vfs._memory.fileData[path] ?? Uint8Buffer();
     final previousList =
         previousContent.buffer.asUint8List(0, previousContent.length);
     memoryFile.xWrite(buffer, fileOffset);
 
-    if (!vfs._inMemoryOnlyFiles.contains(path)) {
-      // We need to copy the buffer for the write because it will become invalid
-      // after this synchronous method returns.
-      final copy = Uint8List(buffer.length);
-      copy.setAll(0, buffer);
+    // We need to copy the buffer for the write because it will become invalid
+    // after this synchronous method returns.
+    final copy = Uint8List(buffer.length)..setAll(0, buffer);
 
-      vfs._submitWork(_WriteFileWorkItem(vfs, path, previousList)
-        ..writes.add(_OffsetAndBuffer(fileOffset, copy)));
-    }
+    vfs._submitWork(_WriteFileWorkItem(vfs, path, previousList)
+      ..writes.add(_OffsetAndBuffer(fileOffset, copy)));
   }
 }
 
