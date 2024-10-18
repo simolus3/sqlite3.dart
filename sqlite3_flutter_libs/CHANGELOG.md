@@ -1,3 +1,7 @@
+## 0.5.25
+
+- Support 16KiB page sizes on Android 15.
+
 ## 0.5.24
 
 - Enable the [dbstat](https://www.sqlite.org/dbstat.html) compile-time option.
