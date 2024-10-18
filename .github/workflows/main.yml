@@ -23,7 +23,7 @@ jobs:
       id: cache_sqlite_build
       with:
         path: sqlite/out
-        key: sqlite-v2-${{ runner.os }}-${{ env.SQLITE_VERSION }}
+        key: sqlite-v3-${{ runner.os }}-${{ env.SQLITE_VERSION }}
     - name: Compile sqlite3 on Linux
       if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Linux'
       run: |
