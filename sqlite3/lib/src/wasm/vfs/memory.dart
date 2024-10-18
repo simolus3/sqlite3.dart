@@ -2,14 +2,14 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
-import 'dynamic_buffer.dart';
+import 'package:typed_data/typed_buffers.dart';
 
 import '../../constants.dart';
 import '../../vfs.dart';
 import 'utils.dart';
 
 final class InMemoryFileSystem extends BaseVirtualFileSystem {
-  final Map<String, DynamicBuffer?> fileData = {};
+  final Map<String, Uint8Buffer?> fileData = {};
 
   InMemoryFileSystem({super.name = 'dart-memory', super.random});
 
@@ -35,7 +35,7 @@ final class InMemoryFileSystem extends BaseVirtualFileSystem {
       final create = flags & SqlFlag.SQLITE_OPEN_CREATE;
 
       if (create != 0) {
-        fileData[pathStr] = DynamicBuffer();
+        fileData[pathStr] = Uint8Buffer();
       } else {
         throw VfsException(SqlError.SQLITE_CANTOPEN);
       }
@@ -70,7 +70,8 @@ class _InMemoryFile extends BaseVfsFile {
     if (file == null || file.length <= offset) return 0;
 
     final available = min(buffer.length, file.length - offset);
-    buffer.setRange(0, available, file.toUint8List(), offset);
+    final list = file.buffer.asUint8List(0, file.length);
+    buffer.setRange(0, available, list, offset);
     return available;
   }
 
@@ -104,10 +105,10 @@ class _InMemoryFile extends BaseVfsFile {
     final file = vfs.fileData[path];
 
     if (file == null) {
-      vfs.fileData[path] = DynamicBuffer();
-      vfs.fileData[path]!.truncate(size);
+      vfs.fileData[path] = Uint8Buffer();
+      vfs.fileData[path]!.length = size;
     } else {
-      file.truncate(size);
+      file.length = size;
     }
   }
 
@@ -121,9 +122,14 @@ class _InMemoryFile extends BaseVfsFile {
     var file = vfs.fileData[path];
 
     if (file == null) {
-      file = DynamicBuffer();
+      file = Uint8Buffer();
       vfs.fileData[path] = file;
     }
-    file.write(buffer, fileOffset);
+
+    var endIndex = fileOffset + buffer.length;
+    if (endIndex > file.length) {
+      file.length = endIndex;
+    }
+    file.setRange(fileOffset, endIndex, buffer);
   }
 }
