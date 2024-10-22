@@ -76,12 +76,13 @@ final class RemoteException implements Exception {
 }
 
 abstract class FileSystem {
-  StorageMode get storage;
-  String get databaseName;
-
   Future<bool> exists(FileType type);
   Future<Uint8List> readFile(FileType type);
   Future<void> writeFile(FileType type, Uint8List content);
+
+  /// If the file system hosting the database in the worker is not synchronous,
+  /// flushes pending writes.
+  Future<void> flush();
 }
 
 /// An enumeration of features not supported by the current browsers.

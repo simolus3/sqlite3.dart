@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'dart:typed_data';
 
 import 'package:sqlite3/common.dart';
 import 'package:web/web.dart'
@@ -139,6 +140,66 @@ final class RemoteDatabase implements Database {
     );
     final endpoint = response.endpoint;
     return (endpoint.port, endpoint.lockName!);
+  }
+}
+
+final class RemoteFileSystem implements FileSystem {
+  final RemoteDatabase database;
+
+  RemoteFileSystem(this.database);
+
+  @override
+  Future<bool> exists(FileType type) async {
+    final response = await database.connection.sendRequest(
+      FileSystemExistsQuery(
+        databaseId: database.databaseId,
+        fsType: type,
+        requestId: 0,
+      ),
+      MessageType.simpleSuccessResponse,
+    );
+
+    return (response.response as JSBoolean).toDart;
+  }
+
+  @override
+  Future<void> flush() async {
+    await database.connection.sendRequest(
+      FileSystemFlushRequest(databaseId: database.databaseId, requestId: 0),
+      MessageType.simpleSuccessResponse,
+    );
+  }
+
+  @override
+  Future<Uint8List> readFile(FileType type) async {
+    final response = await database.connection.sendRequest(
+      FileSystemAccess(
+        databaseId: database.databaseId,
+        requestId: 0,
+        buffer: null,
+        fsType: type,
+      ),
+      MessageType.simpleSuccessResponse,
+    );
+
+    final buffer = (response.response as JSArrayBuffer);
+    return buffer.toDart.asUint8List();
+  }
+
+  @override
+  Future<void> writeFile(FileType type, Uint8List content) async {
+    // We need to copy since we're about to transfer contents over
+    final copy = Uint8List(content.length)..setAll(0, content);
+
+    await database.connection.sendRequest(
+      FileSystemAccess(
+        databaseId: database.databaseId,
+        requestId: 0,
+        buffer: copy.buffer.toJS,
+        fsType: type,
+      ),
+      MessageType.simpleSuccessResponse,
+    );
   }
 }
 

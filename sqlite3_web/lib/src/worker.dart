@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'dart:typed_data';
 import 'package:sqlite3/wasm.dart';
 import 'package:stream_channel/stream_channel.dart';
 import 'package:web/web.dart'
@@ -21,6 +22,7 @@ import 'database.dart';
 import 'channel.dart';
 import 'protocol.dart';
 import 'shared.dart';
+import 'types.dart';
 
 sealed class WorkerEnvironment {
   WorkerEnvironment._();
@@ -239,10 +241,46 @@ final class _ClientConnection extends ProtocolChannel
         await database.close();
         return SimpleSuccessResponse(
             response: null, requestId: request.requestId);
-      case FileSystemExistsQuery():
-        throw UnimplementedError();
-      case FileSystemAccess():
-        throw UnimplementedError();
+      case FileSystemFlushRequest():
+        if (database?.database.vfs case IndexedDbFileSystem idb) {
+          await idb.flush();
+        }
+
+        return SimpleSuccessResponse(
+            response: null, requestId: request.requestId);
+      case FileSystemExistsQuery(:final fsType):
+        await database!.database.opened;
+        final vfs = database.database.vfs!;
+        final exists = vfs.xAccess(fsType.pathInVfs, 0) == 1;
+
+        return SimpleSuccessResponse(
+            response: exists.toJS, requestId: request.requestId);
+      case FileSystemAccess(:final buffer, :final fsType):
+        await database!.database.opened;
+        final vfs = database.database.vfs!;
+        final file = vfs
+            .xOpen(
+                Sqlite3Filename(fsType.pathInVfs), SqlFlag.SQLITE_OPEN_CREATE)
+            .file;
+
+        try {
+          if (buffer != null) {
+            final asDartBuffer = buffer.toDart;
+            file.xTruncate(asDartBuffer.lengthInBytes);
+            file.xWrite(asDartBuffer.asUint8List(), 0);
+
+            return SimpleSuccessResponse(
+                response: null, requestId: request.requestId);
+          } else {
+            final buffer = Uint8List(file.xFileSize());
+            file.xRead(buffer, 0);
+
+            return SimpleSuccessResponse(
+                response: buffer.buffer.toJS, requestId: request.requestId);
+          }
+        } finally {
+          file.xClose();
+        }
     }
   }
 
@@ -266,6 +304,13 @@ final class _ClientConnection extends ProtocolChannel
       return null;
     }
   }
+}
+
+extension on FileType {
+  String get pathInVfs => switch (this) {
+        FileType.database => '/database',
+        FileType.journal => '/database-journal',
+      };
 }
 
 final class DatabaseState {
