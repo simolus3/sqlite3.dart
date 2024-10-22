@@ -1,3 +1,7 @@
+## 2.4.7
+
+- Web: Improve performance of in-memory and IndexedDB file system implementations.
+
 ## 2.4.6
 
 - WebAssembly: Call `_initialize` function of sqlite3 module if one is present.

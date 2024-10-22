@@ -23,7 +23,7 @@ jobs:
       id: cache_sqlite_build
       with:
         path: sqlite/out
-        key: sqlite-${{ runner.os }}-${{ env.SQLITE_VERSION }}
+        key: sqlite-v3-${{ runner.os }}-${{ env.SQLITE_VERSION }}
     - name: Compile sqlite3 on Linux
       if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Linux'
       run: |
@@ -37,6 +37,7 @@ jobs:
         mkdir ../out
         cp sqlite3 ../out
         cp .libs/libsqlite3.so ../out
+        cp *.h ../out
     - name: Compile sqlite3 on macOS
       if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'macOS'
       run: |
@@ -50,6 +51,7 @@ jobs:
         mkdir ../out
         cp sqlite3 ../out
         cp .libs/libsqlite3.dylib ../out
+        cp *.h ../out
     - uses: ilammy/msvc-dev-cmd@v1
       if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Windows'
     - name: Compile sqlite3 on Windows
@@ -69,6 +71,7 @@ jobs:
         cp sqlite3.dll ../out
         cp sqlite3.h ../out
         cp sqlite3ext.h ../out
+        cp *.h ../out
     - name: Upload built sqlite3 binaries
       uses: actions/upload-artifact@v4
       with:
@@ -145,12 +148,14 @@ jobs:
         chmod a+x sqlite/out/sqlite3
         realpath sqlite/out >> $GITHUB_PATH
         echo "LD_LIBRARY_PATH=$(realpath sqlite/out)" >> $GITHUB_ENV
+        echo "C_INCLUDE_PATH=$(realpath sqlite/out)" >> $GITHUB_ENV
     - name: Install compiled sqlite3 (macOS)
       if: runner.os == 'macOS'
       run: |
         chmod a+x sqlite/out/sqlite3
         echo "$(pwd)/sqlite/out" >> $GITHUB_PATH
         echo "DYLD_LIBRARY_PATH=$(pwd)/sqlite/out" >> $GITHUB_ENV
+        echo "CPATH=$(pwd)/sqlite/out" >> $GITHUB_ENV
     - uses: ilammy/msvc-dev-cmd@v1
       if: runner.os == 'Windows'
     - name: Install compiled sqlite3 (Windows)
