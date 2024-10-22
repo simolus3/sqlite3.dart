@@ -5,12 +5,14 @@
 #include "bridge.h"
 #include "sqlite3.h"
 
-extern int __rust_no_alloc_shim_is_unstable = 0;
 extern int sqlite3_powersync_init(sqlite3 *db, char **pzErrMsg,
                                   const sqlite3_api_routines *pApi);
 
 int sqlite3_os_init(void) {
-  sqlite3_auto_extension((void (*)(void)) & sqlite3_powersync_init);
+  int rc = sqlite3_auto_extension((void (*)(void)) & sqlite3_powersync_init);
+  if (rc != SQLITE_OK) {
+    return rc;
+  }
   return SQLITE_OK;
 }
 
