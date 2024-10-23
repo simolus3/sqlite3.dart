@@ -1,3 +1,7 @@
+## 0.5.26
+
+- Upgrade sqlite to version `3.47.0`.
+
 ## 0.5.25
 
 - Support 16KiB page sizes on Android 15.

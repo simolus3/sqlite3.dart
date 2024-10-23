@@ -17,7 +17,7 @@ Pod::Spec.new do |s|
     s.public_header_files = 'Classes/**/*.h'
     s.dependency 'FlutterMacOS'
 
-    s.dependency 'sqlite3', '~> 3.46.0+1'
+    s.dependency 'sqlite3', '~> 3.47.0'
     s.dependency 'sqlite3/fts5'
     s.dependency 'sqlite3/perf-threadsafe'
     s.dependency 'sqlite3/rtree'
