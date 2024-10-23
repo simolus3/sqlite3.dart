@@ -53,6 +53,7 @@ class _UniqueFieldNames {
   static const id = 'i';
   static const updateKind = 'k';
   static const tableNames = 'n';
+  static const onlyOpenVfs = 'o';
   static const parameters = 'p';
   static const storageMode = 's';
   static const sql = 's'; // not used in same message
@@ -201,12 +202,14 @@ final class OpenRequest extends Request {
 
   final String databaseName;
   final FileSystemImplementation storageMode;
+  final bool onlyOpenVfs;
 
   OpenRequest({
     required super.requestId,
     required this.wasmUri,
     required this.databaseName,
     required this.storageMode,
+    required this.onlyOpenVfs,
   });
 
   factory OpenRequest.deserialize(JSObject object) {
@@ -217,6 +220,9 @@ final class OpenRequest extends Request {
       wasmUri:
           Uri.parse((object[_UniqueFieldNames.wasmUri] as JSString).toDart),
       requestId: object.requestId,
+      onlyOpenVfs:
+          // The onlyOpenVfs field was not set in earlier clients.
+          (object[_UniqueFieldNames.onlyOpenVfs] as JSBoolean?)?.toDart == true,
     );
   }
 
@@ -229,6 +235,7 @@ final class OpenRequest extends Request {
     object[_UniqueFieldNames.databaseName] = databaseName.toJS;
     object[_UniqueFieldNames.storageMode] = storageMode.toJS;
     object[_UniqueFieldNames.wasmUri] = wasmUri.toString().toJS;
+    object[_UniqueFieldNames.onlyOpenVfs] = onlyOpenVfs.toJS;
   }
 }
 

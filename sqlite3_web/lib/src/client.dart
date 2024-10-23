@@ -93,7 +93,7 @@ final class RemoteDatabase implements Database {
   }
 
   @override
-  FileSystem get fileSystem => throw UnimplementedError();
+  late final FileSystem fileSystem = RemoteFileSystem(this);
 
   @override
   Future<int> get lastInsertRowId async {
@@ -391,8 +391,8 @@ final class DatabaseClient implements WebSqlite {
   }
 
   @override
-  Future<Database> connect(
-      String name, StorageMode type, AccessMode access) async {
+  Future<Database> connect(String name, StorageMode type, AccessMode access,
+      {bool onlyOpenVfs = false}) async {
     await startWorkers();
 
     WorkerConnection connection;
@@ -421,6 +421,7 @@ final class DatabaseClient implements WebSqlite {
         wasmUri: wasmUri,
         databaseName: name,
         storageMode: type.resolveToVfs(shared),
+        onlyOpenVfs: onlyOpenVfs,
       ),
       MessageType.simpleSuccessResponse,
     );
@@ -431,7 +432,8 @@ final class DatabaseClient implements WebSqlite {
   }
 
   @override
-  Future<ConnectToRecommendedResult> connectToRecommended(String name) async {
+  Future<ConnectToRecommendedResult> connectToRecommended(String name,
+      {bool onlyOpenVfs = false}) async {
     final probed = await runFeatureDetection(databaseName: name);
 
     // If we have an existing database in storage, we want to keep using that
@@ -460,7 +462,8 @@ final class DatabaseClient implements WebSqlite {
 
     final (storage, access) = availableImplementations.firstOrNull ??
         (StorageMode.inMemory, AccessMode.inCurrentContext);
-    final database = await connect(name, storage, access);
+    final database =
+        await connect(name, storage, access, onlyOpenVfs: onlyOpenVfs);
 
     return ConnectToRecommendedResult(
       database: database,
