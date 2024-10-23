@@ -12,7 +12,7 @@
 /// As long as this library is marked as experimental, it is not subject to
 /// semantic versioning.
 @experimental
-library sqlite3.wasm;
+library;
 
 import 'package:meta/meta.dart';
 

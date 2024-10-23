@@ -1,5 +1,5 @@
 @internal
-library sqlite3.implementation.bindings;
+library;
 
 import 'dart:typed_data';
 

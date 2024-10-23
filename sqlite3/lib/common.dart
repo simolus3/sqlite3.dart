@@ -1,6 +1,6 @@
 /// Exports common interfaces that are implemented by both the `dart:ffi` and
 /// the `dart:js` WASM version of this library.
-library sqlite3.common;
+library;
 
 export 'src/constants.dart';
 export 'src/database.dart';

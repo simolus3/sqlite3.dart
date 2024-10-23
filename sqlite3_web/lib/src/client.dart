@@ -98,7 +98,7 @@ final class RemoteDatabase implements Database {
   @override
   Future<int> get lastInsertRowId async {
     final result = await select('select last_insert_rowid();');
-    return result.single[0] as int;
+    return result.single.columnAt(0) as int;
   }
 
   @override
@@ -129,7 +129,7 @@ final class RemoteDatabase implements Database {
   @override
   Future<int> get userVersion async {
     final result = await select('pragma user_version;');
-    return result.single[0] as int;
+    return result.single.columnAt(0) as int;
   }
 
   @override

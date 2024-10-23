@@ -189,7 +189,8 @@ class AsynchronousIndexedDbFileSystem {
     while (await iterator.moveNext()) {
       final row = iterator.current;
 
-      final rowOffset = (row.key! as List)[1] as int;
+      final key = (row.key as JSArray).toDart;
+      final rowOffset = (key[1] as JSNumber).toDartInt;
       final blob = row.value as web.Blob;
       final dataLength = min(blob.size, file.length - rowOffset);
 

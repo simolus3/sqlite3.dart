@@ -299,13 +299,10 @@ final class FfiDatabase extends RawSqliteDatabase {
 
   static Pointer<NativeFunction<Void Function(Pointer<Void>)>> _xDestroy(
       List<NativeCallable> callables) {
-    int destroy(Pointer<Void> _) {
+    void destroy(Pointer<Void> _) {
       for (final callable in callables) {
         callable.close();
       }
-
-      // TODO: Remove and change to void after Dart 3.5 or https://github.com/dart-lang/sdk/issues/56064
-      return 0;
     }
 
     final callable =
@@ -715,8 +712,6 @@ extension on RawXFunc {
     return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx, int nArgs,
         Pointer<Pointer<sqlite3_value>> args) {
       this(FfiContext(bindings, ctx), _ValueList(nArgs, args, bindings));
-      // TODO: Remove and change to void after Dart 3.5 or https://github.com/dart-lang/sdk/issues/56064
-      return 0;
     })
       ..keepIsolateAlive = false;
   }
@@ -728,8 +723,6 @@ extension on RawXFinal {
       final context = FfiContext(bindings, ctx);
       this(context);
       if (clean) context.freeContext();
-      // TODO: Remove and change to void after Dart 3.5 or https://github.com/dart-lang/sdk/issues/56064
-      return 0;
     })
       ..keepIsolateAlive = false;
   }
@@ -762,9 +755,6 @@ extension on RawUpdateHook {
           Pointer<sqlite3_char> table, int rowid) {
         final tableName = table.readString();
         this(kind, tableName, rowid);
-
-        // TODO: Remove and change to void after Dart 3.5 or https://github.com/dart-lang/sdk/issues/56064
-        return 0;
       },
     )..keepIsolateAlive = false;
   }
