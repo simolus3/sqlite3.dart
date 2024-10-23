@@ -75,9 +75,16 @@ final class RemoteException implements Exception {
   }
 }
 
+/// A virtual file system used by a worker to persist database files.
 abstract class FileSystem {
+  /// Returns whether a database file identified by its [type] exists.
   Future<bool> exists(FileType type);
+
+  /// Reads the database file (or its journal).
   Future<Uint8List> readFile(FileType type);
+
+  /// Replaces the database file (or its journal), creating the virtual file if
+  /// it doesn't exist.
   Future<void> writeFile(FileType type, Uint8List content);
 
   /// If the file system hosting the database in the worker is not synchronous,

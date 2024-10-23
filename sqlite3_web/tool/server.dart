@@ -194,4 +194,11 @@ class TestWebDriver {
       return null;
     }
   }
+
+  Future<void> flush() async {
+    final result = await driver.executeAsync('flush("", arguments[0])', []);
+    if (result != true) {
+      throw 'flush() failed: $result';
+    }
+  }
 }

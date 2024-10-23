@@ -53,6 +53,11 @@ void main() {
 
     return true.toJS;
   });
+  _addCallbackForWebDriver('flush', (arg) async {
+    final vfs = database!.fileSystem;
+    await vfs.flush();
+    return true.toJS;
+  });
 
   document.getElementById('selfcheck')?.onClick.listen((event) async {
     print('starting');

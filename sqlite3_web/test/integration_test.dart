@@ -169,6 +169,7 @@ void main() {
           expect(await driver.countUpdateEvents(), 1);
 
           expect(await driver.assertFile(true), isPositive);
+          await driver.flush();
         });
       }
     });
