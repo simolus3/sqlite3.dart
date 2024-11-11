@@ -67,7 +67,7 @@ macro(base_sqlite3_target name debug)
       ${sources}
       ${POWERSYNC_A}
       @${CMAKE_CURRENT_BINARY_DIR}/required_symbols.txt
-    DEPENDS ${sources} required_symbols
+    DEPENDS ${sources} ${POWERSYNC_A} required_symbols
     VERBATIM
   )
 
