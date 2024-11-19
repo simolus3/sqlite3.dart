@@ -11,3 +11,4 @@ export 'src/sqlite3.dart';
 export 'src/statement.dart'
     show CommonPreparedStatement, StatementParameters, CustomStatementParameter;
 export 'src/vfs.dart';
+export 'src/in_memory_vfs.dart' show InMemoryFileSystem;

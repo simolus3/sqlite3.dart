@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import 'package:sqlite3/wasm.dart';
 import 'package:test/test.dart';
 
+import '../common/vfs.dart';
 import 'utils.dart';
 
 const _fsRoot = '/test';
@@ -16,6 +17,10 @@ Future<void> main() async {
   // dart2wasm does not currently support Random.secure(), so we have to use
   // this as a fallback.
   final random = Random();
+
+  group('common test', () {
+    testVfs(loadSqlite3WithoutVfs);
+  });
 
   group('in memory', () {
     _testWith(() => InMemoryFileSystem(random: random));

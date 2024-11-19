@@ -14,8 +14,8 @@ import 'package:web/web.dart' as web;
 import '../../constants.dart';
 import '../../vfs.dart';
 import '../js_interop.dart';
-import 'memory.dart';
-import 'utils.dart';
+import '../../in_memory_vfs.dart';
+import '../../utils.dart';
 
 /// An (asynchronous) file system implementation backed by IndexedDB.
 ///

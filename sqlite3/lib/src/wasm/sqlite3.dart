@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:web/web.dart' as web;
 
 import '../implementation/sqlite3.dart';
-import '../vfs.dart';
 import 'bindings.dart';
 import 'js_interop.dart';
 import 'wasm_interop.dart';
@@ -78,27 +77,4 @@ final class WasmSqlite3 extends Sqlite3Implementation {
   }
 
   WasmSqlite3._(WasmBindings bindings) : super(WasmSqliteBindings(bindings));
-
-  /// Registers a custom virtual file system used by this sqlite3 instance to
-  /// emulate I/O functionality that is not supported through WASM directly.
-  ///
-  /// Implementing a suitable [VirtualFileSystem] is a complex task. Users of
-  /// this package on the web should consider using a package that calls this
-  /// method for them (like `drift` or `sqflite_common_ffi_web`).
-  /// For more information on how to implement this, see the readme of the
-  /// `sqlite3` package for details.
-  void registerVirtualFileSystem(VirtualFileSystem vfs,
-      {bool makeDefault = false}) {
-    (bindings as WasmSqliteBindings)
-        .registerVirtualFileSystem(vfs, makeDefault ? 1 : 0);
-  }
-
-  /// Unregisters a virtual file system implementation that has been registered
-  /// with [registerVirtualFileSystem].
-  ///
-  /// sqlite3 is not clear about what happens when this method is called with
-  /// the file system being in used. Thus, this method should be used with care.
-  void unregisterVirtualFileSystem(VirtualFileSystem vfs) {
-    (bindings as WasmSqliteBindings).unregisterVirtualFileSystem(vfs);
-  }
 }

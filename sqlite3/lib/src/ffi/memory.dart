@@ -56,8 +56,9 @@ extension Utf8Utils on Pointer<sqlite3_char> {
 
   String readString([int? length]) {
     final resolvedLength = length ??= _length;
+    final dartList = cast<Uint8>().asTypedList(resolvedLength);
 
-    return utf8.decode(cast<Uint8>().asTypedList(resolvedLength));
+    return utf8.decode(dartList);
   }
 
   static Pointer<sqlite3_char> allocateZeroTerminated(String string) {

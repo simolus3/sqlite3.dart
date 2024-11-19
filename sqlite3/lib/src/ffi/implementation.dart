@@ -35,8 +35,8 @@ final class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
   }
 
   @override
-  FfiDatabaseImplementation openInMemory() {
-    return super.openInMemory() as FfiDatabaseImplementation;
+  FfiDatabaseImplementation openInMemory({String? vfs}) {
+    return super.openInMemory(vfs: vfs) as FfiDatabaseImplementation;
   }
 
   @override

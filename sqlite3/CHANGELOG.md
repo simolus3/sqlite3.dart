@@ -1,3 +1,8 @@
+## 2.5.0
+
+- Allow registering custom virtual file systems on all platforms. Previously,
+  this was only supported on the web.
+
 ## 2.4.7
 
 - Web: Improve performance of in-memory and IndexedDB file system implementations.
