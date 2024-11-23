@@ -2,6 +2,8 @@
 
 - Allow registering custom virtual file systems on all platforms. Previously,
   this was only supported on the web.
+- IndexedDB file system: Store `ArrayBuffer`s instead of `Blob`s when it looks
+  like storing blobs would cause issues.
 
 ## 2.4.7
 
