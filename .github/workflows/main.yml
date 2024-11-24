@@ -173,7 +173,13 @@ jobs:
           dart-dependencies-${{ matrix.dart }}-
           dart-dependencies-
 
-    - name: Test
+    - name: Test sqlite3 package
+      run: |
+        dart pub get
+        dart test -P ci
+      working-directory: sqlite3/
+
+    - name: Test sqlite3_test package
       run: |
         dart pub get
         dart test -P ci
