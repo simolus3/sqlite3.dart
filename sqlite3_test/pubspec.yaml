@@ -1,8 +1,11 @@
 name: sqlite3_test
-description: Utilities for accessing sqlite3 databases in unit tests.
+description: Integration of fake clocks and other test utilities for SQLite databases.
 version: 0.1.0
 homepage: https://github.com/simolus3/sqlite3.dart/tree/main/sqlite3_test
 repository: https://github.com/simolus3/sqlite3.dart
+topics:
+  - database
+  - sqlite
 
 environment:
   sdk: ^3.5.4

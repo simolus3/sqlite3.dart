@@ -18,7 +18,7 @@ tests by providing a [VFS](https://sqlite.org/vfs.html) that will:
 
 1. Make `CURRENT_TIME`, `CURRENT_DATE` and `CURRENT_TIMESTAMP` reflect the time
    returned by `package:clock`.
-2. For IO operations, allows providing a `FileSystem` from `package:file`. This
+2. For IO operations, allow providing a `FileSystem` from `package:file`. This
    includes custom implementations and the default one respecting
    `IOOverrides`.
 

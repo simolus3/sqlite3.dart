@@ -20,6 +20,7 @@ topics:
   - sql
   - database
   - ffi
+  - sqlite
 
 dependencies:
   collection: ^1.15.0
