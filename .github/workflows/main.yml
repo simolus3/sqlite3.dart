@@ -248,8 +248,8 @@ jobs:
 
       - name: Start simulator
         run: |
-          IPHONE12=$(xcrun xctrace list devices  2>&1 | grep -m 1 "iPhone 14 Pro" | awk -F'[()]' '{print $4}')
-          xcrun simctl boot $IPHONE12
+          IPHONE=$(xcrun xctrace list devices  2>&1 | grep -m 1 "iPhone" | awk -F'[()]' '{print $4}')
+          xcrun simctl boot $IPHONE
 
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2.4.0
