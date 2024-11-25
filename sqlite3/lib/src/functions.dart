@@ -1,5 +1,8 @@
 import 'package:meta/meta.dart';
 
+/// A filter function without any arguments.
+typedef VoidPredicate = bool Function();
+
 /// A collating function provided to a sql collation.
 ///
 /// The function must return a `int`.

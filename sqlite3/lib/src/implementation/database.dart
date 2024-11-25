@@ -58,6 +58,9 @@ base class DatabaseImplementation implements CommonDatabase {
   final FinalizableDatabase finalizable;
 
   final List<MultiStreamController<SqliteUpdate>> _updateListeners = [];
+  final List<MultiStreamController<void>> _rollbackListeners = [];
+
+  VoidPredicate? _commitFilter;
 
   var _isClosed = false;
 
@@ -228,6 +231,8 @@ base class DatabaseImplementation implements CommonDatabase {
       listener.close();
     }
     database.sqlite3_update_hook(null);
+    database.sqlite3_commit_hook(null);
+    database.sqlite3_rollback_hook(null);
 
     finalizable.dispose();
   }
@@ -458,6 +463,59 @@ base class DatabaseImplementation implements CommonDatabase {
       },
       isBroadcast: true,
     );
+  }
+
+  @override
+  Stream<void> get rollbacks {
+    return Stream.multi(
+      (newListener) {
+        if (_isClosed) {
+          newListener.closeSync();
+          return;
+        }
+
+        void addRollbackListener() {
+          final isFirstListener = _rollbackListeners.isEmpty;
+          _rollbackListeners.add(newListener);
+
+          if (isFirstListener) {
+            // Add native rollback hook
+            database.sqlite3_rollback_hook(() {
+              for (final listener in _rollbackListeners) {
+                listener.add(null);
+              }
+            });
+          }
+        }
+
+        void removeRollbackListener() {
+          _rollbackListeners.remove(newListener);
+
+          if (_rollbackListeners.isEmpty && !_isClosed) {
+            database.sqlite3_rollback_hook(null); // Remove native hook
+          }
+        }
+
+        newListener
+          ..onPause = removeRollbackListener
+          ..onCancel = removeRollbackListener
+          ..onResume = addRollbackListener;
+
+        // Since this is a onListen callback, add listener now
+        addRollbackListener();
+      },
+      isBroadcast: true,
+    );
+  }
+
+  @override
+  VoidPredicate? get commitFilter => _commitFilter;
+
+  @override
+  set commitFilter(VoidPredicate? commitFilter) {
+    _commitFilter = commitFilter;
+    database.sqlite3_commit_hook(
+        commitFilter == null ? null : () => commitFilter() ? 0 : 1);
   }
 }
 

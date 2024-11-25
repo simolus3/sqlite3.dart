@@ -21,6 +21,7 @@ final class RemoteDatabase implements Database {
 
   StreamSubscription<Notification>? _notificationSubscription;
   final StreamController<SqliteUpdate> _updates = StreamController.broadcast();
+  final StreamController<void> _rollbacks = StreamController.broadcast();
 
   RemoteDatabase({required this.connection, required this.databaseId}) {
     _updates
@@ -35,12 +36,14 @@ final class RemoteDatabase implements Database {
         });
 
         _requestUpdates(true);
+        _requestRollbacks(true);
       })
       ..onCancel = (() {
         _notificationSubscription?.cancel();
         _notificationSubscription = null;
 
         _requestUpdates(false);
+        _requestRollbacks(false);
       });
   }
 
@@ -49,6 +52,16 @@ final class RemoteDatabase implements Database {
       connection.sendRequest(
         UpdateStreamRequest(
             action: sendUpdates, requestId: 0, databaseId: databaseId),
+        MessageType.simpleSuccessResponse,
+      );
+    }
+  }
+
+  void _requestRollbacks(bool sendRollbacks) {
+    if (!_isClosed) {
+      connection.sendRequest(
+        RollbackStreamRequest(
+            action: sendRollbacks, requestId: 1, databaseId: databaseId),
         MessageType.simpleSuccessResponse,
       );
     }
@@ -125,6 +138,9 @@ final class RemoteDatabase implements Database {
 
   @override
   Stream<SqliteUpdate> get updates => _updates.stream;
+
+  @override
+  Stream<void> get rollbacks => _rollbacks.stream;
 
   @override
   Future<int> get userVersion async {

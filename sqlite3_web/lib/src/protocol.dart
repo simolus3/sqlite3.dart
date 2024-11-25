@@ -26,6 +26,7 @@ enum MessageType<T extends Message> {
   connect<ConnectRequest>(),
   startFileSystemServer<StartFileSystemServer>(),
   updateRequest<UpdateStreamRequest>(),
+  rollbackRequest<RollbackStreamRequest>(),
   simpleSuccessResponse<SimpleSuccessResponse>(),
   rowsResponse<RowsResponse>(),
   errorResponse<ErrorResponse>(),
@@ -94,6 +95,7 @@ sealed class Message {
       MessageType.openAdditionalConnection =>
         OpenAdditonalConnection.deserialize(object),
       MessageType.updateRequest => UpdateStreamRequest.deserialize(object),
+      MessageType.rollbackRequest => RollbackStreamRequest.deserialize(object),
       MessageType.simpleSuccessResponse =>
         SimpleSuccessResponse.deserialize(object),
       MessageType.endpointResponse => EndpointResponse.deserialize(object),
@@ -660,6 +662,37 @@ final class UpdateStreamRequest extends Request {
   }
 }
 
+final class RollbackStreamRequest extends Request {
+  /// When true, the client is requesting to be informed about rollbacks
+  /// happening on the database identified by this request.
+  ///
+  /// When false, the client is requesting to no longer be informed about these
+  /// updates.
+  final bool action;
+
+  RollbackStreamRequest(
+      {required this.action,
+      required super.requestId,
+      required super.databaseId});
+
+  factory RollbackStreamRequest.deserialize(JSObject object) {
+    return RollbackStreamRequest(
+      action: (object[_UniqueFieldNames.action] as JSBoolean).toDart,
+      requestId: object.requestId,
+      databaseId: object.databaseId,
+    );
+  }
+
+  @override
+  MessageType<Message> get type => MessageType.rollbackRequest;
+
+  @override
+  void serialize(JSObject object, List<JSObject> transferred) {
+    super.serialize(object, transferred);
+    object[_UniqueFieldNames.action] = action.toJS;
+  }
+}
+
 class CompatibilityCheck extends Request {
   @override
   final MessageType<CompatibilityCheck> type;
@@ -813,6 +846,27 @@ final class UpdateNotification extends Notification {
     object[_UniqueFieldNames.updateKind] = update.kind.index.toJS;
     object[_UniqueFieldNames.updateTableName] = update.tableName.toJS;
     object[_UniqueFieldNames.updateRowId] = update.rowId.toJS;
+  }
+}
+
+final class RollbackNotification extends Notification {
+  final int databaseId;
+
+  RollbackNotification({required this.databaseId});
+
+  factory RollbackNotification.deserialize(JSObject object) {
+    return RollbackNotification(
+      databaseId: object.databaseId,
+    );
+  }
+
+  @override
+  MessageType<Message> get type => MessageType.notifyUpdate;
+
+  @override
+  void serialize(JSObject object, List<JSObject> transferred) {
+    super.serialize(object, transferred);
+    object[_UniqueFieldNames.databaseId] = databaseId.toJS;
   }
 }
 
