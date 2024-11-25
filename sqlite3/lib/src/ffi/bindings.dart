@@ -550,6 +550,7 @@ final class FfiDatabase extends RawSqliteDatabase {
     final previous = _installedUpdateHook;
 
     if (hook == null) {
+      _installedUpdateHook = null;
       bindings.bindings.sqlite3_update_hook(db, nullPtr(), nullPtr());
     } else {
       final native = _installedUpdateHook = hook.toNative();
