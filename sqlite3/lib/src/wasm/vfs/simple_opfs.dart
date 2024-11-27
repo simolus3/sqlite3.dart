@@ -12,7 +12,7 @@ import 'package:web/web.dart'
 import '../../constants.dart';
 import '../../vfs.dart';
 import '../js_interop.dart';
-import 'memory.dart';
+import '../../in_memory_vfs.dart';
 
 @internal
 enum FileType {

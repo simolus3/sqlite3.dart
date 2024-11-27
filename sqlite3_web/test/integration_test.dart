@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:sqlite3_web/src/types.dart';
@@ -82,9 +83,24 @@ void main() {
     group(browser.name, () {
       late Process driverProcess;
       late TestWebDriver driver;
+      var isStoppingProcess = false;
+      final processStopped = Completer<void>();
 
-      setUpAll(() async => driverProcess = await browser.spawnDriver());
-      tearDownAll(() => driverProcess.kill());
+      setUpAll(() async {
+        final process = driverProcess = await browser.spawnDriver();
+        process.exitCode.then((code) {
+          if (!isStoppingProcess) {
+            throw 'Webdriver stopped (code $code) before tearing down tests.';
+          }
+
+          processStopped.complete();
+        });
+      });
+      tearDownAll(() {
+        isStoppingProcess = true;
+        driverProcess.kill();
+        return processStopped.future;
+      });
 
       setUp(() async {
         final rawDriver = await createDriver(
@@ -103,9 +119,12 @@ void main() {
           },
         );
 
-        rawDriver.logs.get(LogType.browser).listen((entry) {
-          print('[console]: ${entry.message}');
-        });
+        // logs.get() isn't supported on Firefox
+        if (browser != Browser.firefox) {
+          rawDriver.logs.get(LogType.browser).listen((entry) {
+            print('[console]: ${entry.message}');
+          });
+        }
 
         driver = TestWebDriver(server, rawDriver);
         await driver.driver.get('http://localhost:8080/');
@@ -138,11 +157,19 @@ void main() {
 
       for (final (storage, access) in browser.availableImplementations) {
         test('$storage through $access', () async {
-          await driver.openDatabase((storage, access));
+          await driver.openDatabase(
+            implementation: (storage, access),
+            onlyOpenVfs: true,
+          );
+          await driver.assertFile(false);
+
           await driver.execute('CREATE TABLE foo (bar TEXT);');
           expect(await driver.countUpdateEvents(), 0);
           await driver.execute("INSERT INTO foo (bar) VALUES ('hello');");
           expect(await driver.countUpdateEvents(), 1);
+
+          expect(await driver.assertFile(true), isPositive);
+          await driver.flush();
         });
       }
     });

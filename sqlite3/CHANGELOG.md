@@ -1,3 +1,10 @@
+## 2.5.0
+
+- Allow registering custom virtual file systems on all platforms. Previously,
+  this was only supported on the web.
+- IndexedDB file system: Store `ArrayBuffer`s instead of `Blob`s when it looks
+  like storing blobs would cause issues.
+
 ## 2.4.7
 
 - Web: Improve performance of in-memory and IndexedDB file system implementations.
@@ -64,11 +71,11 @@
 
 ## 2.0.0
 
-- __Breaking__: The WASM implementation no longer registers a default virtual
+- **Breaking**: The WASM implementation no longer registers a default virtual
   file system. Instead, `registerVirtualFileSystem` needs to be used to add
   desired file system implementations.
-- __Breaking__: Fix a typo, `CommmonSqlite3` is now called `CommonSqlite3`.
-- __Breaking__: Introduce class modifiers on classes of this package that aren't
+- **Breaking**: Fix a typo, `CommmonSqlite3` is now called `CommonSqlite3`.
+- **Breaking**: Introduce class modifiers on classes of this package that aren't
   meant to be extended or implemented by users.
 - Add `PreparedStatement.reset()`.
 - Add the `CustomStatementParameter` class which can be passed as a statement
@@ -149,7 +156,7 @@
 - Add support for application-defined window functions. To register a custom
   window function, implement `WindowFunction` and register your function with
   `database.registerAggregateFunction`.
-- __Breaking__ (For the experimental `package:sqlite3/wasm.dart` library):
+- **Breaking** (For the experimental `package:sqlite3/wasm.dart` library):
   - The IndexedDB implementation now stores data in 4k blocks instead of full files.
   - Removed `IndexedDbFileSystem.load`. Use `IndexedDbFileSystem.open` instead.
   - An `IndexedDbFileSystem` now stores all files, the concept of a persistence

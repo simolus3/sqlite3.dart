@@ -3,9 +3,12 @@ import 'dart:convert';
 import 'dart:ffi';
 import 'dart:typed_data';
 
+import 'package:ffi/ffi.dart' as ffi;
 import 'package:meta/meta.dart';
+import 'package:sqlite3/src/vfs.dart';
 
 import '../constants.dart';
+import '../exception.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
 import 'memory.dart';
@@ -62,6 +65,7 @@ class BindingsWithLibrary {
 
 final class FfiBindings extends RawSqliteBindings {
   final BindingsWithLibrary bindings;
+  final _vfsPointers = Expando<_RegisteredVfs>();
 
   FfiBindings(this.bindings);
 
@@ -119,6 +123,286 @@ final class FfiBindings extends RawSqliteBindings {
   String sqlite3_sourceid() {
     return bindings.bindings.sqlite3_sourceid().readString();
   }
+
+  @override
+  void registerVirtualFileSystem(VirtualFileSystem vfs, int makeDefault) {
+    final ptr = _RegisteredVfs.allocate(vfs);
+    final result =
+        bindings.bindings.sqlite3_vfs_register(ptr._vfsPtr, makeDefault);
+    if (result != SqlError.SQLITE_OK) {
+      ptr.deallocate();
+      throw SqliteException(result, 'Could not register VFS.');
+    }
+
+    _vfsPointers[vfs] = ptr;
+  }
+
+  @override
+  void unregisterVirtualFileSystem(VirtualFileSystem vfs) {
+    final ptr = _vfsPointers[vfs];
+    if (ptr == null) {
+      throw StateError('vfs has not been registered');
+    }
+
+    final result = bindings.bindings.sqlite3_vfs_unregister(ptr._vfsPtr);
+    if (result != SqlError.SQLITE_OK) {
+      throw SqliteException(result, 'Could not unregister VFS.');
+    }
+
+    ptr.deallocate();
+  }
+}
+
+final class _RegisteredVfs {
+  static final Map<int, VirtualFileSystemFile> _files = {};
+  static final Map<int, VirtualFileSystem> _vfs = {};
+
+  static int _vfsCounter = 0;
+  static int _fileCounter = 0;
+
+  final Pointer<sqlite3_vfs> _vfsPtr;
+  final Pointer<Char> _name;
+
+  _RegisteredVfs(this._vfsPtr, this._name);
+
+  factory _RegisteredVfs.allocate(VirtualFileSystem dartVfs) {
+    final name = Utf8Utils.allocateZeroTerminated(dartVfs.name).cast<Char>();
+    final id = _vfsCounter++;
+
+    final vfs = ffi.calloc<sqlite3_vfs>();
+    vfs.ref
+      ..iVersion = 2 // We don't support syscalls yet
+      ..szOsFile = sizeOf<_DartFile>()
+      ..mxPathname = 1024
+      ..zName = name
+      ..pAppData = Pointer.fromAddress(id)
+      ..xOpen = Pointer.fromFunction(_xOpen, SqlError.SQLITE_ERROR)
+      ..xDelete = Pointer.fromFunction(_xDelete, SqlError.SQLITE_ERROR)
+      ..xAccess = Pointer.fromFunction(_xAccess, SqlError.SQLITE_ERROR)
+      ..xFullPathname =
+          Pointer.fromFunction(_xFullPathname, SqlError.SQLITE_ERROR)
+      ..xDlOpen = nullPtr()
+      ..xDlError = nullPtr()
+      ..xDlSym = nullPtr()
+      ..xDlClose = nullPtr()
+      ..xRandomness = Pointer.fromFunction(_xRandomness, SqlError.SQLITE_ERROR)
+      ..xSleep = Pointer.fromFunction(_xSleep, SqlError.SQLITE_ERROR)
+      ..xCurrentTime = nullPtr()
+      ..xGetLastError = nullPtr()
+      ..xCurrentTimeInt64 =
+          Pointer.fromFunction(_xCurrentTime64, SqlError.SQLITE_ERROR);
+
+    _vfs[id] = dartVfs;
+    return _RegisteredVfs(vfs, name);
+  }
+
+  void deallocate() {
+    _vfs.remove(_vfsPtr.ref.pAppData.address);
+    ffi.calloc.free(_vfsPtr);
+    _name.free();
+  }
+
+  static int _runVfs(
+      Pointer<sqlite3_vfs> vfs, void Function(VirtualFileSystem) body) {
+    final dartVfs = _vfs[vfs.ref.pAppData.address]!;
+    try {
+      body(dartVfs);
+      return SqlError.SQLITE_OK;
+    } on VfsException catch (e) {
+      return e.returnCode;
+    } on Object {
+      return SqlError.SQLITE_ERROR;
+    }
+  }
+
+  static int _xOpen(Pointer<sqlite3_vfs> vfsPtr, Pointer<Char> zName,
+      Pointer<sqlite3_file> file, int flags, Pointer<Int> pOutFlags) {
+    return _runVfs(vfsPtr, (vfs) {
+      final fileName = Sqlite3Filename(zName.cast<sqlite3_char>().readString());
+      final dartFilePtr = file.cast<_DartFile>();
+
+      final (file: dartFile, :outFlags) = vfs.xOpen(fileName, flags);
+      final fileId = _fileCounter++;
+      _files[fileId] = dartFile;
+
+      final ioMethods = ffi.calloc<sqlite3_io_methods>();
+      ioMethods.ref
+        ..iVersion = 1
+        ..xClose = Pointer.fromFunction(_xClose, SqlError.SQLITE_ERROR)
+        ..xRead = Pointer.fromFunction(_xRead, SqlError.SQLITE_ERROR)
+        ..xWrite = Pointer.fromFunction(_xWrite, SqlError.SQLITE_ERROR)
+        ..xTruncate = Pointer.fromFunction(_xTruncate, SqlError.SQLITE_ERROR)
+        ..xSync = Pointer.fromFunction(_xSync, SqlError.SQLITE_ERROR)
+        ..xFileSize = Pointer.fromFunction(_xFileSize, SqlError.SQLITE_ERROR)
+        ..xLock = Pointer.fromFunction(_xLock, SqlError.SQLITE_ERROR)
+        ..xUnlock = Pointer.fromFunction(_xUnlock, SqlError.SQLITE_ERROR)
+        ..xCheckReservedLock =
+            Pointer.fromFunction(_xCheckReservedLock, SqlError.SQLITE_ERROR)
+        ..xFileControl =
+            Pointer.fromFunction(_xFileControl, SqlError.SQLITE_NOTFOUND)
+        ..xSectorSize = Pointer.fromFunction(_xSectorSize, 4096)
+        ..xDeviceCharacteristics =
+            Pointer.fromFunction(_xDeviveCharacteristics, 0);
+
+      if (!pOutFlags.isNullPointer) {
+        pOutFlags.value = outFlags;
+      }
+
+      dartFilePtr.ref
+        ..pMethods = ioMethods
+        ..dartFileId = fileId;
+    });
+  }
+
+  static int _xDelete(
+      Pointer<sqlite3_vfs> vfsPtr, Pointer<Char> zName, int syncDir) {
+    return _runVfs(vfsPtr,
+        (vfs) => vfs.xDelete(zName.cast<sqlite3_char>().readString(), syncDir));
+  }
+
+  static int _xAccess(Pointer<sqlite3_vfs> vfsPtr, Pointer<Char> zName,
+      int flags, Pointer<Int> pResOut) {
+    return _runVfs(vfsPtr, (vfs) {
+      if (!pResOut.isNullPointer) {
+        pResOut.value =
+            vfs.xAccess(zName.cast<sqlite3_char>().readString(), flags);
+      }
+    });
+  }
+
+  static int _xFullPathname(Pointer<sqlite3_vfs> vfsPtr, Pointer<Char> zName,
+      int nOut, Pointer<Char> zOut) {
+    return _runVfs(vfsPtr, (vfs) {
+      final bytes = utf8
+          .encode(vfs.xFullPathName(zName.cast<sqlite3_char>().readString()));
+      if (bytes.length >= nOut) {
+        throw VfsException(SqlError.SQLITE_TOOBIG);
+      }
+
+      final target = zOut.cast<Uint8>().asTypedList(nOut);
+      target.setAll(0, bytes);
+      target[bytes.length] = 0;
+    });
+  }
+
+  static int _xRandomness(
+      Pointer<sqlite3_vfs> vfsPtr, int nByte, Pointer<Char> zOut) {
+    return _runVfs(vfsPtr, (vfs) {
+      vfs.xRandomness(zOut.cast<Uint8>().asTypedList(nByte));
+    });
+  }
+
+  static int _xSleep(Pointer<sqlite3_vfs> vfsPtr, int microseconds) {
+    return _runVfs(
+        vfsPtr, (vfs) => vfs.xSleep(Duration(microseconds: microseconds)));
+  }
+
+  static int _xCurrentTime64(Pointer<sqlite3_vfs> vfsPtr, Pointer<Int64> out) {
+    return _runVfs(vfsPtr, (vfs) {
+      if (!out.isNullPointer) {
+        // https://github.com/sqlite/sqlite/blob/8ee75f7c3ac1456b8d941781857be27bfddb57d6/src/os_unix.c#L6757
+        const unixEpoch = 24405875 * 8640000;
+
+        out.value = unixEpoch + vfs.xCurrentTime().millisecondsSinceEpoch;
+      }
+    });
+  }
+
+  static int _runFile(
+      Pointer<sqlite3_file> file, void Function(VirtualFileSystemFile) body) {
+    final id = file.cast<_DartFile>().ref.dartFileId;
+    final dartFile = _files[id]!;
+    try {
+      body(dartFile);
+      return SqlError.SQLITE_OK;
+    } on VfsException catch (e) {
+      return e.returnCode;
+    } on Object {
+      return SqlError.SQLITE_ERROR;
+    }
+  }
+
+  static int _xClose(Pointer<sqlite3_file> ptr) {
+    return _runFile(ptr, (file) {
+      file.xClose();
+
+      final dartFile = ptr.cast<_DartFile>().ref;
+      _files.remove(dartFile.dartFileId);
+      ffi.calloc.free(dartFile.pMethods);
+    });
+  }
+
+  static int _xRead(
+      Pointer<sqlite3_file> ptr, Pointer<Void> target, int amount, int offset) {
+    return _runFile(ptr, (file) {
+      final buffer = target.cast<Uint8>().asTypedList(amount);
+      file.xRead(buffer, offset);
+    });
+  }
+
+  static int _xWrite(
+      Pointer<sqlite3_file> ptr, Pointer<Void> target, int amount, int offset) {
+    return _runFile(ptr, (file) {
+      final buffer = target.cast<Uint8>().asTypedList(amount);
+      file.xWrite(buffer, offset);
+    });
+  }
+
+  static int _xTruncate(Pointer<sqlite3_file> ptr, int size) {
+    return _runFile(ptr, (file) => file.xTruncate(size));
+  }
+
+  static int _xSync(Pointer<sqlite3_file> ptr, int flags) {
+    return _runFile(ptr, (file) => file.xSync(flags));
+  }
+
+  static int _xFileSize(Pointer<sqlite3_file> ptr, Pointer<Int64> pSize) {
+    return _runFile(ptr, (file) {
+      if (!pSize.isNullPointer) {
+        pSize.value = file.xFileSize();
+      }
+    });
+  }
+
+  static int _xLock(Pointer<sqlite3_file> ptr, int flags) {
+    return _runFile(ptr, (file) => file.xLock(flags));
+  }
+
+  static int _xUnlock(Pointer<sqlite3_file> ptr, int flags) {
+    return _runFile(ptr, (file) => file.xUnlock(flags));
+  }
+
+  static int _xCheckReservedLock(
+      Pointer<sqlite3_file> ptr, Pointer<Int> pResOut) {
+    return _runFile(ptr, (file) {
+      if (!pResOut.isNullPointer) {
+        pResOut.value = file.xCheckReservedLock();
+      }
+    });
+  }
+
+  static int _xFileControl(
+      Pointer<sqlite3_file> ptr, int op, Pointer<Void> pArg) {
+    // We don't currently support filecontrol operations in the VFS.
+    return SqlError.SQLITE_NOTFOUND;
+  }
+
+  static int _xSectorSize(Pointer<sqlite3_file> ptr) {
+    // We don't currently support custom sector sizes.
+    return 4096;
+  }
+
+  static int _xDeviveCharacteristics(Pointer<sqlite3_file> ptr) {
+    return _runFile(ptr, (file) => file.xDeviceCharacteristics);
+  }
+}
+
+final class _DartFile extends Struct {
+  // extends sqlite3_file:
+  external Pointer<sqlite3_io_methods> pMethods;
+  // additional definitions
+  @Int64()
+  external int dartFileId;
 }
 
 final class FfiDatabase extends RawSqliteDatabase {
@@ -266,6 +550,7 @@ final class FfiDatabase extends RawSqliteDatabase {
     final previous = _installedUpdateHook;
 
     if (hook == null) {
+      _installedUpdateHook = null;
       bindings.bindings.sqlite3_update_hook(db, nullPtr(), nullPtr());
     } else {
       final native = _installedUpdateHook = hook.toNative();
@@ -299,13 +584,10 @@ final class FfiDatabase extends RawSqliteDatabase {
 
   static Pointer<NativeFunction<Void Function(Pointer<Void>)>> _xDestroy(
       List<NativeCallable> callables) {
-    int destroy(Pointer<Void> _) {
+    void destroy(Pointer<Void> _) {
       for (final callable in callables) {
         callable.close();
       }
-
-      // TODO: Remove and change to void after Dart 3.5 or https://github.com/dart-lang/sdk/issues/56064
-      return 0;
     }
 
     final callable =
@@ -665,26 +947,6 @@ final class FfiContext extends RawSqliteContext {
   }
 }
 
-class RegisteredFunctionSet {
-  final RawXFunc? xFunc;
-  final RawXStep? xStep;
-  final RawXFinal? xFinal;
-
-  final RawXFinal? xValue;
-  final RawXStep? xInverse;
-
-  final RawCollation? collation;
-
-  RegisteredFunctionSet({
-    this.xFunc,
-    this.xStep,
-    this.xFinal,
-    this.xValue,
-    this.xInverse,
-    this.collation,
-  });
-}
-
 class _ValueList extends ListBase<FfiValue> {
   @override
   int length;
@@ -715,8 +977,6 @@ extension on RawXFunc {
     return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx, int nArgs,
         Pointer<Pointer<sqlite3_value>> args) {
       this(FfiContext(bindings, ctx), _ValueList(nArgs, args, bindings));
-      // TODO: Remove and change to void after Dart 3.5 or https://github.com/dart-lang/sdk/issues/56064
-      return 0;
     })
       ..keepIsolateAlive = false;
   }
@@ -728,8 +988,6 @@ extension on RawXFinal {
       final context = FfiContext(bindings, ctx);
       this(context);
       if (clean) context.freeContext();
-      // TODO: Remove and change to void after Dart 3.5 or https://github.com/dart-lang/sdk/issues/56064
-      return 0;
     })
       ..keepIsolateAlive = false;
   }
@@ -762,9 +1020,6 @@ extension on RawUpdateHook {
           Pointer<sqlite3_char> table, int rowid) {
         final tableName = table.readString();
         this(kind, tableName, rowid);
-
-        // TODO: Remove and change to void after Dart 3.5 or https://github.com/dart-lang/sdk/issues/56064
-        return 0;
       },
     )..keepIsolateAlive = false;
   }

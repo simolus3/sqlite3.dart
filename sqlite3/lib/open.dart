@@ -1,6 +1,6 @@
 /// Utils to open a [DynamicLibrary] on platforms that aren't supported by
 /// default.
-library open;
+library;
 
 import 'dart:ffi';
 

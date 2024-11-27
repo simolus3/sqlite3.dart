@@ -1,11 +1,12 @@
 @internal
-library sqlite3.implementation.bindings;
+library;
 
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
 
 import '../functions.dart';
+import '../vfs.dart';
 
 // ignore_for_file: non_constant_identifier_names
 
@@ -36,6 +37,9 @@ abstract base class RawSqliteBindings {
       String name, int flags, String? zVfs);
 
   String sqlite3_errstr(int extendedErrorCode);
+
+  void registerVirtualFileSystem(VirtualFileSystem vfs, int makeDefault);
+  void unregisterVirtualFileSystem(VirtualFileSystem vfs);
 }
 
 /// Combines a sqlite result code and the result object.

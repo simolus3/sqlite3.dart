@@ -8,7 +8,7 @@ import 'package:path/path.dart' as p;
 import '../../../constants.dart';
 import '../../../vfs.dart';
 import '../../js_interop.dart';
-import '../utils.dart';
+import '../../../utils.dart';
 import 'sync_channel.dart';
 import 'worker.dart';
 

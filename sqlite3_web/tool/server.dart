@@ -136,15 +136,18 @@ class TestWebDriver {
     );
   }
 
-  Future<(StorageMode, AccessMode)> openDatabase(
-      [(StorageMode, AccessMode)? implementation]) async {
+  Future<(StorageMode, AccessMode)> openDatabase({
+    (StorageMode, AccessMode)? implementation,
+    bool onlyOpenVfs = false,
+  }) async {
     final desc = switch (implementation) {
       null => null,
       (var storage, var access) => '${storage.name}:${access.name}'
     };
 
+    final method = onlyOpenVfs ? 'open_only_vfs' : 'open';
     final res = await driver
-        .executeAsync('open(arguments[0], arguments[1])', [desc]) as String?;
+        .executeAsync('$method(arguments[0], arguments[1])', [desc]) as String?;
 
     // This returns the storage/access mode actually chosen.
     final split = res!.split(':');
@@ -173,6 +176,29 @@ class TestWebDriver {
     final res = await driver.executeAsync('test_second("", arguments[0])', []);
     if (res != true) {
       throw 'test_second failed! More information may be available in the console.';
+    }
+  }
+
+  Future<int?> assertFile(bool shouldExist) async {
+    final res = await driver.executeAsync(
+        'assert_file(arguments[0], arguments[1])', [shouldExist.toString()]);
+    res!;
+
+    if (res == false) {
+      throw 'assertFile failed! Expected $shouldExist, match return was $res';
+    }
+
+    if (res is int) {
+      return res;
+    } else {
+      return null;
+    }
+  }
+
+  Future<void> flush() async {
+    final result = await driver.executeAsync('flush("", arguments[0])', []);
+    if (result != true) {
+      throw 'flush() failed: $result';
     }
   }
 }

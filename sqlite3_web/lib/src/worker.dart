@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'dart:typed_data';
 import 'package:sqlite3/wasm.dart';
 import 'package:stream_channel/stream_channel.dart';
 import 'package:web/web.dart'
@@ -21,6 +22,7 @@ import 'database.dart';
 import 'channel.dart';
 import 'protocol.dart';
 import 'shared.dart';
+import 'types.dart';
 
 sealed class WorkerEnvironment {
   WorkerEnvironment._();
@@ -180,9 +182,12 @@ final class _ClientConnection extends ProtocolChannel
         try {
           database =
               _runner.findDatabase(request.databaseName, request.storageMode);
-          await database.opened;
+
+          await (request.onlyOpenVfs ? database.vfs : database.opened);
+
           connectionDatabase = _ConnectionDatabase(database);
           _openedDatabases.add(connectionDatabase);
+
           return SimpleSuccessResponse(
               response: database.id.toJS, requestId: request.requestId);
         } catch (e) {
@@ -239,10 +244,44 @@ final class _ClientConnection extends ProtocolChannel
         await database.close();
         return SimpleSuccessResponse(
             response: null, requestId: request.requestId);
-      case FileSystemExistsQuery():
-        throw UnimplementedError();
-      case FileSystemAccess():
-        throw UnimplementedError();
+      case FileSystemFlushRequest():
+        if (await database?.database.vfs case IndexedDbFileSystem idb) {
+          await idb.flush();
+        }
+
+        return SimpleSuccessResponse(
+            response: null, requestId: request.requestId);
+      case FileSystemExistsQuery(:final fsType):
+        final vfs = await database!.database.vfs;
+        final exists = vfs.xAccess(fsType.pathInVfs, 0) == 1;
+
+        return SimpleSuccessResponse(
+            response: exists.toJS, requestId: request.requestId);
+      case FileSystemAccess(:final buffer, :final fsType):
+        final vfs = await database!.database.vfs;
+        final file = vfs
+            .xOpen(
+                Sqlite3Filename(fsType.pathInVfs), SqlFlag.SQLITE_OPEN_CREATE)
+            .file;
+
+        try {
+          if (buffer != null) {
+            final asDartBuffer = buffer.toDart;
+            file.xTruncate(asDartBuffer.lengthInBytes);
+            file.xWrite(asDartBuffer.asUint8List(), 0);
+
+            return SimpleSuccessResponse(
+                response: null, requestId: request.requestId);
+          } else {
+            final buffer = Uint8List(file.xFileSize());
+            file.xRead(buffer, 0);
+
+            return SimpleSuccessResponse(
+                response: buffer.buffer.toJS, requestId: request.requestId);
+          }
+        } finally {
+          file.xClose();
+        }
     }
   }
 
@@ -268,6 +307,13 @@ final class _ClientConnection extends ProtocolChannel
   }
 }
 
+extension on FileType {
+  String get pathInVfs => switch (this) {
+        FileType.database => '/database',
+        FileType.journal => '/database-journal',
+      };
+}
+
 final class DatabaseState {
   final WorkerRunner runner;
   final int id;
@@ -276,11 +322,12 @@ final class DatabaseState {
   int refCount = 1;
 
   Future<WorkerDatabase>? _database;
+  Future<void>? _openVfs;
+  VirtualFileSystem? _resolvedVfs;
 
   /// Runs additional async work, such as flushing the VFS to IndexedDB when
   /// the database is closed.
   FutureOr<void> Function()? closeHandler;
-  VirtualFileSystem? vfs;
 
   DatabaseState(
       {required this.id,
@@ -288,11 +335,10 @@ final class DatabaseState {
       required this.name,
       required this.mode});
 
-  Future<WorkerDatabase> get opened async {
-    final database = _database ??= Future.sync(() async {
-      final sqlite3 = await runner._sqlite3!;
-      final vfsName = 'vfs-web-$id';
+  String get vfsName => 'vfs-web-$id';
 
+  Future<VirtualFileSystem> get vfs async {
+    await (_openVfs ??= Future.sync(() async {
       switch (mode) {
         case FileSystemImplementation.opfsLocks:
           final options = WasmVfs.createOptions(root: pathForOpfs(name));
@@ -304,22 +350,31 @@ final class DatabaseState {
           await EventStreamProviders.messageEvent.forTarget(worker).first;
 
           final wasmVfs =
-              vfs = WasmVfs(workerOptions: options, vfsName: vfsName);
+              _resolvedVfs = WasmVfs(workerOptions: options, vfsName: vfsName);
           closeHandler = wasmVfs.close;
         case FileSystemImplementation.opfsShared:
-          final simple = vfs = await SimpleOpfsFileSystem.loadFromStorage(
-              pathForOpfs(name),
-              vfsName: vfsName);
+          final simple = _resolvedVfs =
+              await SimpleOpfsFileSystem.loadFromStorage(pathForOpfs(name),
+                  vfsName: vfsName);
           closeHandler = simple.close;
         case FileSystemImplementation.indexedDb:
-          final idb = vfs =
+          final idb = _resolvedVfs =
               await IndexedDbFileSystem.open(dbName: name, vfsName: vfsName);
           closeHandler = idb.close;
         case FileSystemImplementation.inMemory:
-          vfs = InMemoryFileSystem(name: vfsName);
+          _resolvedVfs = InMemoryFileSystem(name: vfsName);
       }
+    }));
 
-      sqlite3.registerVirtualFileSystem(vfs!);
+    return _resolvedVfs!;
+  }
+
+  Future<WorkerDatabase> get opened async {
+    final database = _database ??= Future.sync(() async {
+      final sqlite3 = await runner._sqlite3!;
+      final fileSystem = await vfs;
+
+      sqlite3.registerVirtualFileSystem(fileSystem);
       return await runner._controller.openDatabase(
         sqlite3,
         // We're currently using /database as the in-VFS path. This is because
@@ -346,7 +401,7 @@ final class DatabaseState {
     final database = await _database!;
 
     database.database.dispose();
-    if (vfs case final vfs?) {
+    if (_resolvedVfs case final vfs?) {
       sqlite3.unregisterVirtualFileSystem(vfs);
     }
 

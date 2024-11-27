@@ -162,11 +162,27 @@ abstract class WebSqlite {
 
   /// Connects to a database identified by its [name] stored under [type] and
   /// accessed via the given [access] mode.
-  Future<Database> connect(String name, StorageMode type, AccessMode access);
+  ///
+  /// When [onlyOpenVfs] is enabled, only the underlying file system for the
+  /// database is initialized before [connect] returns. By default, the database
+  /// will also be opened in [connect]. Otherwise, the database will be opened
+  /// on the worker when it's first used.
+  /// Only opening the VFS can be used to, for instance, check if the database
+  /// already exists and to initialize it manually if it doesn't.
+  Future<Database> connect(String name, StorageMode type, AccessMode access,
+      {bool onlyOpenVfs = false});
 
   /// Starts a feature detection via [runFeatureDetection] and then [connect]s
   /// to the best database available.
-  Future<ConnectToRecommendedResult> connectToRecommended(String name);
+  ///
+  /// When [onlyOpenVfs] is enabled, only the underlying file system for the
+  /// database is initialized before [connect] returns. By default, the database
+  /// will also be opened in [connect]. Otherwise, the database will be opened
+  /// on the worker when it's first used.
+  /// Only opening the VFS can be used to, for instance, check if the database
+  /// already exists and to initialize it manually if it doesn't.
+  Future<ConnectToRecommendedResult> connectToRecommended(String name,
+      {bool onlyOpenVfs = false});
 
   /// Entrypoints for workers hosting datbases.
   static void workerEntrypoint({

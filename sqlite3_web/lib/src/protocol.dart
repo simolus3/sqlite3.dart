@@ -22,6 +22,7 @@ enum MessageType<T extends Message> {
   runQuery<RunQuery>(),
   fileSystemExists<FileSystemExistsQuery>(),
   fileSystemAccess<FileSystemAccess>(),
+  fileSystemFlush<FileSystemFlushRequest>(),
   connect<ConnectRequest>(),
   startFileSystemServer<StartFileSystemServer>(),
   updateRequest<UpdateStreamRequest>(),
@@ -52,6 +53,7 @@ class _UniqueFieldNames {
   static const id = 'i';
   static const updateKind = 'k';
   static const tableNames = 'n';
+  static const onlyOpenVfs = 'o';
   static const parameters = 'p';
   static const storageMode = 's';
   static const sql = 's'; // not used in same message
@@ -86,6 +88,7 @@ sealed class Message {
       MessageType.runQuery => RunQuery.deserialize(object),
       MessageType.fileSystemExists => FileSystemExistsQuery.deserialize(object),
       MessageType.fileSystemAccess => FileSystemAccess.deserialize(object),
+      MessageType.fileSystemFlush => FileSystemFlushRequest.deserialize(object),
       MessageType.connect => ConnectRequest.deserialize(object),
       MessageType.closeDatabase => CloseDatabase.deserialize(object),
       MessageType.openAdditionalConnection =>
@@ -199,12 +202,14 @@ final class OpenRequest extends Request {
 
   final String databaseName;
   final FileSystemImplementation storageMode;
+  final bool onlyOpenVfs;
 
   OpenRequest({
     required super.requestId,
     required this.wasmUri,
     required this.databaseName,
     required this.storageMode,
+    required this.onlyOpenVfs,
   });
 
   factory OpenRequest.deserialize(JSObject object) {
@@ -215,6 +220,9 @@ final class OpenRequest extends Request {
       wasmUri:
           Uri.parse((object[_UniqueFieldNames.wasmUri] as JSString).toDart),
       requestId: object.requestId,
+      onlyOpenVfs:
+          // The onlyOpenVfs field was not set in earlier clients.
+          (object[_UniqueFieldNames.onlyOpenVfs] as JSBoolean?)?.toDart == true,
     );
   }
 
@@ -227,6 +235,7 @@ final class OpenRequest extends Request {
     object[_UniqueFieldNames.databaseName] = databaseName.toJS;
     object[_UniqueFieldNames.storageMode] = storageMode.toJS;
     object[_UniqueFieldNames.wasmUri] = wasmUri.toString().toJS;
+    object[_UniqueFieldNames.onlyOpenVfs] = onlyOpenVfs.toJS;
   }
 }
 
@@ -348,6 +357,24 @@ final class FileSystemExistsQuery extends Request {
   }
 }
 
+/// Requests the worker to flush the file system for a database.
+final class FileSystemFlushRequest extends Request {
+  @override
+  MessageType<Message> get type => MessageType.fileSystemFlush;
+
+  FileSystemFlushRequest({
+    required super.databaseId,
+    required super.requestId,
+  });
+
+  factory FileSystemFlushRequest.deserialize(JSObject object) {
+    return FileSystemFlushRequest(
+      databaseId: object.databaseId,
+      requestId: object.requestId,
+    );
+  }
+}
+
 /// Read or write to files of an opened database.
 ///
 /// For reads, other side will respond with a [SimpleSuccessResponse] containing
@@ -385,8 +412,6 @@ final class FileSystemAccess extends Request {
     object[_UniqueFieldNames.buffer] = buffer;
     object[_UniqueFieldNames.fileType] = fsType.index.toJS;
 
-    // false positive? dart2js seems to emit a null check as it should
-    // ignore: pattern_never_matches_value_type
     if (buffer case final buffer?) {
       transferred.add(buffer);
     }
@@ -462,6 +487,9 @@ final class OpenAdditonalConnection extends Request {
   MessageType<Message> get type => MessageType.openAdditionalConnection;
 }
 
+@JS('ArrayBuffer')
+external JSFunction get _arrayBufferConstructor;
+
 final class SimpleSuccessResponse extends Response {
   final JSAny? response;
 
@@ -481,6 +509,10 @@ final class SimpleSuccessResponse extends Response {
   void serialize(JSObject object, List<JSObject> transferred) {
     super.serialize(object, transferred);
     object[_UniqueFieldNames.responseData] = response;
+
+    if (response.instanceof(_arrayBufferConstructor)) {
+      transferred.add(response as JSObject);
+    }
   }
 }
 

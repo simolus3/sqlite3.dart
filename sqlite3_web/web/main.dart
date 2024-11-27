@@ -13,6 +13,7 @@ WebSqlite? webSqlite;
 
 Database? database;
 int updates = 0;
+bool listeningForUpdates = false;
 
 void main() {
   _addCallbackForWebDriver('detectImplementations', _detectImplementations);
@@ -21,9 +22,11 @@ void main() {
     return null;
   });
   _addCallbackForWebDriver('get_updates', (arg) async {
+    listenForUpdates();
     return updates.toJS;
   });
-  _addCallbackForWebDriver('open', _open);
+  _addCallbackForWebDriver('open', (arg) => _open(arg, false));
+  _addCallbackForWebDriver('open_only_vfs', (arg) => _open(arg, true));
   _addCallbackForWebDriver('exec', _exec);
   _addCallbackForWebDriver('test_second', (arg) async {
     final endpoint = await database!.additionalConnection();
@@ -31,6 +34,28 @@ void main() {
 
     await second.execute('SELECT 1');
     await second.dispose();
+    return true.toJS;
+  });
+  _addCallbackForWebDriver('assert_file', (arg) async {
+    final vfs = database!.fileSystem;
+
+    final exists = await vfs.exists(FileType.database);
+    print('exists: $exists');
+    if (exists != bool.parse(arg!)) {
+      return false.toJS;
+    }
+
+    if (exists) {
+      // Try reading file contents
+      final buffer = await vfs.readFile(FileType.database);
+      return buffer.length.toJS;
+    }
+
+    return true.toJS;
+  });
+  _addCallbackForWebDriver('flush', (arg) async {
+    final vfs = database!.fileSystem;
+    await vfs.flush();
     return true.toJS;
   });
 
@@ -88,7 +113,7 @@ Future<JSString> _detectImplementations(String? _) async {
   }).toJS;
 }
 
-Future<JSAny?> _open(String? implementationName) async {
+Future<JSAny?> _open(String? implementationName, bool onlyOpenVfs) async {
   final sqlite = initializeSqlite();
   Database db;
   var returnValue = implementationName;
@@ -97,19 +122,31 @@ Future<JSAny?> _open(String? implementationName) async {
     final split = implementationName.split(':');
 
     db = await sqlite.connect(databaseName, StorageMode.values.byName(split[0]),
-        AccessMode.values.byName(split[1]));
+        AccessMode.values.byName(split[1]),
+        onlyOpenVfs: onlyOpenVfs);
   } else {
-    final result = await sqlite.connectToRecommended(databaseName);
+    final result = await sqlite.connectToRecommended(databaseName,
+        onlyOpenVfs: onlyOpenVfs);
     db = result.database;
     returnValue = '${result.storage.name}:${result.access.name}';
   }
 
-  // Make sure it works!
-  await db.select('SELECT database_host()');
-
-  db.updates.listen((_) => updates++);
   database = db;
+
+  // Make sure it works!
+  if (!onlyOpenVfs) {
+    await db.select('SELECT database_host()');
+    listenForUpdates();
+  }
+
   return returnValue?.toJS;
+}
+
+void listenForUpdates() {
+  if (!listeningForUpdates) {
+    listeningForUpdates = true;
+    database!.updates.listen((_) => updates++);
+  }
 }
 
 Future<JSAny?> _exec(String? sql) async {

@@ -31,7 +31,7 @@ abstract interface class Sqlite3 implements CommonSqlite3 {
   Database fromPointer(Pointer<void> database);
 
   @override
-  Database openInMemory();
+  Database openInMemory({String? vfs});
 
   /// Opens a new in-memory database and copies another database into it
   /// https://www.sqlite.org/c3ref/backup_finish.html

@@ -14,8 +14,8 @@ import 'package:web/web.dart' as web;
 import '../../constants.dart';
 import '../../vfs.dart';
 import '../js_interop.dart';
-import 'memory.dart';
-import 'utils.dart';
+import '../../in_memory_vfs.dart';
+import '../../utils.dart';
 
 /// An (asynchronous) file system implementation backed by IndexedDB.
 ///
@@ -45,6 +45,14 @@ class AsynchronousIndexedDbFileSystem {
 
   web.IDBDatabase? _database;
   final String _dbName;
+
+  /// Whether to store chunks as [web.Blob]s instead of array buffers.
+  ///
+  /// It seems like loading blobs concurrently may be more efficient, but not
+  /// all browsers support storing blobs in IndexedDB. We support both blobs
+  /// and array buffers on the read path. For writes, we run a feature detection
+  /// after opening the file system to determine whether to store blobs.
+  bool _storeBlobs = true;
 
   AsynchronousIndexedDbFileSystem(this._dbName);
 
@@ -79,6 +87,44 @@ class AsynchronousIndexedDbFileSystem {
     final openFuture = openRequest.completeOrBlocked<web.IDBDatabase>();
     completer.complete(openFuture);
     _database = await completer.future;
+
+    _storeBlobs = await _supportsStoringBlobs();
+  }
+
+  /// Probes whether the IndexedDB implementation supports storing [web.Blob]
+  /// instances.
+  ///
+  /// Safari in private windows does not support storing blobs, but allows
+  /// storing array buffers directly. Our read paths support reading blobs and
+  /// array buffers, so we use this to determine which format to use for writes.
+  Future<bool> _supportsStoringBlobs() async {
+    final transaction =
+        _database!.transaction([_blocksStore.toJS].toJS, 'readwrite');
+
+    web.Blob blob;
+
+    try {
+      final blocks = transaction.objectStore(_blocksStore);
+
+      final request = blocks.add(
+        web.Blob([Uint8List(4096).buffer.toJS].toJS),
+        ['test'.toJS].toJS,
+      );
+      final key = await request.complete();
+
+      blob = await blocks.get(key).complete<web.Blob>();
+    } on Object {
+      return false;
+    } finally {
+      transaction.abort();
+    }
+
+    try {
+      await blob.byteBuffer();
+      return true;
+    } on Object {
+      return false;
+    }
   }
 
   void close() {
@@ -163,7 +209,12 @@ class AsynchronousIndexedDbFileSystem {
       // We can't have an async suspension in here because that would close the
       // transaction. Launch the reader now and wait for all reads later.
       readOperations.add(Future.sync(() async {
-        final data = await (row.value as web.Blob).byteBuffer();
+        ByteBuffer data;
+        if (row.value.instanceOfString('Blob')) {
+          data = await (row.value as web.Blob).byteBuffer();
+        } else {
+          data = (row.value as JSArrayBuffer).toDart;
+        }
         result.setAll(rowOffset, data.asUint8List(0, length));
       }));
     }
@@ -189,9 +240,15 @@ class AsynchronousIndexedDbFileSystem {
     while (await iterator.moveNext()) {
       final row = iterator.current;
 
-      final rowOffset = (row.key! as List)[1] as int;
-      final blob = row.value as web.Blob;
-      final dataLength = min(blob.size, file.length - rowOffset);
+      final key = (row.key as JSArray).toDart;
+      final rowOffset = (key[1] as JSNumber).toDartInt;
+      final value = row.value;
+      final isBlob = value.instanceOfString('Blob');
+      final valueSize = isBlob
+          ? (value as web.Blob).size
+          : (value as _JSArrayBuffer).byteLength;
+
+      final dataLength = min(valueSize, file.length - rowOffset);
 
       if (rowOffset < offset) {
         // This block starts before the section that we're interested in, so cut
@@ -203,7 +260,9 @@ class AsynchronousIndexedDbFileSystem {
         // Do the reading async because we loose the transaction on the first
         // suspension.
         readOperations.add(Future.sync(() async {
-          final data = await blob.byteBuffer();
+          final data = isBlob
+              ? await (value as web.Blob).byteBuffer()
+              : (value as _JSArrayBuffer).toDart;
 
           target.setRange(
             0,
@@ -225,7 +284,9 @@ class AsynchronousIndexedDbFileSystem {
 
         bytesRead += lengthToCopy;
         readOperations.add(Future.sync(() async {
-          final data = await blob.byteBuffer();
+          final data = isBlob
+              ? await (value as web.Blob).byteBuffer()
+              : (value as _JSArrayBuffer).toDart;
 
           target.setAll(startInTarget, data.asUint8List(0, lengthToCopy));
         }));
@@ -252,15 +313,17 @@ class AsynchronousIndexedDbFileSystem {
       final cursor = await blocks
           .openCursor(web.IDBKeyRange.only([fileId.toJS, blockStart.toJS].toJS))
           .complete<web.IDBCursorWithValue?>();
-      final blob = web.Blob([block.toJS].toJS);
+
+      final value =
+          _storeBlobs ? web.Blob([block.toJS].toJS) : block.buffer.toJS;
 
       if (cursor == null) {
         // There isn't, let's write a new block
         await blocks
-            .put(blob, [fileId.toJS, blockStart.toJS].toJS)
+            .put(value, [fileId.toJS, blockStart.toJS].toJS)
             .complete<JSAny?>();
       } else {
-        await cursor.update(blob).complete<JSAny?>();
+        await cursor.update(value).complete<JSAny?>();
       }
     }
 
@@ -826,4 +889,9 @@ final class _WriteFileWorkItem extends _IndexedDbWorkItem {
     await fileSystem._asynchronous
         ._write(await fileSystem._fileId(path), request);
   }
+}
+
+@JS('ArrayBuffer')
+extension type _JSArrayBuffer(JSArrayBuffer _) implements JSArrayBuffer {
+  external int get byteLength;
 }

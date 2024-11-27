@@ -3,6 +3,7 @@ import 'package:meta/meta.dart';
 import '../constants.dart';
 import '../database.dart';
 import '../sqlite3.dart';
+import '../vfs.dart';
 import 'bindings.dart';
 import 'database.dart';
 import 'exception.dart';
@@ -66,8 +67,19 @@ base class Sqlite3Implementation implements CommonSqlite3 {
   }
 
   @override
-  CommonDatabase openInMemory() {
-    return open(':memory:');
+  CommonDatabase openInMemory({String? vfs}) {
+    return open(':memory:', vfs: vfs);
+  }
+
+  @override
+  void registerVirtualFileSystem(VirtualFileSystem vfs,
+      {bool makeDefault = false}) {
+    bindings.registerVirtualFileSystem(vfs, makeDefault ? 1 : 0);
+  }
+
+  @override
+  void unregisterVirtualFileSystem(VirtualFileSystem vfs) {
+    bindings.unregisterVirtualFileSystem(vfs);
   }
 
   @override

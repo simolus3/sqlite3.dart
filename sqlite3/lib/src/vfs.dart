@@ -27,9 +27,6 @@ base class Sqlite3Filename {
 /// A [virtual filesystem][vfs] used by sqlite3 to access the current I/O
 /// environment.
 ///
-/// Due to a lack of necessity on other platforms, registering instances of
-/// virtual file systems is only supported with the web backend of this package.
-///
 /// Instead of having an integer return code, file system implementations should
 /// throw a [VfsException] to signal invalid operations.
 /// For details on the individual methods, consult the `sqlite3.h` header file

@@ -1,3 +1,7 @@
+## 0.2.0
+
+- Make `FileSystem` implementation functional, add `FileSystem.flush()`.
+
 ## 0.1.3
 
 - Support latest version of `package:web`.

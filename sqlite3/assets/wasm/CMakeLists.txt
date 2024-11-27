@@ -11,7 +11,8 @@ include(FetchContent)
 
 FetchContent_Declare(
     sqlite3
-    URL https://sqlite.org/2024/sqlite-autoconf-3460000.tar.gz
+    # NOTE: When changing this, also update `test/wasm/sqlite3_test.dart`
+    URL https://sqlite.org/2024/sqlite-autoconf-3470000.tar.gz
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
 )
 

@@ -1,4 +1,5 @@
 import 'database.dart';
+import 'vfs.dart';
 
 /// Provides access to `sqlite3` functions, such as opening new databases.
 abstract interface class CommonSqlite3 {
@@ -25,7 +26,10 @@ abstract interface class CommonSqlite3 {
   });
 
   /// Opens an in-memory database.
-  CommonDatabase openInMemory();
+  ///
+  /// The [vfs] option can be used to set the appropriate virtual file system
+  /// implementation. When null, the default file system will be used.
+  CommonDatabase openInMemory({String? vfs});
 
   /// Accesses the `sqlite3_temp_directory` variable.
   ///
@@ -34,6 +38,24 @@ abstract interface class CommonSqlite3 {
   ///
   /// See also: https://www.sqlite.org/c3ref/temp_directory.html
   String? tempDirectory;
+
+  /// Registers a custom virtual file system used by this sqlite3 instance to
+  /// emulate I/O functionality that is not supported through WASM directly.
+  ///
+  /// Implementing a suitable [VirtualFileSystem] is a complex task. Users of
+  /// this package on the web should consider using a package that calls this
+  /// method for them (like `drift` or `sqflite_common_ffi_web`).
+  /// For more information on how to implement this, see the readme of the
+  /// `sqlite3` package for details.
+  void registerVirtualFileSystem(VirtualFileSystem vfs,
+      {bool makeDefault = false});
+
+  /// Unregisters a virtual file system implementation that has been registered
+  /// with [registerVirtualFileSystem].
+  ///
+  /// sqlite3 is not clear about what happens when this method is called with
+  /// the file system being in used. Thus, this method should be used with care.
+  void unregisterVirtualFileSystem(VirtualFileSystem vfs);
 }
 
 /// Version information about the sqlite3 library in use.
