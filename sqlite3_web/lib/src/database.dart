@@ -153,6 +153,12 @@ final class ConnectToRecommendedResult {
 /// Please see the readme of the `sqlite3_web` package for an overview on how
 /// to set up and use this package.
 abstract class WebSqlite {
+  /// Deletes a database from the [storage] if it exists.
+  ///
+  /// This method should not be called while the database is still open.
+  Future<void> deleteDatabase(
+      {required String name, required StorageMode storage});
+
   /// Tries to find features related to storing and accessing databases.
   ///
   /// The [databaseName] can optionally be used to make

@@ -128,17 +128,7 @@ void main() {
 
         driver = TestWebDriver(server, rawDriver);
         await driver.driver.get('http://localhost:8080/');
-
-        while (true) {
-          try {
-            // This element is created after main() has completed, make sure
-            // all the callbacks have been installed.
-            await driver.driver.findElement(By.id('ready'));
-            break;
-          } on NoSuchElementException {
-            continue;
-          }
-        }
+        await driver.waitReady();
       });
 
       tearDown(() => driver.driver.quit());
@@ -170,6 +160,26 @@ void main() {
 
           expect(await driver.assertFile(true), isPositive);
           await driver.flush();
+
+          if (storage != StorageMode.inMemory) {
+            await driver.driver.refresh();
+            await driver.waitReady();
+
+            await driver.openDatabase(
+              implementation: (storage, access),
+              onlyOpenVfs: true,
+            );
+            await driver.assertFile(true);
+
+            await driver.driver.refresh();
+            await driver.waitReady();
+            await driver.delete(storage);
+            await driver.openDatabase(
+              implementation: (storage, access),
+              onlyOpenVfs: true,
+            );
+            await driver.assertFile(false);
+          }
         });
       }
     });

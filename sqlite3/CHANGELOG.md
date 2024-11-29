@@ -1,3 +1,8 @@
+## 2.6.0-dev
+
+- Add `SimpleOpfsFileSystem.deleteFromStorage` to delete OPFS-based file
+  systems.
+
 ## 2.5.0
 
 - Allow registering custom virtual file systems on all platforms. Previously,

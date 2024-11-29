@@ -3,7 +3,7 @@ import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
-import 'package:sqlite3/common.dart';
+import 'package:sqlite3/wasm.dart' hide WorkerOptions;
 import 'package:web/web.dart'
     hide Response, Request, FileSystem, Notification, Lock;
 
@@ -12,6 +12,7 @@ import 'channel.dart';
 import 'database.dart';
 import 'protocol.dart';
 import 'shared.dart';
+import 'worker.dart';
 
 final class RemoteDatabase implements Database {
   final WorkerConnection connection;
@@ -288,6 +289,18 @@ final class DatabaseClient implements WebSqlite {
 
       return _connectionToDedicatedInShared = WorkerConnection(channel);
     });
+  }
+
+  @override
+  Future<void> deleteDatabase(
+      {required String name, required StorageMode storage}) async {
+    switch (storage) {
+      case StorageMode.opfs:
+        await SimpleOpfsFileSystem.deleteFromStorage(pathForOpfs(name));
+      case StorageMode.indexedDb:
+        await IndexedDbFileSystem.deleteDatabase(name);
+      case StorageMode.inMemory:
+    }
   }
 
   @override

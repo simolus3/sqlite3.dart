@@ -1,3 +1,7 @@
+## 0.2.1
+
+- Add `WebSqlite.deleteDatabase` to delete databases.
+
 ## 0.2.0
 
 - Make `FileSystem` implementation functional, add `FileSystem.flush()`.

@@ -58,6 +58,12 @@ void main() {
     await vfs.flush();
     return true.toJS;
   });
+  _addCallbackForWebDriver('delete_db', (arg) async {
+    final storage = StorageMode.values.byName(arg!);
+    await initializeSqlite()
+        .deleteDatabase(name: databaseName, storage: storage);
+    return true.toJS;
+  });
 
   document.getElementById('selfcheck')?.onClick.listen((event) async {
     print('starting');

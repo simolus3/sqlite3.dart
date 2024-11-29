@@ -13,6 +13,7 @@ import 'package:shelf/shelf_io.dart';
 import 'package:shelf_proxy/shelf_proxy.dart';
 import 'package:webdriver/async_io.dart';
 import 'package:sqlite3_web/src/types.dart';
+import 'package:webdriver/support/async.dart';
 
 void main() async {
   await TestAssetServer.start();
@@ -103,6 +104,12 @@ class TestWebDriver {
   final WebDriver driver;
 
   TestWebDriver(this.server, this.driver);
+
+  /// Wait for the Dart code on the test page to finish its main method, which
+  /// it signals by creating an element.
+  Future<void> waitReady() async {
+    await waitFor(() => driver.findElement(By.id('ready')));
+  }
 
   Future<
       ({
@@ -200,5 +207,10 @@ class TestWebDriver {
     if (result != true) {
       throw 'flush() failed: $result';
     }
+  }
+
+  Future<void> delete(StorageMode mode) async {
+    await driver
+        .executeAsync('delete_db(arguments[0], arguments[1])', [mode.name]);
   }
 }
