@@ -4,8 +4,12 @@ description: Integration tests for the sqlite3_flutter_libs package
 publish_to: 'none'
 version: 1.0.0+1
 
+flutter:
+  disable-swift-package-manager: true
+
 environment:
   sdk: ^3.5.0
+  flutter: ^3.24.0
 
 dependencies:
   sqlite3_flutter_libs:
