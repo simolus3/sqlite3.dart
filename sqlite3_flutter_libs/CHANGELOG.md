@@ -1,4 +1,4 @@
-## 0.6.0
+## 0.5.27
 
 - Upgrade sqlite to version `3.47.1`.
 - In addition to CocoaPods, this package now supports the Swift Package Manager
