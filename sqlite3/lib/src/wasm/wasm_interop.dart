@@ -33,6 +33,8 @@ class WasmBindings {
       _register_vfs,
       _unregister_vfs,
       _update_hooks,
+      _commit_hooks,
+      _rollback_hooks,
       _sqlite3_libversion,
       _sqlite3_sourceid,
       _sqlite3_libversion_number,
@@ -103,6 +105,8 @@ class WasmBindings {
         _register_vfs = instance.functions['dart_sqlite3_register_vfs']!,
         _unregister_vfs = instance.functions['sqlite3_vfs_unregister']!,
         _update_hooks = instance.functions['dart_sqlite3_updates']!,
+        _commit_hooks = instance.functions['dart_sqlite3_commits']!,
+        _rollback_hooks = instance.functions['dart_sqlite3_rollbacks']!,
         _sqlite3_libversion = instance.functions['sqlite3_libversion']!,
         _sqlite3_sourceid = instance.functions['sqlite3_sourceid']!,
         _sqlite3_libversion_number =
@@ -277,6 +281,14 @@ class WasmBindings {
   /// one to stop it.
   void dart_sqlite3_updates(Pointer db, int id) {
     _update_hooks.callReturningVoid2(db.toJS, id.toJS);
+  }
+
+  int dart_sqlite3_commits(Pointer db, int id) {
+    return _commit_hooks.callReturningInt2(db.toJS, id.toJS);
+  }
+
+  void dart_sqlite3_rollbacks(Pointer db, int id) {
+    return _rollback_hooks.callReturningVoid2(db.toJS, id.toJS);
   }
 
   int sqlite3_exec(Pointer db, Pointer sql, Pointer callback,
@@ -719,12 +731,18 @@ class _InjectedValues {
 
           return callbacks.functions[ctx]!.collation!(aStr, bStr);
         }).toJS,
-        'function_hook':
+        'function_update_hook':
             ((int id, int kind, Pointer _, Pointer table, JSBigInt rowId) {
           final tableName = memory.readString(table);
 
           callbacks.installedUpdateHook
               ?.call(kind, tableName, JsBigInt(rowId).asDartInt);
+        }).toJS,
+        'function_commit_hook': ((int id) {
+          return callbacks.installedCommitHook?.call();
+        }).toJS,
+        'function_rollback_hook': ((int id) {
+          callbacks.installedRollbackHook?.call();
         }).toJS,
       }
     };
@@ -742,6 +760,8 @@ class DartCallbacks {
   final Map<int, VirtualFileSystemFile> openedFiles = {};
 
   RawUpdateHook? installedUpdateHook;
+  RawCommitHook? installedCommitHook;
+  RawRollbackHook? installedRollbackHook;
 
   int register(RegisteredFunctionSet set) {
     final id = _id++;

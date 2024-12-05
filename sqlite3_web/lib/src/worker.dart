@@ -111,6 +111,7 @@ final class _ConnectionDatabase {
   final int id;
 
   StreamSubscription<SqliteUpdate>? updates;
+  StreamSubscription<void>? rollbacks;
 
   _ConnectionDatabase(this.database, [int? id]) : id = id ?? database.id;
 
@@ -226,6 +227,23 @@ final class _ClientConnection extends ProtocolChannel
         if (database!.updates != null) {
           database.updates?.cancel();
           database.updates = null;
+        }
+        return SimpleSuccessResponse(
+            response: null, requestId: request.requestId);
+      case RollbackStreamRequest(action: true):
+        if (database!.rollbacks == null) {
+          final rawDatabase = await database.database.opened;
+          database.rollbacks ??= rawDatabase.database.rollbacks.listen((_) {
+            sendNotification(
+                RollbackNotification(databaseId: database.database.id));
+          });
+        }
+        return SimpleSuccessResponse(
+            response: null, requestId: request.requestId);
+      case RollbackStreamRequest(action: false):
+        if (database!.rollbacks != null) {
+          database.rollbacks?.cancel();
+          database.rollbacks = null;
         }
         return SimpleSuccessResponse(
             response: null, requestId: request.requestId);

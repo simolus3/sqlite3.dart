@@ -249,6 +249,20 @@ final class WasmDatabase extends RawSqliteDatabase {
   }
 
   @override
+  void sqlite3_commit_hook(RawCommitHook? hook) {
+    bindings.callbacks.installedCommitHook = hook;
+
+    bindings.dart_sqlite3_commits(db, hook != null ? 1 : -1);
+  }
+
+  @override
+  void sqlite3_rollback_hook(RawRollbackHook? hook) {
+    bindings.callbacks.installedRollbackHook = hook;
+
+    bindings.dart_sqlite3_rollbacks(db, hook != null ? 1 : -1);
+  }
+
+  @override
   int sqlite3_get_autocommit() {
     return bindings.sqlite3_get_autocommit(db);
   }
