@@ -20,7 +20,7 @@ Pod::Spec.new do |s|
     }
     s.swift_version = '5.0'
 
-    s.dependency 'sqlite3', '~> 3.47.1'
+    s.dependency 'sqlite3', '~> 3.47.2'
     s.dependency 'sqlite3/fts5'
     s.dependency 'sqlite3/perf-threadsafe'
     s.dependency 'sqlite3/rtree'
