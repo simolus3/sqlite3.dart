@@ -12,7 +12,7 @@ include(FetchContent)
 FetchContent_Declare(
     sqlite3
     # NOTE: When changing this, also update `test/wasm/sqlite3_test.dart`
-    URL https://sqlite.org/2024/sqlite-autoconf-3470200.tar.gz
+    URL https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v1.9.2/sqlite3mc-1.9.2-sqlite-3.47.2-amalgamation.zip
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
 )
 
@@ -38,13 +38,13 @@ macro(base_sqlite3_target name debug)
   set(sources
     ${CMAKE_CURRENT_SOURCE_DIR}/os_web.c
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.c
-    ${sqlite3_SOURCE_DIR}/sqlite3.c
+    ${sqlite3_SOURCE_DIR}/sqlite3mc_amalgamation.c
   )
   set(flags -Wall -Wextra -Wno-unused-parameter -Wno-unused-function)
 
   if(${debug})
     list(APPEND sources "${CMAKE_BINARY_DIR}/vfstrace.c")
-    list(APPEND flags "-g" "-DDEBUG")
+    list(APPEND flags "-g" "-DDEBUG" "-O1")
   else()
     list(APPEND flags "-Oz" "-DNDEBUG" "-flto")
   endif()
@@ -56,6 +56,8 @@ macro(base_sqlite3_target name debug)
       -o ${clang_output}
       -I ${PROJECT_SOURCE_DIR} -I ${sqlite3_SOURCE_DIR}
       -D_HAVE_SQLITE_CONFIG_H
+      -DSQLITE_OMIT_AUTOINIT
+      -D__WASM__
       -mcpu=generic
       -mexec-model=reactor
       -fno-stack-protector -fno-stack-clash-protection

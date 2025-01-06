@@ -15,11 +15,12 @@ Future<void> main() async {
     print(sqlite3.version);
 
     sqlite3.registerVirtualFileSystem(
-      await IndexedDbFileSystem.open(dbName: 'sqlite3-example'),
+      InMemoryFileSystem(),
       makeDefault: true,
     );
 
-    sqlite3.open('/database')
+    sqlite3.open('/database', vfs: 'multipleciphers-dart-memory')
+      ..execute("pragma key = 'test';")
       ..execute('pragma user_version = 1')
       ..execute('CREATE TABLE foo (bar INTEGER NOT NULL);')
       ..execute('INSERT INTO foo (bar) VALUES (?)', [3])

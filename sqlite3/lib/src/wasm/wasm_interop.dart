@@ -83,7 +83,7 @@ class WasmBindings {
       _sqlite3_stmt_readonly,
       _sqlite3_stmt_isexplain;
 
-  final JSFunction? _sqlite3_db_config;
+  final JSFunction? _sqlite3_db_config, _sqlite3_initialize;
 
   final Global _sqlite3_temp_directory;
 
@@ -160,7 +160,9 @@ class WasmBindings {
         _sqlite3_stmt_isexplain = instance.functions['sqlite3_stmt_isexplain']!,
         _sqlite3_stmt_readonly = instance.functions['sqlite3_stmt_readonly']!,
         _sqlite3_db_config = instance.functions['dart_sqlite3_db_config_int'],
+        _sqlite3_initialize = instance.functions['sqlite3_initialize'],
         _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']!
+
   // Note when adding new fields: We remove functions from the wasm module that
   // aren't referenced in Dart. We consider a symbol used when it appears in a
   // string literal in an initializer of this constructor (`tool/wasm_dce.dart`).
@@ -209,6 +211,13 @@ class WasmBindings {
   }
 
   void sqlite3_free(Pointer ptr) => _sqlite3_free.callReturningVoid(ptr.toJS);
+
+  int sqlite3_initialize() {
+    return switch (_sqlite3_initialize) {
+      final fun? => fun.callReturningInt0(),
+      null => 0,
+    };
+  }
 
   int create_scalar_function(
       Pointer db, Pointer functionName, int nArg, int eTextRep, int id) {
@@ -601,10 +610,18 @@ class _InjectedValues {
           });
         }).toJS,
         'xRandomness': ((int vfsId, int nByte, Pointer zOut) {
-          final vfs = callbacks.registeredVfs[vfsId]!;
+          final vfs = callbacks.registeredVfs[vfsId];
 
           return _runVfs(() {
-            vfs.xRandomness(memory.buffer.toDart.asUint8List(zOut, nByte));
+            final target = memory.buffer.toDart.asUint8List(zOut, nByte);
+
+            if (vfs != null) {
+              vfs.xRandomness(target);
+            } else {
+              // Fall back to a default random source. We're using this to
+              // implement `getentropy` in C which is used by sqlite3mc.
+              return BaseVirtualFileSystem.generateRandomness(target);
+            }
           });
         }).toJS,
         'xSleep': ((int vfsId, int micros) {
