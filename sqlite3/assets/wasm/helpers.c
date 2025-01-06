@@ -187,7 +187,11 @@ SQLITE_API sqlite3_vfs *dart_sqlite3_register_vfs(const char *name, int dartId,
   vfstrace_register(traceName, name, &dartvfs_trace_log1, NULL, makeDefault);
 #else
   // Just register the VFS as is.
-  sqlite3_vfs_register(vfs, makeDefault);
+  int rc = sqlite3_vfs_register(vfs, makeDefault);
+  if (rc) {
+    free(vfs);
+    return NULL;
+  }
 #endif
   return vfs;
 }
