@@ -3,14 +3,47 @@ import 'dart:typed_data';
 
 import 'package:typed_data/typed_buffers.dart';
 
-const jsonb = _JsonbCodec();
+/// A [Codec] capable of converting Dart objects from and to the [JSONB] format
+/// used by sqlite3.
+///
+/// The codec is useful when columns stored as blobs in SQLite are to be
+/// interpreted as JSONB values, as one conversion step between Dart and SQLite
+/// (usually implemented by mapping to a JSON string in Dart and then calling
+/// the `jsonb` SQL function, or calling `json` the other way around) becomes
+/// superfluous.
+///
+/// This codec's [Codec.encoder] supports the same objects as Dart's [json]
+/// encoder with the addition of non-finite [double] values that can't be
+/// represented in regular JSON. When passing a custom object into
+/// [Codec.encode], it will attempt to call a `toJson()` method. The encoder
+/// also throws the same [JsonCyclicError] and [JsonUnsupportedObjectError]
+/// classes thrown by the native JSON encoder.
+///
+/// Example:
+///
+/// ```dart
+/// import 'package:sqlite3/sqlite3.dart';
+///
+/// void main() {
+///   final database = sqlite3.openInMemory()
+///     ..execute('CREATE TABLE entries (entry BLOB NOT NULL) STRICT;')
+///     // You can insert JSONB-formatted values directly
+///     ..execute('INSERT INTO entries (entry) VALUES (?)', [
+///       jsonb.encode({'hello': 'dart'})
+///     ]);
+///   // And use them with JSON operators in SQLite without a further conversion:
+///   print(database.select('SELECT entry ->> ? AS r FROM entries;', [r'$.hello']));
+/// }
+/// ```
+///
+/// [JSONB]: https://sqlite.org/jsonb.html
+const Codec<Object?, Uint8List> jsonb = _JsonbCodec();
 
 final class _JsonbCodec extends Codec<Object?, Uint8List> {
   const _JsonbCodec();
 
   @override
-  // TODO: implement decoder
-  Converter<Uint8List, Object?> get decoder => throw UnimplementedError();
+  Converter<Uint8List, Object?> get decoder => const _JsonbDecoder();
 
   @override
   Converter<Object?, Uint8List> get encoder => const _JsonbEncoder();
@@ -35,6 +68,137 @@ enum _ElementType {
   _reserved15,
 }
 
+final class _JsonbDecoder extends Converter<Uint8List, Object?> {
+  const _JsonbDecoder();
+
+  @override
+  Object? convert(Uint8List input) {
+    final state = _JsonbDecodingState(input);
+    final value = state.read();
+    if (state.remainingLength > 0) {
+      state._malformedJson();
+    }
+
+    return value;
+  }
+}
+
+final class _JsonbDecodingState {
+  final Uint8List input;
+  int offset = 0;
+  final List<int> endOffsetStack;
+
+  _JsonbDecodingState(this.input) : endOffsetStack = [input.length];
+
+  int get remainingLength => endOffsetStack.last - offset;
+
+  Never _malformedJson() {
+    throw ArgumentError('Malformed JSONB');
+  }
+
+  int nextByte() => input[offset++];
+
+  void pushLengthRestriction(int length) {
+    endOffsetStack.add(offset + length);
+  }
+
+  void popLengthRestriction() => endOffsetStack.removeLast();
+
+  void checkRemainingLength(int requiredBytes) {
+    if (remainingLength < requiredBytes) {
+      _malformedJson();
+    }
+  }
+
+  (_ElementType, int) readHeader() {
+    assert(remainingLength >= 1);
+    final firstByte = nextByte();
+    final type = _ElementType.values[firstByte & 0xF];
+    final lengthIndicator = firstByte >> 4;
+
+    var length = 0;
+    if (lengthIndicator <= 11) {
+      length = lengthIndicator;
+    } else {
+      final additionalBytes = 1 << (lengthIndicator - 12);
+      checkRemainingLength(additionalBytes);
+
+      for (var i = 0; i < additionalBytes; i++) {
+        length <<= 8;
+        length |= nextByte();
+      }
+    }
+
+    return (type, length);
+  }
+
+  List<Object?> readArray(int payloadLength) {
+    pushLengthRestriction(payloadLength);
+    final result = [];
+    while (remainingLength > 0) {
+      result.add(read());
+    }
+
+    popLengthRestriction();
+    return result;
+  }
+
+  Map<String, Object?> readObject(int payloadLength) {
+    pushLengthRestriction(payloadLength);
+    final result = <String, Object?>{};
+    while (remainingLength > 0) {
+      final name = read();
+      if (name is! String) {
+        _malformedJson();
+      }
+
+      final value = read();
+      result[name] = value;
+    }
+
+    popLengthRestriction();
+    return result;
+  }
+
+  Object? read() {
+    checkRemainingLength(1);
+    final (type, payloadLength) = readHeader();
+    checkRemainingLength(payloadLength);
+    final payloadStartOffset = offset;
+    final endIndex = offset + payloadLength;
+
+    Uint8List payloadBytes() {
+      return input.buffer
+          .asUint8List(input.offsetInBytes + payloadStartOffset, payloadLength);
+    }
+
+    String payloadString() {
+      return utf8.decode(payloadBytes());
+    }
+
+    final value = switch (type) {
+      _ElementType._null => null,
+      _ElementType._true => true,
+      _ElementType._false => false,
+      _ElementType._int || _ElementType._int5 => int.parse(payloadString()),
+      _ElementType._float ||
+      _ElementType._float5 =>
+        double.parse(payloadString()),
+      _ElementType._text || _ElementType._textraw => payloadString(),
+      _ElementType._textJ ||
+      _ElementType._text5 =>
+        json.decode('"${payloadString()}"'),
+      _ElementType._array => readArray(payloadLength),
+      _ElementType._object => readObject(payloadLength),
+      _ => _malformedJson(),
+    };
+
+    assert(offset <= endIndex);
+    offset = endIndex;
+    return value;
+  }
+}
+
 final class _JsonbEncoder extends Converter<Object?, Uint8List> {
   const _JsonbEncoder();
 
@@ -48,6 +212,9 @@ final class _JsonbEncoder extends Converter<Object?, Uint8List> {
 
 final class _JsonbEncodingOperation {
   final Uint8Buffer _buffer = Uint8Buffer();
+
+  /// List of objects currently being traversed. Used to detect cycles.
+  final List<Object?> _seen = [];
 
   void writeHeader(int payloadSize, _ElementType type) {
     var firstByte = type.index;
@@ -107,6 +274,25 @@ final class _JsonbEncodingOperation {
     }
   }
 
+  /// Check that [object] is not already being traversed, or add it to the end
+  /// of the seen list otherwise.
+  void checkCycle(Object? object) {
+    for (final entry in _seen) {
+      if (identical(object, entry)) {
+        throw JsonCyclicError(object);
+      }
+    }
+
+    _seen.add(object);
+  }
+
+  /// Removes [object] from the end of the [_seen] list.
+  void removeSeen(Object? object) {
+    assert(_seen.isNotEmpty);
+    assert(identical(_seen.last, object));
+    _seen.removeLast();
+  }
+
   void writeNull() {
     writeHeader(0, _ElementType._null);
   }
@@ -130,15 +316,9 @@ final class _JsonbEncodingOperation {
   }
 
   void writeString(String value) {
-    final encoded = _jsonUtf8.convert(value);
-    // Encoding a string adds quotes at the beginning and end which we don't
-    // need.
-    const doubleQuote = 0x22;
-    assert(encoded[0] == doubleQuote);
-    assert(encoded[encoded.length - 1] == doubleQuote);
-
-    writeHeader(encoded.length - 2, _ElementType._textJ);
-    _buffer.addAll(encoded, 1, encoded.length - 1);
+    final encoded = utf8.encode(value);
+    writeHeader(encoded.length, _ElementType._textraw);
+    _buffer.addAll(encoded);
   }
 
   void writeArray(Iterable<Object?> values) {
@@ -151,33 +331,85 @@ final class _JsonbEncodingOperation {
     fillPreviouslyUnknownLength(index);
   }
 
-  void writeObject(Map<String, Object?> values) {
+  bool writeMap(Map<Object?, Object?> values) {
     if (values.isEmpty) {
-      return writeHeader(0, _ElementType._object);
+      writeHeader(0, _ElementType._object);
+      return true;
     }
 
-    final index = prepareUnknownLength(_ElementType._object);
+    final keyValueList = List<Object?>.filled(values.length * 2, null);
+    var i = 0;
+    var invalidKey = false;
     for (final MapEntry(:key, :value) in values.entries) {
-      writeString(key);
+      if (key is! String) {
+        invalidKey = true;
+        break;
+      }
+      keyValueList[i++] = key;
+      keyValueList[i++] = value;
+    }
+    if (invalidKey) return false;
+
+    final index = prepareUnknownLength(_ElementType._object);
+    for (final value in keyValueList) {
       write(value);
     }
     fillPreviouslyUnknownLength(index);
+    return true;
   }
 
   void write(Object? value) {
-    return switch (value) {
-      null => writeNull(),
-      bool b => writeBool(b),
-      int i => writeInt(i),
-      double d => writeDouble(d),
-      String s => writeString(s),
-      Iterable<Object?> i => writeArray(i),
-      Map<String, Object> o => writeObject(o),
-      Map<dynamic, dynamic> o => writeObject(o.cast()),
-      _ => throw ArgumentError.value(value, 'value', 'Invalid JSON value.'),
-    };
+    // Try writing values that don't need to be converted into a JSON-compatible
+    // format.
+    if (writeJsonValue(value)) {
+      return;
+    }
+
+    checkCycle(value);
+    try {
+      final lowered = _encodeObject(value);
+      if (!writeJsonValue(lowered)) {
+        throw JsonUnsupportedObjectError(lowered);
+      }
+      removeSeen(value);
+    } catch (e) {
+      throw JsonUnsupportedObjectError(value, cause: e);
+    }
+  }
+
+  bool writeJsonValue(Object? value) {
+    switch (value) {
+      case null:
+        writeNull();
+        return true;
+      case bool b:
+        writeBool(b);
+        return true;
+      case int i:
+        writeInt(i);
+        return true;
+      case double d:
+        writeDouble(d);
+        return true;
+      case String s:
+        writeString(s);
+        return true;
+      case List<Object?> i:
+        checkCycle(i);
+        writeArray(i);
+        removeSeen(i);
+        return true;
+      case Map<Object?, Object?> o:
+        checkCycle(o);
+        final success = writeMap(o);
+        removeSeen(o);
+        return success;
+      default:
+        return false;
+    }
   }
 
   static final _eightZeroes = Uint8List(8);
-  static final _jsonUtf8 = const JsonEncoder().fuse(const Utf8Encoder());
+
+  static Object? _encodeObject(dynamic object) => object.toJson();
 }
