@@ -8,6 +8,8 @@ import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
 
 void main() {
+  final supportsJsonb = sqlite3.version.versionNumber >= 3045000;
+
   group('encode', () {
     void expectEncoded(Object? object, String expectedHex) {
       final encoded = jsonb.encode(object);
@@ -139,8 +141,10 @@ void main() {
 
     setUpAll(() {
       database = sqlite3.openInMemory();
-      jsonb2json = database.prepare('SELECT json(?);');
-      json2jsonb = database.prepare('SELECT jsonb(?);');
+      if (supportsJsonb) {
+        jsonb2json = database.prepare('SELECT json(?);');
+        json2jsonb = database.prepare('SELECT jsonb(?);');
+      }
     });
 
     tearDownAll(() => database.dispose());
@@ -154,25 +158,27 @@ void main() {
       // Check our encoder -> our decoder roundtrip
       expect(jsonb.decode(jsonb.encode(value)), valueMatcher);
 
-      // Check our encoder -> sqlite3 decoder rountrip
-      final sqliteDecoded = jsonb2json
-          .select([jsonb.encode(value)])
-          .single
-          .values
-          .single as String;
-      if (expectDecodesAs != null) {
-        expect(sqliteDecoded, expectDecodesAs);
-      } else {
-        expect(json.decode(sqliteDecoded), valueMatcher);
-      }
+      if (supportsJsonb) {
+        // Check our encoder -> sqlite3 decoder rountrip
+        final sqliteDecoded = jsonb2json
+            .select([jsonb.encode(value)])
+            .single
+            .values
+            .single as String;
+        if (expectDecodesAs != null) {
+          expect(sqliteDecoded, expectDecodesAs);
+        } else {
+          expect(json.decode(sqliteDecoded), valueMatcher);
+        }
 
-      // Check sqlite3 encoder -> our decoder roundtrip
-      final sqliteEncoded = json2jsonb
-          .select([jsonb.encode(value)])
-          .single
-          .values
-          .single as Uint8List;
-      expect(jsonb.decode(sqliteEncoded), valueMatcher);
+        // Check sqlite3 encoder -> our decoder roundtrip
+        final sqliteEncoded = json2jsonb
+            .select([jsonb.encode(value)])
+            .single
+            .values
+            .single as Uint8List;
+        expect(jsonb.decode(sqliteEncoded), valueMatcher);
+      }
     }
 
     test('primitives', () {
@@ -201,6 +207,15 @@ void main() {
       check({'foo': 'bar'});
       check({'a': null, 'b': true, 'c': 0, 'd': 0.1, 'e': 'hi'});
     });
+
+    test(
+      'did use sqlite3 decoder',
+      () {},
+      skip: supportsJsonb
+          ? null
+          : 'Roundtrip tests with SQLite were skipped because the available '
+              'SQLite version does not support JSONB.',
+    );
   });
 }
 
