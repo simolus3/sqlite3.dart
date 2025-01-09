@@ -15,8 +15,8 @@ jobs:
     name: Compile sqlite3 for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      SQLITE_YEAR: "2023"
-      SQLITE_VERSION: "3420000"
+      SQLITE_YEAR: "2024"
+      SQLITE_VERSION: "3470200"
 
     steps:
     - uses: actions/cache@v4

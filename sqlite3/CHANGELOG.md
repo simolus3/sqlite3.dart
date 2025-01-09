@@ -2,6 +2,8 @@
 
 - Add `SimpleOpfsFileSystem.deleteFromStorage` to delete OPFS-based file
   systems.
+- Add `jsonb`, a Dart `Codec` converting Dart object from and to SQLite
+  `JSONB` values.
 
 ## 2.5.0
 
