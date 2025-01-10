@@ -22,6 +22,7 @@ This page can be used to launch a sqlite3 database on the web in two different c
   <li>With an Origin-Private FileSystem (OPFS)-based storage implementation. Note that this requires two workers and a special header
       that is not available with <code>build_runner serve</code>, but it will work when launching this website with <code>dart run tool/example_server.dart</code> <button id="start-opfs">Start demo!</button>
   </li>
+  <li>With an in-memory test (using <a href="https://utelle.github.io/SQLite3MultipleCiphers/">SQLite3 Multiple Ciphers</a> for encryption): <button id="start-encryption">Start encryption!</button></li>
 </ul>
 
 After launching the example, you can check the console and the code in <code>main.dart</code> (or <code>worker.dart</code> for the OPFS example)
