@@ -12,11 +12,18 @@ include(FetchContent)
 FetchContent_Declare(
     sqlite3
     # NOTE: When changing this, also update `test/wasm/sqlite3_test.dart`
+    URL https://sqlite.org/2024/sqlite-autoconf-3470200.tar.gz
+    DOWNLOAD_EXTRACT_TIMESTAMP NEW
+)
+
+FetchContent_Declare(
+    sqlite3mc
     URL https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v1.9.2/sqlite3mc-1.9.2-sqlite-3.47.2-amalgamation.zip
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
 )
 
 FetchContent_MakeAvailable(sqlite3)
+FetchContent_MakeAvailable(sqlite3mc)
 
 file(DOWNLOAD https://raw.githubusercontent.com/sqlite/sqlite/master/src/test_vfstrace.c "${CMAKE_BINARY_DIR}/vfstrace.c")
 
@@ -30,7 +37,7 @@ add_custom_command(
 )
 add_custom_target(required_symbols DEPENDS required_symbols.txt)
 
-macro(base_sqlite3_target name debug)
+macro(base_sqlite3_target name debug crypto)
   set(clang_output ${name}.clang.wasm)
   set(init_output ${name}.init.wasm)
   set(output ${init_output})
@@ -38,13 +45,20 @@ macro(base_sqlite3_target name debug)
   set(sources
     ${CMAKE_CURRENT_SOURCE_DIR}/os_web.c
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.c
-    ${sqlite3_SOURCE_DIR}/sqlite3mc_amalgamation.c
   )
   set(flags -Wall -Wextra -Wno-unused-parameter -Wno-unused-function)
 
+  if(${crypto})
+    list(APPEND sources "${sqlite3mc_SOURCE_DIR}/sqlite3mc_amalgamation.c")
+    list(APPEND sources "${CMAKE_CURRENT_SOURCE_DIR}/getentropy.c")
+    list(APPEND flags "-DSQLITE_OMIT_AUTOINIT")
+  else()
+    list(APPEND sources "${sqlite3_SOURCE_DIR}/sqlite3.c")
+  endif()
+
   if(${debug})
     list(APPEND sources "${CMAKE_BINARY_DIR}/vfstrace.c")
-    list(APPEND flags "-g" "-DDEBUG" "-O1")
+    list(APPEND flags "-g" "-DDEBUG")
   else()
     list(APPEND flags "-Oz" "-DNDEBUG" "-flto")
   endif()
@@ -56,7 +70,6 @@ macro(base_sqlite3_target name debug)
       -o ${clang_output}
       -I ${PROJECT_SOURCE_DIR} -I ${sqlite3_SOURCE_DIR}
       -D_HAVE_SQLITE_CONFIG_H
-      -DSQLITE_OMIT_AUTOINIT
       -D__WASM__
       -mcpu=generic
       -mexec-model=reactor
@@ -90,10 +103,12 @@ macro(base_sqlite3_target name debug)
   add_custom_target(${name} DEPENDS ${output})
 endmacro()
 
-base_sqlite3_target(sqlite3_debug true)
-base_sqlite3_target(sqlite3_opt false)
+base_sqlite3_target(sqlite3_debug true false)
+base_sqlite3_target(sqlite3_opt false false)
+base_sqlite3_target(sqlite3mc false true)
 
 add_custom_target(output)
 add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_opt.wasm ${PROJECT_SOURCE_DIR}/../../example/web/sqlite3.wasm)
 add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_debug.init.wasm ${PROJECT_SOURCE_DIR}/../../example/web/sqlite3.debug.wasm)
-add_dependencies(output sqlite3_debug sqlite3_opt)
+add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3mc.wasm ${PROJECT_SOURCE_DIR}/../../example/web/sqlite3mc.wasm)
+add_dependencies(output sqlite3_debug sqlite3_opt sqlite3mc)
