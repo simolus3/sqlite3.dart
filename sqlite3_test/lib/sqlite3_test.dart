@@ -181,6 +181,7 @@ final class _TestFile implements VirtualFileSystemFile {
     }
 
     _file.unlockSync();
+    _lockLevel = SqlFileLockingLevels.SQLITE_LOCK_NONE;
     if (mode != SqlFileLockingLevels.SQLITE_LOCK_NONE) {
       return xLock(mode);
     }
