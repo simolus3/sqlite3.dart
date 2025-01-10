@@ -96,7 +96,7 @@ Emscripten or any JavaScript glue code.
 
 Please note that stable web support for `package:sqlite3` is restricted to Dart
 being compiled to JavaScript. Support for `dart2wasm` is experimental. The API
-is identical, but the implementation [is severly limited](https://github.com/simolus3/sqlite3.dart/issues/230).
+is identical, but the implementation [is severely limited](https://github.com/simolus3/sqlite3.dart/issues/230).
 
 ### Setup
 
@@ -130,7 +130,7 @@ in `package:sqlite3/sqlite3.dart`, databases can be opened in similar ways.
 
 An example for such web folder is in `example/web/` of this repo.
 To view the example, copy a compiled `sqlite3.wasm` file to `web/sqlite3.wasm` in this directory.
-Then, run `dart run build_runner serve example:8080` and  visit `http://localhost:8080/web/` in a browser.
+Then, run `dart run build_runner serve example:8080` and visit `http://localhost:8080/web/` in a browser.
 
 Another `example/multiplatform/` uses common interface to `sqlite3` on web and native platforms.
 To run this example, merge its files into a Flutter app.
@@ -142,6 +142,26 @@ the FFI-based native version in `package:sqlite3/sqlite3.dart` and the experimen
 version in `package:sqlite3/wasm.dart`.
 By having shared code depend on the common interfaces, it can be used for both native and web
 apps.
+
+### Web encryption
+
+Starting from version 2.6.0, `package:sqlite3/wasm.dart` supports loading a compiled version of
+[SQLite Multiple Ciphers](https://utelle.github.io/SQLite3MultipleCiphers/) providing encryption
+support for the web.
+Please note that this variant is not currently tested as well as the regular SQLite version.
+For this reason, using SQLite Multiple Ciphers with `package:sqlite3/wasm.dart` should be considered
+experimental for the time being.
+
+To test the encryption integration, download `sqlite3mc.wasm` from the [releases](https://github.com/simolus3/sqlite3.dart/releases)
+of this package and use that as a URL to load sqlite3 on the web:
+
+```dart
+final sqlite3 = await WasmSqlite3.loadFromUrl(Uri.parse('sqlite3mc.wasm'));
+sqlite3.registerVirtualFileSystem(InMemoryFileSystem(), makeDefault: true);
+
+final database = sqlite3.open('/database')
+  ..execute("pragma key = 'test';"); // TODO: Replace key
+```
 
 ### Testing
 
