@@ -1,12 +1,12 @@
 import 'package:sqlite3/wasm.dart';
 import 'package:test/scaffolding.dart';
 
-Future<WasmSqlite3> loadSqlite3WithoutVfs() async {
+Future<WasmSqlite3> loadSqlite3WithoutVfs({bool encryption = false}) async {
   final channel = spawnHybridUri('/test/wasm/asset_server.dart');
   final port = (await channel.stream.first as double).toInt();
 
-  final sqliteWasm =
-      Uri.parse('http://localhost:$port/example/web/sqlite3.wasm');
+  final filename = encryption ? 'sqlite3mc.wasm' : 'sqlite3.wasm';
+  final sqliteWasm = Uri.parse('http://localhost:$port/example/web/$filename');
 
   return await WasmSqlite3.loadFromUrl(sqliteWasm);
 }

@@ -187,7 +187,8 @@ jobs:
 
     - name: Web tests
       run: |
-        curl https://storage.googleapis.com/simon-public-euw3/assets/sqlite3/wasm/2.4.6/sqlite3.wasm -o example/web/sqlite3.wasm
+        curl https://simon-public.fsn1.your-objectstorage.com/assets/sqlite3/2.6.0/sqlite3.wasm -o example/web/sqlite3.wasm
+        curl https://simon-public.fsn1.your-objectstorage.com/assets/sqlite3/2.6.0/sqlite3mc.wasm -o example/web/sqlite3.wasm
         dart test -P web -r expanded
       # If browsers behave differently on different platforms, surely that's not our fault...
       # So, only run browser tests on Linux to be faster.
