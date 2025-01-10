@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:sqlite3/wasm.dart';
 import 'package:test/scaffolding.dart';
 
@@ -16,12 +14,7 @@ Future<WasmSqlite3> loadSqlite3WithoutVfs() async {
 Future<WasmSqlite3> loadSqlite3([VirtualFileSystem? defaultVfs]) async {
   final sqlite3 = await loadSqlite3WithoutVfs();
   sqlite3.registerVirtualFileSystem(
-    defaultVfs ??
-        InMemoryFileSystem(
-          // Not using the default Random.secure() because it's not supported
-          // by dart2wasm
-          random: Random(),
-        ),
+    defaultVfs ?? InMemoryFileSystem(),
     makeDefault: true,
   );
   return sqlite3;

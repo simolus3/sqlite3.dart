@@ -22,6 +22,7 @@ override_platforms:
 presets:
   full:
     platforms: [vm, chrome, firefox]
+    compilers: [dart2js, dart2wasm]
     on_os:
       windows:
         platforms: [vm, chrome, firefox, edge]
