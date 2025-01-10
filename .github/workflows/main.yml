@@ -84,7 +84,7 @@ jobs:
     needs: [compile_sqlite3]
     strategy:
       matrix:
-        package: [sqlite3]
+        package: [sqlite3, sqlite3_test]
         dart: [stable]
 
     name: Analyze on Dart ${{ matrix.dart }}
@@ -182,8 +182,8 @@ jobs:
     - name: Test sqlite3_test package
       run: |
         dart pub get
-        dart test -P ci
-      working-directory: sqlite3/
+        dart test
+      working-directory: sqlite3_test/
 
     - name: Web tests
       run: |
