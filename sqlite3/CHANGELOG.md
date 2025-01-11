@@ -1,4 +1,4 @@
-## 2.6.0-dev
+## 2.6.0
 
 - Add `SimpleOpfsFileSystem.deleteFromStorage` to delete OPFS-based file
   systems.
