@@ -181,6 +181,16 @@ void main() {
             await driver.assertFile(false);
           }
         });
+
+        test('check large write and read', () async {
+          await driver.openDatabase(
+            implementation: (storage, access),
+            onlyOpenVfs: true,
+          );
+          await driver.assertFile(false);
+
+          await driver.checkReadWrite();
+        });
       }
     });
   }

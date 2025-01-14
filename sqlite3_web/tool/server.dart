@@ -209,6 +209,14 @@ class TestWebDriver {
     }
   }
 
+  Future<void> checkReadWrite() async {
+    final result =
+        await driver.executeAsync('check_read_write("", arguments[0])', []);
+    if (result != null) {
+      throw 'check_read_write() failed: $result';
+    }
+  }
+
   Future<void> delete(StorageMode mode) async {
     await driver
         .executeAsync('delete_db(arguments[0], arguments[1])', [mode.name]);

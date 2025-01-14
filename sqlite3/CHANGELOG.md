@@ -1,3 +1,8 @@
+## 2.6.1
+
+- Fix out-of-bound reads in the `xWrite` implementation of the OPFS-locks based
+  file-system implementation when writing more than 64 KiB in one operation.
+
 ## 2.6.0
 
 - Add `SimpleOpfsFileSystem.deleteFromStorage` to delete OPFS-based file

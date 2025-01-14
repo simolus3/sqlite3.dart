@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:html';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'dart:typed_data';
 
 import 'package:sqlite3_web/sqlite3_web.dart';
 
@@ -63,6 +64,29 @@ void main() {
     await initializeSqlite()
         .deleteDatabase(name: databaseName, storage: storage);
     return true.toJS;
+  });
+  _addCallbackForWebDriver('check_read_write', (arg) async {
+    final vfs = database!.fileSystem;
+
+    final bytes = Uint8List(1024 * 128);
+    for (var i = 0; i < 128; i++) {
+      bytes[i * 1024] = i;
+    }
+
+    await vfs.writeFile(FileType.database, bytes);
+    await vfs.flush();
+    final result = await vfs.readFile(FileType.database);
+    if (result.length != bytes.length) {
+      return 'length mismatch'.toJS;
+    }
+
+    for (var i = 0; i < 128; i++) {
+      if (result[i * 1024] != i) {
+        return 'mismatch, i=$i, byte ${result[i * 1024]}'.toJS;
+      }
+    }
+
+    return null;
   });
 
   document.getElementById('selfcheck')?.onClick.listen((event) async {
