@@ -45,8 +45,13 @@ enum Browser {
     final available = <(StorageMode, AccessMode)>{};
     for (final storage in StorageMode.values) {
       for (final access in AccessMode.values) {
-        if (access != AccessMode.inCurrentContext &&
-            !unsupportedImplementations.contains((storage, access))) {
+        if (access == AccessMode.inCurrentContext &&
+            storage == StorageMode.opfs) {
+          // OPFS access is only available in workers.
+          continue;
+        }
+
+        if (!unsupportedImplementations.contains((storage, access))) {
           available.add((storage, access));
         }
       }

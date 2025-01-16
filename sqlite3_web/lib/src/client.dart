@@ -227,15 +227,19 @@ final class WorkerConnection extends ProtocolChannel {
 final class DatabaseClient implements WebSqlite {
   final Uri workerUri;
   final Uri wasmUri;
+  final DatabaseController _localController;
 
   final Lock _startWorkersLock = Lock();
   bool _startedWorkers = false;
   WorkerConnection? _connectionToDedicated;
   WorkerConnection? _connectionToShared;
   WorkerConnection? _connectionToDedicatedInShared;
+
+  WorkerConnection? _connectionToLocal;
+
   final Set<MissingBrowserFeature> _missingFeatures = {};
 
-  DatabaseClient(this.workerUri, this.wasmUri);
+  DatabaseClient(this.workerUri, this.wasmUri, this._localController);
 
   Future<void> startWorkers() {
     return _startWorkersLock.synchronized(() async {
@@ -291,6 +295,22 @@ final class DatabaseClient implements WebSqlite {
     });
   }
 
+  Future<WorkerConnection> _connectToLocal() async {
+    return _startWorkersLock.synchronized(() async {
+      if (_connectionToLocal case final conn?) {
+        return conn;
+      }
+
+      final local = Local();
+      final (endpoint, channel) = await createChannel();
+      WorkerRunner(_localController, environment: local).handleRequests();
+      local
+          .addTopLevelMessage(ConnectRequest(requestId: 0, endpoint: endpoint));
+
+      return _connectionToLocal = WorkerConnection(channel);
+    });
+  }
+
   @override
   Future<void> deleteDatabase(
       {required String name, required StorageMode storage}) async {
@@ -310,6 +330,7 @@ final class DatabaseClient implements WebSqlite {
 
     final existing = <ExistingDatabase>{};
     final available = <(StorageMode, AccessMode)>[];
+    var workersReportedIndexedDbSupport = false;
 
     if (_connectionToDedicated case final connection?) {
       final response = await connection.sendRequest(
@@ -327,6 +348,8 @@ final class DatabaseClient implements WebSqlite {
       if (result.canUseIndexedDb) {
         available
             .add((StorageMode.indexedDb, AccessMode.throughDedicatedWorker));
+
+        workersReportedIndexedDbSupport = true;
       } else {
         _missingFeatures.add(MissingBrowserFeature.indexedDb);
       }
@@ -363,6 +386,7 @@ final class DatabaseClient implements WebSqlite {
       final result = CompatibilityResult.fromJS(response.response as JSObject);
 
       if (result.canUseIndexedDb) {
+        workersReportedIndexedDbSupport = true;
         available.add((StorageMode.indexedDb, AccessMode.throughSharedWorker));
       } else {
         _missingFeatures.add(MissingBrowserFeature.indexedDb);
@@ -381,6 +405,12 @@ final class DatabaseClient implements WebSqlite {
         _missingFeatures
             .add(MissingBrowserFeature.dedicatedWorkersInSharedWorkers);
       }
+    }
+
+    available.add((StorageMode.inMemory, AccessMode.inCurrentContext));
+    if (workersReportedIndexedDbSupport || await checkIndexedDbSupport()) {
+      // If the workers can use IndexedDb, so can we.
+      available.add((StorageMode.indexedDb, AccessMode.inCurrentContext));
     }
 
     return FeatureDetectionResult(
@@ -425,7 +455,8 @@ final class DatabaseClient implements WebSqlite {
         connection = _connectionToDedicated!;
         shared = false;
       case AccessMode.inCurrentContext:
-        throw UnimplementedError('todo: Open database locally');
+        connection = await _connectToLocal();
+        shared = false;
     }
 
     final response = await connection.sendRequest(
