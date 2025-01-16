@@ -108,21 +108,36 @@ void main() {
       });
 
       setUp(() async {
-        final rawDriver = await createDriver(
-          spec: browser.isChromium ? WebDriverSpec.JsonWire : WebDriverSpec.W3c,
-          uri: browser.driverUri,
-          desired: {
-            'goog:chromeOptions': {
-              'args': [
-                '--headless=new',
-                '--disable-search-engine-choice-screen',
-              ],
-            },
-            'moz:firefoxOptions': {
-              'args': ['-headless']
-            },
-          },
-        );
+        late WebDriver rawDriver;
+        for (var i = 0; i < 3; i++) {
+          try {
+            rawDriver = await createDriver(
+              spec: browser.isChromium
+                  ? WebDriverSpec.JsonWire
+                  : WebDriverSpec.W3c,
+              uri: browser.driverUri,
+              desired: {
+                'goog:chromeOptions': {
+                  'args': [
+                    '--headless=new',
+                    '--disable-search-engine-choice-screen',
+                  ],
+                },
+                'moz:firefoxOptions': {
+                  'args': ['-headless']
+                },
+              },
+            );
+            break;
+          } on SocketException {
+            // webdriver server taking a bit longer to start up...
+            if (i == 2) {
+              rethrow;
+            }
+
+            await Future.delayed(const Duration(milliseconds: 500));
+          }
+        }
 
         // logs.get() isn't supported on Firefox
         if (browser != Browser.firefox) {
