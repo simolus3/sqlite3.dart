@@ -1,6 +1,7 @@
 ## 0.2.1
 
 - Add `WebSqlite.deleteDatabase` to delete databases.
+- Support opening databases without workers.
 
 ## 0.2.0
 
