@@ -248,36 +248,52 @@ final class DatabaseClient implements WebSqlite {
       }
       _startedWorkers = true;
 
-      if (globalContext.has('Worker')) {
-        final dedicated = Worker(
+      await _startDedicated();
+      await _startShared();
+    });
+  }
+
+  Future<void> _startDedicated() async {
+    if (globalContext.has('Worker')) {
+      final Worker dedicated;
+      try {
+        dedicated = Worker(
           workerUri.toString().toJS,
           WorkerOptions(name: 'sqlite3_worker'),
         );
-
-        final (endpoint, channel) = await createChannel();
-        ConnectRequest(endpoint: endpoint, requestId: 0)
-            .sendToWorker(dedicated);
-
-        _connectionToDedicated =
-            WorkerConnection(channel.injectErrorsFrom(dedicated));
-      } else {
+      } on Object {
         _missingFeatures.add(MissingBrowserFeature.dedicatedWorkers);
+        return;
       }
 
-      if (globalContext.has('SharedWorker')) {
-        final shared = SharedWorker(workerUri.toString().toJS);
+      final (endpoint, channel) = await createChannel();
+      ConnectRequest(endpoint: endpoint, requestId: 0).sendToWorker(dedicated);
+
+      _connectionToDedicated =
+          WorkerConnection(channel.injectErrorsFrom(dedicated));
+    } else {
+      _missingFeatures.add(MissingBrowserFeature.dedicatedWorkers);
+    }
+  }
+
+  Future<void> _startShared() async {
+    if (globalContext.has('SharedWorker')) {
+      final SharedWorker shared;
+      try {
+        shared = SharedWorker(workerUri.toString().toJS);
         shared.port.start();
-
-        final (endpoint, channel) = await createChannel();
-        ConnectRequest(endpoint: endpoint, requestId: 0)
-            .sendToPort(shared.port);
-
-        _connectionToShared =
-            WorkerConnection(channel.injectErrorsFrom(shared));
-      } else {
+      } on Object {
         _missingFeatures.add(MissingBrowserFeature.sharedWorkers);
+        return;
       }
-    });
+
+      final (endpoint, channel) = await createChannel();
+      ConnectRequest(endpoint: endpoint, requestId: 0).sendToPort(shared.port);
+
+      _connectionToShared = WorkerConnection(channel.injectErrorsFrom(shared));
+    } else {
+      _missingFeatures.add(MissingBrowserFeature.sharedWorkers);
+    }
   }
 
   Future<WorkerConnection> _connectToDedicatedInShared() {
