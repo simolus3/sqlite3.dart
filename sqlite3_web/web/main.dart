@@ -6,6 +6,8 @@ import 'dart:typed_data';
 
 import 'package:sqlite3_web/sqlite3_web.dart';
 
+import 'controller.dart';
+
 final sqlite3WasmUri = Uri.parse('sqlite3.wasm');
 final workerUri = Uri.parse('worker.dart.js');
 const databaseName = 'database';
@@ -127,6 +129,7 @@ WebSqlite initializeSqlite() {
   return webSqlite ??= WebSqlite.open(
     worker: workerUri,
     wasmModule: sqlite3WasmUri,
+    controller: ExampleController(isInWorker: false),
   );
 }
 

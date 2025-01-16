@@ -9,6 +9,9 @@ import 'worker.dart';
 
 /// A controller responsible for opening databases in the worker.
 abstract base class DatabaseController {
+  /// Constant base constructor.
+  const DatabaseController();
+
   /// Loads a wasm module from the given [uri] with the specified [headers].
   Future<WasmSqlite3> loadWasmModule(Uri uri,
       {Map<String, String>? headers}) async {
@@ -199,11 +202,17 @@ abstract class WebSqlite {
 
   /// Opens a [WebSqlite] instance by connecting to the given [worker] and
   /// using the [wasmModule] url to load sqlite3.
+  ///
+  /// The [controller] is used when connecting to a sqlite3 database without
+  /// using workers. It should typically be the same implementation as the one
+  /// passed to [workerEntrypoint].
   static WebSqlite open({
     required Uri worker,
     required Uri wasmModule,
+    DatabaseController? controller,
   }) {
-    return DatabaseClient(worker, wasmModule);
+    return DatabaseClient(
+        worker, wasmModule, controller ?? const _DefaultDatabaseController());
   }
 
   /// Connects to an endpoint previously obtained with [Database.additionalConnection].
@@ -218,7 +227,37 @@ abstract class WebSqlite {
   /// was called. This limitation does not exist for databases hosted by shared
   /// workers.
   static Future<Database> connectToPort(SqliteWebEndpoint endpoint) {
-    final client = DatabaseClient(Uri.base, Uri.base);
+    final client =
+        DatabaseClient(Uri.base, Uri.base, const _DefaultDatabaseController());
     return client.connectToExisting(endpoint);
+  }
+}
+
+final class _DefaultDatabaseController extends DatabaseController {
+  const _DefaultDatabaseController();
+
+  @override
+  Future<JSAny?> handleCustomRequest(
+      ClientConnection connection, JSAny? request) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<WorkerDatabase> openDatabase(
+      WasmSqlite3 sqlite3, String path, String vfs) async {
+    return _DefaultWorkerDatabase(sqlite3.open(path, vfs: vfs));
+  }
+}
+
+final class _DefaultWorkerDatabase extends WorkerDatabase {
+  @override
+  final CommonDatabase database;
+
+  _DefaultWorkerDatabase(this.database);
+
+  @override
+  Future<JSAny?> handleCustomRequest(
+      ClientConnection connection, JSAny? request) {
+    throw UnimplementedError();
   }
 }
