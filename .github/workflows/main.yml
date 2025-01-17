@@ -191,12 +191,13 @@ jobs:
         dart test -P ci
       working-directory: sqlite3/
 
-    - name: Test sqlite3 package
+    - name: Test with SQLITE_OMIT_AUTOINIT
       if: runner.os == 'Linux'
       run: |
+        dart run tool/check_compile_time_option.dart OMIT_AUTOINIT
         dart test -P ci
       env:
-        LD_LIBRARY_PATH: sqlite3/out/without_autoinit
+        LD_LIBRARY_PATH: out/without_autoinit
       working-directory: sqlite3/
 
     - name: Test sqlite3_test package
