@@ -1,5 +1,7 @@
 PODS:
-  - FlutterMacOS (1.0.0)
+  - Flutter (1.0.0)
+  - integration_test (0.0.1):
+    - Flutter
   - sqlite3 (3.48.0):
     - sqlite3/common (= 3.48.0)
   - sqlite3/common (3.48.0)
@@ -23,25 +25,29 @@ PODS:
     - sqlite3/rtree
 
 DEPENDENCIES:
-  - FlutterMacOS (from `Flutter/ephemeral`)
+  - Flutter (from `Flutter`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
   - sqlite3/spellfix1
-  - sqlite3_flutter_libs (from `Flutter/ephemeral/.symlinks/plugins/sqlite3_flutter_libs/darwin`)
+  - sqlite3_flutter_libs (from `.symlinks/plugins/sqlite3_flutter_libs/darwin`)
 
 SPEC REPOS:
   trunk:
     - sqlite3
 
 EXTERNAL SOURCES:
-  FlutterMacOS:
-    :path: Flutter/ephemeral
+  Flutter:
+    :path: Flutter
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
   sqlite3_flutter_libs:
-    :path: Flutter/ephemeral/.symlinks/plugins/sqlite3_flutter_libs/darwin
+    :path: ".symlinks/plugins/sqlite3_flutter_libs/darwin"
 
 SPEC CHECKSUMS:
-  FlutterMacOS: 8f6f14fa908a6fb3fba0cd85dbd81ec4b251fb24
+  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
   sqlite3: 3da10a59910c809fb584a93aa46a3f05b785e12e
   sqlite3_flutter_libs: c26d86af4ad88f1465dc4e07e6dc6931eef228e4
 
-PODFILE CHECKSUM: 61e9fedf3423d4f00828847139028f442a455364
+PODFILE CHECKSUM: 6e2ae03bcd74fedeb24d86830a8bb8e09fba08f9
 
 COCOAPODS: 1.16.2

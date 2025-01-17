@@ -4,10 +4,9 @@
     {
       "identity" : "csqlite",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/sbooth/CSQLite.git",
+      "location" : "https://github.com/simolus3/CSQLite.git",
       "state" : {
-        "revision" : "f9bc82fd757667a5d1819db4fbb073c97488eb85",
-        "version" : "3.47.1"
+        "revision" : "7fa023c325a734f9dd1dcd30eeb65a620f745a2d"
       }
     }
   ],
