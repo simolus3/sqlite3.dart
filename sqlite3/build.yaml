@@ -29,6 +29,10 @@ targets:
         enabled: false
 
   $default:
+    sources:
+      include:
+        - lib/**
+        - example/web/**
     builders:
       build_web_compilers:entrypoint:
         generate_for:
