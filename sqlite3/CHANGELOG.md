@@ -2,6 +2,7 @@
 
 - Fix out-of-bound reads in the `xWrite` implementation of the OPFS-locks based
   file-system implementation when writing more than 64 KiB in one operation.
+- Support SQLite libraries compiled with `SQLITE_OMIT_AUTOINIT`.
 
 ## 2.6.0
 

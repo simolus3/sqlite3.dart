@@ -1,3 +1,6 @@
+// This file defines the definitions for which we generate FFI bindings on
+// native platforms. To re-generate bindings, run:
+// `dart run ffigen --config ffigen.yaml`.
 #include <stdint.h>
 
 typedef struct sqlite3_char sqlite3_char;
@@ -7,6 +10,8 @@ typedef struct sqlite3_backup sqlite3_backup;
 typedef struct sqlite3_api_routines sqlite3_api_routines;
 
 sqlite3_char *sqlite3_temp_directory;
+
+int sqlite3_initialize();
 
 int sqlite3_open_v2(sqlite3_char *filename, sqlite3 **ppDb, int flags,
                     sqlite3_char *zVfs);

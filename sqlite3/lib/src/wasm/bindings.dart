@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:sqlite3/src/vfs.dart';
 
 import '../constants.dart';
-import '../exception.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
 import 'wasm_interop.dart' as wasm;
@@ -56,8 +55,6 @@ final class WasmSqliteBindings extends RawSqliteBindings {
   @override
   SqliteResult<RawSqliteDatabase> sqlite3_open_v2(
       String name, int flags, String? zVfs) {
-    sqlite3_initialize();
-
     final namePtr = bindings.allocateZeroTerminated(name);
     final outDb = bindings.malloc(wasm.WasmBindings.pointerSize);
     final vfsPtr = zVfs == null ? 0 : bindings.allocateZeroTerminated(zVfs);
@@ -79,11 +76,9 @@ final class WasmSqliteBindings extends RawSqliteBindings {
     return bindings.memory.readString(bindings.sqlite3_sourceid());
   }
 
-  void sqlite3_initialize() {
-    final rc = bindings.sqlite3_initialize();
-    if (rc != 0) {
-      throw SqliteException(rc, 'sqlite3_initialize call failed');
-    }
+  @override
+  int sqlite3_initialize() {
+    return bindings.sqlite3_initialize();
   }
 
   @override
@@ -95,7 +90,6 @@ final class WasmSqliteBindings extends RawSqliteBindings {
     if (ptr == 0) {
       throw StateError('could not register vfs');
     }
-    sqlite3_initialize();
     DartCallbacks.sqliteVfsPointer[vfs] = ptr;
   }
 

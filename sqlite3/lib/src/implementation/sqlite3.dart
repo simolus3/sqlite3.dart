@@ -2,6 +2,7 @@ import 'package:meta/meta.dart';
 
 import '../constants.dart';
 import '../database.dart';
+import '../exception.dart';
 import '../sqlite3.dart';
 import '../vfs.dart';
 import 'bindings.dart';
@@ -24,12 +25,21 @@ base class Sqlite3Implementation implements CommonSqlite3 {
   @override
   set tempDirectory(String? value) => bindings.sqlite3_temp_directory = value;
 
+  void initialize() {
+    final rc = bindings.sqlite3_initialize();
+    if (rc != 0) {
+      throw SqliteException(rc, 'Error returned by sqlite3_initialize');
+    }
+  }
+
   @override
   CommonDatabase open(String filename,
       {String? vfs,
       OpenMode mode = OpenMode.readWriteCreate,
       bool uri = false,
       bool? mutex}) {
+    initialize();
+
     int flags;
     switch (mode) {
       case OpenMode.readOnly:
