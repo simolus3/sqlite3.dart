@@ -45,6 +45,7 @@ jobs:
         curl https://www.sqlite.org/$SQLITE_YEAR/sqlite-amalgamation-$SQLITE_VERSION.zip --output sqlite.zip
         unzip sqlite.zip
 
+        cd sqlite-amalgamation-$SQLITE_VERSION
         gcc -DSQLITE_OMIT_AUTOINIT=1 -c -fPIC sqlite3.c -o sqlite3.o
         gcc -shared sqlite3.o -o libsqlite3.so
         mkdir ../out/without_autoinit
