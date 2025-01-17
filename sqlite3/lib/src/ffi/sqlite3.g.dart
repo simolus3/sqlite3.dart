@@ -28,6 +28,15 @@ class Bindings {
   set sqlite3_temp_directory(ffi.Pointer<sqlite3_char> value) =>
       _sqlite3_temp_directory.value = value;
 
+  int sqlite3_initialize() {
+    return _sqlite3_initialize();
+  }
+
+  late final _sqlite3_initializePtr =
+      _lookup<ffi.NativeFunction<ffi.Int Function()>>('sqlite3_initialize');
+  late final _sqlite3_initialize =
+      _sqlite3_initializePtr.asFunction<int Function()>();
+
   int sqlite3_open_v2(
     ffi.Pointer<sqlite3_char> filename,
     ffi.Pointer<ffi.Pointer<sqlite3>> ppDb,

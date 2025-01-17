@@ -85,6 +85,11 @@ final class FfiBindings extends RawSqliteBindings {
   }
 
   @override
+  int sqlite3_initialize() {
+    return bindings.bindings.sqlite3_initialize();
+  }
+
+  @override
   String sqlite3_errstr(int extendedErrorCode) {
     return bindings.bindings.sqlite3_errstr(extendedErrorCode).readString();
   }

@@ -51,6 +51,8 @@ final class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
 
   @override
   void ensureExtensionLoaded(SqliteExtension extension) {
+    initialize();
+
     final entrypoint = (extension as SqliteExtensionImpl)._resolveEntrypoint;
     final functionPtr = entrypoint(ffiBindings.bindings.library);
 

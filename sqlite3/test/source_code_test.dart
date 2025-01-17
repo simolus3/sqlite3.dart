@@ -8,7 +8,7 @@ import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('drift does not import legacy JS interop files', () {
+  test('does not import legacy JS interop files', () {
     final failures = <(String, String)>[];
 
     void check(FileSystemEntity e) {

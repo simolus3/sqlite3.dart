@@ -40,6 +40,8 @@ abstract base class RawSqliteBindings {
 
   void registerVirtualFileSystem(VirtualFileSystem vfs, int makeDefault);
   void unregisterVirtualFileSystem(VirtualFileSystem vfs);
+
+  int sqlite3_initialize();
 }
 
 /// Combines a sqlite result code and the result object.
