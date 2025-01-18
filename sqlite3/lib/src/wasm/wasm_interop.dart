@@ -33,8 +33,6 @@ class WasmBindings {
       _register_vfs,
       _unregister_vfs,
       _update_hooks,
-      _commit_hooks,
-      _rollback_hooks,
       _sqlite3_libversion,
       _sqlite3_sourceid,
       _sqlite3_libversion_number,
@@ -85,7 +83,13 @@ class WasmBindings {
       _sqlite3_stmt_readonly,
       _sqlite3_stmt_isexplain;
 
-  final JSFunction? _sqlite3_db_config, _sqlite3_initialize;
+  // The released WASM bundle only exposes functions referenced in this file.
+  // So, when we release a new version of `package:sqlite3` using additional
+  // functions, we can't assume that existing bundles also have those functions.
+  final JSFunction? _sqlite3_db_config,
+      _sqlite3_initialize,
+      _commit_hooks,
+      _rollback_hooks;
 
   final Global _sqlite3_temp_directory;
 
@@ -105,8 +109,6 @@ class WasmBindings {
         _register_vfs = instance.functions['dart_sqlite3_register_vfs']!,
         _unregister_vfs = instance.functions['sqlite3_vfs_unregister']!,
         _update_hooks = instance.functions['dart_sqlite3_updates']!,
-        _commit_hooks = instance.functions['dart_sqlite3_commits']!,
-        _rollback_hooks = instance.functions['dart_sqlite3_rollbacks']!,
         _sqlite3_libversion = instance.functions['sqlite3_libversion']!,
         _sqlite3_sourceid = instance.functions['sqlite3_sourceid']!,
         _sqlite3_libversion_number =
@@ -165,6 +167,8 @@ class WasmBindings {
         _sqlite3_stmt_readonly = instance.functions['sqlite3_stmt_readonly']!,
         _sqlite3_db_config = instance.functions['dart_sqlite3_db_config_int'],
         _sqlite3_initialize = instance.functions['sqlite3_initialize'],
+        _commit_hooks = instance.functions['dart_sqlite3_commits'],
+        _rollback_hooks = instance.functions['dart_sqlite3_rollbacks'],
         _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']!
 
   // Note when adding new fields: We remove functions from the wasm module that
@@ -292,12 +296,12 @@ class WasmBindings {
     _update_hooks.callReturningVoid2(db.toJS, id.toJS);
   }
 
-  int dart_sqlite3_commits(Pointer db, int id) {
-    return _commit_hooks.callReturningInt2(db.toJS, id.toJS);
+  void dart_sqlite3_commits(Pointer db, int id) {
+    return _commit_hooks!.callReturningVoid2(db.toJS, id.toJS);
   }
 
   void dart_sqlite3_rollbacks(Pointer db, int id) {
-    return _rollback_hooks.callReturningVoid2(db.toJS, id.toJS);
+    return _rollback_hooks!.callReturningVoid2(db.toJS, id.toJS);
   }
 
   int sqlite3_exec(Pointer db, Pointer sql, Pointer callback,
