@@ -1,7 +1,25 @@
+## 2.6.1
+
+- Fix out-of-bound reads in the `xWrite` implementation of the OPFS-locks based
+  file-system implementation when writing more than 64 KiB in one operation.
+- Support SQLite libraries compiled with `SQLITE_OMIT_AUTOINIT`.
+
+## 2.6.0
+
+- Add `SimpleOpfsFileSystem.deleteFromStorage` to delete OPFS-based file
+  systems.
+- Add `jsonb`, a Dart `Codec` converting Dart object from and to SQLite
+  `JSONB` values.
+- __Experimentally__ support encryption on the web through SQLite Multiple
+  Ciphers. The readme provides more information on how to use encryption on the
+  web.
+
 ## 2.5.0
 
 - Allow registering custom virtual file systems on all platforms. Previously,
   this was only supported on the web.
+- IndexedDB file system: Store `ArrayBuffer`s instead of `Blob`s when it looks
+  like storing blobs would cause issues.
 
 ## 2.4.7
 

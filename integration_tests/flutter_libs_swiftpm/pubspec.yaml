@@ -1,0 +1,22 @@
+name: flutter_libs_swiftpm
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  sqlite3_flutter_libs:
+    path: ../../sqlite3_flutter_libs
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  integration_test:
+    sdk: flutter
+  test: ^1.24.0
+  sqlite3: ^2.5.0

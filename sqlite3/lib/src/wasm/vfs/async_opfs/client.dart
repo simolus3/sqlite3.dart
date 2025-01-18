@@ -202,9 +202,11 @@ class WasmFile extends BaseVfsFile {
       // buffer would otherwise overflow.
       final bytesToWrite = min(MessageSerializer.dataSize, remainingBytes);
 
-      final subBuffer = bytesToWrite == remainingBytes
-          ? buffer
-          : buffer.buffer.asUint8List(buffer.offsetInBytes, bytesToWrite);
+      final subBuffer =
+          (bytesToWrite == remainingBytes && totalBytesWritten == 0)
+              ? buffer
+              : buffer.buffer.asUint8List(
+                  buffer.offsetInBytes + totalBytesWritten, bytesToWrite);
       vfs.serializer.byteView.set(subBuffer, 0);
 
       vfs._runInWorker(WorkerOperation.xWrite,

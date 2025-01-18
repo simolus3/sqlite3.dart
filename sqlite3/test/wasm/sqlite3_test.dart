@@ -3,7 +3,6 @@ library;
 
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
-import 'dart:math';
 
 import 'package:http/http.dart' as http;
 import 'package:sqlite3/wasm.dart';
@@ -35,9 +34,7 @@ void main() {
 
           sqlite3 = await WasmSqlite3.load(response.bodyBytes);
           sqlite3.registerVirtualFileSystem(
-            // Not using the default Random.secure() because it's not supported
-            // by dart2wasm
-            InMemoryFileSystem(random: Random()),
+            InMemoryFileSystem(),
             makeDefault: true,
           );
         }
@@ -48,7 +45,7 @@ void main() {
         expect(
           version,
           isA<Version>()
-              .having((e) => e.libVersion, 'libVersion', startsWith('3.46')),
+              .having((e) => e.libVersion, 'libVersion', startsWith('3.47')),
         );
       });
 

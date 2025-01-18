@@ -77,11 +77,19 @@ final class WasmSqliteBindings extends RawSqliteBindings {
   }
 
   @override
+  int sqlite3_initialize() {
+    return bindings.sqlite3_initialize();
+  }
+
+  @override
   void registerVirtualFileSystem(VirtualFileSystem vfs, int makeDefault) {
     final name = bindings.allocateZeroTerminated(vfs.name);
     final id = bindings.callbacks.registerVfs(vfs);
 
     final ptr = bindings.dart_sqlite3_register_vfs(name, id, makeDefault);
+    if (ptr == 0) {
+      throw StateError('could not register vfs');
+    }
     DartCallbacks.sqliteVfsPointer[vfs] = ptr;
   }
 

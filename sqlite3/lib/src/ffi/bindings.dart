@@ -85,6 +85,11 @@ final class FfiBindings extends RawSqliteBindings {
   }
 
   @override
+  int sqlite3_initialize() {
+    return bindings.bindings.sqlite3_initialize();
+  }
+
+  @override
   String sqlite3_errstr(int extendedErrorCode) {
     return bindings.bindings.sqlite3_errstr(extendedErrorCode).readString();
   }
@@ -552,6 +557,7 @@ final class FfiDatabase extends RawSqliteDatabase {
     final previous = _installedUpdateHook;
 
     if (hook == null) {
+      _installedUpdateHook = null;
       bindings.bindings.sqlite3_update_hook(db, nullPtr(), nullPtr());
     } else {
       final native = _installedUpdateHook = hook.toNative();

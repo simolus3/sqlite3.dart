@@ -2,8 +2,11 @@ import 'dart:convert';
 import 'dart:html';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'dart:typed_data';
 
 import 'package:sqlite3_web/sqlite3_web.dart';
+
+import 'controller.dart';
 
 final sqlite3WasmUri = Uri.parse('sqlite3.wasm');
 final workerUri = Uri.parse('worker.dart.js');
@@ -58,6 +61,35 @@ void main() {
     await vfs.flush();
     return true.toJS;
   });
+  _addCallbackForWebDriver('delete_db', (arg) async {
+    final storage = StorageMode.values.byName(arg!);
+    await initializeSqlite()
+        .deleteDatabase(name: databaseName, storage: storage);
+    return true.toJS;
+  });
+  _addCallbackForWebDriver('check_read_write', (arg) async {
+    final vfs = database!.fileSystem;
+
+    final bytes = Uint8List(1024 * 128);
+    for (var i = 0; i < 128; i++) {
+      bytes[i * 1024] = i;
+    }
+
+    await vfs.writeFile(FileType.database, bytes);
+    await vfs.flush();
+    final result = await vfs.readFile(FileType.database);
+    if (result.length != bytes.length) {
+      return 'length mismatch'.toJS;
+    }
+
+    for (var i = 0; i < 128; i++) {
+      if (result[i * 1024] != i) {
+        return 'mismatch, i=$i, byte ${result[i * 1024]}'.toJS;
+      }
+    }
+
+    return null;
+  });
 
   document.getElementById('selfcheck')?.onClick.listen((event) async {
     print('starting');
@@ -97,6 +129,7 @@ WebSqlite initializeSqlite() {
   return webSqlite ??= WebSqlite.open(
     worker: workerUri,
     wasmModule: sqlite3WasmUri,
+    controller: ExampleController(isInWorker: false),
   );
 }
 

@@ -105,6 +105,27 @@ final class Shared extends WorkerEnvironment {
   }
 }
 
+/// A fake worker environment running in the same context as the main
+/// application.
+///
+/// This allows using a communication channel based on message ports regardless
+/// of where the database is hosted. While that adds overhead, a local
+/// environment is only used as a fallback if workers are unavailable.
+final class Local extends WorkerEnvironment {
+  final StreamController<Message> _messages = StreamController();
+
+  Local() : super._();
+
+  void addTopLevelMessage(Message message) {
+    _messages.add(message);
+  }
+
+  @override
+  Stream<Message> get topLevelRequests {
+    return _messages.stream;
+  }
+}
+
 /// A database opened by a client.
 final class _ConnectionDatabase {
   final DatabaseState database;
@@ -465,7 +486,8 @@ final class WorkerRunner {
   /// a shared context that can use synchronous JS APIs.
   Worker? _innerWorker;
 
-  WorkerRunner(this._controller) : _environment = WorkerEnvironment();
+  WorkerRunner(this._controller, {WorkerEnvironment? environment})
+      : _environment = environment ?? WorkerEnvironment();
 
   void handleRequests() async {
     await for (final message in _environment.topLevelRequests) {

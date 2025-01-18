@@ -7,7 +7,9 @@ import 'package:web/web.dart'
     show
         FileSystemDirectoryHandle,
         FileSystemSyncAccessHandle,
-        FileSystemReadWriteOptions;
+        FileSystemReadWriteOptions,
+        FileSystemRemoveOptions,
+        DOMException;
 
 import '../../constants.dart';
 import '../../vfs.dart';
@@ -68,6 +70,24 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
       {String vfsName = 'simple-opfs'})
       : super(name: vfsName);
 
+  static Future<(FileSystemDirectoryHandle?, FileSystemDirectoryHandle)>
+      _resolveDir(String path, {bool create = true}) async {
+    final storage = storageManager;
+    if (storage == null) {
+      throw VfsException(SqlError.SQLITE_ERROR);
+    }
+
+    FileSystemDirectoryHandle? parent;
+    var opfsDirectory = await storage.directory;
+
+    for (final segment in p.split(path)) {
+      parent = opfsDirectory;
+      opfsDirectory = await opfsDirectory.getDirectory(segment, create: create);
+    }
+
+    return (parent, opfsDirectory);
+  }
+
   /// Loads an [SimpleOpfsFileSystem] in the desired [path] under the root directory
   /// for OPFS as given by `navigator.storage.getDirectory()` in JavaScript.
   ///
@@ -81,13 +101,32 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
       throw VfsException(SqlError.SQLITE_ERROR);
     }
 
-    var opfsDirectory = await storage.directory;
+    final (_, directory) = await _resolveDir(path);
+    return inDirectory(directory, vfsName: vfsName);
+  }
 
-    for (final segment in p.split(path)) {
-      opfsDirectory = await opfsDirectory.getDirectory(segment, create: true);
+  /// Deletes the file system directory handle that would store sqlite3
+  /// databases when using [loadFromStorage] with the same path.
+  static Future<void> deleteFromStorage(String path) async {
+    final FileSystemDirectoryHandle? parent;
+    final FileSystemDirectoryHandle handle;
+
+    try {
+      (parent, handle) = await _resolveDir(path, create: false);
+    } on DOMException catch (e) {
+      if (e.name == 'NotFoundError' || e.name == 'TypeMismatchError') {
+        // Directory doesn't exist, ignore.
+        return;
+      } else {
+        rethrow;
+      }
     }
 
-    return inDirectory(opfsDirectory, vfsName: vfsName);
+    if (parent != null) {
+      await parent
+          .removeEntry(handle.name, FileSystemRemoveOptions(recursive: true))
+          .toDart;
+    }
   }
 
   /// Loads an [SimpleOpfsFileSystem] in the desired [root] directory, which must be

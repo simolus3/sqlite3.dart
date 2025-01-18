@@ -132,18 +132,30 @@ abstract base class BaseVirtualFileSystem extends VirtualFileSystem {
   final Random random;
 
   BaseVirtualFileSystem({Random? random, required String name})
-      : random = random ?? Random.secure(),
+      : random = random ?? _fallbackRandom,
         super(name);
 
   @override
   void xRandomness(Uint8List target) {
+    generateRandomness(target, random);
+  }
+
+  @override
+  DateTime xCurrentTime() => DateTime.now();
+
+  /// Fills [target] with random bytes.
+  ///
+  /// An optional [random] source can be provided, otherwise a default instance
+  /// of [Random.secure] will be used.
+  static void generateRandomness(Uint8List target, [Random? random]) {
+    random ??= _fallbackRandom;
+
     for (var i = 0; i < target.length; i++) {
       target[i] = random.nextInt(1 << 8);
     }
   }
 
-  @override
-  DateTime xCurrentTime() => DateTime.now();
+  static final Random _fallbackRandom = Random.secure();
 }
 
 /// A [VirtualFileSystemFile] base class that implements [xRead] to zero-fill

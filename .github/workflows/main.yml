@@ -15,15 +15,15 @@ jobs:
     name: Compile sqlite3 for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      SQLITE_YEAR: "2023"
-      SQLITE_VERSION: "3420000"
+      SQLITE_YEAR: "2025"
+      SQLITE_VERSION: "3480000"
 
     steps:
     - uses: actions/cache@v4
       id: cache_sqlite_build
       with:
         path: sqlite/out
-        key: sqlite-v3-${{ runner.os }}-${{ env.SQLITE_VERSION }}
+        key: sqlite-v4-${{ runner.os }}-${{ env.SQLITE_VERSION }}
     - name: Compile sqlite3 on Linux
       if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Linux'
       run: |
@@ -38,6 +38,18 @@ jobs:
         cp sqlite3 ../out
         cp .libs/libsqlite3.so ../out
         cp *.h ../out
+    - name: Compile sqlite3 on Linux (no autoinit)
+      if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Linux'
+      working-directory: sqlite
+      run: |
+        curl https://www.sqlite.org/$SQLITE_YEAR/sqlite-amalgamation-$SQLITE_VERSION.zip --output sqlite.zip
+        unzip sqlite.zip
+
+        cd sqlite-amalgamation-$SQLITE_VERSION
+        gcc -DSQLITE_OMIT_AUTOINIT=1 -c -fPIC sqlite3.c -o sqlite3.o
+        gcc -shared sqlite3.o -o libsqlite3.so
+        mkdir ../out/without_autoinit
+        cp libsqlite3.so ../out/without_autoinit
     - name: Compile sqlite3 on macOS
       if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'macOS'
       run: |
@@ -84,7 +96,7 @@ jobs:
     needs: [compile_sqlite3]
     strategy:
       matrix:
-        package: [sqlite3]
+        package: [sqlite3, sqlite3_test]
         dart: [stable]
 
     name: Analyze on Dart ${{ matrix.dart }}
@@ -173,15 +185,32 @@ jobs:
           dart-dependencies-${{ matrix.dart }}-
           dart-dependencies-
 
-    - name: Test
+    - name: Test sqlite3 package
       run: |
         dart pub get
         dart test -P ci
       working-directory: sqlite3/
 
+    - name: Test with SQLITE_OMIT_AUTOINIT
+      if: runner.os == 'Linux'
+      run: |
+        ls $LD_LIBRARY_PATH
+        dart run tool/check_compile_time_option.dart OMIT_AUTOINIT
+        dart test -P ci
+      env:
+        LD_LIBRARY_PATH: ../sqlite/out/without_autoinit
+      working-directory: sqlite3/
+
+    - name: Test sqlite3_test package
+      run: |
+        dart pub get
+        dart test
+      working-directory: sqlite3_test/
+
     - name: Web tests
       run: |
-        curl https://storage.googleapis.com/simon-public-euw3/assets/sqlite3/wasm/2.4.6/sqlite3.wasm -o example/web/sqlite3.wasm
+        curl https://simon-public.fsn1.your-objectstorage.com/assets/sqlite3/2.6.0/sqlite3.wasm -o example/web/sqlite3.wasm
+        curl https://simon-public.fsn1.your-objectstorage.com/assets/sqlite3/2.6.0/sqlite3mc.wasm -o example/web/sqlite3mc.wasm
         dart test -P web -r expanded
       # If browsers behave differently on different platforms, surely that's not our fault...
       # So, only run browser tests on Linux to be faster.
@@ -248,8 +277,8 @@ jobs:
 
       - name: Start simulator
         run: |
-          IPHONE12=$(xcrun xctrace list devices  2>&1 | grep -m 1 "iPhone 14 Pro" | awk -F'[()]' '{print $4}')
-          xcrun simctl boot $IPHONE12
+          IPHONE=$(xcrun xctrace list devices  2>&1 | grep -m 1 "iPhone" | awk -F'[()]' '{print $4}')
+          xcrun simctl boot $IPHONE
 
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2.4.0
