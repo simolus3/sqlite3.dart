@@ -126,18 +126,30 @@ final class Local extends WorkerEnvironment {
   }
 }
 
+class _StreamState {
+  StreamSubscription<void>? subscription;
+
+  void cancel() {
+    subscription?.cancel();
+    subscription = null;
+  }
+}
+
 /// A database opened by a client.
 final class _ConnectionDatabase {
   final DatabaseState database;
   final int id;
 
-  StreamSubscription<SqliteUpdate>? updates;
+  final _StreamState updates = _StreamState();
+  final _StreamState rollbacks = _StreamState();
+  final _StreamState commits = _StreamState();
 
   _ConnectionDatabase(this.database, [int? id]) : id = id ?? database.id;
 
   Future<void> close() async {
-    updates?.cancel();
-    updates = null;
+    updates.cancel();
+    rollbacks.cancel();
+    commits.cancel();
 
     await database.decrementRefCount();
   }
@@ -233,23 +245,34 @@ final class _ClientConnection extends ProtocolChannel
           return SimpleSuccessResponse(
               response: null, requestId: request.requestId);
         }
-      case UpdateStreamRequest(action: true):
-        if (database!.updates == null) {
+      case StreamRequest(action: true, type: MessageType.updateRequest):
+        return await subscribe(database!.updates, () async {
           final rawDatabase = await database.database.opened;
-          database.updates ??= rawDatabase.database.updates.listen((event) {
+          return rawDatabase.database.updates.listen((event) {
             sendNotification(UpdateNotification(
                 update: event, databaseId: database.database.id));
           });
-        }
-        return SimpleSuccessResponse(
-            response: null, requestId: request.requestId);
-      case UpdateStreamRequest(action: false):
-        if (database!.updates != null) {
-          database.updates?.cancel();
-          database.updates = null;
-        }
-        return SimpleSuccessResponse(
-            response: null, requestId: request.requestId);
+        }, request);
+      case StreamRequest(action: true, type: MessageType.commitRequest):
+        return await subscribe(database!.commits, () async {
+          final rawDatabase = await database.database.opened;
+          return rawDatabase.database.commits.listen((event) {
+            sendNotification(EmptyNotification(
+                type: MessageType.notifyCommit,
+                databaseId: database.database.id));
+          });
+        }, request);
+      case StreamRequest(action: true, type: MessageType.rollbackRequest):
+        return await subscribe(database!.rollbacks, () async {
+          final rawDatabase = await database.database.opened;
+          return rawDatabase.database.rollbacks.listen((event) {
+            sendNotification(EmptyNotification(
+                type: MessageType.notifyRollback,
+                databaseId: database.database.id));
+          });
+        }, request);
+      case StreamRequest(action: false):
+        return unsubscribe(database!, request);
       case OpenAdditonalConnection():
         final database = _databaseFor(request)!.database;
         database.refCount++;
@@ -303,8 +326,37 @@ final class _ClientConnection extends ProtocolChannel
         } finally {
           file.xClose();
         }
+      case StreamRequest(action: true):
+        // Suppported stream requests handled in cases above.
+        return ErrorResponse(
+            message: 'Invalid stream subscription request',
+            requestId: request.requestId);
     }
   }
+
+  Future<Response> subscribe(
+    _StreamState state,
+    Future<StreamSubscription<void>> Function() subscribeInternally,
+    StreamRequest request,
+  ) async {
+    state.subscription ??= await subscribeInternally();
+    return SimpleSuccessResponse(response: null, requestId: request.requestId);
+  }
+
+  Response unsubscribe(_ConnectionDatabase database, StreamRequest request) {
+    assert(!request.action);
+    final handler = switch (request.type) {
+      MessageType.updateRequest => database.updates,
+      MessageType.rollbackRequest => database.rollbacks,
+      MessageType.commitRequest => database.commits,
+      _ => throw AssertionError(),
+    };
+    handler.cancel();
+
+    return SimpleSuccessResponse(response: null, requestId: request.requestId);
+  }
+
+  void handleStreamCancelRequest() {}
 
   @override
   void handleNotification(Notification notification) {

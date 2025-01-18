@@ -57,7 +57,9 @@ base class DatabaseImplementation implements CommonDatabase {
 
   final FinalizableDatabase finalizable;
 
-  final List<MultiStreamController<SqliteUpdate>> _updateListeners = [];
+  _StreamHandlers<SqliteUpdate, void Function()>? _updates;
+  _StreamHandlers<void, void Function()>? _rollbacks;
+  _StreamHandlers<void, VoidPredicate>? _commits;
 
   var _isClosed = false;
 
@@ -102,6 +104,67 @@ base class DatabaseImplementation implements CommonDatabase {
     if (_isClosed) {
       throw StateError('This database has already been closed');
     }
+  }
+
+  _StreamHandlers<SqliteUpdate, void Function()> _updatesHandler() {
+    return _updates ??= _StreamHandlers(
+      database: this,
+      register: () {
+        database.sqlite3_update_hook((kind, tableName, rowId) {
+          SqliteUpdateKind updateKind;
+
+          switch (kind) {
+            case SQLITE_INSERT:
+              updateKind = SqliteUpdateKind.insert;
+              break;
+            case SQLITE_UPDATE:
+              updateKind = SqliteUpdateKind.update;
+              break;
+            case SQLITE_DELETE:
+              updateKind = SqliteUpdateKind.delete;
+              break;
+            default:
+              return;
+          }
+
+          final update = SqliteUpdate(updateKind, tableName, rowId);
+          _updates!.deliverAsyncEvent(update);
+        });
+      },
+      unregister: () => database.sqlite3_update_hook(null),
+    );
+  }
+
+  _StreamHandlers<void, void Function()> _rollbackHandler() {
+    return _rollbacks ??= _StreamHandlers(
+      database: this,
+      register: () => database.sqlite3_rollback_hook(() {
+        _rollbacks!.deliverAsyncEvent(null);
+      }),
+      unregister: () => database.sqlite3_rollback_hook(null),
+    );
+  }
+
+  _StreamHandlers<void, VoidPredicate> _commitHandler() {
+    return _commits ??= _StreamHandlers(
+      database: this,
+      register: () => database.sqlite3_commit_hook(() {
+        var complete = true;
+        if (_commits!.syncCallback case final callback?) {
+          complete = callback();
+        }
+
+        if (complete) {
+          _commits!.deliverAsyncEvent(null);
+          // There's no reason to deliver a rollback event if the synchronous
+          // handler determined that the transaction should be reverted, sqlite3
+          // will emit a rollbacke event for us.
+        }
+
+        return complete ? 0 : 1;
+      }),
+      unregister: () => database.sqlite3_commit_hook(null),
+    );
   }
 
   Uint8List _validateAndEncodeFunctionName(String functionName) {
@@ -224,10 +287,13 @@ base class DatabaseImplementation implements CommonDatabase {
     disposeFinalizer.detach(this);
     _isClosed = true;
 
-    for (final listener in _updateListeners) {
-      listener.close();
-    }
+    _updates?.close();
+    _commits?.close();
+    _rollbacks?.close();
+
     database.sqlite3_update_hook(null);
+    database.sqlite3_commit_hook(null);
+    database.sqlite3_rollback_hook(null);
 
     finalizable.dispose();
   }
@@ -401,63 +467,20 @@ base class DatabaseImplementation implements CommonDatabase {
   }
 
   @override
-  Stream<SqliteUpdate> get updates {
-    return Stream.multi(
-      (newListener) {
-        if (_isClosed) {
-          newListener.closeSync();
-          return;
-        }
+  Stream<SqliteUpdate> get updates => _updatesHandler().stream;
 
-        void addUpdateListener() {
-          final isFirstListener = _updateListeners.isEmpty;
-          _updateListeners.add(newListener);
+  @override
+  Stream<void> get rollbacks => _rollbackHandler().stream;
 
-          if (isFirstListener) {
-            // Add native update hook
-            database.sqlite3_update_hook((kind, tableName, rowId) {
-              SqliteUpdateKind updateKind;
+  @override
+  Stream<void> get commits => _commitHandler().stream;
 
-              switch (kind) {
-                case SQLITE_INSERT:
-                  updateKind = SqliteUpdateKind.insert;
-                  break;
-                case SQLITE_UPDATE:
-                  updateKind = SqliteUpdateKind.update;
-                  break;
-                case SQLITE_DELETE:
-                  updateKind = SqliteUpdateKind.delete;
-                  break;
-                default:
-                  return;
-              }
+  @override
+  VoidPredicate? get commitFilter => _commitHandler().syncCallback;
 
-              final update = SqliteUpdate(updateKind, tableName, rowId);
-              for (final listener in _updateListeners) {
-                listener.add(update);
-              }
-            });
-          }
-        }
-
-        void removeUpdateListener() {
-          _updateListeners.remove(newListener);
-
-          if (_updateListeners.isEmpty && !_isClosed) {
-            database.sqlite3_update_hook(null); // Remove native hook
-          }
-        }
-
-        newListener
-          ..onPause = removeUpdateListener
-          ..onCancel = removeUpdateListener
-          ..onResume = addUpdateListener;
-
-        // Since this is a onListen callback, add listener now
-        addUpdateListener();
-      },
-      isBroadcast: true,
-    );
+  @override
+  set commitFilter(VoidPredicate? commitFilter) {
+    _commitHandler().syncCallback = commitFilter;
   }
 }
 
@@ -563,5 +586,107 @@ final class DatabaseConfigImplementation extends DatabaseConfig {
     if (resultDML != SqlError.SQLITE_OK) {
       throwException(database, resultDML);
     }
+  }
+}
+
+/// A shared implementation for the [CommonDatabase.updates],
+/// [CommonDatabase.commits] and [CommonDatabase.rollbacks] streams used by
+/// [DatabaseImplementation].
+///
+/// [T] is the event type of the stream. These streams wrap SQLite callbacks
+/// which are not supposed to make their own database calls. Thus, all streams
+/// have an asynchronous delay from when the C callback is called.
+/// The commits stream also supports a synchronous callback that can turn
+/// commits into rollbacks. This is represented by [_syncCallback].
+final class _StreamHandlers<T, SyncCallback> {
+  final DatabaseImplementation _database;
+  final List<MultiStreamController<T>> _asyncListeners = [];
+  SyncCallback? _syncCallback;
+
+  /// Registers a native callback on the database.
+  final void Function() _register;
+
+  /// Unregisters the native callback on the database.
+  final void Function() _unregister;
+
+  late final Stream<T> stream = Stream.multi(
+    (newListener) {
+      if (_database._isClosed) {
+        newListener.close();
+        return;
+      }
+
+      void addListener() {
+        _addAsyncListener(newListener);
+      }
+
+      void removeListener() {
+        _removeAsyncListener(newListener);
+      }
+
+      newListener
+        ..onPause = removeListener
+        ..onCancel = removeListener
+        ..onResume = addListener;
+      // Since this is a onListen callback, add listener now
+      addListener();
+    },
+    isBroadcast: true,
+  );
+
+  _StreamHandlers({
+    required DatabaseImplementation database,
+    required void Function() register,
+    required void Function() unregister,
+  })  : _database = database,
+        _register = register,
+        _unregister = unregister;
+
+  bool get hasListener => _asyncListeners.isNotEmpty || _syncCallback != null;
+
+  SyncCallback? get syncCallback => _syncCallback;
+
+  set syncCallback(SyncCallback? value) {
+    if (value != _syncCallback) {
+      final hadListenerBefore = hasListener;
+      _syncCallback = value;
+      final hasListenerNow = hasListener;
+
+      if (!hadListenerBefore && hasListenerNow) {
+        _register();
+      } else if (hadListenerBefore && !hasListenerNow) {
+        _unregister();
+      }
+    }
+  }
+
+  void _addAsyncListener(MultiStreamController<T> listener) {
+    final isFirstListener = !hasListener;
+    _asyncListeners.add(listener);
+
+    if (isFirstListener) {
+      _register();
+    }
+  }
+
+  void _removeAsyncListener(MultiStreamController<T> listener) {
+    _asyncListeners.remove(listener);
+
+    if (!hasListener && !_database._isClosed) {
+      _unregister();
+    }
+  }
+
+  void deliverAsyncEvent(T event) {
+    for (final listener in _asyncListeners) {
+      listener.add(event);
+    }
+  }
+
+  void close() {
+    for (final listener in _asyncListeners) {
+      listener.close();
+    }
+    _syncCallback = null;
   }
 }

@@ -14,19 +14,27 @@ import 'protocol.dart';
 import 'shared.dart';
 import 'worker.dart';
 
+final class _CommitOrRollbackStream {
+  StreamSubscription<Notification>? workerSubscription;
+  final StreamController<void> controller = StreamController.broadcast();
+}
+
 final class RemoteDatabase implements Database {
   final WorkerConnection connection;
   final int databaseId;
 
   var _isClosed = false;
 
-  StreamSubscription<Notification>? _notificationSubscription;
+  StreamSubscription<Notification>? _updateNotificationSubscription;
   final StreamController<SqliteUpdate> _updates = StreamController.broadcast();
+
+  final _CommitOrRollbackStream _commits = _CommitOrRollbackStream();
+  final _CommitOrRollbackStream _rollbacks = _CommitOrRollbackStream();
 
   RemoteDatabase({required this.connection, required this.databaseId}) {
     _updates
       ..onListen = (() {
-        _notificationSubscription ??=
+        _updateNotificationSubscription ??=
             connection.notifications.stream.listen((notification) {
           if (notification case UpdateNotification()) {
             if (notification.databaseId == databaseId) {
@@ -34,22 +42,54 @@ final class RemoteDatabase implements Database {
             }
           }
         });
-
-        _requestUpdates(true);
+        _requestStreamUpdates(MessageType.updateRequest, true);
       })
       ..onCancel = (() {
-        _notificationSubscription?.cancel();
-        _notificationSubscription = null;
+        _updateNotificationSubscription?.cancel();
+        _updateNotificationSubscription = null;
+        _requestStreamUpdates(MessageType.updateRequest, false);
+      });
 
-        _requestUpdates(false);
+    _setupCommitOrRollbackStream(
+        _commits, MessageType.commitRequest, MessageType.notifyCommit);
+    _setupCommitOrRollbackStream(
+        _rollbacks, MessageType.rollbackRequest, MessageType.notifyRollback);
+  }
+
+  void _setupCommitOrRollbackStream(
+    _CommitOrRollbackStream stream,
+    MessageType requestSubscription,
+    MessageType notificationType,
+  ) {
+    stream.controller
+      ..onListen = (() {
+        stream.workerSubscription ??=
+            connection.notifications.stream.listen((notification) {
+          if (notification case EmptyNotification(type: final type)) {
+            if (notification.databaseId == databaseId &&
+                type == notificationType) {
+              stream.controller.add(null);
+            }
+          }
+        });
+        _requestStreamUpdates(requestSubscription, true);
+      })
+      ..onCancel = (() {
+        stream.workerSubscription?.cancel();
+        stream.workerSubscription = null;
+        _requestStreamUpdates(requestSubscription, false);
       });
   }
 
-  void _requestUpdates(bool sendUpdates) {
+  void _requestStreamUpdates(MessageType streamType, bool subscribe) {
     if (!_isClosed) {
       connection.sendRequest(
-        UpdateStreamRequest(
-            action: sendUpdates, requestId: 0, databaseId: databaseId),
+        StreamRequest(
+          type: streamType,
+          action: subscribe,
+          requestId: 0, // filled out in sendRequest
+          databaseId: databaseId,
+        ),
         MessageType.simpleSuccessResponse,
       );
     }
@@ -63,10 +103,14 @@ final class RemoteDatabase implements Database {
   @override
   Future<void> dispose() async {
     _isClosed = true;
-    _updates.close();
-    await connection.sendRequest(
-        CloseDatabase(requestId: 0, databaseId: databaseId),
-        MessageType.simpleSuccessResponse);
+    await (
+      _updates.close(),
+      _rollbacks.controller.close(),
+      _commits.controller.close(),
+      connection.sendRequest(
+          CloseDatabase(requestId: 0, databaseId: databaseId),
+          MessageType.simpleSuccessResponse)
+    ).wait;
   }
 
   @override
@@ -126,6 +170,12 @@ final class RemoteDatabase implements Database {
 
   @override
   Stream<SqliteUpdate> get updates => _updates.stream;
+
+  @override
+  Stream<void> get rollbacks => _rollbacks.controller.stream;
+
+  @override
+  Stream<void> get commits => _commits.controller.stream;
 
   @override
   Future<int> get userVersion async {

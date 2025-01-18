@@ -45,7 +45,7 @@ void main() {
         expect(
           version,
           isA<Version>()
-              .having((e) => e.libVersion, 'libVersion', startsWith('3.47')),
+              .having((e) => e.libVersion, 'libVersion', startsWith('3.48')),
         );
       });
 

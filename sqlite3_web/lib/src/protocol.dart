@@ -25,7 +25,9 @@ enum MessageType<T extends Message> {
   fileSystemFlush<FileSystemFlushRequest>(),
   connect<ConnectRequest>(),
   startFileSystemServer<StartFileSystemServer>(),
-  updateRequest<UpdateStreamRequest>(),
+  updateRequest<StreamRequest>(),
+  rollbackRequest<StreamRequest>(),
+  commitRequest<StreamRequest>(),
   simpleSuccessResponse<SimpleSuccessResponse>(),
   rowsResponse<RowsResponse>(),
   errorResponse<ErrorResponse>(),
@@ -33,6 +35,8 @@ enum MessageType<T extends Message> {
   closeDatabase<CloseDatabase>(),
   openAdditionalConnection<OpenAdditonalConnection>(),
   notifyUpdate<UpdateNotification>(),
+  notifyRollback<EmptyNotification>(),
+  notifyCommit<EmptyNotification>(),
   ;
 
   static final Map<String, MessageType> byName = values.asNameMap();
@@ -93,13 +97,19 @@ sealed class Message {
       MessageType.closeDatabase => CloseDatabase.deserialize(object),
       MessageType.openAdditionalConnection =>
         OpenAdditonalConnection.deserialize(object),
-      MessageType.updateRequest => UpdateStreamRequest.deserialize(object),
+      MessageType.updateRequest ||
+      MessageType.rollbackRequest ||
+      MessageType.commitRequest =>
+        StreamRequest.deserialize(type, object),
       MessageType.simpleSuccessResponse =>
         SimpleSuccessResponse.deserialize(object),
       MessageType.endpointResponse => EndpointResponse.deserialize(object),
       MessageType.rowsResponse => RowsResponse.deserialize(object),
       MessageType.errorResponse => ErrorResponse.deserialize(object),
       MessageType.notifyUpdate => UpdateNotification.deserialize(object),
+      MessageType.notifyRollback ||
+      MessageType.notifyCommit =>
+        EmptyNotification.deserialize(type, object),
     };
   }
 
@@ -629,7 +639,7 @@ final class ErrorResponse extends Response {
   }
 }
 
-final class UpdateStreamRequest extends Request {
+final class StreamRequest extends Request {
   /// When true, the client is requesting to be informed about updates happening
   /// on the database identified by this request.
   ///
@@ -637,21 +647,24 @@ final class UpdateStreamRequest extends Request {
   /// updates.
   final bool action;
 
-  UpdateStreamRequest(
-      {required this.action,
-      required super.requestId,
-      required super.databaseId});
+  final MessageType<Message> type;
 
-  factory UpdateStreamRequest.deserialize(JSObject object) {
-    return UpdateStreamRequest(
+  StreamRequest({
+    required this.type,
+    required this.action,
+    required super.requestId,
+    required super.databaseId,
+  });
+
+  factory StreamRequest.deserialize(
+      MessageType<Message> type, JSObject object) {
+    return StreamRequest(
+      type: type,
       action: (object[_UniqueFieldNames.action] as JSBoolean).toDart,
       requestId: object.requestId,
       databaseId: object.databaseId,
     );
   }
-
-  @override
-  MessageType<Message> get type => MessageType.updateRequest;
 
   @override
   void serialize(JSObject object, List<JSObject> transferred) {
@@ -813,6 +826,30 @@ final class UpdateNotification extends Notification {
     object[_UniqueFieldNames.updateKind] = update.kind.index.toJS;
     object[_UniqueFieldNames.updateTableName] = update.tableName.toJS;
     object[_UniqueFieldNames.updateRowId] = update.rowId.toJS;
+  }
+}
+
+/// Used as a notification without a payload, e.g. for commit or rollback
+/// events.
+final class EmptyNotification extends Notification {
+  final int databaseId;
+  @override
+  final MessageType<Message> type;
+
+  EmptyNotification({required this.type, required this.databaseId});
+
+  factory EmptyNotification.deserialize(
+      MessageType<Message> type, JSObject object) {
+    return EmptyNotification(
+      type: type,
+      databaseId: object.databaseId,
+    );
+  }
+
+  @override
+  void serialize(JSObject object, List<JSObject> transferred) {
+    super.serialize(object, transferred);
+    object[_UniqueFieldNames.databaseId] = databaseId.toJS;
   }
 }
 

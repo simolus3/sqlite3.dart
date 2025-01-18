@@ -707,6 +707,141 @@ void testDatabase(
     });
   });
 
+  group('rollback stream', () {
+    setUp(() {
+      database.execute('CREATE TABLE tbl (a TEXT, b INT);');
+    });
+
+    test('emits on rollback', () {
+      expect(database.rollbacks, emits(anything));
+
+      database.execute('BEGIN TRANSACTION;');
+      database.execute("ROLLBACK;");
+    });
+
+    test('emits on rollback after insert', () {
+      expect(database.rollbacks, emits(anything));
+
+      database.execute('BEGIN TRANSACTION;');
+      database.execute("INSERT INTO tbl VALUES ('', 1);");
+      database.execute("ROLLBACK;");
+    });
+
+    test('emits on rollback after erroneous SQL', () {
+      expect(database.rollbacks, emits(anything));
+
+      database.execute('BEGIN TRANSACTION;');
+      try {
+        database.execute('Erroneous SQL');
+      } catch (_) {
+        // ignore
+      }
+      database.execute("ROLLBACK;");
+    });
+
+    test('emits on rollback due to commit filter', () {
+      expect(database.rollbacks, emits(anything));
+      database.commitFilter = expectAsync0(() => false);
+
+      database.execute('begin');
+      database.execute("INSERT INTO tbl VALUES ('', 1);");
+      expect(() => database.execute('commit'), throwsSqlError(19, 531));
+    });
+  });
+
+  group('commit filter', () {
+    setUp(() {
+      database.execute('CREATE TABLE tbl (a TEXT, b INT);');
+    });
+
+    test('explicit commits with always fails filter raises exception', () {
+      database.commitFilter = () => false;
+      expect(() {
+        database.execute('BEGIN TRANSACTION;');
+        database.execute("INSERT INTO tbl VALUES ('', 1);");
+        database.execute("COMMIT;");
+      },
+          throwsA(predicate<SqliteException>((e) =>
+              e.operation == 'executing' &&
+              e.message.startsWith('constraint failed'))));
+    });
+
+    test('implicit commits with always fails filter raises exception', () {
+      database.commitFilter = () => false;
+      expect(
+          () => database.execute("INSERT INTO tbl VALUES ('', 1);"),
+          throwsA(predicate<SqliteException>((e) =>
+              e.operation == 'executing' &&
+              e.message.startsWith('constraint failed'))));
+    });
+
+    test('side effects run on explicit commit', () {
+      var sideEffects = 0;
+      database.commitFilter = () {
+        ++sideEffects;
+        return true;
+      };
+
+      database.execute('BEGIN TRANSACTION;');
+      database.execute("INSERT INTO tbl VALUES ('', 1);");
+      database.execute("COMMIT;");
+      // ensure the transaction committed correctly
+      expect(database.select('SELECT COUNT(*) AS c FROM tbl;').first['c'],
+          equals(1));
+      // ensure side-effects ran
+      expect(sideEffects, equals(1));
+    });
+
+    test('side effects run on implicit commit', () {
+      var sideEffects = 0;
+      database.commitFilter = () {
+        ++sideEffects;
+        return true;
+      };
+
+      database.execute("INSERT INTO tbl VALUES ('', 1);");
+      // ensure the transaction committed correctly
+      expect(database.select('SELECT COUNT(*) AS c FROM tbl;').first['c'],
+          equals(1));
+      // ensure side-effects ran
+      expect(sideEffects, equals(1));
+    });
+  });
+
+  group('commit stream', () {
+    setUp(() {
+      database.commitFilter = null;
+      database.execute('CREATE TABLE tbl (a TEXT, b INT);');
+    });
+
+    test('emits on implicit commit', () {
+      expect(database.commits, emits(anything));
+      database.execute("INSERT INTO tbl VALUES ('', 1);");
+    });
+
+    test('emits on explicit commit', () {
+      expect(database.commits, emits(anything));
+
+      database.execute('BEGIN TRANSACTION;');
+      database.execute("INSERT INTO tbl VALUES ('', 1);");
+      database.execute("COMMIT;");
+    });
+
+    test('does not emit on implicit commit with commitFilter false', () async {
+      expect(database.commits, neverEmits(anything));
+      database.commitFilter = () => false;
+      try {
+        database.execute("INSERT INTO tbl VALUES ('', 1);");
+      } on SqliteException {
+        // ignore
+      }
+
+      // Disposing the database here so that the stream closes and neverEmits
+      // completes.
+      database.dispose();
+    });
+  });
+
   group('unicode handling', () {
     test('accents in statements', () {
       final table = 'télé'; // with accent

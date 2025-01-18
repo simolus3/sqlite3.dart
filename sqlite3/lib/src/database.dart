@@ -51,6 +51,52 @@ abstract class CommonDatabase {
   ///  - [Data Change Notification Callbacks](https://www.sqlite.org/c3ref/update_hook.html)
   Stream<SqliteUpdate> get updates;
 
+  /// The [VoidPredicate] that is used to filter out transactions before commiting.
+  ///
+  /// This is run before every commit, i.e. before the end of an explicit
+  /// transaction and before the end of an implicit transactions created by
+  /// an insert / update / delete operation.
+  ///
+  /// If the filter returns `false`, the commit is converted into a rollback.
+  ///
+  /// The function should not do anything that modifies the database connection,
+  /// e.g. run SQL statements, prepare statements or step.
+  ///
+  /// See also:
+  ///   - [Commit Hooks](https://www.sqlite.org/c3ref/commit_hook.html)
+  VoidPredicate? get commitFilter;
+  set commitFilter(VoidPredicate? commitFilter);
+
+  /// An async stream that fires after each commit.
+  ///
+  /// Listening to this stream will register a "commit hook" on the native
+  /// database. Each commit that sqlite3 reports through that hook will then
+  /// be added to the stream.
+  ///
+  /// Note that the stream reports updates _asynchronously_, e.g. one event
+  /// loop iteration after sqlite reports them.
+  ///
+  /// Also note this works in conjunction with `commitFilter`. If the filter
+  /// function is not null and returns `false`, the commit will not occur and
+  /// this stream will not fire.
+  ///
+  /// See also:
+  ///   - [Commit Hooks](https://www.sqlite.org/c3ref/commit_hook.html)
+  Stream<void> get commits;
+
+  /// An async stream that fires after each rollback.
+  ///
+  /// Listening to this stream will register a "rollback hook" on the native
+  /// database. Each rollback that sqlite3 reports through that hook will then
+  /// be added to the stream.
+  ///
+  /// Note that the stream reports updates _asynchronously_, e.g. one event
+  /// loop iteration after sqlite reports them.
+  ///
+  /// See also:
+  ///   - [Commit Hooks](https://www.sqlite.org/c3ref/commit_hook.html)
+  Stream<void> get rollbacks;
+
   /// Executes the [sql] statement with the provided [parameters], ignoring any
   /// rows returned by the statement.
   ///

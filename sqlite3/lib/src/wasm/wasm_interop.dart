@@ -83,7 +83,13 @@ class WasmBindings {
       _sqlite3_stmt_readonly,
       _sqlite3_stmt_isexplain;
 
-  final JSFunction? _sqlite3_db_config, _sqlite3_initialize;
+  // The released WASM bundle only exposes functions referenced in this file.
+  // So, when we release a new version of `package:sqlite3` using additional
+  // functions, we can't assume that existing bundles also have those functions.
+  final JSFunction? _sqlite3_db_config,
+      _sqlite3_initialize,
+      _commit_hooks,
+      _rollback_hooks;
 
   final Global _sqlite3_temp_directory;
 
@@ -161,6 +167,8 @@ class WasmBindings {
         _sqlite3_stmt_readonly = instance.functions['sqlite3_stmt_readonly']!,
         _sqlite3_db_config = instance.functions['dart_sqlite3_db_config_int'],
         _sqlite3_initialize = instance.functions['sqlite3_initialize'],
+        _commit_hooks = instance.functions['dart_sqlite3_commits'],
+        _rollback_hooks = instance.functions['dart_sqlite3_rollbacks'],
         _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']!
 
   // Note when adding new fields: We remove functions from the wasm module that
@@ -286,6 +294,14 @@ class WasmBindings {
   /// one to stop it.
   void dart_sqlite3_updates(Pointer db, int id) {
     _update_hooks.callReturningVoid2(db.toJS, id.toJS);
+  }
+
+  void dart_sqlite3_commits(Pointer db, int id) {
+    return _commit_hooks!.callReturningVoid2(db.toJS, id.toJS);
+  }
+
+  void dart_sqlite3_rollbacks(Pointer db, int id) {
+    return _rollback_hooks!.callReturningVoid2(db.toJS, id.toJS);
   }
 
   int sqlite3_exec(Pointer db, Pointer sql, Pointer callback,
@@ -743,6 +759,12 @@ class _InjectedValues {
           callbacks.installedUpdateHook
               ?.call(kind, tableName, JsBigInt(rowId).asDartInt);
         }).toJS,
+        'function_commit_hook': ((int id) {
+          return callbacks.installedCommitHook?.call();
+        }).toJS,
+        'function_rollback_hook': ((int id) {
+          callbacks.installedRollbackHook?.call();
+        }).toJS,
       }
     };
   }
@@ -759,6 +781,8 @@ class DartCallbacks {
   final Map<int, VirtualFileSystemFile> openedFiles = {};
 
   RawUpdateHook? installedUpdateHook;
+  RawCommitHook? installedCommitHook;
+  RawRollbackHook? installedRollbackHook;
 
   int register(RegisteredFunctionSet set) {
     final id = _id++;

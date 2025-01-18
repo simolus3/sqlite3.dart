@@ -169,10 +169,14 @@ class TestWebDriver {
     await driver.executeAsync("close('', arguments[0])", []);
   }
 
-  Future<int> countUpdateEvents() async {
+  Future<({int updates, int commits, int rollbacks})> countEvents() async {
     final result =
         await driver.executeAsync('get_updates("", arguments[0])', []);
-    return result as int;
+    return (
+      updates: result[0] as int,
+      commits: result[1] as int,
+      rollbacks: result[2] as int,
+    );
   }
 
   Future<void> execute(String sql) async {

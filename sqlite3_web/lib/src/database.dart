@@ -53,6 +53,18 @@ abstract class Database {
   /// stream is active.
   Stream<SqliteUpdate> get updates;
 
+  /// A relayed stream of events triggered by rollbacks from the remote worker.
+  ///
+  /// Updates are only sent across worker channels while a subscription to this
+  /// stream is active.
+  Stream<void> get rollbacks;
+
+  /// A relayed stream of events triggered by commits from the remote worker.
+  ///
+  /// Updates are only sent across worker channels while a subscription to this
+  /// stream is active.
+  Stream<void> get commits;
+
   /// A future that resolves when the database is closed.
   ///
   /// Typically, databases are closed because [dispose] is called. For databases

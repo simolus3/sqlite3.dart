@@ -1,10 +1,10 @@
 import 'dart:convert';
-import 'dart:html';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
 import 'package:sqlite3_web/sqlite3_web.dart';
+import 'package:web/web.dart';
 
 import 'controller.dart';
 
@@ -16,6 +16,8 @@ WebSqlite? webSqlite;
 
 Database? database;
 int updates = 0;
+int commits = 0;
+int rollbacks = 0;
 bool listeningForUpdates = false;
 
 void main() {
@@ -26,7 +28,11 @@ void main() {
   });
   _addCallbackForWebDriver('get_updates', (arg) async {
     listenForUpdates();
-    return updates.toJS;
+    return [
+      updates.toJS,
+      commits.toJS,
+      rollbacks.toJS,
+    ].toJS;
   });
   _addCallbackForWebDriver('open', (arg) => _open(arg, false));
   _addCallbackForWebDriver('open_only_vfs', (arg) => _open(arg, true));
@@ -100,7 +106,7 @@ void main() {
     print('missing features: ${database.features.missingFeatures}');
   });
 
-  document.body!.children.add(DivElement()..id = 'ready');
+  document.body!.appendChild(HTMLDivElement()..id = 'ready');
 }
 
 void _addCallbackForWebDriver(
@@ -179,6 +185,8 @@ void listenForUpdates() {
   if (!listeningForUpdates) {
     listeningForUpdates = true;
     database!.updates.listen((_) => updates++);
+    database!.commits.listen((_) => commits++);
+    database!.rollbacks.listen((_) => rollbacks++);
   }
 }
 

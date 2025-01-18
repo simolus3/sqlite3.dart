@@ -317,6 +317,60 @@ class Bindings {
                       ffi.Int64)>>,
           ffi.Pointer<ffi.Void>)>();
 
+  ffi.Pointer<ffi.Void> sqlite3_commit_hook(
+    ffi.Pointer<sqlite3> arg0,
+    ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>>
+        arg1,
+    ffi.Pointer<ffi.Void> arg2,
+  ) {
+    return _sqlite3_commit_hook(
+      arg0,
+      arg1,
+      arg2,
+    );
+  }
+
+  late final _sqlite3_commit_hookPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Void> Function(
+              ffi.Pointer<sqlite3>,
+              ffi.Pointer<
+                  ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3_commit_hook');
+  late final _sqlite3_commit_hook = _sqlite3_commit_hookPtr.asFunction<
+      ffi.Pointer<ffi.Void> Function(
+          ffi.Pointer<sqlite3>,
+          ffi.Pointer<
+              ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>>,
+          ffi.Pointer<ffi.Void>)>();
+
+  ffi.Pointer<ffi.Void> sqlite3_rollback_hook(
+    ffi.Pointer<sqlite3> arg0,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
+        arg1,
+    ffi.Pointer<ffi.Void> arg2,
+  ) {
+    return _sqlite3_rollback_hook(
+      arg0,
+      arg1,
+      arg2,
+    );
+  }
+
+  late final _sqlite3_rollback_hookPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Void> Function(
+              ffi.Pointer<sqlite3>,
+              ffi.Pointer<
+                  ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3_rollback_hook');
+  late final _sqlite3_rollback_hook = _sqlite3_rollback_hookPtr.asFunction<
+      ffi.Pointer<ffi.Void> Function(
+          ffi.Pointer<sqlite3>,
+          ffi.Pointer<
+              ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>,
+          ffi.Pointer<ffi.Void>)>();
+
   int sqlite3_get_autocommit(
     ffi.Pointer<sqlite3> db,
   ) {

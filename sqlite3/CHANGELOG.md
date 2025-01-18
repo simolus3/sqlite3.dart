@@ -1,3 +1,8 @@
+## 2.7.0-dev
+
+- Add support for commit and rollback hooks as well as a predicate that can
+  revert transactions.
+
 ## 2.6.1
 
 - Fix out-of-bound reads in the `xWrite` implementation of the OPFS-locks based

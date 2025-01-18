@@ -414,6 +414,8 @@ final class FfiDatabase extends RawSqliteDatabase {
   final BindingsWithLibrary bindings;
   final Pointer<sqlite3> db;
   NativeCallable<_UpdateHook>? _installedUpdateHook;
+  NativeCallable<_CommitHook>? _installedCommitHook;
+  NativeCallable<_RollbackHook>? _installedRollbackHook;
 
   FfiDatabase(this.bindings, this.db);
 
@@ -561,6 +563,37 @@ final class FfiDatabase extends RawSqliteDatabase {
       final native = _installedUpdateHook = hook.toNative();
       bindings.bindings
           .sqlite3_update_hook(db, native.nativeFunction, nullPtr());
+    }
+
+    previous?.close();
+  }
+
+  @override
+  void sqlite3_commit_hook(RawCommitHook? hook) {
+    final previous = _installedCommitHook;
+
+    if (hook == null) {
+      _installedCommitHook = null;
+      bindings.bindings.sqlite3_commit_hook(db, nullPtr(), nullPtr());
+    } else {
+      final native = _installedCommitHook = hook.toNative();
+      bindings.bindings
+          .sqlite3_commit_hook(db, native.nativeFunction, nullPtr());
+    }
+
+    previous?.close();
+  }
+
+  @override
+  void sqlite3_rollback_hook(RawRollbackHook? hook) {
+    final previous = _installedRollbackHook;
+
+    if (hook == null) {
+      bindings.bindings.sqlite3_rollback_hook(db, nullPtr(), nullPtr());
+    } else {
+      final native = _installedRollbackHook = hook.toNative();
+      bindings.bindings
+          .sqlite3_rollback_hook(db, native.nativeFunction, nullPtr());
     }
 
     previous?.close();
@@ -976,6 +1009,8 @@ typedef _XCompare = Int Function(
     Pointer<Void>, Int, Pointer<Void>, Int, Pointer<Void>);
 typedef _UpdateHook = Void Function(
     Pointer<Void>, Int, Pointer<sqlite3_char>, Pointer<sqlite3_char>, Int64);
+typedef _CommitHook = Int Function(Pointer<Void>);
+typedef _RollbackHook = Void Function(Pointer<Void>);
 
 extension on RawXFunc {
   NativeCallable<_XFunc> toNative(Bindings bindings) {
@@ -1025,6 +1060,27 @@ extension on RawUpdateHook {
           Pointer<sqlite3_char> table, int rowid) {
         final tableName = table.readString();
         this(kind, tableName, rowid);
+      },
+    )..keepIsolateAlive = false;
+  }
+}
+
+extension on RawCommitHook {
+  NativeCallable<_CommitHook> toNative() {
+    return NativeCallable.isolateLocal(
+      (Pointer<Void> _) {
+        return this();
+      },
+      exceptionalReturn: 1,
+    )..keepIsolateAlive = false;
+  }
+}
+
+extension on RawRollbackHook {
+  NativeCallable<_RollbackHook> toNative() {
+    return NativeCallable.isolateLocal(
+      (Pointer<Void> _) {
+        this();
       },
     )..keepIsolateAlive = false;
   }
