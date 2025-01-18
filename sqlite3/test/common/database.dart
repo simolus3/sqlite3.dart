@@ -713,14 +713,14 @@ void testDatabase(
     });
 
     test('emits on rollback', () {
-      expect(database.rollbacks, emits(isA<void>()));
+      expect(database.rollbacks, emits(anything));
 
       database.execute('BEGIN TRANSACTION;');
       database.execute("ROLLBACK;");
     });
 
     test('emits on rollback after insert', () {
-      expect(database.rollbacks, emits(isA<void>()));
+      expect(database.rollbacks, emits(anything));
 
       database.execute('BEGIN TRANSACTION;');
       database.execute("INSERT INTO tbl VALUES ('', 1);");
@@ -728,7 +728,7 @@ void testDatabase(
     });
 
     test('emits on rollback after erroneous SQL', () {
-      expect(database.rollbacks, emits(isA<void>()));
+      expect(database.rollbacks, emits(anything));
 
       database.execute('BEGIN TRANSACTION;');
       try {
@@ -740,7 +740,7 @@ void testDatabase(
     });
 
     test('emits on rollback due to commit filter', () {
-      expect(database.rollbacks, emits(isA<void>()));
+      expect(database.rollbacks, emits(anything));
       database.commitFilter = expectAsync0(() => false);
 
       database.execute('begin');
@@ -815,12 +815,12 @@ void testDatabase(
     });
 
     test('emits on implicit commit', () {
-      expect(database.commits, emits(isA<void>()));
+      expect(database.commits, emits(anything));
       database.execute("INSERT INTO tbl VALUES ('', 1);");
     });
 
     test('emits on explicit commit', () {
-      expect(database.commits, emits(isA<void>()));
+      expect(database.commits, emits(anything));
 
       database.execute('BEGIN TRANSACTION;');
       database.execute("INSERT INTO tbl VALUES ('', 1);");
@@ -828,17 +828,17 @@ void testDatabase(
     });
 
     test('does not emit on implicit commit with commitFilter false', () async {
-      final future = expectLater(
-          database.commits
-              .timeout(Duration(seconds: 2), onTimeout: (sink) => sink.close()),
-          neverEmits(isA<void>()));
+      expect(database.commits, neverEmits(anything));
       database.commitFilter = () => false;
       try {
         database.execute("INSERT INTO tbl VALUES ('', 1);");
       } on SqliteException {
         // ignore
       }
-      await future;
+
+      // Disposing the database here so that the stream closes and neverEmits
+      // completes.
+      database.dispose();
     });
   });
 
