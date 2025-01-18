@@ -57,60 +57,9 @@ base class DatabaseImplementation implements CommonDatabase {
 
   final FinalizableDatabase finalizable;
 
-  late final _StreamHandlers<SqliteUpdate, void Function()> _updates =
-      _StreamHandlers(
-    database: this,
-    register: () {
-      database.sqlite3_update_hook((kind, tableName, rowId) {
-        SqliteUpdateKind updateKind;
-
-        switch (kind) {
-          case SQLITE_INSERT:
-            updateKind = SqliteUpdateKind.insert;
-            break;
-          case SQLITE_UPDATE:
-            updateKind = SqliteUpdateKind.update;
-            break;
-          case SQLITE_DELETE:
-            updateKind = SqliteUpdateKind.delete;
-            break;
-          default:
-            return;
-        }
-
-        final update = SqliteUpdate(updateKind, tableName, rowId);
-        _updates.deliverAsyncEvent(update);
-      });
-    },
-    unregister: () => database.sqlite3_update_hook(null),
-  );
-  late final _StreamHandlers<void, void Function()> _rollbacks =
-      _StreamHandlers(
-    database: this,
-    register: () => database.sqlite3_rollback_hook(() {
-      _rollbacks.deliverAsyncEvent(null);
-    }),
-    unregister: () => database.sqlite3_rollback_hook(null),
-  );
-  late final _StreamHandlers<void, VoidPredicate> _commits = _StreamHandlers(
-    database: this,
-    register: () => database.sqlite3_commit_hook(() {
-      var complete = true;
-      if (_commits.syncCallback case final callback?) {
-        complete = callback();
-      }
-
-      if (complete) {
-        _commits.deliverAsyncEvent(null);
-        // There's no reason to deliver a rollback event if the synchronous
-        // handler determined that the transaction should be reverted, sqlite3
-        // will emit a rollbacke event for us.
-      }
-
-      return complete ? 0 : 1;
-    }),
-    unregister: () => database.sqlite3_commit_hook(null),
-  );
+  _StreamHandlers<SqliteUpdate, void Function()>? _updates;
+  _StreamHandlers<void, void Function()>? _rollbacks;
+  _StreamHandlers<void, VoidPredicate>? _commits;
 
   var _isClosed = false;
 
@@ -155,6 +104,67 @@ base class DatabaseImplementation implements CommonDatabase {
     if (_isClosed) {
       throw StateError('This database has already been closed');
     }
+  }
+
+  _StreamHandlers<SqliteUpdate, void Function()> _updatesHandler() {
+    return _updates ??= _StreamHandlers(
+      database: this,
+      register: () {
+        database.sqlite3_update_hook((kind, tableName, rowId) {
+          SqliteUpdateKind updateKind;
+
+          switch (kind) {
+            case SQLITE_INSERT:
+              updateKind = SqliteUpdateKind.insert;
+              break;
+            case SQLITE_UPDATE:
+              updateKind = SqliteUpdateKind.update;
+              break;
+            case SQLITE_DELETE:
+              updateKind = SqliteUpdateKind.delete;
+              break;
+            default:
+              return;
+          }
+
+          final update = SqliteUpdate(updateKind, tableName, rowId);
+          _updates!.deliverAsyncEvent(update);
+        });
+      },
+      unregister: () => database.sqlite3_update_hook(null),
+    );
+  }
+
+  _StreamHandlers<void, void Function()> _rollbackHandler() {
+    return _rollbacks ??= _StreamHandlers(
+      database: this,
+      register: () => database.sqlite3_rollback_hook(() {
+        _rollbacks!.deliverAsyncEvent(null);
+      }),
+      unregister: () => database.sqlite3_rollback_hook(null),
+    );
+  }
+
+  _StreamHandlers<void, VoidPredicate> _commitHandler() {
+    return _commits ??= _StreamHandlers(
+      database: this,
+      register: () => database.sqlite3_commit_hook(() {
+        var complete = true;
+        if (_commits!.syncCallback case final callback?) {
+          complete = callback();
+        }
+
+        if (complete) {
+          _commits!.deliverAsyncEvent(null);
+          // There's no reason to deliver a rollback event if the synchronous
+          // handler determined that the transaction should be reverted, sqlite3
+          // will emit a rollbacke event for us.
+        }
+
+        return complete ? 0 : 1;
+      }),
+      unregister: () => database.sqlite3_commit_hook(null),
+    );
   }
 
   Uint8List _validateAndEncodeFunctionName(String functionName) {
@@ -277,9 +287,9 @@ base class DatabaseImplementation implements CommonDatabase {
     disposeFinalizer.detach(this);
     _isClosed = true;
 
-    _updates.close();
-    _commits.close();
-    _rollbacks.close();
+    _updates?.close();
+    _commits?.close();
+    _rollbacks?.close();
 
     database.sqlite3_update_hook(null);
     database.sqlite3_commit_hook(null);
@@ -457,20 +467,20 @@ base class DatabaseImplementation implements CommonDatabase {
   }
 
   @override
-  Stream<SqliteUpdate> get updates => _updates.stream;
+  Stream<SqliteUpdate> get updates => _updatesHandler().stream;
 
   @override
-  Stream<void> get rollbacks => _rollbacks.stream;
+  Stream<void> get rollbacks => _rollbackHandler().stream;
 
   @override
-  Stream<void> get commits => _commits.stream;
+  Stream<void> get commits => _commitHandler().stream;
 
   @override
-  VoidPredicate? get commitFilter => _commits.syncCallback;
+  VoidPredicate? get commitFilter => _commitHandler().syncCallback;
 
   @override
   set commitFilter(VoidPredicate? commitFilter) {
-    _commits.syncCallback = commitFilter;
+    _commitHandler().syncCallback = commitFilter;
   }
 }
 
