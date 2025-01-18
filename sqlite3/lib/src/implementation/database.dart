@@ -57,11 +57,60 @@ base class DatabaseImplementation implements CommonDatabase {
 
   final FinalizableDatabase finalizable;
 
-  final List<MultiStreamController<SqliteUpdate>> _updateListeners = [];
-  final List<MultiStreamController<void>> _rollbackListeners = [];
-  final List<MultiStreamController<void>> _commitListeners = [];
+  late final _StreamHandlers<SqliteUpdate, void Function()> _updates =
+      _StreamHandlers(
+    database: this,
+    register: () {
+      database.sqlite3_update_hook((kind, tableName, rowId) {
+        SqliteUpdateKind updateKind;
 
-  VoidPredicate? _commitFilter;
+        switch (kind) {
+          case SQLITE_INSERT:
+            updateKind = SqliteUpdateKind.insert;
+            break;
+          case SQLITE_UPDATE:
+            updateKind = SqliteUpdateKind.update;
+            break;
+          case SQLITE_DELETE:
+            updateKind = SqliteUpdateKind.delete;
+            break;
+          default:
+            return;
+        }
+
+        final update = SqliteUpdate(updateKind, tableName, rowId);
+        _updates.deliverAsyncEvent(update);
+      });
+    },
+    unregister: () => database.sqlite3_update_hook(null),
+  );
+  late final _StreamHandlers<void, void Function()> _rollbacks =
+      _StreamHandlers(
+    database: this,
+    register: () => database.sqlite3_rollback_hook(() {
+      _rollbacks.deliverAsyncEvent(null);
+    }),
+    unregister: () => database.sqlite3_rollback_hook(null),
+  );
+  late final _StreamHandlers<void, VoidPredicate> _commits = _StreamHandlers(
+    database: this,
+    register: () => database.sqlite3_commit_hook(() {
+      var complete = true;
+      if (_commits.syncCallback case final callback?) {
+        complete = callback();
+      }
+
+      if (complete) {
+        _commits.deliverAsyncEvent(null);
+        // There's no reason to deliver a rollback event if the synchronous
+        // handler determined that the transaction should be reverted, sqlite3
+        // will emit a rollbacke event for us.
+      }
+
+      return complete ? 0 : 1;
+    }),
+    unregister: () => database.sqlite3_commit_hook(null),
+  );
 
   var _isClosed = false;
 
@@ -228,13 +277,10 @@ base class DatabaseImplementation implements CommonDatabase {
     disposeFinalizer.detach(this);
     _isClosed = true;
 
-    for (final listener in [
-      ..._updateListeners,
-      ..._rollbackListeners,
-      ..._commitListeners
-    ]) {
-      listener.close();
-    }
+    _updates.close();
+    _commits.close();
+    _rollbacks.close();
+
     database.sqlite3_update_hook(null);
     database.sqlite3_commit_hook(null);
     database.sqlite3_rollback_hook(null);
@@ -411,184 +457,20 @@ base class DatabaseImplementation implements CommonDatabase {
   }
 
   @override
-  Stream<SqliteUpdate> get updates {
-    return Stream.multi(
-      (newListener) {
-        if (_isClosed) {
-          newListener.closeSync();
-          return;
-        }
-
-        void addUpdateListener() {
-          final isFirstListener = _updateListeners.isEmpty;
-          _updateListeners.add(newListener);
-
-          if (isFirstListener) {
-            // Add native update hook
-            database.sqlite3_update_hook((kind, tableName, rowId) {
-              SqliteUpdateKind updateKind;
-
-              switch (kind) {
-                case SQLITE_INSERT:
-                  updateKind = SqliteUpdateKind.insert;
-                  break;
-                case SQLITE_UPDATE:
-                  updateKind = SqliteUpdateKind.update;
-                  break;
-                case SQLITE_DELETE:
-                  updateKind = SqliteUpdateKind.delete;
-                  break;
-                default:
-                  return;
-              }
-
-              final update = SqliteUpdate(updateKind, tableName, rowId);
-              for (final listener in _updateListeners) {
-                listener.add(update);
-              }
-            });
-          }
-        }
-
-        void removeUpdateListener() {
-          _updateListeners.remove(newListener);
-
-          if (_updateListeners.isEmpty && !_isClosed) {
-            database.sqlite3_update_hook(null); // Remove native hook
-          }
-        }
-
-        newListener
-          ..onPause = removeUpdateListener
-          ..onCancel = removeUpdateListener
-          ..onResume = addUpdateListener;
-
-        // Since this is a onListen callback, add listener now
-        addUpdateListener();
-      },
-      isBroadcast: true,
-    );
-  }
+  Stream<SqliteUpdate> get updates => _updates.stream;
 
   @override
-  Stream<void> get rollbacks {
-    return Stream.multi(
-      (newListener) {
-        if (_isClosed) {
-          newListener.closeSync();
-          return;
-        }
-
-        void addRollbackListener() {
-          final isFirstListener = _rollbackListeners.isEmpty;
-          _rollbackListeners.add(newListener);
-
-          if (isFirstListener) {
-            // Add native rollback hook
-            database.sqlite3_rollback_hook(() {
-              for (final listener in _rollbackListeners) {
-                listener.add(null);
-              }
-            });
-          }
-        }
-
-        void removeRollbackListener() {
-          _rollbackListeners.remove(newListener);
-
-          if (_rollbackListeners.isEmpty && !_isClosed) {
-            database.sqlite3_rollback_hook(null); // Remove native hook
-          }
-        }
-
-        newListener
-          ..onPause = removeRollbackListener
-          ..onCancel = removeRollbackListener
-          ..onResume = addRollbackListener;
-
-        // Since this is a onListen callback, add listener now
-        addRollbackListener();
-      },
-      isBroadcast: true,
-    );
-  }
+  Stream<void> get rollbacks => _rollbacks.stream;
 
   @override
-  Stream<void> get commits {
-    return Stream.multi(
-      (newListener) {
-        if (_isClosed) {
-          newListener.closeSync();
-          return;
-        }
-
-        void addCommitListener() {
-          final isFirstListener = _commitListeners.isEmpty;
-          _commitListeners.add(newListener);
-
-          if (isFirstListener && _commitFilter == null) {
-            // Add native commit hook
-            _updateCommitFilter();
-          }
-        }
-
-        void removeCommitListener() {
-          _commitListeners.remove(newListener);
-
-          if (_commitListeners.isEmpty && _commitFilter == null && !_isClosed) {
-            _updateCommitFilter();
-          }
-        }
-
-        newListener
-          ..onPause = removeCommitListener
-          ..onCancel = removeCommitListener
-          ..onResume = addCommitListener;
-
-        // Since this is a onListen callback, add listener now
-        addCommitListener();
-      },
-      isBroadcast: true,
-    );
-  }
-
-  void _updateCommitFilter() {
-    // update the commit filter to call both `commitFilter` and all `commit`
-    // listeners. This should be called after commitFilter changes, or when
-    // commitFilter is null and the number of listeners either goes to zero
-    // or changes from zero to one.
-    final commitFilter = _commitFilter;
-    if (commitFilter != null) {
-      database.sqlite3_commit_hook(() {
-        final complete = commitFilter();
-        if (complete) {
-          for (final listener in _commitListeners) {
-            listener.add(null);
-          }
-        }
-        return complete ? 0 : 1;
-      });
-    } else if (_commitListeners.isNotEmpty) {
-      database.sqlite3_commit_hook(() {
-        for (final listener in _commitListeners) {
-          listener.add(null);
-        }
-        return 0;
-      });
-    } else {
-      database.sqlite3_commit_hook(null);
-    }
-  }
+  Stream<void> get commits => _commits.stream;
 
   @override
-  VoidPredicate? get commitFilter => _commitFilter;
+  VoidPredicate? get commitFilter => _commits.syncCallback;
 
   @override
   set commitFilter(VoidPredicate? commitFilter) {
-    if (_commitFilter != commitFilter) {
-      _commitFilter = commitFilter;
-      _updateCommitFilter();
-    }
+    _commits.syncCallback = commitFilter;
   }
 }
 
@@ -694,5 +576,107 @@ final class DatabaseConfigImplementation extends DatabaseConfig {
     if (resultDML != SqlError.SQLITE_OK) {
       throwException(database, resultDML);
     }
+  }
+}
+
+/// A shared implementation for the [CommonDatabase.updates],
+/// [CommonDatabase.commits] and [CommonDatabase.rollbacks] streams used by
+/// [DatabaseImplementation].
+///
+/// [T] is the event type of the stream. These streams wrap SQLite callbacks
+/// which are not supposed to make their own database calls. Thus, all streams
+/// have an asynchronous delay from when the C callback is called.
+/// The commits stream also supports a synchronous callback that can turn
+/// commits into rollbacks. This is represented by [_syncCallback].
+final class _StreamHandlers<T, SyncCallback> {
+  final DatabaseImplementation _database;
+  final List<MultiStreamController<T>> _asyncListeners = [];
+  SyncCallback? _syncCallback;
+
+  /// Registers a native callback on the database.
+  final void Function() _register;
+
+  /// Unregisters the native callback on the database.
+  final void Function() _unregister;
+
+  late final Stream<T> stream = Stream.multi(
+    (newListener) {
+      if (_database._isClosed) {
+        newListener.close();
+        return;
+      }
+
+      void addListener() {
+        _addAsyncListener(newListener);
+      }
+
+      void removeListener() {
+        _removeAsyncListener(newListener);
+      }
+
+      newListener
+        ..onPause = removeListener
+        ..onCancel = removeListener
+        ..onResume = addListener;
+      // Since this is a onListen callback, add listener now
+      addListener();
+    },
+    isBroadcast: true,
+  );
+
+  _StreamHandlers({
+    required DatabaseImplementation database,
+    required void Function() register,
+    required void Function() unregister,
+  })  : _database = database,
+        _register = register,
+        _unregister = unregister;
+
+  bool get hasListener => _asyncListeners.isNotEmpty || _syncCallback != null;
+
+  SyncCallback? get syncCallback => _syncCallback;
+
+  set syncCallback(SyncCallback? value) {
+    if (value != _syncCallback) {
+      final hadListenerBefore = hasListener;
+      _syncCallback = value;
+      final hasListenerNow = hasListener;
+
+      if (!hadListenerBefore && hasListenerNow) {
+        _register();
+      } else if (hadListenerBefore && !hasListenerNow) {
+        _unregister();
+      }
+    }
+  }
+
+  void _addAsyncListener(MultiStreamController<T> listener) {
+    final isFirstListener = !hasListener;
+    _asyncListeners.add(listener);
+
+    if (isFirstListener) {
+      _register();
+    }
+  }
+
+  void _removeAsyncListener(MultiStreamController<T> listener) {
+    _asyncListeners.remove(listener);
+
+    if (!hasListener && !_database._isClosed) {
+      _unregister();
+    }
+  }
+
+  void deliverAsyncEvent(T event) {
+    for (final listener in _asyncListeners) {
+      listener.add(event);
+    }
+  }
+
+  void close() {
+    for (final listener in _asyncListeners) {
+      listener.close();
+    }
+    _syncCallback = null;
   }
 }
