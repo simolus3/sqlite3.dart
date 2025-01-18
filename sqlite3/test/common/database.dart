@@ -738,6 +738,15 @@ void testDatabase(
       }
       database.execute("ROLLBACK;");
     });
+
+    test('emits on rollback due to commit filter', () {
+      expect(database.rollbacks, emits(isA<void>()));
+      database.commitFilter = expectAsync0(() => false);
+
+      database.execute('begin');
+      database.execute("INSERT INTO tbl VALUES ('', 1);");
+      expect(() => database.execute('commit'), throwsSqlError(19, 531));
+    });
   });
 
   group('commit filter', () {
