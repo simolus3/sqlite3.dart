@@ -25,9 +25,9 @@ enum MessageType<T extends Message> {
   fileSystemFlush<FileSystemFlushRequest>(),
   connect<ConnectRequest>(),
   startFileSystemServer<StartFileSystemServer>(),
-  updateRequest<UpdateStreamRequest>(),
-  rollbackRequest<RollbackStreamRequest>(),
-  commitRequest<CommitStreamRequest>(),
+  updateRequest<StreamRequest>(),
+  rollbackRequest<StreamRequest>(),
+  commitRequest<StreamRequest>(),
   simpleSuccessResponse<SimpleSuccessResponse>(),
   rowsResponse<RowsResponse>(),
   errorResponse<ErrorResponse>(),
@@ -35,8 +35,8 @@ enum MessageType<T extends Message> {
   closeDatabase<CloseDatabase>(),
   openAdditionalConnection<OpenAdditonalConnection>(),
   notifyUpdate<UpdateNotification>(),
-  notifyRollback<RollbackNotification>(),
-  notifyCommit<CommitNotification>(),
+  notifyRollback<EmptyNotification>(),
+  notifyCommit<EmptyNotification>(),
   ;
 
   static final Map<String, MessageType> byName = values.asNameMap();
@@ -97,17 +97,19 @@ sealed class Message {
       MessageType.closeDatabase => CloseDatabase.deserialize(object),
       MessageType.openAdditionalConnection =>
         OpenAdditonalConnection.deserialize(object),
-      MessageType.updateRequest => UpdateStreamRequest.deserialize(object),
-      MessageType.rollbackRequest => RollbackStreamRequest.deserialize(object),
-      MessageType.commitRequest => CommitStreamRequest.deserialize(object),
+      MessageType.updateRequest ||
+      MessageType.rollbackRequest ||
+      MessageType.commitRequest =>
+        StreamRequest.deserialize(type, object),
       MessageType.simpleSuccessResponse =>
         SimpleSuccessResponse.deserialize(object),
       MessageType.endpointResponse => EndpointResponse.deserialize(object),
       MessageType.rowsResponse => RowsResponse.deserialize(object),
       MessageType.errorResponse => ErrorResponse.deserialize(object),
       MessageType.notifyUpdate => UpdateNotification.deserialize(object),
-      MessageType.notifyRollback => RollbackNotification.deserialize(object),
-      MessageType.notifyCommit => CommitNotification.deserialize(object),
+      MessageType.notifyRollback ||
+      MessageType.notifyCommit =>
+        EmptyNotification.deserialize(type, object),
     };
   }
 
@@ -637,7 +639,7 @@ final class ErrorResponse extends Response {
   }
 }
 
-final class UpdateStreamRequest extends Request {
+final class StreamRequest extends Request {
   /// When true, the client is requesting to be informed about updates happening
   /// on the database identified by this request.
   ///
@@ -645,83 +647,24 @@ final class UpdateStreamRequest extends Request {
   /// updates.
   final bool action;
 
-  UpdateStreamRequest(
-      {required this.action,
-      required super.requestId,
-      required super.databaseId});
+  final MessageType<Message> type;
 
-  factory UpdateStreamRequest.deserialize(JSObject object) {
-    return UpdateStreamRequest(
+  StreamRequest({
+    required this.type,
+    required this.action,
+    required super.requestId,
+    required super.databaseId,
+  });
+
+  factory StreamRequest.deserialize(
+      MessageType<Message> type, JSObject object) {
+    return StreamRequest(
+      type: type,
       action: (object[_UniqueFieldNames.action] as JSBoolean).toDart,
       requestId: object.requestId,
       databaseId: object.databaseId,
     );
   }
-
-  @override
-  MessageType<Message> get type => MessageType.updateRequest;
-
-  @override
-  void serialize(JSObject object, List<JSObject> transferred) {
-    super.serialize(object, transferred);
-    object[_UniqueFieldNames.action] = action.toJS;
-  }
-}
-
-final class RollbackStreamRequest extends Request {
-  /// When true, the client is requesting to be informed about rollbacks
-  /// happening on the database identified by this request.
-  ///
-  /// When false, the client is requesting to no longer be informed about these
-  /// updates.
-  final bool action;
-
-  RollbackStreamRequest(
-      {required this.action,
-      required super.requestId,
-      required super.databaseId});
-
-  factory RollbackStreamRequest.deserialize(JSObject object) {
-    return RollbackStreamRequest(
-      action: (object[_UniqueFieldNames.action] as JSBoolean).toDart,
-      requestId: object.requestId,
-      databaseId: object.databaseId,
-    );
-  }
-
-  @override
-  MessageType<Message> get type => MessageType.rollbackRequest;
-
-  @override
-  void serialize(JSObject object, List<JSObject> transferred) {
-    super.serialize(object, transferred);
-    object[_UniqueFieldNames.action] = action.toJS;
-  }
-}
-
-final class CommitStreamRequest extends Request {
-  /// When true, the client is requesting to be informed about rollbacks
-  /// happening on the database identified by this request.
-  ///
-  /// When false, the client is requesting to no longer be informed about these
-  /// updates.
-  final bool action;
-
-  CommitStreamRequest(
-      {required this.action,
-      required super.requestId,
-      required super.databaseId});
-
-  factory CommitStreamRequest.deserialize(JSObject object) {
-    return CommitStreamRequest(
-      action: (object[_UniqueFieldNames.action] as JSBoolean).toDart,
-      requestId: object.requestId,
-      databaseId: object.databaseId,
-    );
-  }
-
-  @override
-  MessageType<Message> get type => MessageType.rollbackRequest;
 
   @override
   void serialize(JSObject object, List<JSObject> transferred) {
@@ -886,40 +829,22 @@ final class UpdateNotification extends Notification {
   }
 }
 
-final class RollbackNotification extends Notification {
+/// Used as a notification without a payload, e.g. for commit or rollback
+/// events.
+final class EmptyNotification extends Notification {
   final int databaseId;
+  @override
+  final MessageType<Message> type;
 
-  RollbackNotification({required this.databaseId});
+  EmptyNotification({required this.type, required this.databaseId});
 
-  factory RollbackNotification.deserialize(JSObject object) {
-    return RollbackNotification(
+  factory EmptyNotification.deserialize(
+      MessageType<Message> type, JSObject object) {
+    return EmptyNotification(
+      type: type,
       databaseId: object.databaseId,
     );
   }
-
-  @override
-  MessageType<Message> get type => MessageType.notifyUpdate;
-
-  @override
-  void serialize(JSObject object, List<JSObject> transferred) {
-    super.serialize(object, transferred);
-    object[_UniqueFieldNames.databaseId] = databaseId.toJS;
-  }
-}
-
-final class CommitNotification extends Notification {
-  final int databaseId;
-
-  CommitNotification({required this.databaseId});
-
-  factory CommitNotification.deserialize(JSObject object) {
-    return CommitNotification(
-      databaseId: object.databaseId,
-    );
-  }
-
-  @override
-  MessageType<Message> get type => MessageType.notifyCommit;
 
   @override
   void serialize(JSObject object, List<JSObject> transferred) {

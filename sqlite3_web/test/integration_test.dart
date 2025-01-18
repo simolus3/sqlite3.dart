@@ -159,12 +159,22 @@ void main() {
           await driver.assertFile(false);
 
           await driver.execute('CREATE TABLE foo (bar TEXT);');
-          expect(await driver.countUpdateEvents(), 0);
+          var events = await driver.countEvents();
+          expect(events.updates, 0);
+          expect(events.commits, 0);
+          expect(events.rollbacks, 0);
           await driver.execute("INSERT INTO foo (bar) VALUES ('hello');");
-          expect(await driver.countUpdateEvents(), 1);
+          events = await driver.countEvents();
+          expect(events.updates, 1);
+          expect(events.commits, 1);
 
           expect(await driver.assertFile(true), isPositive);
           await driver.flush();
+
+          await driver.execute('begin');
+          await driver.execute('rollback');
+          events = await driver.countEvents();
+          expect(events.rollbacks, 1);
 
           if (storage != StorageMode.inMemory) {
             await driver.driver.refresh();
