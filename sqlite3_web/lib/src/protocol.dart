@@ -27,6 +27,7 @@ enum MessageType<T extends Message> {
   startFileSystemServer<StartFileSystemServer>(),
   updateRequest<UpdateStreamRequest>(),
   rollbackRequest<RollbackStreamRequest>(),
+  commitRequest<CommitStreamRequest>(),
   simpleSuccessResponse<SimpleSuccessResponse>(),
   rowsResponse<RowsResponse>(),
   errorResponse<ErrorResponse>(),
@@ -34,6 +35,8 @@ enum MessageType<T extends Message> {
   closeDatabase<CloseDatabase>(),
   openAdditionalConnection<OpenAdditonalConnection>(),
   notifyUpdate<UpdateNotification>(),
+  notifyRollback<RollbackNotification>(),
+  notifyCommit<CommitNotification>(),
   ;
 
   static final Map<String, MessageType> byName = values.asNameMap();
@@ -96,12 +99,15 @@ sealed class Message {
         OpenAdditonalConnection.deserialize(object),
       MessageType.updateRequest => UpdateStreamRequest.deserialize(object),
       MessageType.rollbackRequest => RollbackStreamRequest.deserialize(object),
+      MessageType.commitRequest => CommitStreamRequest.deserialize(object),
       MessageType.simpleSuccessResponse =>
         SimpleSuccessResponse.deserialize(object),
       MessageType.endpointResponse => EndpointResponse.deserialize(object),
       MessageType.rowsResponse => RowsResponse.deserialize(object),
       MessageType.errorResponse => ErrorResponse.deserialize(object),
       MessageType.notifyUpdate => UpdateNotification.deserialize(object),
+      MessageType.notifyRollback => RollbackNotification.deserialize(object),
+      MessageType.notifyCommit => CommitNotification.deserialize(object),
     };
   }
 
@@ -693,6 +699,37 @@ final class RollbackStreamRequest extends Request {
   }
 }
 
+final class CommitStreamRequest extends Request {
+  /// When true, the client is requesting to be informed about rollbacks
+  /// happening on the database identified by this request.
+  ///
+  /// When false, the client is requesting to no longer be informed about these
+  /// updates.
+  final bool action;
+
+  CommitStreamRequest(
+      {required this.action,
+      required super.requestId,
+      required super.databaseId});
+
+  factory CommitStreamRequest.deserialize(JSObject object) {
+    return CommitStreamRequest(
+      action: (object[_UniqueFieldNames.action] as JSBoolean).toDart,
+      requestId: object.requestId,
+      databaseId: object.databaseId,
+    );
+  }
+
+  @override
+  MessageType<Message> get type => MessageType.rollbackRequest;
+
+  @override
+  void serialize(JSObject object, List<JSObject> transferred) {
+    super.serialize(object, transferred);
+    object[_UniqueFieldNames.action] = action.toJS;
+  }
+}
+
 class CompatibilityCheck extends Request {
   @override
   final MessageType<CompatibilityCheck> type;
@@ -862,6 +899,27 @@ final class RollbackNotification extends Notification {
 
   @override
   MessageType<Message> get type => MessageType.notifyUpdate;
+
+  @override
+  void serialize(JSObject object, List<JSObject> transferred) {
+    super.serialize(object, transferred);
+    object[_UniqueFieldNames.databaseId] = databaseId.toJS;
+  }
+}
+
+final class CommitNotification extends Notification {
+  final int databaseId;
+
+  CommitNotification({required this.databaseId});
+
+  factory CommitNotification.deserialize(JSObject object) {
+    return CommitNotification(
+      databaseId: object.databaseId,
+    );
+  }
+
+  @override
+  MessageType<Message> get type => MessageType.notifyCommit;
 
   @override
   void serialize(JSObject object, List<JSObject> transferred) {

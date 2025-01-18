@@ -59,6 +59,7 @@ base class DatabaseImplementation implements CommonDatabase {
 
   final List<MultiStreamController<SqliteUpdate>> _updateListeners = [];
   final List<MultiStreamController<void>> _rollbackListeners = [];
+  final List<MultiStreamController<void>> _commitListeners = [];
 
   VoidPredicate? _commitFilter;
 
@@ -227,7 +228,11 @@ base class DatabaseImplementation implements CommonDatabase {
     disposeFinalizer.detach(this);
     _isClosed = true;
 
-    for (final listener in _updateListeners) {
+    for (final listener in [
+      ..._updateListeners,
+      ..._rollbackListeners,
+      ..._commitListeners
+    ]) {
       listener.close();
     }
     database.sqlite3_update_hook(null);
@@ -509,13 +514,81 @@ base class DatabaseImplementation implements CommonDatabase {
   }
 
   @override
+  Stream<void> get commits {
+    return Stream.multi(
+      (newListener) {
+        if (_isClosed) {
+          newListener.closeSync();
+          return;
+        }
+
+        void addCommitListener() {
+          final isFirstListener = _commitListeners.isEmpty;
+          _commitListeners.add(newListener);
+
+          if (isFirstListener && _commitFilter == null) {
+            // Add native commit hook
+            _updateCommitFilter();
+          }
+        }
+
+        void removeCommitListener() {
+          _commitListeners.remove(newListener);
+
+          if (_commitListeners.isEmpty && _commitFilter == null && !_isClosed) {
+            _updateCommitFilter();
+          }
+        }
+
+        newListener
+          ..onPause = removeCommitListener
+          ..onCancel = removeCommitListener
+          ..onResume = addCommitListener;
+
+        // Since this is a onListen callback, add listener now
+        addCommitListener();
+      },
+      isBroadcast: true,
+    );
+  }
+
+  void _updateCommitFilter() {
+    // update the commit filter to call both `commitFilter` and all `commit`
+    // listeners. This should be called after commitFilter changes, or when
+    // commitFilter is null and the number of listeners either goes to zero
+    // or changes from zero to one.
+    final commitFilter = _commitFilter;
+    if (commitFilter != null) {
+      database.sqlite3_commit_hook(() {
+        final complete = commitFilter();
+        if (complete) {
+          for (final listener in _commitListeners) {
+            listener.add(null);
+          }
+        }
+        return complete ? 0 : 1;
+      });
+    } else if (_commitListeners.isNotEmpty) {
+      database.sqlite3_commit_hook(() {
+        for (final listener in _commitListeners) {
+          listener.add(null);
+        }
+        return 0;
+      });
+    } else {
+      database.sqlite3_commit_hook(null);
+    }
+  }
+
+  @override
   VoidPredicate? get commitFilter => _commitFilter;
 
   @override
   set commitFilter(VoidPredicate? commitFilter) {
-    _commitFilter = commitFilter;
-    database.sqlite3_commit_hook(
-        commitFilter == null ? null : () => commitFilter() ? 0 : 1);
+    if (_commitFilter != commitFilter) {
+      _commitFilter = commitFilter;
+      _updateCommitFilter();
+    }
   }
 }
 

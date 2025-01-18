@@ -19,14 +19,17 @@ final class RemoteDatabase implements Database {
 
   var _isClosed = false;
 
-  StreamSubscription<Notification>? _notificationSubscription;
+  StreamSubscription<Notification>? _updateNotificationSubscription;
   final StreamController<SqliteUpdate> _updates = StreamController.broadcast();
+  StreamSubscription<Notification>? _rollbackNotificationSubscription;
   final StreamController<void> _rollbacks = StreamController.broadcast();
+  StreamSubscription<Notification>? _commitNotificationSubscription;
+  final StreamController<void> _commits = StreamController.broadcast();
 
   RemoteDatabase({required this.connection, required this.databaseId}) {
     _updates
       ..onListen = (() {
-        _notificationSubscription ??=
+        _updateNotificationSubscription ??=
             connection.notifications.stream.listen((notification) {
           if (notification case UpdateNotification()) {
             if (notification.databaseId == databaseId) {
@@ -34,16 +37,48 @@ final class RemoteDatabase implements Database {
             }
           }
         });
-
         _requestUpdates(true);
+      })
+      ..onCancel = (() {
+        _updateNotificationSubscription?.cancel();
+        _updateNotificationSubscription = null;
+        _requestUpdates(false);
+      });
+
+    _rollbacks
+      ..onListen = (() {
+        _rollbackNotificationSubscription ??=
+            connection.notifications.stream.listen((notification) {
+          if (notification case RollbackNotification()) {
+            if (notification.databaseId == databaseId) {
+              _rollbacks.add(null);
+            }
+          }
+        });
         _requestRollbacks(true);
       })
       ..onCancel = (() {
-        _notificationSubscription?.cancel();
-        _notificationSubscription = null;
-
-        _requestUpdates(false);
+        _rollbackNotificationSubscription?.cancel();
+        _rollbackNotificationSubscription = null;
         _requestRollbacks(false);
+      });
+
+    _commits
+      ..onListen = (() {
+        _commitNotificationSubscription ??=
+            connection.notifications.stream.listen((notification) {
+          if (notification case CommitNotification()) {
+            if (notification.databaseId == databaseId) {
+              _commits.add(null);
+            }
+          }
+        });
+        _requestCommits(true);
+      })
+      ..onCancel = (() {
+        _commitNotificationSubscription?.cancel();
+        _commitNotificationSubscription = null;
+        _requestCommits(false);
       });
   }
 
@@ -67,6 +102,16 @@ final class RemoteDatabase implements Database {
     }
   }
 
+  void _requestCommits(bool sendCommits) {
+    if (!_isClosed) {
+      connection.sendRequest(
+        CommitStreamRequest(
+            action: sendCommits, requestId: 2, databaseId: databaseId),
+        MessageType.simpleSuccessResponse,
+      );
+    }
+  }
+
   @override
   Future<void> get closed {
     return connection.closed;
@@ -75,10 +120,14 @@ final class RemoteDatabase implements Database {
   @override
   Future<void> dispose() async {
     _isClosed = true;
-    _updates.close();
-    await connection.sendRequest(
-        CloseDatabase(requestId: 0, databaseId: databaseId),
-        MessageType.simpleSuccessResponse);
+    await (
+      _updates.close(),
+      _rollbacks.close(),
+      _commits.close(),
+      connection.sendRequest(
+          CloseDatabase(requestId: 0, databaseId: databaseId),
+          MessageType.simpleSuccessResponse)
+    ).wait;
   }
 
   @override
@@ -141,6 +190,9 @@ final class RemoteDatabase implements Database {
 
   @override
   Stream<void> get rollbacks => _rollbacks.stream;
+
+  @override
+  Stream<void> get commits => _commits.stream;
 
   @override
   Future<int> get userVersion async {

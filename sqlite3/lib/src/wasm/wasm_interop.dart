@@ -731,7 +731,7 @@ class _InjectedValues {
 
           return callbacks.functions[ctx]!.collation!(aStr, bStr);
         }).toJS,
-        'function_update_hook':
+        'function_hook':
             ((int id, int kind, Pointer _, Pointer table, JSBigInt rowId) {
           final tableName = memory.readString(table);
 

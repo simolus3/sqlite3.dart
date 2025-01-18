@@ -799,6 +799,40 @@ void testDatabase(
     });
   });
 
+  group('commit stream', () {
+    setUp(() {
+      database.commitFilter = null;
+      database.execute('CREATE TABLE tbl (a TEXT, b INT);');
+    });
+
+    test('emits on implicit commit', () {
+      expect(database.commits, emits(isA<void>()));
+      database.execute("INSERT INTO tbl VALUES ('', 1);");
+    });
+
+    test('emits on explicit commit', () {
+      expect(database.commits, emits(isA<void>()));
+
+      database.execute('BEGIN TRANSACTION;');
+      database.execute("INSERT INTO tbl VALUES ('', 1);");
+      database.execute("COMMIT;");
+    });
+
+    test('does not emit on implicit commit with commitFilter false', () async {
+      final future = expectLater(
+          database.commits
+              .timeout(Duration(seconds: 2), onTimeout: (sink) => sink.close()),
+          neverEmits(isA<void>()));
+      database.commitFilter = () => false;
+      try {
+        database.execute("INSERT INTO tbl VALUES ('', 1);");
+      } on SqliteException {
+        // ignore
+      }
+      await future;
+    });
+  });
+
   group('unicode handling', () {
     test('accents in statements', () {
       final table = 'télé'; // with accent

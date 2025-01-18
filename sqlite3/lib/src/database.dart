@@ -67,9 +67,26 @@ abstract class CommonDatabase {
   VoidPredicate? get commitFilter;
   set commitFilter(VoidPredicate? commitFilter);
 
+  /// An async stream that fires after each commit.
+  ///
+  /// Listening to this stream will register a "commit hook" on the native
+  /// database. Each commit that sqlite3 reports through that hook will then
+  /// be added to the stream.
+  ///
+  /// Note that the stream reports updates _asynchronously_, e.g. one event
+  /// loop iteration after sqlite reports them.
+  ///
+  /// Also note this works in conjunction with `commitFilter`. If the filter
+  /// function is not null and returns `false`, the commit will not occur and
+  /// this stream will not fire.
+  ///
+  /// See also:
+  ///   - [Commit Hooks](https://www.sqlite.org/c3ref/commit_hook.html)
+  Stream<void> get commits;
+
   /// An async stream that fires after each rollback.
   ///
-  /// Listening to this stream will register an "update hook" on the native
+  /// Listening to this stream will register a "rollback hook" on the native
   /// database. Each rollback that sqlite3 reports through that hook will then
   /// be added to the stream.
   ///
