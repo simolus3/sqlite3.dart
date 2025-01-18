@@ -32,7 +32,7 @@ add_custom_command(
     OUTPUT required_symbols.txt
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../../
     COMMAND dart run tool/wasm_symbols.dart ${CMAKE_CURRENT_BINARY_DIR}/required_symbols.txt
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../../tool/wasm_symbols.dart
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../../tool/wasm_symbols.dart ${CMAKE_CURRENT_SOURCE_DIR}/../../lib/src/wasm/wasm_interop.dart
     VERBATIM
 )
 add_custom_target(required_symbols DEPENDS required_symbols.txt)
