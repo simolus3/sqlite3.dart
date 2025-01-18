@@ -35,8 +35,8 @@ void *sqlite3_update_hook(sqlite3 *,
                           void (*)(void *, int, sqlite3_char const *,
                                    sqlite3_char const *, int64_t),
                           void *);
-void *sqlite3_commit_hook(sqlite3*, int(*)(void *), void*);
-void *sqlite3_rollback_hook(sqlite3*, void(*)(void *), void*);
+void *sqlite3_commit_hook(sqlite3 *, int (*)(void *), void *);
+void *sqlite3_rollback_hook(sqlite3 *, void (*)(void *), void *);
 int sqlite3_get_autocommit(sqlite3 *db);
 
 // Statements
