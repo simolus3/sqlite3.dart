@@ -305,10 +305,16 @@ final class DatabaseClient implements WebSqlite {
 
   Future<void> _startDedicated() async {
     if (globalContext.has('Worker')) {
-      final dedicated = Worker(
-        workerUri.toString().toJS,
-        WorkerOptions(name: 'sqlite3_worker'),
-      );
+      final Worker dedicated;
+      try {
+        dedicated = Worker(
+          workerUri.toString().toJS,
+          WorkerOptions(name: 'sqlite3_worker'),
+        );
+      } on Object {
+        _missingFeatures.add(MissingBrowserFeature.dedicatedWorkers);
+        return;
+      }
 
       final (endpoint, channel) = await createChannel();
       ConnectRequest(endpoint: endpoint, requestId: 0).sendToWorker(dedicated);
@@ -322,7 +328,14 @@ final class DatabaseClient implements WebSqlite {
 
   Future<void> _startShared() async {
     if (globalContext.has('SharedWorker')) {
-      final shared = SharedWorker(workerUri.toString().toJS);
+      final SharedWorker shared;
+      try {
+        shared = SharedWorker(workerUri.toString().toJS);
+      } on Object {
+        _missingFeatures.add(MissingBrowserFeature.sharedWorkers);
+        return;
+      }
+
       shared.port.start();
 
       final (endpoint, channel) = await createChannel();
