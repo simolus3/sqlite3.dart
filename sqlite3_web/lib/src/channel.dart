@@ -103,7 +103,9 @@ abstract class ProtocolChannel {
   final Map<int, Completer<Response>> _responses = {};
 
   ProtocolChannel(this._channel) {
-    _channel.stream.listen(_handleIncoming);
+    _channel.stream.listen(_handleIncoming, onError: (e) {
+      close(e);
+    });
   }
 
   Future<void> get closed => _channel.sink.done;
@@ -165,8 +167,14 @@ abstract class ProtocolChannel {
 
   void handleNotification(Notification notification);
 
-  Future<void> close() async {
+  Future<void> close([Object? error]) async {
     await _channel.sink.close();
+
+    for (final response in _responses.values) {
+      response.completeError(
+          StateError('Channel closed before receiving response: $error'));
+    }
+    _responses.clear();
   }
 }
 

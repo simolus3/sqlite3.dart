@@ -1,3 +1,7 @@
+## 0.2.2
+
+- Recover from worker errors at startup.
+
 ## 0.2.1
 
 - Add `WebSqlite.deleteDatabase` to delete databases.

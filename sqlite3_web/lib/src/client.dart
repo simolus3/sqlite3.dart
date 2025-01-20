@@ -331,11 +331,12 @@ final class DatabaseClient implements WebSqlite {
       final SharedWorker shared;
       try {
         shared = SharedWorker(workerUri.toString().toJS);
-        shared.port.start();
       } on Object {
         _missingFeatures.add(MissingBrowserFeature.sharedWorkers);
         return;
       }
+
+      shared.port.start();
 
       final (endpoint, channel) = await createChannel();
       ConnectRequest(endpoint: endpoint, requestId: 0).sendToPort(shared.port);
@@ -398,15 +399,22 @@ final class DatabaseClient implements WebSqlite {
     final available = <(StorageMode, AccessMode)>[];
     var workersReportedIndexedDbSupport = false;
 
-    if (_connectionToDedicated case final connection?) {
-      final response = await connection.sendRequest(
-        CompatibilityCheck(
-          requestId: 0,
-          type: MessageType.dedicatedCompatibilityCheck,
-          databaseName: databaseName,
-        ),
-        MessageType.simpleSuccessResponse,
-      );
+    Future<void> dedicatedCompatibilityCheck(
+        WorkerConnection connection) async {
+      SimpleSuccessResponse response;
+      try {
+        response = await connection.sendRequest(
+          CompatibilityCheck(
+            requestId: 0,
+            type: MessageType.dedicatedCompatibilityCheck,
+            databaseName: databaseName,
+          ),
+          MessageType.simpleSuccessResponse,
+        );
+      } on Object {
+        return;
+      }
+
       final result = CompatibilityResult.fromJS(response.response as JSObject);
       existing.addAll(result.existingDatabases);
       available.add((StorageMode.inMemory, AccessMode.throughDedicatedWorker));
@@ -440,15 +448,21 @@ final class DatabaseClient implements WebSqlite {
       }
     }
 
-    if (_connectionToShared case final connection?) {
-      final response = await connection.sendRequest(
-        CompatibilityCheck(
-          requestId: 0,
-          type: MessageType.sharedCompatibilityCheck,
-          databaseName: databaseName,
-        ),
-        MessageType.simpleSuccessResponse,
-      );
+    Future<void> sharedCompatibilityCheck(WorkerConnection connection) async {
+      SimpleSuccessResponse response;
+      try {
+        response = await connection.sendRequest(
+          CompatibilityCheck(
+            requestId: 0,
+            type: MessageType.sharedCompatibilityCheck,
+            databaseName: databaseName,
+          ),
+          MessageType.simpleSuccessResponse,
+        );
+      } on Object {
+        return;
+      }
+
       final result = CompatibilityResult.fromJS(response.response as JSObject);
 
       if (result.canUseIndexedDb) {
@@ -471,6 +485,13 @@ final class DatabaseClient implements WebSqlite {
         _missingFeatures
             .add(MissingBrowserFeature.dedicatedWorkersInSharedWorkers);
       }
+    }
+
+    if (_connectionToDedicated case final dedicated?) {
+      await dedicatedCompatibilityCheck(dedicated);
+    }
+    if (_connectionToShared case final shared?) {
+      await sharedCompatibilityCheck(shared);
     }
 
     available.add((StorageMode.inMemory, AccessMode.inCurrentContext));
