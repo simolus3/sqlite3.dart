@@ -200,23 +200,17 @@ cmake -S assets/wasm -B .dart_tool/sqlite3_build
 
 ##### macOS
 
-On macOS, I'm installing `cmake`, `llvm` and `binaryen` through Homebrew. Afterwards, you can download the
-wasi sysroot and the compiler runtimes from the Wasi SDK project:
+On macOS, install a WebAssembly-capable C compiler. If you're using Homebrew,
+you can use
 
 ```
-curl -sL https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/libclang_rt.builtins-wasm32-wasi-22.0.tar.gz | \
-  tar x -zf - -C /opt/homebrew/opt/llvm/lib/clang/18*
-
-curl -sS -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/wasi-sysroot-22.0.tar.gz | \
-  sudo tar x -zf - -C /opt
+brew install cmake llvm binaryen wasi-libc wasi-runtimes
 ```
-
-Replace `clang/18` with the correct directory if you're using a different version.
 
 Then, set up the build with
 
 ```
-cmake -Dwasi_sysroot=/opt/wasi-sysroot -Dclang=/opt/homebrew/opt/llvm/bin/clang -S assets/wasm -B .dart_tool/sqlite3_build
+cmake -Dwasi_sysroot=/opt/homebrew/share/wasi-sysroot -Dclang=/opt/homebrew/opt/llvm/bin/clang -S assets/wasm -B .dart_tool/sqlite3_build
 ```
 
 #### Building
