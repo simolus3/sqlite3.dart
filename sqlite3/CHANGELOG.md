@@ -1,7 +1,7 @@
-## 2.7.0-dev
+## 2.7.0
 
 - Add support for commit and rollback hooks as well as a predicate that can
-  revert transactions.
+  revert transactions. Thanks to [@jackd](https://github.com/jackd)!
 
 ## 2.6.1
 
