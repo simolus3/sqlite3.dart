@@ -297,11 +297,11 @@ class WasmBindings {
   }
 
   void dart_sqlite3_commits(Pointer db, int id) {
-    return _commit_hooks!.callReturningVoid2(db.toJS, id.toJS);
+    return _commit_hooks?.callReturningVoid2(db.toJS, id.toJS);
   }
 
   void dart_sqlite3_rollbacks(Pointer db, int id) {
-    return _rollback_hooks!.callReturningVoid2(db.toJS, id.toJS);
+    return _rollback_hooks?.callReturningVoid2(db.toJS, id.toJS);
   }
 
   int sqlite3_exec(Pointer db, Pointer sql, Pointer callback,

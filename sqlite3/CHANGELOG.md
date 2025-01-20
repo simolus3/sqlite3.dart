@@ -1,3 +1,9 @@
+## 2.7.1
+
+- Web: Fix a crash when using version `2.7.0` of this package with an older
+  WebAssembly bundle.
+  Note: Version `2.7.0` has been retracted from pub.dev for this reason.
+
 ## 2.7.0
 
 - Add support for commit and rollback hooks as well as a predicate that can
