@@ -1,3 +1,7 @@
+## 2.7.2
+
+- Web: Fix update events not being delivered in some shared worker setups.
+
 ## 2.7.1
 
 - Web: Fix a crash when using version `2.7.0` of this package with an older

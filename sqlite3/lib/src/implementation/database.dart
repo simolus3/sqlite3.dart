@@ -609,30 +609,9 @@ final class _StreamHandlers<T, SyncCallback> {
   /// Unregisters the native callback on the database.
   final void Function() _unregister;
 
-  late final Stream<T> stream = Stream.multi(
-    (newListener) {
-      if (_database._isClosed) {
-        newListener.close();
-        return;
-      }
+  Stream<T>? _stream;
 
-      void addListener() {
-        _addAsyncListener(newListener);
-      }
-
-      void removeListener() {
-        _removeAsyncListener(newListener);
-      }
-
-      newListener
-        ..onPause = removeListener
-        ..onCancel = removeListener
-        ..onResume = addListener;
-      // Since this is a onListen callback, add listener now
-      addListener();
-    },
-    isBroadcast: true,
-  );
+  Stream<T> get stream => _stream!;
 
   _StreamHandlers({
     required DatabaseImplementation database,
@@ -640,7 +619,32 @@ final class _StreamHandlers<T, SyncCallback> {
     required void Function() unregister,
   })  : _database = database,
         _register = register,
-        _unregister = unregister;
+        _unregister = unregister {
+    _stream = Stream.multi(
+      (newListener) {
+        if (_database._isClosed) {
+          newListener.close();
+          return;
+        }
+
+        void addListener() {
+          _addAsyncListener(newListener);
+        }
+
+        void removeListener() {
+          _removeAsyncListener(newListener);
+        }
+
+        newListener
+          ..onPause = removeListener
+          ..onCancel = removeListener
+          ..onResume = addListener;
+        // Since this is a onListen callback, add listener now
+        addListener();
+      },
+      isBroadcast: true,
+    );
+  }
 
   bool get hasListener => _asyncListeners.isNotEmpty || _syncCallback != null;
 
