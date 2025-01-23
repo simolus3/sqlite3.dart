@@ -1,3 +1,7 @@
+## 0.3.0-dev
+
+- Allow passing data to worker when opening databases.
+
 ## 0.2.2
 
 - Recover from worker errors at startup.

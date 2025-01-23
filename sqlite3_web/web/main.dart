@@ -11,6 +11,7 @@ import 'controller.dart';
 final sqlite3WasmUri = Uri.parse('sqlite3.wasm');
 final workerUri = Uri.parse('worker.dart.js');
 const databaseName = 'database';
+const additionalOptions = 'test-additional-options';
 
 WebSqlite? webSqlite;
 
@@ -160,12 +161,19 @@ Future<JSAny?> _open(String? implementationName, bool onlyOpenVfs) async {
   if (implementationName != null) {
     final split = implementationName.split(':');
 
-    db = await sqlite.connect(databaseName, StorageMode.values.byName(split[0]),
-        AccessMode.values.byName(split[1]),
-        onlyOpenVfs: onlyOpenVfs);
+    db = await sqlite.connect(
+      databaseName,
+      StorageMode.values.byName(split[0]),
+      AccessMode.values.byName(split[1]),
+      onlyOpenVfs: onlyOpenVfs,
+      additionalOptions: additionalOptions.toJS,
+    );
   } else {
-    final result = await sqlite.connectToRecommended(databaseName,
-        onlyOpenVfs: onlyOpenVfs);
+    final result = await sqlite.connectToRecommended(
+      databaseName,
+      onlyOpenVfs: onlyOpenVfs,
+      additionalOptions: additionalOptions.toJS,
+    );
     db = result.database;
     returnValue = '${result.storage.name}:${result.access.name}';
   }
@@ -174,7 +182,16 @@ Future<JSAny?> _open(String? implementationName, bool onlyOpenVfs) async {
 
   // Make sure it works!
   if (!onlyOpenVfs) {
-    await db.select('SELECT database_host()');
+    final rows = await db
+        .select('SELECT database_host() as host, additional_data() as data;');
+    if (rows.length != 1) {
+      throw 'unexpected row count';
+    }
+    final row = rows[0];
+    if (row['data'] != additionalOptions) {
+      throw 'unexpected data: $row';
+    }
+
     listenForUpdates();
   }
 

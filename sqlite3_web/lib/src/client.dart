@@ -403,14 +403,16 @@ final class DatabaseClient implements WebSqlite {
         WorkerConnection connection) async {
       SimpleSuccessResponse response;
       try {
-        response = await connection.sendRequest(
-          CompatibilityCheck(
-            requestId: 0,
-            type: MessageType.dedicatedCompatibilityCheck,
-            databaseName: databaseName,
-          ),
-          MessageType.simpleSuccessResponse,
-        );
+        response = await connection
+            .sendRequest(
+              CompatibilityCheck(
+                requestId: 0,
+                type: MessageType.dedicatedCompatibilityCheck,
+                databaseName: databaseName,
+              ),
+              MessageType.simpleSuccessResponse,
+            )
+            .timeout(_workerInitializationTimeout);
       } on Object {
         return;
       }
@@ -451,14 +453,16 @@ final class DatabaseClient implements WebSqlite {
     Future<void> sharedCompatibilityCheck(WorkerConnection connection) async {
       SimpleSuccessResponse response;
       try {
-        response = await connection.sendRequest(
-          CompatibilityCheck(
-            requestId: 0,
-            type: MessageType.sharedCompatibilityCheck,
-            databaseName: databaseName,
-          ),
-          MessageType.simpleSuccessResponse,
-        );
+        response = await connection
+            .sendRequest(
+              CompatibilityCheck(
+                requestId: 0,
+                type: MessageType.sharedCompatibilityCheck,
+                databaseName: databaseName,
+              ),
+              MessageType.simpleSuccessResponse,
+            )
+            .timeout(_workerInitializationTimeout);
       } on Object {
         return;
       }
@@ -522,7 +526,7 @@ final class DatabaseClient implements WebSqlite {
 
   @override
   Future<Database> connect(String name, StorageMode type, AccessMode access,
-      {bool onlyOpenVfs = false}) async {
+      {bool onlyOpenVfs = false, JSAny? additionalOptions}) async {
     await startWorkers();
 
     WorkerConnection connection;
@@ -553,6 +557,7 @@ final class DatabaseClient implements WebSqlite {
         databaseName: name,
         storageMode: type.resolveToVfs(shared),
         onlyOpenVfs: onlyOpenVfs,
+        additionalData: additionalOptions,
       ),
       MessageType.simpleSuccessResponse,
     );
@@ -564,7 +569,7 @@ final class DatabaseClient implements WebSqlite {
 
   @override
   Future<ConnectToRecommendedResult> connectToRecommended(String name,
-      {bool onlyOpenVfs = false}) async {
+      {bool onlyOpenVfs = false, JSAny? additionalOptions}) async {
     final probed = await runFeatureDetection(databaseName: name);
 
     // If we have an existing database in storage, we want to keep using that
@@ -593,8 +598,8 @@ final class DatabaseClient implements WebSqlite {
 
     final (storage, access) = availableImplementations.firstOrNull ??
         (StorageMode.inMemory, AccessMode.inCurrentContext);
-    final database =
-        await connect(name, storage, access, onlyOpenVfs: onlyOpenVfs);
+    final database = await connect(name, storage, access,
+        onlyOpenVfs: onlyOpenVfs, additionalOptions: additionalOptions);
 
     return ConnectToRecommendedResult(
       database: database,
@@ -621,6 +626,8 @@ final class DatabaseClient implements WebSqlite {
     // because we can actually share database resources between tabs.
     return a.$2.index.compareTo(b.$2.index);
   }
+
+  static const _workerInitializationTimeout = Duration(seconds: 1);
 }
 
 extension on StorageMode {

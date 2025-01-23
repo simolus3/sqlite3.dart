@@ -47,7 +47,8 @@ enum MessageType<T extends Message> {
 /// Since we're using unsafe JS interop here, these can't be mangled by dart2js.
 /// Thus, we should keep them short.
 class _UniqueFieldNames {
-  static const action = 'a';
+  static const action = 'a'; // Only used in StreamRequest
+  static const additionalData = 'a'; // only used in OpenRequest
   static const buffer = 'b';
   static const columnNames = 'c';
   static const databaseId = 'd';
@@ -214,12 +215,16 @@ final class OpenRequest extends Request {
   final FileSystemImplementation storageMode;
   final bool onlyOpenVfs;
 
+  /// Additional data passsed to `DatabaseController.openDatabase`.
+  final JSAny? additionalData;
+
   OpenRequest({
     required super.requestId,
     required this.wasmUri,
     required this.databaseName,
     required this.storageMode,
     required this.onlyOpenVfs,
+    this.additionalData,
   });
 
   factory OpenRequest.deserialize(JSObject object) {
@@ -230,9 +235,11 @@ final class OpenRequest extends Request {
       wasmUri:
           Uri.parse((object[_UniqueFieldNames.wasmUri] as JSString).toDart),
       requestId: object.requestId,
+      // The onlyOpenVfs and transformedVfsName fields were not set in earlier
+      // clients.
       onlyOpenVfs:
-          // The onlyOpenVfs field was not set in earlier clients.
           (object[_UniqueFieldNames.onlyOpenVfs] as JSBoolean?)?.toDart == true,
+      additionalData: object[_UniqueFieldNames.additionalData],
     );
   }
 
@@ -246,6 +253,7 @@ final class OpenRequest extends Request {
     object[_UniqueFieldNames.storageMode] = storageMode.toJS;
     object[_UniqueFieldNames.wasmUri] = wasmUri.toString().toJS;
     object[_UniqueFieldNames.onlyOpenVfs] = onlyOpenVfs.toJS;
+    object[_UniqueFieldNames.additionalData] = additionalData;
   }
 }
 
@@ -647,6 +655,7 @@ final class StreamRequest extends Request {
   /// updates.
   final bool action;
 
+  @override
   final MessageType<Message> type;
 
   StreamRequest({

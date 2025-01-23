@@ -16,14 +16,20 @@ final class ExampleController extends DatabaseController {
   }
 
   @override
-  Future<WorkerDatabase> openDatabase(
-      WasmSqlite3 sqlite3, String path, String vfs) async {
+  Future<WorkerDatabase> openDatabase(WasmSqlite3 sqlite3, String path,
+      String vfs, JSAny? additionalData) async {
     final raw = sqlite3.open(path, vfs: vfs);
     raw.createFunction(
       functionName: 'database_host',
       function: (args) => isInWorker ? 'worker' : 'document',
       argumentCount: const AllowedArgumentCount(0),
     );
+    raw.createFunction(
+      functionName: 'additional_data',
+      function: (args) => (additionalData as JSString).toDart,
+      argumentCount: const AllowedArgumentCount(0),
+    );
+
     return ExampleDatabase(database: raw);
   }
 }

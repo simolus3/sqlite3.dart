@@ -23,8 +23,12 @@ abstract base class DatabaseController {
   ///
   /// This should virtually always call `sqlite3.open(path, vfs: vfs)` and wrap
   /// the result in a [WorkerDatabase] subclass.
+  ///
+  /// The [additionalData] can be set by clients when opening the database. It
+  /// might be useful to transport additional options relevant when opening the
+  /// database.
   Future<WorkerDatabase> openDatabase(
-      WasmSqlite3 sqlite3, String path, String vfs);
+      WasmSqlite3 sqlite3, String path, String vfs, JSAny? additionalData);
 
   /// Handles custom requests from clients that are not bound to a database.
   ///
@@ -190,8 +194,12 @@ abstract class WebSqlite {
   /// on the worker when it's first used.
   /// Only opening the VFS can be used to, for instance, check if the database
   /// already exists and to initialize it manually if it doesn't.
+  ///
+  /// The optional [additionalOptions] must be sendable over message ports and
+  /// is passed to [DatabaseController.openDatabase] on the worker opening the
+  /// database.
   Future<Database> connect(String name, StorageMode type, AccessMode access,
-      {bool onlyOpenVfs = false});
+      {bool onlyOpenVfs = false, JSAny? additionalOptions});
 
   /// Starts a feature detection via [runFeatureDetection] and then [connect]s
   /// to the best database available.
@@ -202,8 +210,12 @@ abstract class WebSqlite {
   /// on the worker when it's first used.
   /// Only opening the VFS can be used to, for instance, check if the database
   /// already exists and to initialize it manually if it doesn't.
+  ///
+  /// The optional [additionalOptions] must be sendable over message ports and
+  /// is passed to [DatabaseController.openDatabase] on the worker opening the
+  /// database.
   Future<ConnectToRecommendedResult> connectToRecommended(String name,
-      {bool onlyOpenVfs = false});
+      {bool onlyOpenVfs = false, JSAny? additionalOptions});
 
   /// Entrypoints for workers hosting datbases.
   static void workerEntrypoint({
@@ -224,7 +236,10 @@ abstract class WebSqlite {
     DatabaseController? controller,
   }) {
     return DatabaseClient(
-        worker, wasmModule, controller ?? const _DefaultDatabaseController());
+      worker,
+      wasmModule,
+      controller ?? const _DefaultDatabaseController(),
+    );
   }
 
   /// Connects to an endpoint previously obtained with [Database.additionalConnection].
@@ -255,8 +270,8 @@ final class _DefaultDatabaseController extends DatabaseController {
   }
 
   @override
-  Future<WorkerDatabase> openDatabase(
-      WasmSqlite3 sqlite3, String path, String vfs) async {
+  Future<WorkerDatabase> openDatabase(WasmSqlite3 sqlite3, String path,
+      String vfs, JSAny? additionalOptions) async {
     return _DefaultWorkerDatabase(sqlite3.open(path, vfs: vfs));
   }
 }
