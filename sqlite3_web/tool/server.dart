@@ -111,6 +111,10 @@ class TestWebDriver {
     await waitFor(() => driver.findElement(By.id('ready')));
   }
 
+  Future<bool> isDart2wasm() async {
+    return await driver.executeAsync('isDart2wasm("", arguments[0])', []);
+  }
+
   Future<
       ({
         Set<(StorageMode, AccessMode)> impls,

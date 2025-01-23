@@ -22,6 +22,10 @@ int rollbacks = 0;
 bool listeningForUpdates = false;
 
 void main() {
+  _addCallbackForWebDriver('isDart2wasm', (_) async {
+    const isWasm = bool.fromEnvironment('dart.tool.dart2wasm');
+    return isWasm.toJS;
+  });
   _addCallbackForWebDriver('detectImplementations', _detectImplementations);
   _addCallbackForWebDriver('close', (arg) async {
     await database?.dispose();
