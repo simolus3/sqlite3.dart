@@ -1,3 +1,7 @@
+## 2.7.3-dev
+
+- Web: Support `localtime` datetime modifier in SQLite.
+
 ## 2.7.2
 
 - Web: Fix update events not being delivered in some shared worker setups.

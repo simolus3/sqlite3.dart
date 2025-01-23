@@ -31,7 +31,6 @@
 // We have them, so we may as well let sqlite3 use them?
 #define HAVE_ISNAN 1
 #define HAVE_LOCALTIME_R 1
-#define HAVE_LOCALTIME_S 1
 #define HAVE_MALLOC_USABLE_SIZE 1
 #define HAVE_STRCHRNUL 1
 

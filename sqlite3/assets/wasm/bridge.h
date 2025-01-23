@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "sqlite3.h"
 
@@ -60,3 +61,6 @@ import_dart("function_compare") extern int dartXCompare(void *id, int lengthA,
                                                         const void *a,
                                                         int lengthB,
                                                         const void *b);
+
+import_dart("localtime") extern int dartLocalTime(int64_t time,
+                                                  struct tm *result);

@@ -765,6 +765,38 @@ class _InjectedValues {
         'function_rollback_hook': ((int id) {
           callbacks.installedRollbackHook?.call();
         }).toJS,
+        'localtime': ((JsBigInt timestamp, int resultPtr) {
+          // struct tm {
+          // 	int tm_sec;
+          // 	int tm_min;
+          // 	int tm_hour;
+          // 	int tm_mday;
+          // 	int tm_mon;
+          // 	int tm_year; // With 0 representing 1900
+          // 	int tm_wday;
+          // 	int tm_yday;
+          // 	int tm_isdst;
+          // 	long __tm_gmtoff;
+          // 	const char *__tm_zone; // Set by native helper
+          // };
+          final time = timestamp.asDartInt * 1000;
+          final dateTime = DateTime.fromMillisecondsSinceEpoch(time);
+
+          final tmValues = memory.buffer.toDart.asUint32List(resultPtr, 8);
+          tmValues[0] = dateTime.second;
+          tmValues[1] = dateTime.minute;
+          tmValues[2] = dateTime.hour;
+          tmValues[3] = dateTime.day;
+          tmValues[4] = dateTime.month - 1;
+          tmValues[5] = dateTime.year - 1900;
+          // In Dart, the range is Monday=1 to Sunday=7. We want Sunday = 0 and
+          // Saturday = 6.
+          tmValues[6] = dateTime.weekday % 7;
+          // yday not used by sqlite3, what could possibly go wrong by us not
+          // setting that field (at least we have tests for this).
+          // the other fields don't matter though, localtime_r is not supposed
+          // to set them.
+        }).toJS,
       }
     };
   }

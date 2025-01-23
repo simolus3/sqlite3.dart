@@ -60,6 +60,44 @@ void main() {
         expect(int.parse(row),
             closeTo(DateTime.now().millisecondsSinceEpoch ~/ 1000, 5));
       });
+
+      test('can use localtime', () {
+        final db = sqlite3.openInMemory();
+        addTearDown(db.dispose);
+
+        final testValues = [
+          (DateTime(1970, 1, 1), 1),
+          (DateTime(2025, 1, 1), 1),
+          (DateTime(2025, 2, 11, 13, 14, 15), 42),
+        ];
+
+        final stmt = db.prepare('''
+          SELECT
+            CAST(strftime('%Y', column1, 'unixepoch', 'localtime') AS INTEGER) AS year,
+            CAST(strftime('%m', column1, 'unixepoch', 'localtime') AS INTEGER) AS month,
+            CAST(strftime('%d', column1, 'unixepoch', 'localtime') AS INTEGER) AS day,
+            CAST(strftime('%H', column1, 'unixepoch', 'localtime') AS INTEGER) AS hour,
+            CAST(strftime('%M', column1, 'unixepoch', 'localtime') AS INTEGER) AS minute,
+            CAST(strftime('%S', column1, 'unixepoch', 'localtime') AS INTEGER) AS second,
+            CAST(strftime('%j', column1, 'unixepoch', 'localtime') AS INTEGER) AS day_of_year,
+            CAST(strftime('%u', column1, 'unixepoch', 'localtime') AS INTEGER) AS day_of_week
+          FROM (VALUES(?));
+        ''');
+
+        for (final (value, dayOfYear) in testValues) {
+          final [row] = stmt.select([value.millisecondsSinceEpoch ~/ 1000]);
+          expect(row, {
+            'year': value.year,
+            'month': value.month,
+            'day': value.day,
+            'hour': value.hour,
+            'minute': value.minute,
+            'second': value.second,
+            'day_of_year': dayOfYear,
+            'day_of_week': value.weekday,
+          });
+        }
+      });
     });
   }
 
