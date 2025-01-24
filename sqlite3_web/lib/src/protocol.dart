@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'dart:typed_data';
 
 import 'package:sqlite3/common.dart';
 import 'package:sqlite3/wasm.dart' as wasm_vfs;
+// ignore: implementation_imports
+import 'package:sqlite3/src/wasm/js_interop/core.dart';
 import 'package:web/web.dart';
 
 import 'types.dart';
@@ -69,6 +72,7 @@ class _UniqueFieldNames {
   static const returnRows = 'r';
   static const updateRowId = 'r';
   static const rows = 'r'; // no clash, used on different message types
+  static const typeVector = 'v';
 }
 
 sealed class Message {
@@ -450,15 +454,25 @@ final class RunQuery extends Request {
   });
 
   factory RunQuery.deserialize(JSObject object) {
+    final rawParameters =
+        (object[_UniqueFieldNames.parameters] as JSArray).toDart;
+    final typeVector = switch (object[_UniqueFieldNames.typeVector]) {
+      final types? => (types as JSArrayBuffer).toDart.asUint8List(),
+      null => null,
+    };
+
+    final parameters = List<Object?>.filled(rawParameters.length, null);
+    for (var i = 0; i < parameters.length; i++) {
+      final typeCode =
+          typeVector != null ? TypeCode.of(typeVector[i]) : TypeCode.unknown;
+      parameters[i] = typeCode.decodeColumn(rawParameters[i]);
+    }
+
     return RunQuery(
       requestId: object.requestId,
       databaseId: object.databaseId,
       sql: (object[_UniqueFieldNames.sql] as JSString).toDart,
-      parameters: [
-        for (final raw
-            in (object[_UniqueFieldNames.parameters] as JSArray).toDart)
-          raw.dartify()
-      ],
+      parameters: parameters,
       returnRows: (object[_UniqueFieldNames.returnRows] as JSBoolean).toDart,
     );
   }
@@ -470,9 +484,25 @@ final class RunQuery extends Request {
   void serialize(JSObject object, List<JSObject> transferred) {
     super.serialize(object, transferred);
     object[_UniqueFieldNames.sql] = sql.toJS;
-    object[_UniqueFieldNames.parameters] =
-        <JSAny?>[for (final parameter in parameters) parameter.jsify()].toJS;
     object[_UniqueFieldNames.returnRows] = returnRows.toJS;
+
+    if (parameters.isNotEmpty) {
+      final jsParams = <JSAny?>[];
+      final typeCodes = Uint8List(parameters.length);
+      for (var i = 0; i < parameters.length; i++) {
+        final (code, jsParam) = TypeCode.encodeValue(parameters[i]);
+        typeCodes[i] = code.index;
+        jsParams.add(jsParam);
+      }
+
+      final jsTypes = typeCodes.buffer.toJS;
+      transferred.add(jsTypes);
+
+      object[_UniqueFieldNames.parameters] = jsParams.toJS;
+      object[_UniqueFieldNames.typeVector] = jsTypes;
+    } else {
+      object[_UniqueFieldNames.parameters] = JSArray();
+    }
   }
 }
 
@@ -557,6 +587,81 @@ final class EndpointResponse extends Response {
   }
 }
 
+enum TypeCode {
+  unknown,
+  integer,
+  bigInt,
+  float,
+  text,
+  blob,
+  $null,
+  boolean;
+
+  static TypeCode of(int i) {
+    return i >= TypeCode.values.length ? TypeCode.unknown : TypeCode.values[i];
+  }
+
+  Object? decodeColumn(JSAny? column) {
+    const hasNativeInts = !identical(0, 0.0);
+
+    return switch (this) {
+      TypeCode.unknown => column.dartify(),
+      TypeCode.integer => (column as JSNumber).toDartInt,
+      TypeCode.bigInt => hasNativeInts
+          ? (column as JsBigInt).asDartInt
+          : (column as JsBigInt).asDartBigInt,
+      TypeCode.float => (column as JSNumber).toDartDouble,
+      TypeCode.text => (column as JSString).toDart,
+      TypeCode.blob => (column as JSUint8Array).toDart,
+      TypeCode.boolean => (column as JSBoolean).toDart,
+      TypeCode.$null => null,
+    };
+  }
+
+  static (TypeCode, JSAny?) encodeValue(Object? dart) {
+    // In previous clients/workers, values were encoded with dartify() and
+    // jsify() only. For backwards-compatibility, this value must be compatible
+    // with dartify() used on the other end.
+    // An exception are BigInts, which have not been sent correctly before this
+    // encoder.
+    // The reasons for adopting a custom format are: Being able to properly
+    // serialize BigInts, possible dartify/jsify incompatibilities between
+    // dart2js and dart2wasm and most importantly, being able to keep 1 and 1.0
+    // apart in dart2wasm when the worker is compiled with dart2js.
+    final JSAny? value;
+    final TypeCode code;
+
+    switch (dart) {
+      case null:
+        value = null;
+        code = TypeCode.$null;
+      case final int integer:
+        value = integer.toJS;
+        code = TypeCode.integer;
+      case final BigInt bi:
+        value = JsBigInt.fromBigInt(bi);
+        code = TypeCode.bigInt;
+      case final double d:
+        value = d.toJS;
+        code = TypeCode.float;
+      case final String s:
+        value = s.toJS;
+        code = TypeCode.text;
+      case final Uint8List blob:
+        value = blob.toJS;
+        code = TypeCode.blob;
+      case final bool boolean:
+        value = boolean.toJS;
+        code = TypeCode.boolean;
+      case final other:
+        value = other.jsify();
+        code = TypeCode.unknown;
+    }
+
+    return (code, value);
+  }
+}
+
 final class RowsResponse extends Response {
   final ResultSet resultSet;
 
@@ -576,12 +681,20 @@ final class RowsResponse extends Response {
           ]
         : null;
 
+    final typeVector = switch (object[_UniqueFieldNames.typeVector]) {
+      final types? => (types as JSArrayBuffer).toDart.asUint8List(),
+      null => null,
+    };
     final rows = <List<Object?>>[];
+    var i = 0;
     for (final row in (object[_UniqueFieldNames.rows] as JSArray).toDart) {
       final dartRow = <Object?>[];
 
       for (final column in (row as JSArray).toDart) {
-        dartRow.add(column.dartify());
+        final typeCode =
+            typeVector != null ? TypeCode.of(typeVector[i]) : TypeCode.unknown;
+        dartRow.add(typeCode.decodeColumn(column));
+        i++;
       }
 
       rows.add(dartRow);
@@ -599,6 +712,29 @@ final class RowsResponse extends Response {
   @override
   void serialize(JSObject object, List<JSObject> transferred) {
     super.serialize(object, transferred);
+    final jsRows = <JSArray>[];
+    final columns = resultSet.columnNames.length;
+    final typeVector = Uint8List(resultSet.length * columns);
+
+    for (var i = 0; i < resultSet.length; i++) {
+      final row = resultSet.rows[i];
+      assert(row.length == columns);
+      final jsRow = List<JSAny?>.filled(row.length, null);
+
+      for (var j = 0; j < columns; j++) {
+        final (code, value) = TypeCode.encodeValue(row[j]);
+
+        jsRow[j] = value;
+        typeVector[i * columns + j] = code.index;
+      }
+
+      jsRows.add(jsRow.toJS);
+    }
+
+    final jsTypes = typeVector.buffer.toJS;
+    object[_UniqueFieldNames.typeVector] = jsTypes;
+    transferred.add(jsTypes);
+
     object[_UniqueFieldNames.rows] = <JSArray>[
       for (final row in resultSet.rows)
         <JSAny?>[
