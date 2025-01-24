@@ -454,25 +454,14 @@ final class RunQuery extends Request {
   });
 
   factory RunQuery.deserialize(JSObject object) {
-    final rawParameters =
-        (object[_UniqueFieldNames.parameters] as JSArray).toDart;
-    final typeVector = switch (object[_UniqueFieldNames.typeVector]) {
-      final types? => (types as JSArrayBuffer).toDart.asUint8List(),
-      null => null,
-    };
-
-    final parameters = List<Object?>.filled(rawParameters.length, null);
-    for (var i = 0; i < parameters.length; i++) {
-      final typeCode =
-          typeVector != null ? TypeCode.of(typeVector[i]) : TypeCode.unknown;
-      parameters[i] = typeCode.decodeColumn(rawParameters[i]);
-    }
-
     return RunQuery(
       requestId: object.requestId,
       databaseId: object.databaseId,
       sql: (object[_UniqueFieldNames.sql] as JSString).toDart,
-      parameters: parameters,
+      parameters: TypeCode.decodeValues(
+        object[_UniqueFieldNames.parameters] as JSArray,
+        object[_UniqueFieldNames.typeVector] as JSArrayBuffer?,
+      ),
       returnRows: (object[_UniqueFieldNames.returnRows] as JSBoolean).toDart,
     );
   }
@@ -487,19 +476,11 @@ final class RunQuery extends Request {
     object[_UniqueFieldNames.returnRows] = returnRows.toJS;
 
     if (parameters.isNotEmpty) {
-      final jsParams = <JSAny?>[];
-      final typeCodes = Uint8List(parameters.length);
-      for (var i = 0; i < parameters.length; i++) {
-        final (code, jsParam) = TypeCode.encodeValue(parameters[i]);
-        typeCodes[i] = code.index;
-        jsParams.add(jsParam);
-      }
+      final (array, types) = TypeCode.encodeValues(parameters);
 
-      final jsTypes = typeCodes.buffer.toJS;
-      transferred.add(jsTypes);
-
-      object[_UniqueFieldNames.parameters] = jsParams.toJS;
-      object[_UniqueFieldNames.typeVector] = jsTypes;
+      object[_UniqueFieldNames.parameters] = array;
+      object[_UniqueFieldNames.typeVector] = types;
+      transferred.add(types);
     } else {
       object[_UniqueFieldNames.parameters] = JSArray();
     }
@@ -659,6 +640,33 @@ enum TypeCode {
     }
 
     return (code, value);
+  }
+
+  static (JSArray, JSArrayBuffer) encodeValues(List<Object?> values) {
+    final jsParams = <JSAny?>[];
+    final typeCodes = Uint8List(values.length);
+    for (var i = 0; i < values.length; i++) {
+      final (code, jsParam) = TypeCode.encodeValue(values[i]);
+      typeCodes[i] = code.index;
+      jsParams.add(jsParam);
+    }
+
+    final jsTypes = typeCodes.buffer.toJS;
+    return (jsParams.toJS, jsTypes);
+  }
+
+  static List<Object?> decodeValues(JSArray array, JSArrayBuffer? types) {
+    final rawParameters = array.toDart;
+    final typeVector = types?.toDart.asUint8List();
+
+    final parameters = List<Object?>.filled(rawParameters.length, null);
+    for (var i = 0; i < parameters.length; i++) {
+      final typeCode =
+          typeVector != null ? TypeCode.of(typeVector[i]) : TypeCode.unknown;
+      parameters[i] = typeCode.decodeColumn(rawParameters[i]);
+    }
+
+    return parameters;
   }
 }
 
