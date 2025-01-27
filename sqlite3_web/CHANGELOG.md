@@ -1,6 +1,9 @@
-## 0.3.0-dev
+## 0.3.0
 
 - Allow passing data to worker when opening databases.
+- Support `dart2wasm`.
+- Serialize `SqliteException`s in workers.
+- Serialize parameters and rows instead of using `jsify()` / `dartify()`.
 
 ## 0.2.2
 
