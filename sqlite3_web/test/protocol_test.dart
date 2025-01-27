@@ -6,6 +6,7 @@ import 'dart:js_interop';
 import 'dart:typed_data';
 
 import 'package:sqlite3/common.dart';
+import 'package:sqlite3_web/sqlite3_web.dart';
 import 'package:sqlite3_web/src/channel.dart';
 import 'package:sqlite3_web/src/protocol.dart';
 import 'package:test/test.dart';
@@ -126,6 +127,47 @@ void main() {
     expect(
       resultSet.map((e) => e['a']),
       [1, Uint8List(10), null, 'string value'],
+    );
+  });
+
+  test('can serialize SqliteExceptions', () async {
+    server.handleRequestFunction = expectAsync1((req) {
+      throw SqliteException(
+        42,
+        'test exception',
+        'explanation',
+        'causingStatement',
+        [1, null, 'a'],
+        'operation',
+      );
+    });
+
+    await expectLater(
+      () => client.sendRequest(
+        RunQuery(
+          requestId: 0,
+          databaseId: 0,
+          sql: 'sql',
+          parameters: [],
+          returnRows: true,
+        ),
+        MessageType.rowsResponse,
+      ),
+      throwsA(
+        isA<RemoteException>().having(
+          (e) => e.exception,
+          'exception',
+          isA<SqliteException>()
+              .having((e) => e.extendedResultCode, 'extendedResultCode', 42)
+              .having((e) => e.message, 'message', 'test exception')
+              .having((e) => e.explanation, 'explanation', 'explanation')
+              .having((e) => e.operation, 'operation', 'operation')
+              .having((e) => e.causingStatement, 'causingStatement',
+                  'causingStatement')
+              .having((e) => e.parametersToStatement, 'parametersToStatement',
+                  [1, null, 'a']),
+        ),
+      ),
     );
   });
 }

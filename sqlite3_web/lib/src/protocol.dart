@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
@@ -64,6 +63,7 @@ class _UniqueFieldNames {
   static const onlyOpenVfs = 'o';
   static const parameters = 'p';
   static const storageMode = 's';
+  static const serializedExceptionType = 's';
   static const sql = 's'; // not used in same message
   static const type = 't';
   static const wasmUri = 'u';
@@ -71,6 +71,7 @@ class _UniqueFieldNames {
   static const responseData = 'r';
   static const returnRows = 'r';
   static const updateRowId = 'r';
+  static const serializedException = 'r';
   static const rows = 'r'; // no clash, used on different message types
   static const typeVector = 'v';
 }
@@ -160,14 +161,6 @@ sealed class Request extends Message {
 
     if (databaseId case final id?) {
       object[_UniqueFieldNames.databaseId] = id.toJS;
-    }
-  }
-
-  Future<Response> tryRespond(FutureOr<Response> Function() function) async {
-    try {
-      return await function();
-    } catch (e) {
-      return ErrorResponse(message: e.toString(), requestId: requestId);
     }
   }
 }
@@ -767,12 +760,33 @@ final class RowsResponse extends Response {
 final class ErrorResponse extends Response {
   final String message;
 
-  ErrorResponse({required this.message, required super.requestId});
+  /// We can't send Dart objects over web channels, but we're serializing the
+  /// most common exception types so that we can reconstruct them on the other
+  /// end.
+  final Object? serializedException;
+
+  ErrorResponse({
+    required this.message,
+    required super.requestId,
+    this.serializedException,
+  });
 
   factory ErrorResponse.deserialize(JSObject object) {
+    Object? serializedException;
+    if (object.has(_UniqueFieldNames.serializedExceptionType)) {
+      serializedException = switch (
+          (object[_UniqueFieldNames.serializedExceptionType] as JSNumber)
+              .toDartInt) {
+        _typeSqliteException => deserializeSqliteException(
+            object[_UniqueFieldNames.serializedException] as JSArray),
+        _ => null,
+      };
+    }
+
     return ErrorResponse(
       message: (object[_UniqueFieldNames.errorMessage] as JSString).toDart,
       requestId: object.requestId,
+      serializedException: serializedException,
     );
   }
 
@@ -783,12 +797,70 @@ final class ErrorResponse extends Response {
   void serialize(JSObject object, List<JSObject> transferred) {
     super.serialize(object, transferred);
     object[_UniqueFieldNames.errorMessage] = message.toJS;
+
+    if (serializedException case final SqliteException e?) {
+      object[_UniqueFieldNames.serializedExceptionType] =
+          _typeSqliteException.toJS;
+      object[_UniqueFieldNames.serializedException] =
+          serializeSqliteException(e);
+    }
   }
 
   @override
   RemoteException interpretAsError() {
-    return RemoteException(message: message);
+    return RemoteException(message: message, exception: serializedException);
   }
+
+  static SqliteException deserializeSqliteException(JSArray data) {
+    final [
+      message,
+      explanation,
+      extendedResultCode,
+      operation,
+      causingStatement,
+      paramData,
+      paramTypes,
+      ..._,
+    ] = data.toDart;
+
+    String? decodeNullableString(JSAny? jsValue) {
+      if (jsValue.isDefinedAndNotNull) {
+        return (jsValue as JSString).toDart;
+      }
+      return null;
+    }
+
+    return SqliteException(
+      (extendedResultCode as JSNumber).toDartInt,
+      (message as JSString).toDart,
+      decodeNullableString(explanation),
+      decodeNullableString(causingStatement),
+      paramData.isDefinedAndNotNull && paramTypes.isDefinedAndNotNull
+          ? TypeCode.decodeValues(
+              paramData as JSArray, paramTypes as JSArrayBuffer)
+          : null,
+      decodeNullableString(operation),
+    );
+  }
+
+  static JSArray serializeSqliteException(SqliteException e) {
+    final params = switch (e.parametersToStatement) {
+      null => null,
+      final parameters => TypeCode.encodeValues(parameters),
+    };
+
+    return [
+      e.message.toJS,
+      e.explanation?.toJS,
+      e.extendedResultCode.toJS,
+      e.operation?.toJS,
+      e.causingStatement?.toJS,
+      params?.$1,
+      params?.$2,
+    ].toJS;
+  }
+
+  static const _typeSqliteException = 0;
 }
 
 final class StreamRequest extends Request {

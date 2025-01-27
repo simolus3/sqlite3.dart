@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:sqlite3/common.dart';
 
 /// A [StorageMode], name pair representing an existing database already stored
 /// by the current browsing context.
@@ -66,8 +67,16 @@ final class RemoteException implements Exception {
   /// The [Object.toString] representation of the original exception.
   final String message;
 
+  /// The exception that happened in the context running the operation.
+  ///
+  /// Since that context may be a web worker which can't send arbitrary Dart
+  /// objects to us, only a few common exception types are recognized and
+  /// serialized.
+  /// At the moment, this only includes [SqliteException].
+  final Object? exception;
+
   /// Creates a remote exception from the [message] thrown.
-  RemoteException({required this.message});
+  RemoteException({required this.message, this.exception});
 
   @override
   String toString() {

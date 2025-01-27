@@ -126,7 +126,10 @@ abstract class ProtocolChannel {
           console.error('Original trace: $s'.toJS);
 
           response = ErrorResponse(
-              message: e.toString(), requestId: message.requestId);
+            message: e.toString(),
+            requestId: message.requestId,
+            serializedException: e,
+          );
         }
 
         _channel.sink.add(response);
