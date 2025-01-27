@@ -213,8 +213,8 @@ final class _ClientConnection extends ProtocolChannel
         _ConnectionDatabase? connectionDatabase;
 
         try {
-          database =
-              _runner.findDatabase(request.databaseName, request.storageMode);
+          database = _runner.findDatabase(request.databaseName,
+              request.storageMode, request.additionalData);
 
           await (request.onlyOpenVfs ? database.vfs : database.opened);
 
@@ -392,6 +392,7 @@ final class DatabaseState {
   final int id;
   final String name;
   final FileSystemImplementation mode;
+  final JSAny? additionalOptions;
   int refCount = 1;
 
   Future<WorkerDatabase>? _database;
@@ -402,11 +403,13 @@ final class DatabaseState {
   /// the database is closed.
   FutureOr<void> Function()? closeHandler;
 
-  DatabaseState(
-      {required this.id,
-      required this.runner,
-      required this.name,
-      required this.mode});
+  DatabaseState({
+    required this.id,
+    required this.runner,
+    required this.name,
+    required this.mode,
+    required this.additionalOptions,
+  });
 
   String get vfsName => 'vfs-web-$id';
 
@@ -456,7 +459,7 @@ final class DatabaseState {
         // We still provide support for multiple databases by keeping multiple
         // VFS instances around.
         '/database',
-        vfsName,
+        vfsName, additionalOptions,
       );
     });
 
@@ -599,7 +602,8 @@ final class WorkerRunner {
     }
   }
 
-  DatabaseState findDatabase(String name, FileSystemImplementation mode) {
+  DatabaseState findDatabase(
+      String name, FileSystemImplementation mode, JSAny? additionalOptions) {
     for (final existing in openedDatabases.values) {
       if (existing.refCount != 0 &&
           existing.name == name &&
@@ -615,6 +619,7 @@ final class WorkerRunner {
       runner: this,
       name: name,
       mode: mode,
+      additionalOptions: additionalOptions,
     );
   }
 

@@ -1,0 +1,7 @@
+platforms: [vm, chrome, firefox]
+compilers: [dart2wasm, dart2js]
+
+override_platforms:
+  firefox:
+    settings:
+      arguments: "-headless"

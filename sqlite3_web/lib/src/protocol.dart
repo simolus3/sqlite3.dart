@@ -1,9 +1,11 @@
-import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'dart:typed_data';
 
 import 'package:sqlite3/common.dart';
 import 'package:sqlite3/wasm.dart' as wasm_vfs;
+// ignore: implementation_imports
+import 'package:sqlite3/src/wasm/js_interop/core.dart';
 import 'package:web/web.dart';
 
 import 'types.dart';
@@ -47,7 +49,8 @@ enum MessageType<T extends Message> {
 /// Since we're using unsafe JS interop here, these can't be mangled by dart2js.
 /// Thus, we should keep them short.
 class _UniqueFieldNames {
-  static const action = 'a';
+  static const action = 'a'; // Only used in StreamRequest
+  static const additionalData = 'a'; // only used in OpenRequest
   static const buffer = 'b';
   static const columnNames = 'c';
   static const databaseId = 'd';
@@ -60,6 +63,7 @@ class _UniqueFieldNames {
   static const onlyOpenVfs = 'o';
   static const parameters = 'p';
   static const storageMode = 's';
+  static const serializedExceptionType = 's';
   static const sql = 's'; // not used in same message
   static const type = 't';
   static const wasmUri = 'u';
@@ -67,7 +71,9 @@ class _UniqueFieldNames {
   static const responseData = 'r';
   static const returnRows = 'r';
   static const updateRowId = 'r';
+  static const serializedException = 'r';
   static const rows = 'r'; // no clash, used on different message types
+  static const typeVector = 'v';
 }
 
 sealed class Message {
@@ -157,14 +163,6 @@ sealed class Request extends Message {
       object[_UniqueFieldNames.databaseId] = id.toJS;
     }
   }
-
-  Future<Response> tryRespond(FutureOr<Response> Function() function) async {
-    try {
-      return await function();
-    } catch (e) {
-      return ErrorResponse(message: e.toString(), requestId: requestId);
-    }
-  }
 }
 
 sealed class Response extends Message {
@@ -214,12 +212,16 @@ final class OpenRequest extends Request {
   final FileSystemImplementation storageMode;
   final bool onlyOpenVfs;
 
+  /// Additional data passsed to `DatabaseController.openDatabase`.
+  final JSAny? additionalData;
+
   OpenRequest({
     required super.requestId,
     required this.wasmUri,
     required this.databaseName,
     required this.storageMode,
     required this.onlyOpenVfs,
+    this.additionalData,
   });
 
   factory OpenRequest.deserialize(JSObject object) {
@@ -230,9 +232,11 @@ final class OpenRequest extends Request {
       wasmUri:
           Uri.parse((object[_UniqueFieldNames.wasmUri] as JSString).toDart),
       requestId: object.requestId,
+      // The onlyOpenVfs and transformedVfsName fields were not set in earlier
+      // clients.
       onlyOpenVfs:
-          // The onlyOpenVfs field was not set in earlier clients.
           (object[_UniqueFieldNames.onlyOpenVfs] as JSBoolean?)?.toDart == true,
+      additionalData: object[_UniqueFieldNames.additionalData],
     );
   }
 
@@ -246,6 +250,7 @@ final class OpenRequest extends Request {
     object[_UniqueFieldNames.storageMode] = storageMode.toJS;
     object[_UniqueFieldNames.wasmUri] = wasmUri.toString().toJS;
     object[_UniqueFieldNames.onlyOpenVfs] = onlyOpenVfs.toJS;
+    object[_UniqueFieldNames.additionalData] = additionalData;
   }
 }
 
@@ -446,11 +451,10 @@ final class RunQuery extends Request {
       requestId: object.requestId,
       databaseId: object.databaseId,
       sql: (object[_UniqueFieldNames.sql] as JSString).toDart,
-      parameters: [
-        for (final raw
-            in (object[_UniqueFieldNames.parameters] as JSArray).toDart)
-          raw.dartify()
-      ],
+      parameters: TypeCode.decodeValues(
+        object[_UniqueFieldNames.parameters] as JSArray,
+        object[_UniqueFieldNames.typeVector] as JSArrayBuffer?,
+      ),
       returnRows: (object[_UniqueFieldNames.returnRows] as JSBoolean).toDart,
     );
   }
@@ -462,9 +466,17 @@ final class RunQuery extends Request {
   void serialize(JSObject object, List<JSObject> transferred) {
     super.serialize(object, transferred);
     object[_UniqueFieldNames.sql] = sql.toJS;
-    object[_UniqueFieldNames.parameters] =
-        <JSAny?>[for (final parameter in parameters) parameter.jsify()].toJS;
     object[_UniqueFieldNames.returnRows] = returnRows.toJS;
+
+    if (parameters.isNotEmpty) {
+      final (array, types) = TypeCode.encodeValues(parameters);
+
+      object[_UniqueFieldNames.parameters] = array;
+      object[_UniqueFieldNames.typeVector] = types;
+      transferred.add(types);
+    } else {
+      object[_UniqueFieldNames.parameters] = JSArray();
+    }
   }
 }
 
@@ -549,6 +561,108 @@ final class EndpointResponse extends Response {
   }
 }
 
+enum TypeCode {
+  unknown,
+  integer,
+  bigInt,
+  float,
+  text,
+  blob,
+  $null,
+  boolean;
+
+  static TypeCode of(int i) {
+    return i >= TypeCode.values.length ? TypeCode.unknown : TypeCode.values[i];
+  }
+
+  Object? decodeColumn(JSAny? column) {
+    const hasNativeInts = !identical(0, 0.0);
+
+    return switch (this) {
+      TypeCode.unknown => column.dartify(),
+      TypeCode.integer => (column as JSNumber).toDartInt,
+      TypeCode.bigInt => hasNativeInts
+          ? (column as JsBigInt).asDartInt
+          : (column as JsBigInt).asDartBigInt,
+      TypeCode.float => (column as JSNumber).toDartDouble,
+      TypeCode.text => (column as JSString).toDart,
+      TypeCode.blob => (column as JSUint8Array).toDart,
+      TypeCode.boolean => (column as JSBoolean).toDart,
+      TypeCode.$null => null,
+    };
+  }
+
+  static (TypeCode, JSAny?) encodeValue(Object? dart) {
+    // In previous clients/workers, values were encoded with dartify() and
+    // jsify() only. For backwards-compatibility, this value must be compatible
+    // with dartify() used on the other end.
+    // An exception are BigInts, which have not been sent correctly before this
+    // encoder.
+    // The reasons for adopting a custom format are: Being able to properly
+    // serialize BigInts, possible dartify/jsify incompatibilities between
+    // dart2js and dart2wasm and most importantly, being able to keep 1 and 1.0
+    // apart in dart2wasm when the worker is compiled with dart2js.
+    final JSAny? value;
+    final TypeCode code;
+
+    switch (dart) {
+      case null:
+        value = null;
+        code = TypeCode.$null;
+      case final int integer:
+        value = integer.toJS;
+        code = TypeCode.integer;
+      case final BigInt bi:
+        value = JsBigInt.fromBigInt(bi);
+        code = TypeCode.bigInt;
+      case final double d:
+        value = d.toJS;
+        code = TypeCode.float;
+      case final String s:
+        value = s.toJS;
+        code = TypeCode.text;
+      case final Uint8List blob:
+        value = blob.toJS;
+        code = TypeCode.blob;
+      case final bool boolean:
+        value = boolean.toJS;
+        code = TypeCode.boolean;
+      case final other:
+        value = other.jsify();
+        code = TypeCode.unknown;
+    }
+
+    return (code, value);
+  }
+
+  static (JSArray, JSArrayBuffer) encodeValues(List<Object?> values) {
+    final jsParams = <JSAny?>[];
+    final typeCodes = Uint8List(values.length);
+    for (var i = 0; i < values.length; i++) {
+      final (code, jsParam) = TypeCode.encodeValue(values[i]);
+      typeCodes[i] = code.index;
+      jsParams.add(jsParam);
+    }
+
+    final jsTypes = typeCodes.buffer.toJS;
+    return (jsParams.toJS, jsTypes);
+  }
+
+  static List<Object?> decodeValues(JSArray array, JSArrayBuffer? types) {
+    final rawParameters = array.toDart;
+    final typeVector = types?.toDart.asUint8List();
+
+    final parameters = List<Object?>.filled(rawParameters.length, null);
+    for (var i = 0; i < parameters.length; i++) {
+      final typeCode =
+          typeVector != null ? TypeCode.of(typeVector[i]) : TypeCode.unknown;
+      parameters[i] = typeCode.decodeColumn(rawParameters[i]);
+    }
+
+    return parameters;
+  }
+}
+
 final class RowsResponse extends Response {
   final ResultSet resultSet;
 
@@ -568,12 +682,20 @@ final class RowsResponse extends Response {
           ]
         : null;
 
+    final typeVector = switch (object[_UniqueFieldNames.typeVector]) {
+      final types? => (types as JSArrayBuffer).toDart.asUint8List(),
+      null => null,
+    };
     final rows = <List<Object?>>[];
+    var i = 0;
     for (final row in (object[_UniqueFieldNames.rows] as JSArray).toDart) {
       final dartRow = <Object?>[];
 
       for (final column in (row as JSArray).toDart) {
-        dartRow.add(column.dartify());
+        final typeCode =
+            typeVector != null ? TypeCode.of(typeVector[i]) : TypeCode.unknown;
+        dartRow.add(typeCode.decodeColumn(column));
+        i++;
       }
 
       rows.add(dartRow);
@@ -591,6 +713,29 @@ final class RowsResponse extends Response {
   @override
   void serialize(JSObject object, List<JSObject> transferred) {
     super.serialize(object, transferred);
+    final jsRows = <JSArray>[];
+    final columns = resultSet.columnNames.length;
+    final typeVector = Uint8List(resultSet.length * columns);
+
+    for (var i = 0; i < resultSet.length; i++) {
+      final row = resultSet.rows[i];
+      assert(row.length == columns);
+      final jsRow = List<JSAny?>.filled(row.length, null);
+
+      for (var j = 0; j < columns; j++) {
+        final (code, value) = TypeCode.encodeValue(row[j]);
+
+        jsRow[j] = value;
+        typeVector[i * columns + j] = code.index;
+      }
+
+      jsRows.add(jsRow.toJS);
+    }
+
+    final jsTypes = typeVector.buffer.toJS;
+    object[_UniqueFieldNames.typeVector] = jsTypes;
+    transferred.add(jsTypes);
+
     object[_UniqueFieldNames.rows] = <JSArray>[
       for (final row in resultSet.rows)
         <JSAny?>[
@@ -615,12 +760,33 @@ final class RowsResponse extends Response {
 final class ErrorResponse extends Response {
   final String message;
 
-  ErrorResponse({required this.message, required super.requestId});
+  /// We can't send Dart objects over web channels, but we're serializing the
+  /// most common exception types so that we can reconstruct them on the other
+  /// end.
+  final Object? serializedException;
+
+  ErrorResponse({
+    required this.message,
+    required super.requestId,
+    this.serializedException,
+  });
 
   factory ErrorResponse.deserialize(JSObject object) {
+    Object? serializedException;
+    if (object.has(_UniqueFieldNames.serializedExceptionType)) {
+      serializedException = switch (
+          (object[_UniqueFieldNames.serializedExceptionType] as JSNumber)
+              .toDartInt) {
+        _typeSqliteException => deserializeSqliteException(
+            object[_UniqueFieldNames.serializedException] as JSArray),
+        _ => null,
+      };
+    }
+
     return ErrorResponse(
       message: (object[_UniqueFieldNames.errorMessage] as JSString).toDart,
       requestId: object.requestId,
+      serializedException: serializedException,
     );
   }
 
@@ -631,12 +797,70 @@ final class ErrorResponse extends Response {
   void serialize(JSObject object, List<JSObject> transferred) {
     super.serialize(object, transferred);
     object[_UniqueFieldNames.errorMessage] = message.toJS;
+
+    if (serializedException case final SqliteException e?) {
+      object[_UniqueFieldNames.serializedExceptionType] =
+          _typeSqliteException.toJS;
+      object[_UniqueFieldNames.serializedException] =
+          serializeSqliteException(e);
+    }
   }
 
   @override
   RemoteException interpretAsError() {
-    return RemoteException(message: message);
+    return RemoteException(message: message, exception: serializedException);
   }
+
+  static SqliteException deserializeSqliteException(JSArray data) {
+    final [
+      message,
+      explanation,
+      extendedResultCode,
+      operation,
+      causingStatement,
+      paramData,
+      paramTypes,
+      ..._,
+    ] = data.toDart;
+
+    String? decodeNullableString(JSAny? jsValue) {
+      if (jsValue.isDefinedAndNotNull) {
+        return (jsValue as JSString).toDart;
+      }
+      return null;
+    }
+
+    return SqliteException(
+      (extendedResultCode as JSNumber).toDartInt,
+      (message as JSString).toDart,
+      decodeNullableString(explanation),
+      decodeNullableString(causingStatement),
+      paramData.isDefinedAndNotNull && paramTypes.isDefinedAndNotNull
+          ? TypeCode.decodeValues(
+              paramData as JSArray, paramTypes as JSArrayBuffer)
+          : null,
+      decodeNullableString(operation),
+    );
+  }
+
+  static JSArray serializeSqliteException(SqliteException e) {
+    final params = switch (e.parametersToStatement) {
+      null => null,
+      final parameters => TypeCode.encodeValues(parameters),
+    };
+
+    return [
+      e.message.toJS,
+      e.explanation?.toJS,
+      e.extendedResultCode.toJS,
+      e.operation?.toJS,
+      e.causingStatement?.toJS,
+      params?.$1,
+      params?.$2,
+    ].toJS;
+  }
+
+  static const _typeSqliteException = 0;
 }
 
 final class StreamRequest extends Request {
@@ -647,6 +871,7 @@ final class StreamRequest extends Request {
   /// updates.
   final bool action;
 
+  @override
   final MessageType<Message> type;
 
   StreamRequest({

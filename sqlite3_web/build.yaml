@@ -40,6 +40,11 @@ targets:
           exclude:
             - "example/worker.dart"
             - web/worker.dart
+        options:
+          compilers:
+            dart2js:
+            dart2wasm:
+          loader:
       # We have a designated target for this step.
       build_web_compilers:dart2js_archive_extractor:
         enabled: false

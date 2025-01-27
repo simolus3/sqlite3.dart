@@ -12,8 +12,8 @@ final class ExampleController extends DatabaseController {
   }
 
   @override
-  Future<WorkerDatabase> openDatabase(
-      WasmSqlite3 sqlite3, String path, String vfs) async {
+  Future<WorkerDatabase> openDatabase(WasmSqlite3 sqlite3, String path,
+      String vfs, JSAny? additionalOptions) async {
     return ExampleDatabase(database: sqlite3.open(path, vfs: vfs));
   }
 }
