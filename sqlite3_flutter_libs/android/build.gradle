@@ -16,7 +16,7 @@ buildscript {
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 32
+    compileSdkVersion 35
 
     // Conditional for compatibility with AGP <4.2.
     if (project.android.hasProperty("namespace")) {
