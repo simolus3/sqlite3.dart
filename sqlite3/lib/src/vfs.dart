@@ -5,6 +5,8 @@ import 'constants.dart';
 
 /// An exception thrown by [VirtualFileSystem] implementations written in Dart
 /// to signal that an operation could not be completed.
+///
+/// {@category common}
 final class VfsException implements Exception {
   /// The error code to return to sqlite3.
   final int returnCode;
@@ -18,6 +20,8 @@ final class VfsException implements Exception {
 }
 
 /// A filename passed to [VirtualFileSystem.xOpen].
+///
+/// {@category common}
 base class Sqlite3Filename {
   final String? path;
 
@@ -36,6 +40,8 @@ base class Sqlite3Filename {
 /// consider extending [BaseVirtualFileSystem].
 ///
 /// [vfs]: https://www.sqlite.org/c3ref/vfs.html
+///
+/// {@category common}
 abstract base class VirtualFileSystem {
   /// The name of this virtual file system.
   ///
@@ -80,6 +86,8 @@ typedef XOpenResult = ({int outFlags, VirtualFileSystemFile file});
 /// A file implemented by a VFS author and returned by [VirtualFileSystem.xOpen].
 ///
 /// To avoid common pitfalls, consider extending [BaseVfsFile] instead.
+///
+/// {@category common}
 abstract interface class VirtualFileSystemFile {
   /// Close this file.
   void xClose();
@@ -128,6 +136,8 @@ abstract interface class VirtualFileSystemFile {
 
 /// A [VirtualFileSystem] implementation that uses a [Random] instance for
 /// [xRandomness] and [DateTime.now] for [xCurrentTime].
+///
+/// {@category common}
 abstract base class BaseVirtualFileSystem extends VirtualFileSystem {
   final Random random;
 
@@ -160,11 +170,13 @@ abstract base class BaseVirtualFileSystem extends VirtualFileSystem {
 
 /// A [VirtualFileSystemFile] base class that implements [xRead] to zero-fill
 /// the buffer in case of short reads.
+///
+/// {@category common}
 abstract class BaseVfsFile implements VirtualFileSystemFile {
   /// Reads from the file at [offset] into the [buffer] and returns the amount
   /// of bytes read.
   ///
-  /// __Safety warning__: [bufer] may be a direct view over native memory that
+  /// __Safety warning__: [buffer] may be a direct view over native memory that
   /// must not be used after this function returns.
   int readInto(Uint8List buffer, int offset);
 

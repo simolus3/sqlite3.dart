@@ -5,8 +5,14 @@ import 'dart:math';
 import 'package:meta/meta.dart';
 
 /// Signature responsible for loading the dynamic sqlite3 library to use.
+///
+/// {@category native}
 typedef OpenLibrary = DynamicLibrary Function();
 
+/// An operating system supported by `package:sqlite3` when opening SQLite
+/// libraries.
+///
+/// {@category native}
 enum OperatingSystem {
   android,
   linux,
@@ -19,6 +25,8 @@ enum OperatingSystem {
 /// The instance managing different approaches to load the [DynamicLibrary] for
 /// sqlite when needed. See the documentation for [OpenDynamicLibrary] to learn
 /// how the default opening behavior can be overridden.
+///
+/// {@category native}
 final OpenDynamicLibrary open = OpenDynamicLibrary._();
 
 DynamicLibrary _defaultOpen() {
@@ -93,6 +101,8 @@ DynamicLibrary _defaultOpen() {
 /// The default behavior can be overridden for a specific OS by using
 /// [overrideFor]. To override the behavior on all platforms, use
 /// [overrideForAll].
+///
+/// {@category native}
 final class OpenDynamicLibrary {
   final Map<OperatingSystem, OpenLibrary> _overriddenPlatforms = {};
   OpenLibrary? _overriddenForAll;

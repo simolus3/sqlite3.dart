@@ -9,12 +9,8 @@
 /// persistent databases may change in a way that requires migration work in the
 /// future.
 ///
-/// As long as this library is marked as experimental, it is not subject to
-/// semantic versioning.
-@experimental
+/// {@category wasm}
 library;
-
-import 'package:meta/meta.dart';
 
 export 'common.dart';
 

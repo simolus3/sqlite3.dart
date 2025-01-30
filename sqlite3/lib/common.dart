@@ -1,5 +1,9 @@
 /// Exports common interfaces that are implemented by both the `dart:ffi` and
 /// the `dart:js` WASM version of this library.
+///
+/// {@category common}
+/// {@canonicalFor database.CommonDatabase}
+/// {@canonicalFor statement.CommonPreparedStatement}
 library;
 
 export 'src/constants.dart';

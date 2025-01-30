@@ -469,6 +469,8 @@ class _OffsetAndBuffer {
 /// with [flush]
 ///
 /// In the future, we may want to store individual blocks instead.
+///
+/// {@category wasm}
 
 final class IndexedDbFileSystem extends BaseVirtualFileSystem {
   final AsynchronousIndexedDbFileSystem _asynchronous;

@@ -10,6 +10,7 @@
 ///
 /// See also: SQLITE_IOERR_READ | extended result codes,
 /// sqlite3_vtab_on_conflictstatic const int ) SQLITE_ROLLBACK | result codes.
+/// {@category common}
 final class SqlError {
   /// Successful result
   static const int SQLITE_OK = 0;
@@ -112,6 +113,7 @@ final class SqlError {
 /// Note that the primary result code is always a part of the extended result code. Given a full 32-bit extended result code, the application can always find the corresponding primary result code merely by extracting the least significant 8 bits of the extended result code.
 ///
 /// All extended result codes are also error codes. Hence the terms "extended result code" and "extended error code" are interchangeable.
+/// {@category common}
 final class SqlExtendedError {
   /// The sqlite3_load_extension() interface loads an extension into a single database connection.
   ///
@@ -374,6 +376,7 @@ final class SqlExtendedError {
 /// These bit values are intended for use in the
 /// 3rd parameter to the [sqlite3_open_v2static const int )] interface and
 /// in the 4th parameter to the `xopen` method.
+/// {@category common}
 final class SqlFlag {
   /// Ok for sqlite3_open_v2static const int )
   static const int SQLITE_OPEN_READONLY = 0x00000001;
@@ -436,7 +439,9 @@ final class SqlFlag {
   static const int SQLITE_OPEN_WAL = 0x00080000;
 }
 
-// Prepare flags, https://www.sqlite.org/c3ref/c_prepare_normalize.html
+/// Prepare flags, https://www.sqlite.org/c3ref/c_prepare_normalize.html
+///
+/// {@category common}
 final class SqlPrepareFlag {
   ///The SQLITE_PREPARE_PERSISTENT flag is a hint to the query planner that the prepared statement will be retained for a long time and probably reused many times.
   /// Without this flag, sqlite3_prepare_v3static const int ) and sqlite3_prepare16_v3static const int ) assume that the prepared statement will be used just once or at most a few times and then destroyed using sqlite3_finalizestatic const int ) relatively soon.
@@ -453,6 +458,8 @@ final class SqlPrepareFlag {
 }
 
 /// Datatypes, https://sqlite.org/c3ref/c_blob.html
+///
+/// {@category common}
 final class SqlType {
   static const int SQLITE_INTEGER = 1;
   static const int SQLITE_FLOAT = 2;
@@ -463,6 +470,8 @@ final class SqlType {
 
 /// Text Encodings, https://www.sqlite.org/c3ref/c_any.html
 /// These constant define integer codes that represent the various text encodings supported by SQLite.
+///
+/// {@category common}
 final class SqlTextEncoding {
   ///IMP: R-37514-35566
   static const int SQLITE_UTF8 = 1;
@@ -484,6 +493,8 @@ final class SqlTextEncoding {
 }
 
 /// File lock levels, https://www.sqlite.org/c3ref/c_lock_exclusive.html
+///
+/// {@category common}
 final class SqlFileLockingLevels {
   static const SQLITE_LOCK_NONE = 0;
   static const SQLITE_LOCK_SHARED = 1;
@@ -493,6 +504,8 @@ final class SqlFileLockingLevels {
 }
 
 /// Special destructors, https://www.sqlite.org/c3ref/c_static.html
+///
+/// {@category common}
 final class SqlSpecialDestructor {
   /// it means that the content pointer is constant and will never change, It does not need to be destroyed
   static const SQLITE_STATIC = 0;
@@ -503,6 +516,8 @@ final class SqlSpecialDestructor {
 }
 
 /// Function flags, https://www.sqlite.org/c3ref/c_deterministic.html
+///
+/// {@category common}
 final class SqlFunctionFlag {
   /// The SQLITE_DETERMINISTIC flag means that the new function always gives the same output when the input parameters are the same
   static const SQLITE_DETERMINISTIC = 0x000000800;

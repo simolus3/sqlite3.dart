@@ -7,6 +7,8 @@ import 'package:meta/meta.dart';
 ///
 /// Result sets are either completely materialized ([ResultSet] with all rows
 /// being directly available), or executed row-by-row ([IteratingCursor]).
+///
+/// {@category common}
 sealed class Cursor {
   List<String> _columnNames;
 
@@ -51,11 +53,15 @@ sealed class Cursor {
 /// names might change in the first call to [moveNext]. So, these getters are
 /// only reliable after [moveNext] was called once (regardless of its return
 /// value).
+///
+/// {@category common}
 abstract class IteratingCursor extends Cursor implements Iterator<Row> {
   IteratingCursor(super._columnNames, super.tableNames);
 }
 
 /// Stores the full result of a select statement.
+///
+/// {@category common}
 final class ResultSet extends Cursor
     with
         ListMixin<Row>,
@@ -88,6 +94,8 @@ final class ResultSet extends Cursor
 /// value of a column by its name.
 /// The [columnAt] method may be used to obtain the value of a column by its
 /// index.
+///
+/// {@category common}
 final class Row
     with
         // ignore: prefer_mixin

@@ -12,6 +12,31 @@ import '../../../utils.dart';
 import 'sync_channel.dart';
 import 'worker.dart';
 
+/// A VFS implementation based on the file system access API without shared
+/// workers.
+///
+/// The file system access API provides synchronous access to opened files.
+/// These need to be opened first however, and that process is asynchronous.
+/// SQLite, being a C library, expects synchronous access to the file system.
+/// [WasmVfs] is a workaround for this problem that relies on a pair of workers
+/// that together make asynchronous APIs synchronous.
+///
+/// 1. One worker is responsible for hosting the database. This worker installs
+///    a [WasmVfs] on the registered SQLite instance.
+///    The worker uses [WasmVfs.createOptions] to obtain an options object
+///    containing shared array buffers for efficient communication.
+/// 2. Another worker is hosting the file system. This is asynchronous, but by
+///    using `Atomics` APIs and the shared array buffers, the database worker
+///    can access the file system synchronously.
+///
+/// The second worker is implemented by [VfsWorker]. Note that [WasmVfs] is only
+/// available in browsing contexts where shared array buffers and atomics are
+/// available.
+/// For an automatic feature detection and logic to pick a suitable
+/// implementation based on browser features, consider using a package like
+/// `sqlite3_web` (or `sqlite_async` for cross-platform support).
+///
+/// {@category wasm}
 final class WasmVfs extends BaseVirtualFileSystem {
   final RequestResponseSynchronizer synchronizer;
   final MessageSerializer serializer;
@@ -89,6 +114,8 @@ final class WasmVfs extends BaseVirtualFileSystem {
     return Atomics.supported && globalContext.has('SharedArrayBuffer');
   }
 
+  /// Creates [WorkerOptions] that can be sent to an [VfsWorker] instance which
+  /// is responsible for hosting the file system on the other end.
   static WorkerOptions createOptions({String root = 'pkg_sqlite3_db/'}) {
     return WorkerOptions(
       synchronizationBuffer: RequestResponseSynchronizer.createBuffer(),

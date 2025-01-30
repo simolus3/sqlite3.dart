@@ -1,0 +1,11 @@
+dartdoc:
+  categories:
+    "common":
+      markdown: doc/common.md
+      name: Cross-platform definitions
+    "native":
+      markdown: doc/native.md
+      name: Native only
+    "wasm":
+      markdown: doc/wasm.md
+      name: Web only

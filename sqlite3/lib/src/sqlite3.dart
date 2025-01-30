@@ -2,6 +2,8 @@ import 'database.dart';
 import 'vfs.dart';
 
 /// Provides access to `sqlite3` functions, such as opening new databases.
+///
+/// {@category common}
 abstract interface class CommonSqlite3 {
   /// The version of the sqlite3 library in used.
   Version get version;

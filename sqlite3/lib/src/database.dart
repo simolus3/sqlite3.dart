@@ -4,6 +4,8 @@ import 'statement.dart';
 import 'constants.dart';
 
 /// An opened sqlite3 database.
+///
+/// {@category common}
 abstract class CommonDatabase {
   /// Configuration for the database connection.
   ///
@@ -247,6 +249,8 @@ abstract class CommonDatabase {
 
 /// The kind of an [SqliteUpdate] received through a [CommonDatabase.updates]
 /// stream.
+///
+/// {@category common}
 enum SqliteUpdateKind {
   // Note: Changing the order of these fields is a breaking change, as they're
   // used in the sqlite3_web protocol.
@@ -262,6 +266,8 @@ enum SqliteUpdateKind {
 }
 
 /// A data change notification from sqlite.
+///
+/// {@category common}
 final class SqliteUpdate {
   /// The kind of write being reported.
   final SqliteUpdateKind kind;
@@ -295,6 +301,8 @@ final class SqliteUpdate {
 ///
 /// More information: https://www.sqlite.org/c3ref/db_config.html
 /// Available options are documented in https://www.sqlite.org/c3ref/c_dbconfig_defensive.html
+///
+/// {@category common}
 abstract base class DatabaseConfig {
   /// Update configuration that accepts an int value.
   /// Would throw when the internal C call returns a non-zero value.

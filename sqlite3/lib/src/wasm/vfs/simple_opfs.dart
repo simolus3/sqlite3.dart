@@ -48,6 +48,8 @@ enum FileType {
 /// not in the JavaScript context for a tab or a shared web worker.
 ///
 /// [file system access API]: https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API
+///
+/// {@category wasm}
 final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
   // The storage idea here is to open sync file handles at the beginning, so
   // that no new async open needs to happen when these callbacks are invoked by

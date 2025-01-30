@@ -13,16 +13,14 @@ import 'wasm_interop.dart';
 ///
 /// This implementation supports the same API as the native version based on
 /// `dart:ffi`, but runs in the web.
+///
+/// {@category wasm}
 final class WasmSqlite3 extends Sqlite3Implementation {
   /// Loads a web version of the sqlite3 libraries.
   ///
   /// [source] must be a byte buffer of a `sqlite.wasm` file prepared for this
   /// package. This file can be obtained at the [releases][pgk release] for this
   /// package.
-  ///
-  /// The [environment] can optionally be set to use a custom virtual file
-  /// system. By default, all databases opened are stored in memory only (this
-  /// includes databases opened with a path in [open]).
   ///
   /// When the [source] is obtained through a HTTP request, consider directly
   /// using [loadFromUrl] as that method is more efficient.
@@ -43,10 +41,6 @@ final class WasmSqlite3 extends Sqlite3Implementation {
   ///
   /// The native wasm library for sqlite3 is loaded from the [uri] with the
   /// desired [headers] through a `fetch` request.
-  ///
-  /// The [environment] can optionally be set to use a custom virtual file
-  /// system. By default, all databases opened are stored in memory only (this
-  /// includes databases opened with a path in [open]).
   ///
   /// [pgk release]: https://github.com/simolus3/sqlite3.dart/releases
   static Future<WasmSqlite3> loadFromUrl(

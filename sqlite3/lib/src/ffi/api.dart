@@ -9,11 +9,15 @@ import 'implementation.dart';
 Sqlite3? _sqlite3;
 
 /// Provides access to `sqlite3` functions, such as opening new databases.
+///
+/// {@category native}
 Sqlite3 get sqlite3 {
   return _sqlite3 ??= FfiSqlite3(open.openSqlite());
 }
 
 /// Provides access to `sqlite3` functions, such as opening new databases.
+///
+/// {@category native}
 abstract interface class Sqlite3 implements CommonSqlite3 {
   @override
   Database open(
@@ -60,6 +64,8 @@ abstract interface class Sqlite3 implements CommonSqlite3 {
 ///  - this C file: https://github.com/simolus3/sqlite3.dart/blob/main/sqlite3/test/ffi/test_extension.c
 ///  - this Dart test loading it: https://github.com/simolus3/sqlite3.dart/blob/a9a379494c6b8d58a3c31cf04fe16e83b49130f1/sqlite3/test/ffi/sqlite3_test.dart#L35
 ///  - Or, alternatively, this Flutter example: https://github.com/simolus3/sqlite3.dart/tree/main/sqlite3/example/custom_extension
+///
+/// {@category native}
 abstract interface class SqliteExtension {
   /// A sqlite extension having the given [extensionEntrypoint] as a function
   /// pointer.
@@ -95,6 +101,8 @@ abstract interface class SqliteExtension {
 ///
 /// See [CommonDatabase] for the methods that are available on both the FFI and
 /// the WebAssembly implementation.
+///
+/// {@category native}
 abstract class Database extends CommonDatabase {
   /// The native database connection handle from sqlite.
   ///
@@ -132,6 +140,8 @@ abstract class Database extends CommonDatabase {
 }
 
 /// A prepared statement.
+///
+/// {@category native}
 abstract class PreparedStatement implements CommonPreparedStatement {
   /// The underlying `sqlite3_stmt` pointer.
   ///

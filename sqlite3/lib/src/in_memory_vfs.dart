@@ -13,6 +13,8 @@ import 'utils.dart';
 /// This file system is commonly used on the web as a buffer in front of
 /// asynchronous storage APIs like IndexedDb. It can also serve as an example on
 /// how to write custom file systems to be used with sqlite3.
+///
+/// {@category common}
 final class InMemoryFileSystem extends BaseVirtualFileSystem {
   final Map<String, Uint8Buffer?> fileData = {};
 

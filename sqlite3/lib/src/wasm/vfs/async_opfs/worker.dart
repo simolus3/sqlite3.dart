@@ -24,6 +24,10 @@ void _log(String message) {
   if (_workerDebugLog) print(message);
 }
 
+/// Options created by an [WasmVfs]. These include the shared array buffers used
+/// to make asynchronous web APIs synchronous for SQLite.
+///
+/// {@category wasm}
 @JS()
 @anonymous
 extension type WorkerOptions._raw(JSObject _) implements JSObject {
@@ -67,6 +71,16 @@ class _ResolvedPath {
   }
 }
 
+/// Contains code used to implement web workers that are prodiving synchronous
+/// access to asynchronous web APIs (like OPFS).
+///
+/// Users of this library are supposed to construct [WorkerOptions] in their
+/// database worker and send them to another worker responsible for hosting the
+/// file system.
+/// That worker uses [VfsWorker.create] to make the file system accessible.
+/// For more details and an overview of this implementation, see [WasmVfs].
+///
+/// {@category wasm}
 class VfsWorker {
   final RequestResponseSynchronizer synchronizer;
   final MessageSerializer messages;

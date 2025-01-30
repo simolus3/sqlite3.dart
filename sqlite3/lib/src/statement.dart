@@ -4,6 +4,8 @@ import 'exception.dart';
 import 'result_set.dart';
 
 /// A prepared statement.
+///
+/// {@category common}
 abstract class CommonPreparedStatement {
   /// The SQL statement backing this prepared statement.
   String get sql;
@@ -138,6 +140,8 @@ abstract class CommonPreparedStatement {
 /// `sqlite3`, [CustomStatementParameter] can be implemented and passed as a
 /// parameter as well.
 ///
+/// {@category common}
+///
 /// [parameters]: https://www.sqlite.org/lang_expr.html#varparam
 sealed class StatementParameters {
   /// Convenience factory to use when no parameters should be passed.
@@ -196,6 +200,8 @@ class CustomParameters implements StatementParameters {
 /// For advanced APIs, such as the [pointer-passing](https://www.sqlite.org/bindptr.html)
 /// interface that can't directly be represented in a high-level Dart interface,
 /// this class can be used to manually bind a value.
+///
+/// {@category common}
 abstract interface class CustomStatementParameter {
   /// Applies this custom parameter to the [statement] at the variable index
   /// [index].

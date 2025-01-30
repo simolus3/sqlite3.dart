@@ -51,6 +51,8 @@ typedef ScalarFunction = Object? Function(List<Object?> arguments);
 ///  }
 ///}
 /// ```
+///
+/// {@category common}
 @immutable
 abstract class AggregateFunction<V> {
   /// Creates an initial context holding the initial value before [step] is
@@ -114,6 +116,8 @@ abstract class AggregateFunction<V> {
 ///  Object? value(AggregateContext<int> context) => context.value;
 ///}
 /// ```
+///
+/// {@category common}
 
 @immutable
 abstract class WindowFunction<V> implements AggregateFunction<V> {
@@ -128,6 +132,8 @@ abstract class WindowFunction<V> implements AggregateFunction<V> {
 }
 
 /// Application-defined context used to compute results in aggregate functions.
+///
+/// {@category common}
 final class AggregateContext<V> {
   /// The current value of this context.
   V value;
@@ -137,6 +143,8 @@ final class AggregateContext<V> {
 }
 
 /// Describes how many arguments an application-defined sql function can take.
+///
+/// {@category common}
 final class AllowedArgumentCount {
   final int allowedArgs;
 

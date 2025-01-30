@@ -37,6 +37,7 @@ import 'package:typed_data/typed_buffers.dart';
 /// ```
 ///
 /// [JSONB]: https://sqlite.org/jsonb.html
+/// {@category common}
 const Codec<Object?, Uint8List> jsonb = _JsonbCodec();
 
 final class _JsonbCodec extends Codec<Object?, Uint8List> {
