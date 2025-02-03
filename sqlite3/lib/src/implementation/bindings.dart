@@ -70,6 +70,8 @@ abstract base class RawSqliteDatabase {
   int sqlite3_exec(String sql);
 
   int sqlite3_extended_errcode();
+  int sqlite3_error_offset();
+
   void sqlite3_extended_result_codes(int onoff);
   int sqlite3_close_v2();
   String sqlite3_errmsg();

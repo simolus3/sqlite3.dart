@@ -135,6 +135,11 @@ final class WasmDatabase extends RawSqliteDatabase {
   }
 
   @override
+  int sqlite3_error_offset() {
+    return bindings.sqlite3_error_offset(db);
+  }
+
+  @override
   void sqlite3_extended_result_codes(int onoff) {
     bindings.sqlite3_extended_result_codes(db, onoff);
   }

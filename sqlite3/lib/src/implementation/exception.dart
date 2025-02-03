@@ -13,6 +13,11 @@ SqliteException createExceptionRaw(
   // Getting hold of more explanatory error code as SQLITE_IOERR error group has
   // an extensive list of extended error codes
   final extendedCode = db.sqlite3_extended_errcode();
+  final offset = switch (db.sqlite3_error_offset()) {
+    < 0 => null,
+    final offset => offset,
+  };
+
   return createExceptionFromExtendedCode(
     bindings,
     db,
@@ -21,6 +26,7 @@ SqliteException createExceptionRaw(
     operation: operation,
     previousStatement: previousStatement,
     statementArgs: statementArgs,
+    offset: offset,
   );
 }
 
@@ -32,6 +38,7 @@ SqliteException createExceptionFromExtendedCode(
   String? operation,
   String? previousStatement,
   List<Object?>? statementArgs,
+  int? offset,
 }) {
   // We don't need to free the pointer returned by sqlite3_errmsg: "Memory to
   // hold the error message string is managed internally. The application does
@@ -48,6 +55,7 @@ SqliteException createExceptionFromExtendedCode(
     previousStatement,
     statementArgs,
     operation,
+    offset,
   );
 }
 
@@ -68,10 +76,14 @@ SqliteException createException(
   );
 }
 
-Never throwException(DatabaseImplementation db, int returnCode,
-    {String? operation,
-    String? previousStatement,
-    List<Object?>? statementArgs}) {
+Never throwException(
+  DatabaseImplementation db,
+  int returnCode, {
+  String? operation,
+  String? previousStatement,
+  List<Object?>? statementArgs,
+  int? offset,
+}) {
   throw createException(
     db,
     returnCode,

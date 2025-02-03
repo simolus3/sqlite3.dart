@@ -25,6 +25,10 @@ final class SqliteException implements Exception {
   /// code, providing some idea of the cause of the failure.
   int get resultCode => extendedResultCode & 0xFF;
 
+  /// If this error is related to a syntex error in SQL, contains the byte
+  /// offset of the token associated with the error.
+  final int? offset;
+
   /// An informal description of what the `sqlite3` package was attempting to do
   /// when the exception occured, e.g. "preparing a statement",
   /// "opening the database".
@@ -48,6 +52,7 @@ final class SqliteException implements Exception {
     this.causingStatement,
     this.parametersToStatement,
     this.operation,
+    this.offset,
   ]);
 
   @override
@@ -67,7 +72,8 @@ final class SqliteException implements Exception {
     if (causingStatement != null) {
       buffer
         ..writeln()
-        ..write('  Causing statement: ')
+        ..write('  Causing statement')
+        ..write(offset != null ? ' (at position $offset): ' : ': ')
         ..write(causingStatement);
 
       if (parametersToStatement != null) {

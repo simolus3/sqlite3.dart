@@ -89,7 +89,8 @@ class WasmBindings {
   final JSFunction? _sqlite3_db_config,
       _sqlite3_initialize,
       _commit_hooks,
-      _rollback_hooks;
+      _rollback_hooks,
+      _sqlite3_error_offset;
 
   final Global _sqlite3_temp_directory;
 
@@ -167,6 +168,7 @@ class WasmBindings {
         _sqlite3_stmt_readonly = instance.functions['sqlite3_stmt_readonly']!,
         _sqlite3_db_config = instance.functions['dart_sqlite3_db_config_int'],
         _sqlite3_initialize = instance.functions['sqlite3_initialize'],
+        _sqlite3_error_offset = instance.functions['sqlite3_error_offset'],
         _commit_hooks = instance.functions['dart_sqlite3_commits'],
         _rollback_hooks = instance.functions['dart_sqlite3_rollbacks'],
         _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']!
@@ -284,6 +286,10 @@ class WasmBindings {
 
   Pointer sqlite3_errstr(int resultCode) =>
       _sqlite3_errstr.callReturningInt(resultCode.toJS);
+
+  int sqlite3_error_offset(Pointer db) {
+    return _sqlite3_error_offset?.callReturningInt(db.toJS) ?? -1;
+  }
 
   int sqlite3_extended_result_codes(Pointer db, int onoff) {
     return _sqlite3_extended_result_codes.callReturningInt2(

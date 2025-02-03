@@ -2,6 +2,7 @@
 
 - Web: Support `localtime` datetime modifier in SQLite.
 - Introduce topics to dartdoc documentation.
+- Report locations of syntax errors in `SqliteException`.
 
 ## 2.7.2
 

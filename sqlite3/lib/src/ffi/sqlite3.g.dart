@@ -167,6 +167,20 @@ class Bindings {
   late final _sqlite3_errstr =
       _sqlite3_errstrPtr.asFunction<ffi.Pointer<sqlite3_char> Function(int)>();
 
+  int sqlite3_error_offset(
+    ffi.Pointer<sqlite3> db,
+  ) {
+    return _sqlite3_error_offset(
+      db,
+    );
+  }
+
+  late final _sqlite3_error_offsetPtr =
+      _lookup<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3>)>>(
+          'sqlite3_error_offset');
+  late final _sqlite3_error_offset =
+      _sqlite3_error_offsetPtr.asFunction<int Function(ffi.Pointer<sqlite3>)>();
+
   void sqlite3_free(
     ffi.Pointer<ffi.Void> ptr,
   ) {

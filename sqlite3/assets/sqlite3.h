@@ -24,6 +24,7 @@ int sqlite3_extended_result_codes(sqlite3 *db, int onoff);
 int sqlite3_extended_errcode(sqlite3 *db);
 sqlite3_char *sqlite3_errmsg(sqlite3 *db);
 sqlite3_char *sqlite3_errstr(int code);
+int sqlite3_error_offset(sqlite3 *db);
 void sqlite3_free(void *ptr);
 
 // Versions

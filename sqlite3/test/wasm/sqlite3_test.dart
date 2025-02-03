@@ -98,6 +98,24 @@ void main() {
           });
         }
       });
+
+      test('can report error location', () {
+        final db = sqlite3.openInMemory();
+        addTearDown(db.dispose);
+
+        expect(
+          () => db.select('SELECT totally invalid syntax;'),
+          throwsA(isA<SqliteException>()
+              .having(
+                (e) => e.causingStatement,
+                'causingStatement',
+                'SELECT totally invalid syntax;',
+              )
+              .having((e) => e.offset, 'offset', 23)
+              .having((e) => e.toString(), 'toString()',
+                  contains('Causing statement (at position 23): SELECT'))),
+        );
+      });
     });
   }
 

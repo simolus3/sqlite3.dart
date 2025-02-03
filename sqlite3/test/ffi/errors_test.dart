@@ -9,6 +9,9 @@ import 'package:test/test.dart';
 import 'package:test_descriptor/test_descriptor.dart' as d;
 
 void main() {
+  final version = sqlite3.version;
+  final hasErrorOffset = version.versionNumber > 3038000;
+
   test('open read-only exception', () async {
     final path = d.path('read_only_exception.db');
 
@@ -153,5 +156,27 @@ SqliteException(1): message
   Causing statement: SELECT foo;''',
       );
     });
+
+    test(
+      'reports position',
+      () {
+        final db = sqlite3.openInMemory();
+        addTearDown(db.dispose);
+
+        expect(
+          () => db.select('SELECT totally invalid syntax;'),
+          throwsA(isA<SqliteException>()
+              .having(
+                (e) => e.causingStatement,
+                'causingStatement',
+                'SELECT totally invalid syntax;',
+              )
+              .having((e) => e.offset, 'offset', 23)
+              .having((e) => e.toString(), 'toString()',
+                  contains('Causing statement (at position 23): SELECT'))),
+        );
+      },
+      skip: hasErrorOffset ? null : 'Missing sqlite3_error_offset',
+    );
   });
 }

@@ -24,6 +24,7 @@ class BindingsWithLibrary {
   final DynamicLibrary library;
 
   final bool supportsPrepareV3;
+  final bool supportsErrorOffset;
   final bool supportsColumnTableName;
 
   factory BindingsWithLibrary(DynamicLibrary library) {
@@ -50,17 +51,18 @@ class BindingsWithLibrary {
         i++;
       } while (lastOption != null);
     }
+    final supportsErrorOffset = library.providesSymbol('sqlite3_error_offset');
 
     return BindingsWithLibrary._(
-      bindings,
-      library,
-      bindings.sqlite3_libversion_number() >= _firstVersionForV3,
-      hasColumnMetadata,
-    );
+        bindings,
+        library,
+        bindings.sqlite3_libversion_number() >= _firstVersionForV3,
+        hasColumnMetadata,
+        supportsErrorOffset);
   }
 
   BindingsWithLibrary._(this.bindings, this.library, this.supportsPrepareV3,
-      this.supportsColumnTableName);
+      this.supportsColumnTableName, this.supportsErrorOffset);
 }
 
 final class FfiBindings extends RawSqliteBindings {
@@ -432,6 +434,15 @@ final class FfiDatabase extends RawSqliteDatabase {
   @override
   int sqlite3_extended_errcode() {
     return bindings.bindings.sqlite3_extended_errcode(db);
+  }
+
+  @override
+  int sqlite3_error_offset() {
+    if (bindings.supportsErrorOffset) {
+      return bindings.bindings.sqlite3_error_offset(db);
+    } else {
+      return -1;
+    }
   }
 
   @override
