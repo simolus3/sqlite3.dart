@@ -4,11 +4,12 @@ import 'dart:js_interop_unsafe';
 
 import 'package:web/web.dart'
     show
-        IDBFactory,
-        IDBDatabaseInfo,
-        IDBRequest,
+        EventStreamProviders,
         IDBCursor,
-        EventStreamProviders;
+        IDBDatabaseInfo,
+        IDBFactory,
+        IDBRequest,
+        IDBTransaction;
 
 extension RequestExt on IDBRequest {
   /// A [StreamIterator] to asynchronously iterate over a [Cursor].
@@ -90,6 +91,7 @@ extension CompleteIdbRequest on IDBRequest {
     final completer = Completer<T>.sync();
 
     EventStreamProviders.successEvent.forTarget(this).listen((event) {
+      print('complete complete complete');
       completer.complete(result as T);
     });
     EventStreamProviders.errorEvent.forTarget(this).listen((event) {
@@ -113,6 +115,39 @@ extension CompleteOpenIdbRequest on IDBRequest {
     EventStreamProviders.blockedEvent.forTarget(this).listen((event) {
       completer.completeError(error ?? event);
     });
+
+    return completer.future;
+  }
+}
+
+extension CompleteOrAbortTransaction on IDBTransaction {
+  /// Waits for the transaction to complete, returning whether the transaction
+  /// was committed or aborted.
+  Future<bool> waitForCompletion() {
+    final completer = Completer<bool>.sync();
+    final subscriptions = <StreamSubscription<void>>[];
+
+    void unsubscribe() {
+      for (final subscription in subscriptions) {
+        subscription.cancel();
+      }
+    }
+
+    subscriptions
+        .add(EventStreamProviders.completeEvent.forTarget(this).listen((event) {
+      completer.complete(true);
+      unsubscribe();
+    }));
+    subscriptions
+        .add(EventStreamProviders.abortEvent.forTarget(this).listen((event) {
+      completer.complete(false);
+      unsubscribe();
+    }));
+    subscriptions
+        .add(EventStreamProviders.errorEvent.forTarget(this).listen((event) {
+      completer.completeError(error ?? event);
+      unsubscribe();
+    }));
 
     return completer.future;
   }
