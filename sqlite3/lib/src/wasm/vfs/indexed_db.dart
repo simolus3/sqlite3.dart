@@ -1,6 +1,3 @@
-@JS()
-library;
-
 import 'dart:async';
 import 'dart:collection';
 import 'dart:js_interop';
@@ -17,6 +14,25 @@ import '../js_interop.dart';
 import '../../in_memory_vfs.dart';
 import '../../utils.dart';
 
+// Format of the files store: `{name: <path>, length: <size>}`. See also
+// [_FileEntry], which is the actual object that we're storing in the
+// database.
+const _filesStore = 'files';
+const _fileName = 'name';
+const _fileNameIndex = 'fileName';
+
+// Format of blocks store: Key is a (file id, offset) pair, value is a blob.
+// Each blob is 4096 bytes large. If we have a file that isn't a multiple of
+// this length, we set the "length" attribute on the file instead of storing
+// shorter blobs. This simplifies the implementation.
+const _blocksStore = 'blocks';
+
+const _stores = [_filesStore, _blocksStore];
+final _storesJs = [_filesStore.toJS, _blocksStore.toJS].toJS;
+
+const _blockSize = 4096;
+const _maxFileSize = 9007199254740992;
+
 /// An (asynchronous) file system implementation backed by IndexedDB.
 ///
 /// For a synchronous variant of this that implements [FileSystem], use
@@ -24,25 +40,6 @@ import '../../utils.dart';
 /// file system (at the loss of durability guarantees).
 @internal
 class AsynchronousIndexedDbFileSystem {
-  // Format of the files store: `{name: <path>, length: <size>}`. See also
-  // [_FileEntry], which is the actual object that we're storing in the
-  // database.
-  static const _filesStore = 'files';
-  static const _fileName = 'name';
-  static const _fileNameIndex = 'fileName';
-
-  // Format of blocks store: Key is a (file id, offset) pair, value is a blob.
-  // Each blob is 4096 bytes large. If we have a file that isn't a multiple of
-  // this length, we set the "length" attribute on the file instead of storing
-  // shorter blobs. This simplifies the implementation.
-  static const _blocksStore = 'blocks';
-
-  static const _stores = [_filesStore, _blocksStore];
-  static final _storesJs = [_filesStore.toJS, _blocksStore.toJS].toJS;
-
-  static const _blockSize = 4096;
-  static const _maxFileSize = 9007199254740992;
-
   web.IDBDatabase? _database;
   final String _dbName;
 
@@ -112,22 +109,6 @@ class AsynchronousIndexedDbFileSystem {
           (row.primaryKey! as JSNumber).toDartInt;
     }
     return result;
-  }
-
-  Future<int?> fileIdForPath(String path) async {
-    final transaction = _database!.transaction(_filesStore.toJS, 'readonly');
-    final index = transaction.objectStore(_filesStore).index(_fileNameIndex);
-
-    return (await index.getKey(path.toJS).complete<JSNumber>()).toDartInt;
-  }
-
-  Future<int> createFile(String path) async {
-    final transaction = _database!.transaction(_filesStore.toJS, 'readwrite');
-    final store = transaction.objectStore(_filesStore);
-
-    final res =
-        await store.put(_FileEntry(name: path, length: 0)).complete<JSNumber>();
-    return res.toDartInt;
   }
 
   Future<_FileEntry> _readFile(web.IDBTransaction transaction, int fileId) {
@@ -255,83 +236,129 @@ class AsynchronousIndexedDbFileSystem {
     return bytesRead;
   }
 
-  Future<void> _write(int fileId, _FileWriteRequest writes) async {
-    final transaction = _database!.transaction(_storesJs, 'readwrite');
-    final blocks = transaction.objectStore(_blocksStore);
-    final file = await _readFile(transaction, fileId);
+  _WritingTransaction _startTransaction() {
+    final idbTransaction = _database!.transaction(_storesJs, 'readwrite');
+    return _WritingTransaction(this, idbTransaction);
+  }
+}
 
-    Future<void> writeBlock(int blockStart, Uint8List block) async {
-      assert(block.length == _blockSize, 'Invalid block size');
+final class _WritingTransaction {
+  final AsynchronousIndexedDbFileSystem fs;
 
-      // Check if we're overriding (parts of) an existing block
-      final cursor = await blocks
-          .openCursor(web.IDBKeyRange.only([fileId.toJS, blockStart.toJS].toJS))
-          .complete<web.IDBCursorWithValue?>();
+  final web.IDBTransaction transaction;
+  final web.IDBObjectStore blocks;
+  final web.IDBObjectStore files;
 
-      final value = block.buffer.toJS;
+  var awaitCompletion = false;
 
-      if (cursor == null) {
-        // There isn't, let's write a new block
-        await blocks
-            .put(value, [fileId.toJS, blockStart.toJS].toJS)
-            .complete<JSAny?>();
-      } else {
-        await cursor.update(value).complete<JSAny?>();
+  _WritingTransaction(this.fs, this.transaction)
+      : blocks = transaction.objectStore(_blocksStore),
+        files = transaction.objectStore(_filesStore);
+
+  // Note: We can't really use async/await here because it's hard to guarantee
+  // that these won't yield to the event loop. We need to use transaction
+  // results synchronously, or otherwise the entire transaction goes scale.
+
+  Future<int?> fileIdForPath(String path) {
+    final index = files.index(_fileNameIndex);
+    return index
+        .getKey(path.toJS)
+        .complete<JSNumber>()
+        .then((r) => r.toDartInt);
+  }
+
+  Future<int> createFile(String path) {
+    return files
+        .put(_FileEntry(name: path, length: 0))
+        .complete<JSNumber>()
+        .then((r) => r.toDartInt);
+  }
+
+  Future<void> write(int fileId, _FileWriteRequest writes) async {
+    return fs._readFile(transaction, fileId).then((file) {
+      Future<void> writeBlock(int blockStart, Uint8List block) async {
+        assert(block.length == _blockSize, 'Invalid block size');
+
+        // Check if we're overriding (parts of) an existing block
+        final cursor = await blocks
+            .openCursor(
+                web.IDBKeyRange.only([fileId.toJS, blockStart.toJS].toJS))
+            .complete<web.IDBCursorWithValue?>();
+
+        final value = block.buffer.toJS;
+
+        if (cursor == null) {
+          // There isn't, let's write a new block
+          await blocks
+              .put(value, [fileId.toJS, blockStart.toJS].toJS)
+              .complete<JSAny?>();
+        } else {
+          await cursor.update(value).complete<JSAny?>();
+        }
       }
-    }
 
-    final changedOffsets = writes.replacedBlocks.keys.toList()..sort();
-    await Future.wait(changedOffsets
-        .map((offset) => writeBlock(offset, writes.replacedBlocks[offset]!)));
+      Future<void> changeLength() {
+        final fileCursor = files.openCursor(fileId.toJS).cursorIterator();
+        return fileCursor.moveNext().then((_) {
+          // Update the file length as recorded in the database
+          return fileCursor.current
+              .update(_FileEntry(name: file.name, length: writes.newFileLength))
+              .complete()
+              .then((_) => null);
+        });
+      }
 
-    if (writes.newFileLength != file.length) {
-      final files = transaction.objectStore(_filesStore);
-      final fileCursor = files.openCursor(fileId.toJS).cursorIterator();
-      await fileCursor.moveNext();
-      // Update the file length as recorded in the database
-      await fileCursor.current
-          .update(_FileEntry(name: file.name, length: writes.newFileLength))
-          .complete();
-    }
+      final changedOffsets = writes.replacedBlocks.keys.toList()..sort();
+      return Future.wait(
+        [
+          for (final offset in changedOffsets)
+            writeBlock(offset, writes.replacedBlocks[offset]!),
+          if (writes.newFileLength != file.length) changeLength(),
+        ],
+      ).then((_) => null);
+    });
   }
 
-  Future<void> truncate(int fileId, int length) async {
-    final transaction = _database!.transaction(_storesJs, 'readwrite');
-    final files = transaction.objectStore(_filesStore);
-    final blocks = transaction.objectStore(_blocksStore);
-
-    // First, let's find the size of the file
-    final file = await _readFile(transaction, fileId);
-    final fileLength = file.length;
-
-    if (fileLength > length) {
-      final lastBlock = (length ~/ _blockSize) * _blockSize;
-
-      // Delete all higher blocks
-      await blocks
-          .delete(_rangeOverFile(fileId, startOffset: lastBlock + 1))
-          .complete();
-    } else if (fileLength < length) {}
-
-    // Update the file length as recorded in the database
-    final fileCursor = files.openCursor(fileId.toJS).cursorIterator();
-    await fileCursor.moveNext();
-
-    await fileCursor.current
-        .update(_FileEntry(name: file.name, length: length))
-        .complete();
-  }
-
-  Future<void> deleteFile(int id) async {
-    final transaction = _database!
-        .transaction([_filesStore.toJS, _blocksStore.toJS].toJS, 'readwrite');
-
+  Future<void> deleteFile(int id) {
     final blocksRange =
-        _rangeOverFile(id, startOffset: 0, endOffsetInclusive: _maxFileSize);
-    await Future.wait<void>([
-      transaction.objectStore(_blocksStore).delete(blocksRange).complete(),
-      transaction.objectStore(_filesStore).delete(id.toJS).complete(),
+        fs._rangeOverFile(id, startOffset: 0, endOffsetInclusive: _maxFileSize);
+    return Future.wait<void>([
+      blocks.delete(blocksRange).complete(),
+      files.delete(id.toJS).complete(),
     ]);
+  }
+
+  Future<void> truncate(int fileId, int length) {
+    // First, let's find the size of the file
+    return fs._readFile(transaction, fileId).then((file) {
+      final fileLength = file.length;
+
+      if (fileLength > length) {
+        final lastBlock = (length ~/ _blockSize) * _blockSize;
+
+        // Delete all higher blocks
+        return blocks
+            .delete(fs._rangeOverFile(fileId, startOffset: lastBlock + 1))
+            .complete();
+      } else if (fileLength < length) {}
+
+      // Update the file length as recorded in the database
+      final fileCursor = files.openCursor(fileId.toJS).cursorIterator();
+
+      return fileCursor.moveNext().then((_) {
+        return fileCursor.current
+            .update(_FileEntry(name: file.name, length: length))
+            .complete()
+            .then((_) => null);
+      });
+    });
+  }
+
+  Future<void> waitForCompletion() async {
+    final completed = await transaction.waitForCompletion();
+    if (!completed) {
+      throw StateError('Unexpected abort event on IndexedDB transaction');
+    }
   }
 }
 
@@ -348,8 +375,6 @@ extension type _FileEntry._(JSObject _) implements JSObject {
 }
 
 class _FileWriteRequest {
-  static const _blockLength = AsynchronousIndexedDbFileSystem._blockSize;
-
   final Uint8List originalContent;
   final Map<int, Uint8List> replacedBlocks = {};
   int newFileLength;
@@ -359,14 +384,14 @@ class _FileWriteRequest {
 
   void _updateBlock(int blockOffset, int offsetInBlock, Uint8List data) {
     final block = replacedBlocks.putIfAbsent(blockOffset, () {
-      final block = Uint8List(_blockLength);
+      final block = Uint8List(_blockSize);
 
       if (originalContent.length > blockOffset) {
         block.setAll(
           0,
           originalContent.buffer.asUint8List(
             originalContent.offsetInBytes + blockOffset,
-            min(_blockLength, originalContent.length - blockOffset),
+            min(_blockSize, originalContent.length - blockOffset),
           ),
         );
       }
@@ -381,18 +406,18 @@ class _FileWriteRequest {
     var offsetInData = 0;
     while (offsetInData < data.length) {
       final offsetInFile = offset + offsetInData;
-      final blockStart = offsetInFile ~/ _blockLength * _blockLength;
+      final blockStart = offsetInFile ~/ _blockSize * _blockSize;
 
       int offsetInBlock, bytesToWrite;
 
-      if (offsetInFile % _blockLength != 0) {
+      if (offsetInFile % _blockSize != 0) {
         // Write to block boundary
-        offsetInBlock = offsetInFile % _blockLength;
+        offsetInBlock = offsetInFile % _blockSize;
         bytesToWrite =
-            min(_blockLength - offsetInBlock, data.length - offsetInData);
+            min(_blockSize - offsetInBlock, data.length - offsetInData);
       } else {
         // Write full block if possible
-        bytesToWrite = min(_blockLength, data.length - offsetInData);
+        bytesToWrite = min(_blockSize, data.length - offsetInData);
         offsetInBlock = 0;
       }
 
@@ -429,11 +454,11 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
   final AsynchronousIndexedDbFileSystem _asynchronous;
 
   var _isClosing = false;
-  _IndexedDbWorkItem? _currentWorkItem;
 
   // A cache so that synchronous changes are visible right away
   final InMemoryFileSystem _memory;
-  final LinkedList<_IndexedDbWorkItem> _pendingWork = LinkedList();
+  LinkedList<_IndexedDbWorkItem> _pendingWork = LinkedList();
+  var _isWorking = false;
 
   final Set<String> _inMemoryOnlyFiles = {};
   final Map<String, int> _knownFileIds = {};
@@ -499,28 +524,54 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
   }
 
   Future<void> _submitWorkFunction(
-      FutureOr<void> Function() work, String description) {
+      FutureOr<void> Function(_WritingTransaction tx) work,
+      String description) {
     return _submitWork(_FunctionWorkItem(work, description));
   }
 
   void _startWorkingIfNeeded() {
-    if (_currentWorkItem == null && _pendingWork.isNotEmpty) {
-      final item = _currentWorkItem = _pendingWork.first;
-      _pendingWork.remove(item);
+    if (!_isWorking && _pendingWork.isNotEmpty) {
+      final list = _pendingWork;
 
-      final workUnit = Future(item.run).whenComplete(() {
-        _currentWorkItem = null;
+      // Make sure subsequent operations get added to a new batch
+      _pendingWork = LinkedList();
+      _isWorking = true;
 
-        // In case there's another item in the waiting list
+      final transaction = _asynchronous._startTransaction();
+      Future<void>? future;
+      for (final item in list) {
+        if (future == null) {
+          future = Future.sync(() => item.run(transaction));
+        } else {
+          future = future.then((_) => Future.sync(() => item.run(transaction)));
+        }
+      }
+
+      future!.then((_) => transaction.transaction.commit(),
+          onError: (Object e) {
+        transaction.transaction.abort();
+        throw e;
+      }).whenComplete(() {
+        for (final item in list) {
+          item.completer.complete();
+        }
+
+        final completion = transaction.waitForCompletion();
+        if (transaction.awaitCompletion) {
+          return completion;
+        }
+      }).whenComplete(() {
+        _isWorking = false;
+
+        // In case there are more items in the waiting list
         _startWorkingIfNeeded();
       });
-      item.completer.complete(workUnit);
     }
   }
 
   Future<void> close() async {
     if (!_isClosing) {
-      final result = _submitWorkFunction(_asynchronous.close, 'close');
+      final result = _submitWorkFunction((_) => _asynchronous.close(), 'close');
       _isClosing = true;
       return result;
     } else if (_pendingWork.isNotEmpty) {
@@ -536,11 +587,11 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
     }
   }
 
-  Future<int> _fileId(String path) async {
+  Future<int> _fileId(_WritingTransaction tx, String path) async {
     if (_knownFileIds.containsKey(path)) {
       return _knownFileIds[path]!;
     } else {
-      return _knownFileIds[path] = (await _asynchronous.fileIdForPath(path))!;
+      return _knownFileIds[path] = (await tx.fileIdForPath(path))!;
     }
   }
 
@@ -567,7 +618,9 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
   /// Operations started after this [flush] call will not be awaited by the
   /// returned future.
   Future<void> flush() {
-    return _submitWorkFunction(() {}, 'flush');
+    return _submitWorkFunction((tx) {
+      tx.awaitCompletion = true;
+    }, 'flush');
   }
 
   @override
@@ -654,7 +707,7 @@ class _IndexedDbFile implements VirtualFileSystemFile {
 
     if (!vfs._inMemoryOnlyFiles.contains(path)) {
       vfs._submitWorkFunction(
-          () async => vfs._asynchronous.truncate(await vfs._fileId(path), size),
+          (tx) async => tx.truncate(await vfs._fileId(tx, path), size),
           'truncate $path');
     }
   }
@@ -705,17 +758,17 @@ sealed class _IndexedDbWorkItem extends LinkedListEntry<_IndexedDbWorkItem> {
     return true;
   }
 
-  FutureOr<void> run();
+  FutureOr<void> run(_WritingTransaction tx);
 }
 
 final class _FunctionWorkItem extends _IndexedDbWorkItem {
-  final FutureOr<void> Function() work;
+  final FutureOr<void> Function(_WritingTransaction) work;
   final String description;
 
   _FunctionWorkItem(this.work, this.description);
 
   @override
-  FutureOr<void> run() => work();
+  FutureOr<void> run(_WritingTransaction tx) => work(tx);
 }
 
 final class _DeleteFileWorkItem extends _IndexedDbWorkItem {
@@ -774,10 +827,11 @@ final class _DeleteFileWorkItem extends _IndexedDbWorkItem {
   }
 
   @override
-  Future<void> run() async {
-    final id = await fileSystem._fileId(path);
-    fileSystem._knownFileIds.remove(path);
-    await fileSystem._asynchronous.deleteFile(id);
+  Future<void> run(_WritingTransaction tx) async {
+    return fileSystem._fileId(tx, path).then((id) {
+      fileSystem._knownFileIds.remove(path);
+      return tx.deleteFile(id);
+    });
   }
 }
 
@@ -788,9 +842,10 @@ final class _CreateFileWorkItem extends _IndexedDbWorkItem {
   _CreateFileWorkItem(this.fileSystem, this.path);
 
   @override
-  Future<void> run() async {
-    final id = await fileSystem._asynchronous.createFile(path);
-    fileSystem._knownFileIds[path] = id;
+  Future<void> run(_WritingTransaction tx) {
+    return tx
+        .createFile(path)
+        .then((id) => fileSystem._knownFileIds[path] = id);
   }
 }
 
@@ -834,15 +889,14 @@ final class _WriteFileWorkItem extends _IndexedDbWorkItem {
   }
 
   @override
-  Future<void> run() async {
+  Future<void> run(_WritingTransaction tx) {
     final request = _FileWriteRequest(originalContent);
 
     for (final write in writes) {
       request.addWrite(write.offset, write.buffer);
     }
 
-    await fileSystem._asynchronous
-        ._write(await fileSystem._fileId(path), request);
+    return fileSystem._fileId(tx, path).then((id) => tx.write(id, request));
   }
 }
 
