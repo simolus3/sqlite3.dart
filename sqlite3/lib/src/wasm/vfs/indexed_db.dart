@@ -46,14 +46,6 @@ class AsynchronousIndexedDbFileSystem {
   web.IDBDatabase? _database;
   final String _dbName;
 
-  /// Whether to store chunks as [web.Blob]s instead of array buffers.
-  ///
-  /// It seems like loading blobs concurrently may be more efficient, but not
-  /// all browsers support storing blobs in IndexedDB. We support both blobs
-  /// and array buffers on the read path. For writes, we run a feature detection
-  /// after opening the file system to determine whether to store blobs.
-  bool _storeBlobs = true;
-
   AsynchronousIndexedDbFileSystem(this._dbName);
 
   bool get _isClosed => _database == null;
@@ -87,44 +79,6 @@ class AsynchronousIndexedDbFileSystem {
     final openFuture = openRequest.completeOrBlocked<web.IDBDatabase>();
     completer.complete(openFuture);
     _database = await completer.future;
-
-    _storeBlobs = await _supportsStoringBlobs();
-  }
-
-  /// Probes whether the IndexedDB implementation supports storing [web.Blob]
-  /// instances.
-  ///
-  /// Safari in private windows does not support storing blobs, but allows
-  /// storing array buffers directly. Our read paths support reading blobs and
-  /// array buffers, so we use this to determine which format to use for writes.
-  Future<bool> _supportsStoringBlobs() async {
-    final transaction =
-        _database!.transaction([_blocksStore.toJS].toJS, 'readwrite');
-
-    web.Blob blob;
-
-    try {
-      final blocks = transaction.objectStore(_blocksStore);
-
-      final request = blocks.add(
-        web.Blob([Uint8List(4096).buffer.toJS].toJS),
-        ['test'.toJS].toJS,
-      );
-      final key = await request.complete();
-
-      blob = await blocks.get(key).complete<web.Blob>();
-    } on Object {
-      return false;
-    } finally {
-      transaction.abort();
-    }
-
-    try {
-      await blob.byteBuffer();
-      return true;
-    } on Object {
-      return false;
-    }
   }
 
   void close() {
@@ -314,8 +268,7 @@ class AsynchronousIndexedDbFileSystem {
           .openCursor(web.IDBKeyRange.only([fileId.toJS, blockStart.toJS].toJS))
           .complete<web.IDBCursorWithValue?>();
 
-      final value =
-          _storeBlobs ? web.Blob([block.toJS].toJS) : block.buffer.toJS;
+      final value = block.buffer.toJS;
 
       if (cursor == null) {
         // There isn't, let's write a new block
