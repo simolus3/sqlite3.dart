@@ -1,3 +1,7 @@
+## 0.5.30
+
+- Upgrade sqlite to version `3.49.0`.
+
 ## 0.5.29+1
 
 - Android: Upgrade `compileSdkVersion` to `35`.
