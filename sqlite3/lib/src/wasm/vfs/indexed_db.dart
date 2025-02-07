@@ -320,28 +320,29 @@ final class _WritingTransaction {
         .then((r) => r.toDartInt);
   }
 
-  Future<void> write(int fileId, _FileWriteRequest writes) async {
+  Future<void> write(int fileId, _FileWriteRequest writes) {
     return fs._readFile(transaction, fileId).then((file) {
-      Future<void> writeBlock(int blockStart, Uint8List block) async {
+      Future<void> writeBlock(int blockStart, Uint8List block) {
         assert(block.length == _blockSize, 'Invalid block size');
 
         // Check if we're overriding (parts of) an existing block
-        final cursor = await blocks
+        return blocks
             .openCursor(
                 web.IDBKeyRange.only([fileId.toJS, blockStart.toJS].toJS))
-            .complete<web.IDBCursorWithValue?>();
+            .complete<web.IDBCursorWithValue?>()
+            .then((cursor) {
+          final value =
+              fs._storeBlobs ? web.Blob([block.toJS].toJS) : block.buffer.toJS;
 
-        final value =
-            fs._storeBlobs ? web.Blob([block.toJS].toJS) : block.buffer.toJS;
-
-        if (cursor == null) {
-          // There isn't, let's write a new block
-          await blocks
-              .put(value, [fileId.toJS, blockStart.toJS].toJS)
-              .complete<JSAny?>();
-        } else {
-          await cursor.update(value).complete<JSAny?>();
-        }
+          if (cursor == null) {
+            // There isn't, let's write a new block
+            return blocks
+                .put(value, [fileId.toJS, blockStart.toJS].toJS)
+                .complete<JSAny?>();
+          } else {
+            return cursor.update(value).complete<JSAny?>();
+          }
+        }).then((_) => null);
       }
 
       Future<void> changeLength() {
@@ -584,29 +585,32 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
       _pendingWork = LinkedList();
       _isWorking = true;
 
-      final transaction = _asynchronous._startTransaction();
-      Future<void>? future;
-      for (final item in list) {
-        if (future == null) {
-          future = Future.sync(() => item.run(transaction));
-        } else {
-          future = future.then((_) => Future.sync(() => item.run(transaction)));
-        }
-      }
-
-      future!.then((_) => transaction.transaction.commit(),
-          onError: (Object e) {
-        transaction.transaction.abort();
-        throw e;
-      }).whenComplete(() {
+      Future(() {
+        final transaction = _asynchronous._startTransaction();
+        Future<void>? future;
         for (final item in list) {
-          item.completer.complete();
+          if (future == null) {
+            future = Future.sync(() => item.run(transaction));
+          } else {
+            future =
+                future.then((_) => Future.sync(() => item.run(transaction)));
+          }
         }
 
-        final completion = transaction.waitForCompletion();
-        if (transaction.awaitCompletion) {
-          return completion;
-        }
+        return future!.then((_) => transaction.transaction.commit(),
+            onError: (Object e) {
+          transaction.transaction.abort();
+          throw e;
+        }).whenComplete(() {
+          for (final item in list) {
+            item.completer.complete();
+          }
+
+          final completion = transaction.waitForCompletion();
+          if (transaction.awaitCompletion) {
+            return completion;
+          }
+        });
       }).whenComplete(() {
         _isWorking = false;
 
@@ -634,11 +638,13 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
     }
   }
 
-  Future<int> _fileId(_WritingTransaction tx, String path) async {
+  Future<int> _fileId(_WritingTransaction tx, String path) {
     if (_knownFileIds.containsKey(path)) {
-      return _knownFileIds[path]!;
+      return Future.value(_knownFileIds[path]!);
     } else {
-      return _knownFileIds[path] = (await tx.fileIdForPath(path))!;
+      return tx.fileIdForPath(path).then((value) {
+        return _knownFileIds[path] = value!;
+      });
     }
   }
 
