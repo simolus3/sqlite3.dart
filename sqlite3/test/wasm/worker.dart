@@ -1,9 +1,34 @@
 import 'dart:async';
 
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 import 'package:sqlite3/wasm.dart';
 import 'package:web/web.dart' as web;
+
+@JS()
+@anonymous
+extension type PromisePrototype(JSObject _) implements JSObject {
+  @JS()
+  external Promise resolve();
+}
+
+@JS()
+extension type Promise(JSPromise _) implements JSObject {
+  @JS()
+  external Promise then(JSFunction inner);
+}
+
+void _scheduleImmediate(JSAny function) {
+  _promisePrototype.resolve().then(
+        () {
+          (function as JSFunction).callAsFunction();
+        }.toJS,
+      );
+}
+
+@JS('Promise')
+external PromisePrototype get _promisePrototype;
 
 @JS('Array')
 extension type _Array._(JSArray _) implements JSArray {
@@ -11,6 +36,7 @@ extension type _Array._(JSArray _) implements JSArray {
 }
 
 void main() {
+  globalContext['scheduleImmediate'] = _scheduleImmediate.toJS;
   final scope = (globalContext as web.DedicatedWorkerGlobalScope);
 
   runZonedGuarded(() {
