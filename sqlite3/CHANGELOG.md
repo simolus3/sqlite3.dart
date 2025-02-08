@@ -1,4 +1,4 @@
-## 2.7.3-dev
+## 2.7.3
 
 - Web: Support `localtime` datetime modifier in SQLite.
 - Introduce topics to dartdoc documentation.
