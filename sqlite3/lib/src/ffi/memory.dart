@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart' as ffi;
 
-import 'sqlite3.g.dart';
+import 'shared_bindings.dart';
 
 const allocate = ffi.malloc;
 

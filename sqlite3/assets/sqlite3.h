@@ -1,6 +1,6 @@
 // This file defines the definitions for which we generate FFI bindings on
 // native platforms. To re-generate bindings, run:
-// `dart run ffigen --config ffigen.yaml`.
+// `dart run tool/generate_bindings.dart`.
 #include <stdint.h>
 
 typedef struct sqlite3_char sqlite3_char;

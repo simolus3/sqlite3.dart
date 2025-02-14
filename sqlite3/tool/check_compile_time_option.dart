@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:sqlite3/open.dart';
 import 'package:sqlite3/src/ffi/memory.dart';
-import 'package:sqlite3/src/ffi/sqlite3.g.dart';
+import 'package:sqlite3/src/ffi/generated/shared.dart';
 
 /// Checks whether the loaded sqlite3 library includes a specific compile-time
 /// option.

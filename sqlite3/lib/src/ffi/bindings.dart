@@ -12,7 +12,8 @@ import '../exception.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
 import 'memory.dart';
-import 'sqlite3.g.dart';
+import 'dynamic_library/bindings.dart';
+import 'shared_bindings.dart';
 
 // ignore_for_file: non_constant_identifier_names
 
@@ -20,7 +21,7 @@ class BindingsWithLibrary {
   // sqlite3_prepare_v3 was added in 3.20.0
   static const int _firstVersionForV3 = 3020000;
 
-  final Bindings bindings;
+  final SqliteLibrary bindings;
   final DynamicLibrary library;
 
   final bool supportsPrepareV3;
@@ -28,7 +29,7 @@ class BindingsWithLibrary {
   final bool supportsColumnTableName;
 
   factory BindingsWithLibrary(DynamicLibrary library) {
-    final bindings = Bindings(library);
+    final bindings = NativeLibrary(library);
     var hasColumnMetadata = false;
 
     if (library.providesSymbol('sqlite3_compileoption_get')) {
@@ -706,7 +707,7 @@ final class FfiStatementCompiler extends RawStatementCompiler {
 
 final class FfiStatement extends RawSqliteStatement {
   final FfiDatabase database;
-  final Bindings bindings;
+  final SqliteLibrary bindings;
   final Pointer<sqlite3_stmt> stmt;
 
   final List<Pointer> _allocatedArguments = [];
@@ -863,7 +864,7 @@ final class FfiStatement extends RawSqliteStatement {
 }
 
 final class FfiValue extends RawSqliteValue {
-  final Bindings bindings;
+  final SqliteLibrary bindings;
   final Pointer<sqlite3_value> value;
 
   FfiValue(this.bindings, this.value);
@@ -901,7 +902,7 @@ final class FfiContext extends RawSqliteContext {
   static int _aggregateContextId = 1;
   static final Map<int, AggregateContext<Object?>> _contexts = {};
 
-  final Bindings bindings;
+  final SqliteLibrary bindings;
   final Pointer<sqlite3_context> context;
 
   FfiContext(this.bindings, this.context);
@@ -1000,7 +1001,7 @@ class _ValueList extends ListBase<FfiValue> {
   @override
   int length;
   final Pointer<Pointer<sqlite3_value>> args;
-  final Bindings bindings;
+  final SqliteLibrary bindings;
 
   _ValueList(this.length, this.args, this.bindings);
 
@@ -1024,7 +1025,7 @@ typedef _CommitHook = Int Function(Pointer<Void>);
 typedef _RollbackHook = Void Function(Pointer<Void>);
 
 extension on RawXFunc {
-  NativeCallable<_XFunc> toNative(Bindings bindings) {
+  NativeCallable<_XFunc> toNative(SqliteLibrary bindings) {
     return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx, int nArgs,
         Pointer<Pointer<sqlite3_value>> args) {
       this(FfiContext(bindings, ctx), _ValueList(nArgs, args, bindings));
@@ -1034,7 +1035,7 @@ extension on RawXFunc {
 }
 
 extension on RawXFinal {
-  NativeCallable<_XFinal> toNative(Bindings bindings, bool clean) {
+  NativeCallable<_XFinal> toNative(SqliteLibrary bindings, bool clean) {
     return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx) {
       final context = FfiContext(bindings, ctx);
       this(context);
@@ -1045,7 +1046,7 @@ extension on RawXFinal {
 }
 
 extension on RawCollation {
-  NativeCallable<_XCompare> toNative(Bindings bindings) {
+  NativeCallable<_XCompare> toNative(SqliteLibrary bindings) {
     return NativeCallable.isolateLocal(
       (
         Pointer<Void> _,

@@ -1,6 +1,7 @@
 import 'dart:ffi';
 
 import 'package:meta/meta.dart';
+import 'package:sqlite3/src/ffi/shared_bindings.dart' show SqliteLibrary;
 
 import '../constants.dart';
 import '../exception.dart';
@@ -13,7 +14,6 @@ import '../sqlite3.dart';
 import 'api.dart';
 import 'bindings.dart';
 import 'memory.dart';
-import 'sqlite3.g.dart';
 
 final class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
   final FfiBindings ffiBindings;
@@ -83,7 +83,7 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
     implements Database {
   final FfiDatabase ffiDatabase;
 
-  Bindings get _bindings => ffiDatabase.bindings.bindings;
+  SqliteLibrary get _bindings => ffiDatabase.bindings.bindings;
 
   FfiDatabaseImplementation(RawSqliteBindings bindings, this.ffiDatabase)
       : super(bindings, ffiDatabase);

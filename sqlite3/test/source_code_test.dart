@@ -15,7 +15,13 @@ void main() {
       switch (e) {
         case File():
           final text = e.readAsStringSync();
-          final parsed = parseString(content: text).unit;
+          CompilationUnit parsed;
+          try {
+            parsed = parseString(content: text).unit;
+          } catch (ex) {
+            print('Could not parse ${e.path}');
+            rethrow;
+          }
 
           for (final directive in parsed.directives) {
             if (directive is ImportDirective) {
