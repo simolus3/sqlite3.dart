@@ -1,7 +1,6 @@
 import 'dart:ffi';
 
 import 'package:meta/meta.dart';
-import 'package:sqlite3/src/ffi/shared_bindings.dart' show SqliteLibrary;
 
 import '../constants.dart';
 import '../exception.dart';
@@ -11,6 +10,7 @@ import '../implementation/exception.dart';
 import '../implementation/sqlite3.dart';
 import '../implementation/statement.dart';
 import '../sqlite3.dart';
+import 'generated/shared.dart' show SqliteLibrary;
 import 'api.dart';
 import 'bindings.dart';
 import 'memory.dart';
@@ -20,6 +20,10 @@ final class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
 
   factory FfiSqlite3(DynamicLibrary library) {
     return FfiSqlite3._(FfiBindings(BindingsWithLibrary(library)));
+  }
+
+  factory FfiSqlite3.nativeAssets() {
+    return FfiSqlite3._(FfiBindings(BindingsWithLibrary.native()));
   }
 
   FfiSqlite3._(this.ffiBindings) : super(ffiBindings);
@@ -69,7 +73,7 @@ final class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
   }
 }
 
-typedef _ResolveEntrypoint = Pointer<Void> Function(DynamicLibrary);
+typedef _ResolveEntrypoint = Pointer<Void> Function(DynamicLibrary?);
 
 class SqliteExtensionImpl implements SqliteExtension {
   /// The internal function resolving the function pointer to pass to

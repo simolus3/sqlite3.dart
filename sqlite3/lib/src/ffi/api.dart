@@ -93,7 +93,7 @@ abstract interface class SqliteExtension {
   /// platforms, you could then load the  [spellfix](https://www.sqlite.org/spellfix1.html)
   /// extension with `SqliteExtension.staticallyLinked('sqlite3_spellfix_init')`.
   factory SqliteExtension.staticallyLinked(String symbol) {
-    return SqliteExtensionImpl((library) => library.lookup(symbol));
+    return SqliteExtensionImpl((library) => library!.lookup(symbol));
   }
 }
 

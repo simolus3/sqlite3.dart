@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart' as ffi;
 
-import 'shared_bindings.dart';
+import 'generated/shared.dart';
 
 const allocate = ffi.malloc;
 

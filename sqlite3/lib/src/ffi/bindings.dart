@@ -11,9 +11,10 @@ import '../constants.dart';
 import '../exception.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
+import 'generated/dynamic_library.dart';
+import 'generated/native_library.dart' as native;
 import 'memory.dart';
-import 'dynamic_library/bindings.dart';
-import 'shared_bindings.dart';
+import 'generated/shared.dart';
 
 // ignore_for_file: non_constant_identifier_names
 
@@ -21,8 +22,11 @@ class BindingsWithLibrary {
   // sqlite3_prepare_v3 was added in 3.20.0
   static const int _firstVersionForV3 = 3020000;
 
+  // sqlite3_prepare_v3 was added in 3.38.0
+  static const int _firstVersionForErrorOffset = 3038000;
+
   final SqliteLibrary bindings;
-  final DynamicLibrary library;
+  final DynamicLibrary? library;
 
   final bool supportsPrepareV3;
   final bool supportsErrorOffset;
@@ -52,18 +56,30 @@ class BindingsWithLibrary {
         i++;
       } while (lastOption != null);
     }
-    final supportsErrorOffset = library.providesSymbol('sqlite3_error_offset');
 
     return BindingsWithLibrary._(
-        bindings,
-        library,
-        bindings.sqlite3_libversion_number() >= _firstVersionForV3,
-        hasColumnMetadata,
-        supportsErrorOffset);
+      bindings,
+      library,
+      hasColumnMetadata,
+    );
   }
 
-  BindingsWithLibrary._(this.bindings, this.library, this.supportsPrepareV3,
-      this.supportsColumnTableName, this.supportsErrorOffset);
+  factory BindingsWithLibrary.native() {
+    final bindings = native.NativeAssetsLibrary();
+
+    return BindingsWithLibrary._(
+      bindings,
+      null,
+      false,
+    );
+  }
+
+  BindingsWithLibrary._(
+      this.bindings, this.library, this.supportsColumnTableName)
+      : supportsErrorOffset =
+            bindings.sqlite3_libversion_number() >= _firstVersionForErrorOffset,
+        supportsPrepareV3 =
+            bindings.sqlite3_libversion_number() >= _firstVersionForV3;
 }
 
 final class FfiBindings extends RawSqliteBindings {
