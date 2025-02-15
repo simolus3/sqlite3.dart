@@ -135,8 +135,9 @@ enum _GenerationMode {
 
     final config = Config(
       preamble: '// ignore_for_file: type=lint',
-      ffiNativeConfig:
-          FfiNativeConfig(enabled: this == native, assetId: 'pkg_sqlite3'),
+      ffiNativeConfig: FfiNativeConfig(
+          enabled: this == native,
+          assetId: 'package:sqlite3_native_assets/sqlite3_native_assets.dart'),
       output: outputDartUri,
       entryPoints: [Uri.parse('assets/sqlite3.h')],
       symbolFile: this == shared

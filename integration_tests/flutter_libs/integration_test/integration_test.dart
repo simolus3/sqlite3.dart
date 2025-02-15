@@ -3,7 +3,7 @@ import 'dart:ffi';
 import 'package:integration_test/integration_test.dart';
 import 'package:test/test.dart';
 import 'package:sqlite3/sqlite3.dart';
-import 'package:sqlite3/src/ffi/shared_bindings.dart' hide sqlite3;
+import 'package:sqlite3/src/ffi/generated/shared.dart' hide sqlite3;
 import 'package:sqlite3/src/ffi/memory.dart';
 import 'package:sqlite3/open.dart';
 
