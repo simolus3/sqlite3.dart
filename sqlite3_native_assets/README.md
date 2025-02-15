@@ -1,39 +1,30 @@
-<!-- 
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+__Like native assets, that this package is experimental.__
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages). 
+This package provides SQLite as a [native code asset](https://dart.dev/interop/c-interop#native-assets).
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages). 
--->
-
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
-
-## Features
-
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+It has the same functionality as the `sqlite3_flutter_libs` package,
+except that it works without Flutter.
 
 ## Getting started
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+Add this package to your dependencies: `dart pub add sqlite3_native_assetes`.
+That's it! No build scripts to worry about, it works out of the box.
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder. 
+You can keep using all your existing code using `package:sqlite3`.
+The only difference is how you access it.
+For now, you'll have to replace the top-level `sqlite3` getter
+with `sqlite3Native`.
 
 ```dart
-const like = 'sample';
+import 'dart:io';
+
+import 'package:sqlite3/sqlite3.dart';
+import 'package:sqlite3_native_assets/sqlite3_native_assets.dart';
+
+void main() {
+  final Sqlite3 sqlite3 = sqlite3Native;
+  print('Using sqlite3 ${sqlite3.version}');
+}
 ```
-
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to 
-contribute to the package, how to file issues, what response they can expect 
-from the package authors, and more.

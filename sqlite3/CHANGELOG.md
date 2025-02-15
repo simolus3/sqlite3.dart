@@ -1,3 +1,8 @@
+## 2.7.4
+
+- Prepare support for accessing SQLite through native assets. This is available
+  as a preview through `package:sqlite3_native_assets`.
+
 ## 2.7.3
 
 - Web: Support `localtime` datetime modifier in SQLite.
