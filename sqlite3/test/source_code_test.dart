@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/analysis/utilities.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 void main() {
@@ -14,6 +15,8 @@ void main() {
     void check(FileSystemEntity e) {
       switch (e) {
         case File():
+          if (p.extension(e.path) != '.dart') return;
+
           final text = e.readAsStringSync();
           CompilationUnit parsed;
           try {
