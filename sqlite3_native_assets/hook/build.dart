@@ -31,6 +31,8 @@ void main(List<String> args) async {
 
     await builder.run(
       input: input,
+      // This adds a dependency on sqlite3.c, which confuses dependency tracking
+      // because that file was also changed by this build script.
       output: _IgnoreSourceDependency(output),
       logger:
           Logger('')

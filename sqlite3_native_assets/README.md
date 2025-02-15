@@ -1,4 +1,4 @@
-__Like native assets, that this package is experimental.__
+__Like native assets, this package is experimental.__
 
 This package provides SQLite as a [native code asset](https://dart.dev/interop/c-interop#native-assets).
 
