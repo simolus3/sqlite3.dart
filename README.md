@@ -9,6 +9,9 @@ It can be used both in Flutter apps or in standalone Dart applications.
 The `sqlite3_flutter_libs` and `sqlcipher_flutter_libs` packages contain no Dart code at all. Flutter users can depend
 on one of them to include native libraries in their apps.
 
+An experimental alternative to `sqlite3_flutter_libs` based on [native assets](https://dart.dev/interop/c-interop#native-assets)
+is available with the `sqlite3_native_assets` package.
+
 `package:sqlite3_test` contains utilities that make integrating SQLite databases into Dart tests easier.
 In particular, they patch `CURRENT_TIMESTAMP` and related constructs to return the (potentially faked) time
 returned by `package:clock`.

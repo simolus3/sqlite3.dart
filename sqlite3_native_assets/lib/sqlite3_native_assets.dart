@@ -1,1 +1,1 @@
-export 'package:sqlite3/sqlite3_native_library.dart';
+export 'package:sqlite3/src/sqlite3_native_library.dart';
