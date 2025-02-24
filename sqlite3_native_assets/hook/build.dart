@@ -12,7 +12,7 @@ void main(List<String> args) async {
   await build(args, (input, output) async {
     final source = input.outputDirectory.resolve('sqlite3.c');
     final response = await get(
-      Uri.parse('https://sqlite.org/2025/sqlite-amalgamation-3490000.zip'),
+      Uri.parse('https://sqlite.org/2025/sqlite-amalgamation-3490100.zip'),
     );
     if (response.statusCode != 200) {
       throw 'Could not download sqlite3: ${response.statusCode} ${response.reasonPhrase} ${response.body}';
