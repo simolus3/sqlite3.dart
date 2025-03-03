@@ -1,5 +1,4 @@
 import Flutter
-import UIKit
 
 public class SwiftSqlite3FlutterLibsPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
@@ -7,6 +6,6 @@ public class SwiftSqlite3FlutterLibsPlugin: NSObject, FlutterPlugin {
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-    result("iOS " + UIDevice.current.systemVersion)
+
   }
 }

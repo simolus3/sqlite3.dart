@@ -1,3 +1,8 @@
+## 0.6.5
+
+- Update SQLCipher to version 4.6.1.
+- Fix compilation error with Swift 6 on iOS.
+
 ## 0.6.4
 
 - Fix compilation on Android by upgrading `compileSdk` version.
