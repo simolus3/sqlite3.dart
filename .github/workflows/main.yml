@@ -250,7 +250,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2.4.0
+      - uses: subosito/flutter-action@v2
       - name: Setup Flutter
         run: |
           flutter config --enable-linux-desktop
@@ -281,7 +281,7 @@ jobs:
           xcrun simctl boot $IPHONE
 
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2.4.0
+      - uses: subosito/flutter-action@v2
 
       - name: Flutter version
         run: flutter --version
@@ -300,7 +300,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2.4.0
+      - uses: subosito/flutter-action@v2
       - name: Setup Flutter
         run: |
           flutter config --enable-macos-desktop
