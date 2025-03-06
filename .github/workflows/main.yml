@@ -180,6 +180,9 @@ jobs:
         echo $env:path
         Resolve-Path -Path "sqlite/out" >> $env:GITHUB_PATH
         "INCLUDE=" + $env:INCLUDE + ";" + (Resolve-Path -Path "sqlite/out") >> $env:GITHUB_EN
+    - name: Check if Winsqlite exists
+      if: matrix.sqlite == 'system' && runner.os == 'Windows'
+      run: Test-Path C:\Windows\System32\winsqlite3.dll
 
     - uses: actions/cache@v4
       with:
