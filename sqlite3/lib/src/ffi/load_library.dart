@@ -87,7 +87,7 @@ DynamicLibrary _defaultOpen() {
     return result;
   } else if (Platform.isWindows) {
     try {
-      return return DynamicLibrary.open('sqlite3.dll');
+      return DynamicLibrary.open('sqlite3.dll');
     } on ArgumentError catch (_) {
       return DynamicLibrary.open('winsqlite3.dll');
     }
