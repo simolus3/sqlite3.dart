@@ -139,7 +139,7 @@ jobs:
         dart: [stable, dev]
         sqlite: [system, compiled]
 
-    name: Unit tests with Dart ${{ matrix.dart }} on ${{ matrix.os }}
+    name: Unit tests with Dart ${{ matrix.dart }} on ${{ matrix.os }} with ${{ matrix.sqlite }} sqlite
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -196,7 +196,7 @@ jobs:
       working-directory: sqlite3/
 
     - name: Test with SQLITE_OMIT_AUTOINIT
-      if: runner.os == 'Linux'
+      if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
       run: |
         ls $LD_LIBRARY_PATH
         dart run tool/check_compile_time_option.dart OMIT_AUTOINIT
@@ -219,7 +219,7 @@ jobs:
       # If browsers behave differently on different platforms, surely that's not our fault...
       # So, only run browser tests on Linux to be faster.
       # todo: Something broke Dart web tests in Dart 2.18, it looks like this is related to finalizers
-      if: runner.os == 'Linux'
+      if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
       working-directory: sqlite3/
 
 # The integration tests for android are currently broken (the emulator doesn't want to
