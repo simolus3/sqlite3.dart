@@ -86,7 +86,11 @@ DynamicLibrary _defaultOpen() {
     }
     return result;
   } else if (Platform.isWindows) {
-    return DynamicLibrary.open('sqlite3.dll');
+    try {
+      return return DynamicLibrary.open('sqlite3.dll');
+    } on ArgumentError catch (_) {
+      return DynamicLibrary.open('winsqlite3.dll');
+    }
   }
 
   throw UnsupportedError('Unsupported platform: ${Platform.operatingSystem}');
