@@ -137,6 +137,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         dart: [stable, dev]
+        sqlite: [system, compiled]
 
     name: Unit tests with Dart ${{ matrix.dart }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -148,30 +149,33 @@ jobs:
         sdk: ${{ matrix.dart }}
 
     - name: Download compiled sqlite3
-      if: runner.os == 'Linux' || runner.os == 'Windows' || runner.os == 'macOS'
+      if: matrix.sqlite == 'compiled' && (runner.os == 'Linux' || runner.os == 'Windows' || runner.os == 'macOS')
       uses: actions/download-artifact@v4
       with:
         name: sqlite3-${{ runner.os }}
         path: sqlite/out
 
     - name: Install compiled sqlite3 (Linux)
-      if: runner.os == 'Linux'
+      if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
       run: |
         chmod a+x sqlite/out/sqlite3
         realpath sqlite/out >> $GITHUB_PATH
         echo "LD_LIBRARY_PATH=$(realpath sqlite/out)" >> $GITHUB_ENV
         echo "C_INCLUDE_PATH=$(realpath sqlite/out)" >> $GITHUB_ENV
+    - name: Install system sqlite3 (Ubuntu)
+      if: matrix.sqlite == 'system' && runner.os == 'Linux'
+      run: sudo apt install sqlite3
     - name: Install compiled sqlite3 (macOS)
-      if: runner.os == 'macOS'
+      if: matrix.sqlite == 'compiled' && runner.os == 'macOS'
       run: |
         chmod a+x sqlite/out/sqlite3
         echo "$(pwd)/sqlite/out" >> $GITHUB_PATH
         echo "DYLD_LIBRARY_PATH=$(pwd)/sqlite/out" >> $GITHUB_ENV
         echo "CPATH=$(pwd)/sqlite/out" >> $GITHUB_ENV
     - uses: ilammy/msvc-dev-cmd@v1
-      if: runner.os == 'Windows'
+      if: matrix.sqlite == 'compiled' && runner.os == 'Windows'
     - name: Install compiled sqlite3 (Windows)
-      if: runner.os == 'Windows'
+      if: matrix.sqlite == 'compiled' && runner.os == 'Windows'
       run: |
         echo $env:path
         Resolve-Path -Path "sqlite/out" >> $env:GITHUB_PATH
