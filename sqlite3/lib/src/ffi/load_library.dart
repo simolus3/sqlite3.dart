@@ -87,8 +87,15 @@ DynamicLibrary _defaultOpen() {
     return result;
   } else if (Platform.isWindows) {
     try {
+      // Compability with older versions of package:sqlite3 that did this
       return DynamicLibrary.open('sqlite3.dll');
     } on ArgumentError catch (_) {
+      // Load the OS distribution of sqlite3 as a fallback
+      // This is used as the backend for .NET based Database APIs
+      // and several Windows apps & features,
+      // but you may still want to bring your own copy of sqlite3
+      // since it's undocumented functionality.
+      // https://github.com/microsoft/win32metadata/issues/824#issuecomment-1067220882
       return DynamicLibrary.open('winsqlite3.dll');
     }
   }
