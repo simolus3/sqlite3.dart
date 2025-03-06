@@ -195,7 +195,7 @@ jobs:
     - name: Test sqlite3 package
       run: |
         dart pub get
-        dart test -P ci
+        dart test --debug -P ci
       working-directory: sqlite3/
 
     - name: Test with SQLITE_OMIT_AUTOINIT
