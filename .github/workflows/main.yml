@@ -209,10 +209,9 @@ jobs:
       working-directory: sqlite3/
 
     - name: Test sqlite3_test package
-      if: matrix.sqlite != 'system' || runner.os != 'Windows'
       run: |
         dart pub get
-        dart test "random"
+        dart test --debug
       working-directory: sqlite3_test/
 
     - name: Web tests
