@@ -466,7 +466,6 @@ final class DatabaseState {
 
   Future<void> decrementRefCount() async {
     if (--refCount == 0) {
-      print('closing database $id, $name, $mode');
       await close();
     }
   }
@@ -613,7 +612,6 @@ final class WorkerRunner {
     }
 
     final id = _nextDatabaseId++;
-    print('opening new database, $name, $mode with id $id');
     return openedDatabases[id] = DatabaseState(
       id: id,
       runner: this,
