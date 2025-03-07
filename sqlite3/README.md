@@ -53,6 +53,10 @@ On Android, iOS and macOS, you can depend on the `sqlcipher_flutter_libs` packag
 [SQLCipher](https://www.zetetic.net/sqlcipher/) instead of SQLite.
 Just be sure to never depend on both `sqlcipher_flutter_libs` and `sqlite3_flutter_libs`!
 
+When opting into the native assets SDK feature, you can also use the [`sqlite3_native_assets`](https://pub.dev/packages/sqlite3_native_assets)
+package to replace `sqlite3_flutter_libs` and platform-specific build scripts with
+a unified build that works on all Dart platforms!
+
 ### Manually providing sqlite3 libraries
 
 Instead of using the sqlite3 library from the OS, you can also ship a custom sqlite3 library along

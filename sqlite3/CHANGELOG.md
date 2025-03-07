@@ -1,3 +1,8 @@
+## 2.7.5
+
+- On Windows, try loading `winsqlite3.dll` as a fallback if loading
+  `sqlite3.dll` fails.
+
 ## 2.7.4
 
 - Prepare support for accessing SQLite through native assets. This is available
