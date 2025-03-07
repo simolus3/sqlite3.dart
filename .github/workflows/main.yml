@@ -212,7 +212,7 @@ jobs:
       if: matrix.sqlite != 'system' || runner.os != 'Windows'
       run: |
         dart pub get
-        dart test --debug
+        dart test
       working-directory: sqlite3_test/
 
     - name: Web tests
