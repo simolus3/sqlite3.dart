@@ -211,7 +211,7 @@ jobs:
     - name: Test sqlite3_test package
       run: |
         dart pub get
-        dart test
+        dart test --test-randomize-ordering-seed "random" -P ci
       working-directory: sqlite3_test/
 
     - name: Web tests
