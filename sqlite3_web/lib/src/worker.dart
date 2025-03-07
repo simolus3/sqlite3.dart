@@ -249,8 +249,8 @@ final class _ClientConnection extends ProtocolChannel
         return await subscribe(database!.updates, () async {
           final rawDatabase = await database.database.opened;
           return rawDatabase.database.updates.listen((event) {
-            sendNotification(UpdateNotification(
-                update: event, databaseId: database.database.id));
+            sendNotification(
+                UpdateNotification(update: event, databaseId: database.id));
           });
         }, request);
       case StreamRequest(action: true, type: MessageType.commitRequest):
@@ -258,8 +258,7 @@ final class _ClientConnection extends ProtocolChannel
           final rawDatabase = await database.database.opened;
           return rawDatabase.database.commits.listen((event) {
             sendNotification(EmptyNotification(
-                type: MessageType.notifyCommit,
-                databaseId: database.database.id));
+                type: MessageType.notifyCommit, databaseId: database.id));
           });
         }, request);
       case StreamRequest(action: true, type: MessageType.rollbackRequest):
@@ -267,8 +266,7 @@ final class _ClientConnection extends ProtocolChannel
           final rawDatabase = await database.database.opened;
           return rawDatabase.database.rollbacks.listen((event) {
             sendNotification(EmptyNotification(
-                type: MessageType.notifyRollback,
-                databaseId: database.database.id));
+                type: MessageType.notifyRollback, databaseId: database.id));
           });
         }, request);
       case StreamRequest(action: false):
@@ -468,6 +466,7 @@ final class DatabaseState {
 
   Future<void> decrementRefCount() async {
     if (--refCount == 0) {
+      print('closing database $id, $name, $mode');
       await close();
     }
   }
@@ -614,6 +613,7 @@ final class WorkerRunner {
     }
 
     final id = _nextDatabaseId++;
+    print('opening new database, $name, $mode with id $id');
     return openedDatabases[id] = DatabaseState(
       id: id,
       runner: this,
