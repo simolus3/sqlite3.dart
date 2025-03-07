@@ -137,8 +137,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         dart: [stable, dev]
+        sqlite: [system, compiled]
 
-    name: Unit tests with Dart ${{ matrix.dart }} on ${{ matrix.os }}
+    name: Unit tests with Dart ${{ matrix.dart }} on ${{ matrix.os }} with ${{ matrix.sqlite }} sqlite
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -148,34 +149,40 @@ jobs:
         sdk: ${{ matrix.dart }}
 
     - name: Download compiled sqlite3
-      if: runner.os == 'Linux' || runner.os == 'Windows' || runner.os == 'macOS'
+      if: matrix.sqlite == 'compiled' && (runner.os == 'Linux' || runner.os == 'Windows' || runner.os == 'macOS')
       uses: actions/download-artifact@v4
       with:
         name: sqlite3-${{ runner.os }}
         path: sqlite/out
 
     - name: Install compiled sqlite3 (Linux)
-      if: runner.os == 'Linux'
+      if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
       run: |
         chmod a+x sqlite/out/sqlite3
         realpath sqlite/out >> $GITHUB_PATH
         echo "LD_LIBRARY_PATH=$(realpath sqlite/out)" >> $GITHUB_ENV
         echo "C_INCLUDE_PATH=$(realpath sqlite/out)" >> $GITHUB_ENV
+    - name: Install system sqlite3 (Ubuntu)
+      if: matrix.sqlite == 'system' && runner.os == 'Linux'
+      run: sudo apt install sqlite3
     - name: Install compiled sqlite3 (macOS)
-      if: runner.os == 'macOS'
+      if: matrix.sqlite == 'compiled' && runner.os == 'macOS'
       run: |
         chmod a+x sqlite/out/sqlite3
         echo "$(pwd)/sqlite/out" >> $GITHUB_PATH
         echo "DYLD_LIBRARY_PATH=$(pwd)/sqlite/out" >> $GITHUB_ENV
         echo "CPATH=$(pwd)/sqlite/out" >> $GITHUB_ENV
     - uses: ilammy/msvc-dev-cmd@v1
-      if: runner.os == 'Windows'
+      if: matrix.sqlite == 'compiled' && runner.os == 'Windows'
     - name: Install compiled sqlite3 (Windows)
-      if: runner.os == 'Windows'
+      if: matrix.sqlite == 'compiled' && runner.os == 'Windows'
       run: |
         echo $env:path
         Resolve-Path -Path "sqlite/out" >> $env:GITHUB_PATH
         "INCLUDE=" + $env:INCLUDE + ";" + (Resolve-Path -Path "sqlite/out") >> $env:GITHUB_EN
+    - name: Check if Winsqlite exists
+      if: matrix.sqlite == 'system' && runner.os == 'Windows'
+      run: Test-Path C:\Windows\System32\winsqlite3.dll
 
     - uses: actions/cache@v4
       with:
@@ -188,11 +195,11 @@ jobs:
     - name: Test sqlite3 package
       run: |
         dart pub get
-        dart test -P ci
+        dart test --test-randomize-ordering-seed "random" -P ci
       working-directory: sqlite3/
 
     - name: Test with SQLITE_OMIT_AUTOINIT
-      if: runner.os == 'Linux'
+      if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
       run: |
         ls $LD_LIBRARY_PATH
         dart run tool/check_compile_time_option.dart OMIT_AUTOINIT
@@ -202,6 +209,7 @@ jobs:
       working-directory: sqlite3/
 
     - name: Test sqlite3_test package
+      if: matrix.sqlite != 'system' || runner.os != 'Windows'
       run: |
         dart pub get
         dart test
@@ -215,7 +223,7 @@ jobs:
       # If browsers behave differently on different platforms, surely that's not our fault...
       # So, only run browser tests on Linux to be faster.
       # todo: Something broke Dart web tests in Dart 2.18, it looks like this is related to finalizers
-      if: runner.os == 'Linux'
+      if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
       working-directory: sqlite3/
 
 # The integration tests for android are currently broken (the emulator doesn't want to

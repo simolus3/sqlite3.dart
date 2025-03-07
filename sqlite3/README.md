@@ -40,9 +40,13 @@ Here's how to use this library on the most popular platforms:
 - __macOS__: Contains a built-in version of sqlite that this package will use by default.
   Also, you can depend on `sqlite3_flutter_libs` if you want to include the latest
   sqlite3 version with your app.
-- __Windows__: Flutter users can depend on `sqlite3_flutter_libs` to ship the latest sqlite3
+- __Windows__: Contains a built-in version of sqlite (winsqlite3.dll) that this package will use by default.
+  winsqlite is used by Windows OS components and as the backend of .NET database APIs,
+  but is [otherwise undocumented](https://github.com/microsoft/win32metadata/issues/824#issuecomment-1067220882);
+  so you may still want to provide a sqlite3 binary you control.
+  Flutter users can depend on `sqlite3_flutter_libs` to ship the latest sqlite3
   version with their app.
-  When not using Flutter, you need to manually include sqlite3 (see below).
+  When not using Flutter, you can manually include sqlite3 (see below).
 - __Web__: See [web support](#wasm-web-support) below.
 
 On Android, iOS and macOS, you can depend on the `sqlcipher_flutter_libs` package to use
