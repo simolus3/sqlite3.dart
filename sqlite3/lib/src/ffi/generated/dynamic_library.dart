@@ -1548,4 +1548,1492 @@ final class NativeLibrary implements imp$1.SqliteLibrary {
       'sqlite3_vfs_unregister');
   late final _sqlite3_vfs_unregister = _sqlite3_vfs_unregisterPtr
       .asFunction<int Function(ffi.Pointer<imp$1.sqlite3_vfs>)>();
+
+  int sqlite3changegroup_add(
+    ffi.Pointer<imp$1.sqlite3_changegroup> arg0,
+    int nData,
+    ffi.Pointer<ffi.Void> pData,
+  ) {
+    return _sqlite3changegroup_add(
+      arg0,
+      nData,
+      pData,
+    );
+  }
+
+  late final _sqlite3changegroup_addPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<imp$1.sqlite3_changegroup>, ffi.Int,
+              ffi.Pointer<ffi.Void>)>>('sqlite3changegroup_add');
+  late final _sqlite3changegroup_add = _sqlite3changegroup_addPtr.asFunction<
+      int Function(ffi.Pointer<imp$1.sqlite3_changegroup>, int,
+          ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3changegroup_add_change(
+    ffi.Pointer<imp$1.sqlite3_changegroup> arg0,
+    ffi.Pointer<imp$1.sqlite3_changeset_iter> arg1,
+  ) {
+    return _sqlite3changegroup_add_change(
+      arg0,
+      arg1,
+    );
+  }
+
+  late final _sqlite3changegroup_add_changePtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(ffi.Pointer<imp$1.sqlite3_changegroup>,
+                  ffi.Pointer<imp$1.sqlite3_changeset_iter>)>>(
+      'sqlite3changegroup_add_change');
+  late final _sqlite3changegroup_add_change =
+      _sqlite3changegroup_add_changePtr.asFunction<
+          int Function(ffi.Pointer<imp$1.sqlite3_changegroup>,
+              ffi.Pointer<imp$1.sqlite3_changeset_iter>)>();
+
+  int sqlite3changeset_apply_strm(
+    ffi.Pointer<imp$1.sqlite3> db,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pIn,
+                    ffi.Pointer<ffi.Void> pData, ffi.Pointer<ffi.Int> pnData)>>
+        xInput,
+    ffi.Pointer<ffi.Void> pIn,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(
+                    ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)>>
+        xFilter,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pCtx, ffi.Int eConflict,
+                    ffi.Pointer<imp$1.sqlite3_changeset_iter> p)>>
+        xConflict,
+    ffi.Pointer<ffi.Void> pCtx,
+  ) {
+    return _sqlite3changeset_apply_strm(
+      db,
+      xInput,
+      pIn,
+      xFilter,
+      xConflict,
+      pCtx,
+    );
+  }
+
+  late final _sqlite3changeset_apply_strmPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Pointer<ffi.Char> zTab)>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Int eConflict,
+                          ffi.Pointer<imp$1.sqlite3_changeset_iter> p)>>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3changeset_apply_strm');
+  late final _sqlite3changeset_apply_strm =
+      _sqlite3changeset_apply_strmPtr.asFunction<
+          int Function(
+              ffi.Pointer<imp$1.sqlite3>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Pointer<ffi.Char> zTab)>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Int eConflict,
+                          ffi.Pointer<imp$1.sqlite3_changeset_iter> p)>>,
+              ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3changeset_apply_v2_strm(
+    ffi.Pointer<imp$1.sqlite3> db,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pIn,
+                    ffi.Pointer<ffi.Void> pData, ffi.Pointer<ffi.Int> pnData)>>
+        xInput,
+    ffi.Pointer<ffi.Void> pIn,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(
+                    ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)>>
+        xFilter,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pCtx, ffi.Int eConflict,
+                    ffi.Pointer<imp$1.sqlite3_changeset_iter> p)>>
+        xConflict,
+    ffi.Pointer<ffi.Void> pCtx,
+    ffi.Pointer<ffi.Pointer<ffi.Void>> ppRebase,
+    ffi.Pointer<ffi.Int> pnRebase,
+    int flags,
+  ) {
+    return _sqlite3changeset_apply_v2_strm(
+      db,
+      xInput,
+      pIn,
+      xFilter,
+      xConflict,
+      pCtx,
+      ppRebase,
+      pnRebase,
+      flags,
+    );
+  }
+
+  late final _sqlite3changeset_apply_v2_strmPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Pointer<ffi.Char> zTab)>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Int eConflict,
+                          ffi.Pointer<imp$1.sqlite3_changeset_iter> p)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Pointer<ffi.Void>>,
+              ffi.Pointer<ffi.Int>,
+              ffi.Int)>>('sqlite3changeset_apply_v2_strm');
+  late final _sqlite3changeset_apply_v2_strm =
+      _sqlite3changeset_apply_v2_strmPtr.asFunction<
+          int Function(
+              ffi.Pointer<imp$1.sqlite3>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Pointer<ffi.Char> zTab)>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Int eConflict,
+                          ffi.Pointer<imp$1.sqlite3_changeset_iter> p)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Pointer<ffi.Void>>,
+              ffi.Pointer<ffi.Int>,
+              int)>();
+
+  int sqlite3changeset_concat_strm(
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pIn,
+                    ffi.Pointer<ffi.Void> pData, ffi.Pointer<ffi.Int> pnData)>>
+        xInputA,
+    ffi.Pointer<ffi.Void> pInA,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pIn,
+                    ffi.Pointer<ffi.Void> pData, ffi.Pointer<ffi.Int> pnData)>>
+        xInputB,
+    ffi.Pointer<ffi.Void> pInB,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                    ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>
+        xOutput,
+    ffi.Pointer<ffi.Void> pOut,
+  ) {
+    return _sqlite3changeset_concat_strm(
+      xInputA,
+      pInA,
+      xInputB,
+      pInB,
+      xOutput,
+      pOut,
+    );
+  }
+
+  late final _sqlite3changeset_concat_strmPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                          ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3changeset_concat_strm');
+  late final _sqlite3changeset_concat_strm =
+      _sqlite3changeset_concat_strmPtr.asFunction<
+          int Function(
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                          ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>,
+              ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3changeset_invert_strm(
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pIn,
+                    ffi.Pointer<ffi.Void> pData, ffi.Pointer<ffi.Int> pnData)>>
+        xInput,
+    ffi.Pointer<ffi.Void> pIn,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                    ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>
+        xOutput,
+    ffi.Pointer<ffi.Void> pOut,
+  ) {
+    return _sqlite3changeset_invert_strm(
+      xInput,
+      pIn,
+      xOutput,
+      pOut,
+    );
+  }
+
+  late final _sqlite3changeset_invert_strmPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                          ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3changeset_invert_strm');
+  late final _sqlite3changeset_invert_strm =
+      _sqlite3changeset_invert_strmPtr.asFunction<
+          int Function(
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                          ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>,
+              ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3changeset_start_strm(
+    ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changeset_iter>> pp,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pIn,
+                    ffi.Pointer<ffi.Void> pData, ffi.Pointer<ffi.Int> pnData)>>
+        xInput,
+    ffi.Pointer<ffi.Void> pIn,
+  ) {
+    return _sqlite3changeset_start_strm(
+      pp,
+      xInput,
+      pIn,
+    );
+  }
+
+  late final _sqlite3changeset_start_strmPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changeset_iter>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3changeset_start_strm');
+  late final _sqlite3changeset_start_strm =
+      _sqlite3changeset_start_strmPtr.asFunction<
+          int Function(
+              ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changeset_iter>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3changeset_start_v2_strm(
+    ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changeset_iter>> pp,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pIn,
+                    ffi.Pointer<ffi.Void> pData, ffi.Pointer<ffi.Int> pnData)>>
+        xInput,
+    ffi.Pointer<ffi.Void> pIn,
+    int flags,
+  ) {
+    return _sqlite3changeset_start_v2_strm(
+      pp,
+      xInput,
+      pIn,
+      flags,
+    );
+  }
+
+  late final _sqlite3changeset_start_v2_strmPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changeset_iter>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Int)>>('sqlite3changeset_start_v2_strm');
+  late final _sqlite3changeset_start_v2_strm =
+      _sqlite3changeset_start_v2_strmPtr.asFunction<
+          int Function(
+              ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changeset_iter>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>,
+              int)>();
+
+  int sqlite3session_changeset_strm(
+    ffi.Pointer<imp$1.sqlite3_session> pSession,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                    ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>
+        xOutput,
+    ffi.Pointer<ffi.Void> pOut,
+  ) {
+    return _sqlite3session_changeset_strm(
+      pSession,
+      xOutput,
+      pOut,
+    );
+  }
+
+  late final _sqlite3session_changeset_strmPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3_session>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                          ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3session_changeset_strm');
+  late final _sqlite3session_changeset_strm =
+      _sqlite3session_changeset_strmPtr.asFunction<
+          int Function(
+              ffi.Pointer<imp$1.sqlite3_session>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                          ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>,
+              ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3session_patchset_strm(
+    ffi.Pointer<imp$1.sqlite3_session> pSession,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                    ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>
+        xOutput,
+    ffi.Pointer<ffi.Void> pOut,
+  ) {
+    return _sqlite3session_patchset_strm(
+      pSession,
+      xOutput,
+      pOut,
+    );
+  }
+
+  late final _sqlite3session_patchset_strmPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3_session>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                          ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3session_patchset_strm');
+  late final _sqlite3session_patchset_strm =
+      _sqlite3session_patchset_strmPtr.asFunction<
+          int Function(
+              ffi.Pointer<imp$1.sqlite3_session>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                          ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>,
+              ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3changegroup_add_strm(
+    ffi.Pointer<imp$1.sqlite3_changegroup> arg0,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pIn,
+                    ffi.Pointer<ffi.Void> pData, ffi.Pointer<ffi.Int> pnData)>>
+        xInput,
+    ffi.Pointer<ffi.Void> pIn,
+  ) {
+    return _sqlite3changegroup_add_strm(
+      arg0,
+      xInput,
+      pIn,
+    );
+  }
+
+  late final _sqlite3changegroup_add_strmPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3_changegroup>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3changegroup_add_strm');
+  late final _sqlite3changegroup_add_strm =
+      _sqlite3changegroup_add_strmPtr.asFunction<
+          int Function(
+              ffi.Pointer<imp$1.sqlite3_changegroup>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3changegroup_output_strm(
+    ffi.Pointer<imp$1.sqlite3_changegroup> arg0,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                    ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>
+        xOutput,
+    ffi.Pointer<ffi.Void> pOut,
+  ) {
+    return _sqlite3changegroup_output_strm(
+      arg0,
+      xOutput,
+      pOut,
+    );
+  }
+
+  late final _sqlite3changegroup_output_strmPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3_changegroup>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                          ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3changegroup_output_strm');
+  late final _sqlite3changegroup_output_strm =
+      _sqlite3changegroup_output_strmPtr.asFunction<
+          int Function(
+              ffi.Pointer<imp$1.sqlite3_changegroup>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                          ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>,
+              ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3rebaser_rebase_strm(
+    ffi.Pointer<imp$1.sqlite3_rebaser> pRebaser,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pIn,
+                    ffi.Pointer<ffi.Void> pData, ffi.Pointer<ffi.Int> pnData)>>
+        xInput,
+    ffi.Pointer<ffi.Void> pIn,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                    ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>
+        xOutput,
+    ffi.Pointer<ffi.Void> pOut,
+  ) {
+    return _sqlite3rebaser_rebase_strm(
+      pRebaser,
+      xInput,
+      pIn,
+      xOutput,
+      pOut,
+    );
+  }
+
+  late final _sqlite3rebaser_rebase_strmPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3_rebaser>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                          ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3rebaser_rebase_strm');
+  late final _sqlite3rebaser_rebase_strm =
+      _sqlite3rebaser_rebase_strmPtr.asFunction<
+          int Function(
+              ffi.Pointer<imp$1.sqlite3_rebaser>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pIn,
+                          ffi.Pointer<ffi.Void> pData,
+                          ffi.Pointer<ffi.Int> pnData)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
+                          ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>,
+              ffi.Pointer<ffi.Void>)>();
+
+  void sqlite3changegroup_delete(
+    ffi.Pointer<imp$1.sqlite3_changegroup> arg0,
+  ) {
+    return _sqlite3changegroup_delete(
+      arg0,
+    );
+  }
+
+  late final _sqlite3changegroup_deletePtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Void Function(ffi.Pointer<imp$1.sqlite3_changegroup>)>>(
+      'sqlite3changegroup_delete');
+  late final _sqlite3changegroup_delete = _sqlite3changegroup_deletePtr
+      .asFunction<void Function(ffi.Pointer<imp$1.sqlite3_changegroup>)>();
+
+  int sqlite3changegroup_new(
+    ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changegroup>> pp,
+  ) {
+    return _sqlite3changegroup_new(
+      pp,
+    );
+  }
+
+  late final _sqlite3changegroup_newPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(
+                  ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changegroup>>)>>(
+      'sqlite3changegroup_new');
+  late final _sqlite3changegroup_new = _sqlite3changegroup_newPtr.asFunction<
+      int Function(ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changegroup>>)>();
+
+  int sqlite3changegroup_output(
+    ffi.Pointer<imp$1.sqlite3_changegroup> arg0,
+    ffi.Pointer<ffi.Int> pnData,
+    ffi.Pointer<ffi.Pointer<ffi.Void>> ppData,
+  ) {
+    return _sqlite3changegroup_output(
+      arg0,
+      pnData,
+      ppData,
+    );
+  }
+
+  late final _sqlite3changegroup_outputPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(ffi.Pointer<imp$1.sqlite3_changegroup>,
+                  ffi.Pointer<ffi.Int>, ffi.Pointer<ffi.Pointer<ffi.Void>>)>>(
+      'sqlite3changegroup_output');
+  late final _sqlite3changegroup_output =
+      _sqlite3changegroup_outputPtr.asFunction<
+          int Function(ffi.Pointer<imp$1.sqlite3_changegroup>,
+              ffi.Pointer<ffi.Int>, ffi.Pointer<ffi.Pointer<ffi.Void>>)>();
+
+  int sqlite3changegroup_schema(
+    ffi.Pointer<imp$1.sqlite3_changegroup> arg0,
+    ffi.Pointer<imp$1.sqlite3> arg1,
+    ffi.Pointer<ffi.Char> zDb,
+  ) {
+    return _sqlite3changegroup_schema(
+      arg0,
+      arg1,
+      zDb,
+    );
+  }
+
+  late final _sqlite3changegroup_schemaPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3_changegroup>,
+              ffi.Pointer<imp$1.sqlite3>,
+              ffi.Pointer<ffi.Char>)>>('sqlite3changegroup_schema');
+  late final _sqlite3changegroup_schema =
+      _sqlite3changegroup_schemaPtr.asFunction<
+          int Function(ffi.Pointer<imp$1.sqlite3_changegroup>,
+              ffi.Pointer<imp$1.sqlite3>, ffi.Pointer<ffi.Char>)>();
+
+  int sqlite3changeset_apply(
+    ffi.Pointer<imp$1.sqlite3> db,
+    int nChangeset,
+    ffi.Pointer<ffi.Void> pChangeset,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(
+                    ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)>>
+        xFilter,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pCtx, ffi.Int eConflict,
+                    ffi.Pointer<imp$1.sqlite3_changeset_iter> p)>>
+        xConflict,
+    ffi.Pointer<ffi.Void> pCtx,
+  ) {
+    return _sqlite3changeset_apply(
+      db,
+      nChangeset,
+      pChangeset,
+      xFilter,
+      xConflict,
+      pCtx,
+    );
+  }
+
+  late final _sqlite3changeset_applyPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3>,
+              ffi.Int,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Pointer<ffi.Char> zTab)>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Int eConflict,
+                          ffi.Pointer<imp$1.sqlite3_changeset_iter> p)>>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3changeset_apply');
+  late final _sqlite3changeset_apply = _sqlite3changeset_applyPtr.asFunction<
+      int Function(
+          ffi.Pointer<imp$1.sqlite3>,
+          int,
+          ffi.Pointer<ffi.Void>,
+          ffi.Pointer<
+              ffi.NativeFunction<
+                  ffi.Int Function(
+                      ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)>>,
+          ffi.Pointer<
+              ffi.NativeFunction<
+                  ffi.Int Function(
+                      ffi.Pointer<ffi.Void> pCtx,
+                      ffi.Int eConflict,
+                      ffi.Pointer<imp$1.sqlite3_changeset_iter> p)>>,
+          ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3changeset_apply_v2(
+    ffi.Pointer<imp$1.sqlite3> db,
+    int nChangeset,
+    ffi.Pointer<ffi.Void> pChangeset,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(
+                    ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)>>
+        xFilter,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pCtx, ffi.Int eConflict,
+                    ffi.Pointer<imp$1.sqlite3_changeset_iter> p)>>
+        xConflict,
+    ffi.Pointer<ffi.Void> pCtx,
+    ffi.Pointer<ffi.Pointer<ffi.Void>> ppRebase,
+    ffi.Pointer<ffi.Int> pnRebase,
+    int flags,
+  ) {
+    return _sqlite3changeset_apply_v2(
+      db,
+      nChangeset,
+      pChangeset,
+      xFilter,
+      xConflict,
+      pCtx,
+      ppRebase,
+      pnRebase,
+      flags,
+    );
+  }
+
+  late final _sqlite3changeset_apply_v2Ptr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3>,
+              ffi.Int,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Pointer<ffi.Char> zTab)>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Int eConflict,
+                          ffi.Pointer<imp$1.sqlite3_changeset_iter> p)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Pointer<ffi.Void>>,
+              ffi.Pointer<ffi.Int>,
+              ffi.Int)>>('sqlite3changeset_apply_v2');
+  late final _sqlite3changeset_apply_v2 =
+      _sqlite3changeset_apply_v2Ptr.asFunction<
+          int Function(
+              ffi.Pointer<imp$1.sqlite3>,
+              int,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Pointer<ffi.Char> zTab)>>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(
+                          ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Int eConflict,
+                          ffi.Pointer<imp$1.sqlite3_changeset_iter> p)>>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Pointer<ffi.Void>>,
+              ffi.Pointer<ffi.Int>,
+              int)>();
+
+  int sqlite3changeset_concat(
+    int nA,
+    ffi.Pointer<ffi.Void> pA,
+    int nB,
+    ffi.Pointer<ffi.Void> pB,
+    ffi.Pointer<ffi.Int> pnOut,
+    ffi.Pointer<ffi.Pointer<ffi.Void>> ppOut,
+  ) {
+    return _sqlite3changeset_concat(
+      nA,
+      pA,
+      nB,
+      pB,
+      pnOut,
+      ppOut,
+    );
+  }
+
+  late final _sqlite3changeset_concatPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Int,
+              ffi.Pointer<ffi.Void>,
+              ffi.Int,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Int>,
+              ffi.Pointer<ffi.Pointer<ffi.Void>>)>>('sqlite3changeset_concat');
+  late final _sqlite3changeset_concat = _sqlite3changeset_concatPtr.asFunction<
+      int Function(int, ffi.Pointer<ffi.Void>, int, ffi.Pointer<ffi.Void>,
+          ffi.Pointer<ffi.Int>, ffi.Pointer<ffi.Pointer<ffi.Void>>)>();
+
+  int sqlite3changeset_conflict(
+    ffi.Pointer<imp$1.sqlite3_changeset_iter> pIter,
+    int iVal,
+    ffi.Pointer<ffi.Pointer<imp$1.sqlite3_value>> ppValue,
+  ) {
+    return _sqlite3changeset_conflict(
+      pIter,
+      iVal,
+      ppValue,
+    );
+  }
+
+  late final _sqlite3changeset_conflictPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>,
+                  ffi.Int, ffi.Pointer<ffi.Pointer<imp$1.sqlite3_value>>)>>(
+      'sqlite3changeset_conflict');
+  late final _sqlite3changeset_conflict =
+      _sqlite3changeset_conflictPtr.asFunction<
+          int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>, int,
+              ffi.Pointer<ffi.Pointer<imp$1.sqlite3_value>>)>();
+
+  int sqlite3changeset_finalize(
+    ffi.Pointer<imp$1.sqlite3_changeset_iter> pIter,
+  ) {
+    return _sqlite3changeset_finalize(
+      pIter,
+    );
+  }
+
+  late final _sqlite3changeset_finalizePtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>)>>(
+      'sqlite3changeset_finalize');
+  late final _sqlite3changeset_finalize = _sqlite3changeset_finalizePtr
+      .asFunction<int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>)>();
+
+  int sqlite3changeset_fk_conflicts(
+    ffi.Pointer<imp$1.sqlite3_changeset_iter> pIter,
+    ffi.Pointer<ffi.Int> pnOut,
+  ) {
+    return _sqlite3changeset_fk_conflicts(
+      pIter,
+      pnOut,
+    );
+  }
+
+  late final _sqlite3changeset_fk_conflictsPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>,
+              ffi.Pointer<ffi.Int>)>>('sqlite3changeset_fk_conflicts');
+  late final _sqlite3changeset_fk_conflicts =
+      _sqlite3changeset_fk_conflictsPtr.asFunction<
+          int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>,
+              ffi.Pointer<ffi.Int>)>();
+
+  int sqlite3changeset_invert(
+    int nIn,
+    ffi.Pointer<ffi.Void> pIn,
+    ffi.Pointer<ffi.Int> pnOut,
+    ffi.Pointer<ffi.Pointer<ffi.Void>> ppOut,
+  ) {
+    return _sqlite3changeset_invert(
+      nIn,
+      pIn,
+      pnOut,
+      ppOut,
+    );
+  }
+
+  late final _sqlite3changeset_invertPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Int, ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Int>,
+              ffi.Pointer<ffi.Pointer<ffi.Void>>)>>('sqlite3changeset_invert');
+  late final _sqlite3changeset_invert = _sqlite3changeset_invertPtr.asFunction<
+      int Function(int, ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Int>,
+          ffi.Pointer<ffi.Pointer<ffi.Void>>)>();
+
+  int sqlite3changeset_new(
+    ffi.Pointer<imp$1.sqlite3_changeset_iter> pIter,
+    int iVal,
+    ffi.Pointer<ffi.Pointer<imp$1.sqlite3_value>> ppValue,
+  ) {
+    return _sqlite3changeset_new(
+      pIter,
+      iVal,
+      ppValue,
+    );
+  }
+
+  late final _sqlite3changeset_newPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>,
+                  ffi.Int, ffi.Pointer<ffi.Pointer<imp$1.sqlite3_value>>)>>(
+      'sqlite3changeset_new');
+  late final _sqlite3changeset_new = _sqlite3changeset_newPtr.asFunction<
+      int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>, int,
+          ffi.Pointer<ffi.Pointer<imp$1.sqlite3_value>>)>();
+
+  int sqlite3changeset_next(
+    ffi.Pointer<imp$1.sqlite3_changeset_iter> pIter,
+  ) {
+    return _sqlite3changeset_next(
+      pIter,
+    );
+  }
+
+  late final _sqlite3changeset_nextPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>)>>(
+      'sqlite3changeset_next');
+  late final _sqlite3changeset_next = _sqlite3changeset_nextPtr
+      .asFunction<int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>)>();
+
+  int sqlite3changeset_old(
+    ffi.Pointer<imp$1.sqlite3_changeset_iter> pIter,
+    int iVal,
+    ffi.Pointer<ffi.Pointer<imp$1.sqlite3_value>> ppValue,
+  ) {
+    return _sqlite3changeset_old(
+      pIter,
+      iVal,
+      ppValue,
+    );
+  }
+
+  late final _sqlite3changeset_oldPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>,
+                  ffi.Int, ffi.Pointer<ffi.Pointer<imp$1.sqlite3_value>>)>>(
+      'sqlite3changeset_old');
+  late final _sqlite3changeset_old = _sqlite3changeset_oldPtr.asFunction<
+      int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>, int,
+          ffi.Pointer<ffi.Pointer<imp$1.sqlite3_value>>)>();
+
+  int sqlite3changeset_op(
+    ffi.Pointer<imp$1.sqlite3_changeset_iter> pIter,
+    ffi.Pointer<ffi.Pointer<ffi.Char>> pzTab,
+    ffi.Pointer<ffi.Int> pnCol,
+    ffi.Pointer<ffi.Int> pOp,
+    ffi.Pointer<ffi.Int> pbIndirect,
+  ) {
+    return _sqlite3changeset_op(
+      pIter,
+      pzTab,
+      pnCol,
+      pOp,
+      pbIndirect,
+    );
+  }
+
+  late final _sqlite3changeset_opPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3_changeset_iter>,
+              ffi.Pointer<ffi.Pointer<ffi.Char>>,
+              ffi.Pointer<ffi.Int>,
+              ffi.Pointer<ffi.Int>,
+              ffi.Pointer<ffi.Int>)>>('sqlite3changeset_op');
+  late final _sqlite3changeset_op = _sqlite3changeset_opPtr.asFunction<
+      int Function(
+          ffi.Pointer<imp$1.sqlite3_changeset_iter>,
+          ffi.Pointer<ffi.Pointer<ffi.Char>>,
+          ffi.Pointer<ffi.Int>,
+          ffi.Pointer<ffi.Int>,
+          ffi.Pointer<ffi.Int>)>();
+
+  int sqlite3changeset_pk(
+    ffi.Pointer<imp$1.sqlite3_changeset_iter> pIter,
+    ffi.Pointer<ffi.Pointer<ffi.UnsignedChar>> pabPK,
+    ffi.Pointer<ffi.Int> pnCol,
+  ) {
+    return _sqlite3changeset_pk(
+      pIter,
+      pabPK,
+      pnCol,
+    );
+  }
+
+  late final _sqlite3changeset_pkPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3_changeset_iter>,
+              ffi.Pointer<ffi.Pointer<ffi.UnsignedChar>>,
+              ffi.Pointer<ffi.Int>)>>('sqlite3changeset_pk');
+  late final _sqlite3changeset_pk = _sqlite3changeset_pkPtr.asFunction<
+      int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>,
+          ffi.Pointer<ffi.Pointer<ffi.UnsignedChar>>, ffi.Pointer<ffi.Int>)>();
+
+  int sqlite3changeset_start(
+    ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changeset_iter>> pp,
+    int nChangeset,
+    ffi.Pointer<ffi.Void> pChangeset,
+  ) {
+    return _sqlite3changeset_start(
+      pp,
+      nChangeset,
+      pChangeset,
+    );
+  }
+
+  late final _sqlite3changeset_startPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changeset_iter>>,
+              ffi.Int,
+              ffi.Pointer<ffi.Void>)>>('sqlite3changeset_start');
+  late final _sqlite3changeset_start = _sqlite3changeset_startPtr.asFunction<
+      int Function(ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changeset_iter>>, int,
+          ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3changeset_start_v2(
+    ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changeset_iter>> pp,
+    int nChangeset,
+    ffi.Pointer<ffi.Void> pChangeset,
+    int flags,
+  ) {
+    return _sqlite3changeset_start_v2(
+      pp,
+      nChangeset,
+      pChangeset,
+      flags,
+    );
+  }
+
+  late final _sqlite3changeset_start_v2Ptr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changeset_iter>>,
+              ffi.Int,
+              ffi.Pointer<ffi.Void>,
+              ffi.Int)>>('sqlite3changeset_start_v2');
+  late final _sqlite3changeset_start_v2 =
+      _sqlite3changeset_start_v2Ptr.asFunction<
+          int Function(ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changeset_iter>>,
+              int, ffi.Pointer<ffi.Void>, int)>();
+
+  int sqlite3changeset_upgrade(
+    ffi.Pointer<imp$1.sqlite3> db,
+    ffi.Pointer<ffi.Char> zDb,
+    int nIn,
+    ffi.Pointer<ffi.Void> pIn,
+    ffi.Pointer<ffi.Int> pnOut,
+    ffi.Pointer<ffi.Pointer<ffi.Void>> ppOut,
+  ) {
+    return _sqlite3changeset_upgrade(
+      db,
+      zDb,
+      nIn,
+      pIn,
+      pnOut,
+      ppOut,
+    );
+  }
+
+  late final _sqlite3changeset_upgradePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Int,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Int>,
+              ffi.Pointer<ffi.Pointer<ffi.Void>>)>>('sqlite3changeset_upgrade');
+  late final _sqlite3changeset_upgrade =
+      _sqlite3changeset_upgradePtr.asFunction<
+          int Function(
+              ffi.Pointer<imp$1.sqlite3>,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Int>,
+              ffi.Pointer<ffi.Pointer<ffi.Void>>)>();
+
+  int sqlite3rebaser_configure(
+    ffi.Pointer<imp$1.sqlite3_rebaser> arg0,
+    int nRebase,
+    ffi.Pointer<ffi.Void> pRebase,
+  ) {
+    return _sqlite3rebaser_configure(
+      arg0,
+      nRebase,
+      pRebase,
+    );
+  }
+
+  late final _sqlite3rebaser_configurePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<imp$1.sqlite3_rebaser>, ffi.Int,
+              ffi.Pointer<ffi.Void>)>>('sqlite3rebaser_configure');
+  late final _sqlite3rebaser_configure =
+      _sqlite3rebaser_configurePtr.asFunction<
+          int Function(ffi.Pointer<imp$1.sqlite3_rebaser>, int,
+              ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3rebaser_create(
+    ffi.Pointer<ffi.Pointer<imp$1.sqlite3_rebaser>> ppNew,
+  ) {
+    return _sqlite3rebaser_create(
+      ppNew,
+    );
+  }
+
+  late final _sqlite3rebaser_createPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(
+                  ffi.Pointer<ffi.Pointer<imp$1.sqlite3_rebaser>>)>>(
+      'sqlite3rebaser_create');
+  late final _sqlite3rebaser_create = _sqlite3rebaser_createPtr.asFunction<
+      int Function(ffi.Pointer<ffi.Pointer<imp$1.sqlite3_rebaser>>)>();
+
+  void sqlite3rebaser_delete(
+    ffi.Pointer<imp$1.sqlite3_rebaser> p,
+  ) {
+    return _sqlite3rebaser_delete(
+      p,
+    );
+  }
+
+  late final _sqlite3rebaser_deletePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              ffi.Pointer<imp$1.sqlite3_rebaser>)>>('sqlite3rebaser_delete');
+  late final _sqlite3rebaser_delete = _sqlite3rebaser_deletePtr
+      .asFunction<void Function(ffi.Pointer<imp$1.sqlite3_rebaser>)>();
+
+  int sqlite3rebaser_rebase(
+    ffi.Pointer<imp$1.sqlite3_rebaser> arg0,
+    int nIn,
+    ffi.Pointer<ffi.Void> pIn,
+    ffi.Pointer<ffi.Int> pnOut,
+    ffi.Pointer<ffi.Pointer<ffi.Void>> ppOut,
+  ) {
+    return _sqlite3rebaser_rebase(
+      arg0,
+      nIn,
+      pIn,
+      pnOut,
+      ppOut,
+    );
+  }
+
+  late final _sqlite3rebaser_rebasePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3_rebaser>,
+              ffi.Int,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Int>,
+              ffi.Pointer<ffi.Pointer<ffi.Void>>)>>('sqlite3rebaser_rebase');
+  late final _sqlite3rebaser_rebase = _sqlite3rebaser_rebasePtr.asFunction<
+      int Function(
+          ffi.Pointer<imp$1.sqlite3_rebaser>,
+          int,
+          ffi.Pointer<ffi.Void>,
+          ffi.Pointer<ffi.Int>,
+          ffi.Pointer<ffi.Pointer<ffi.Void>>)>();
+
+  int sqlite3session_attach(
+    ffi.Pointer<imp$1.sqlite3_session> pSession,
+    ffi.Pointer<ffi.Char> zTab,
+  ) {
+    return _sqlite3session_attach(
+      pSession,
+      zTab,
+    );
+  }
+
+  late final _sqlite3session_attachPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<imp$1.sqlite3_session>,
+              ffi.Pointer<ffi.Char>)>>('sqlite3session_attach');
+  late final _sqlite3session_attach = _sqlite3session_attachPtr.asFunction<
+      int Function(
+          ffi.Pointer<imp$1.sqlite3_session>, ffi.Pointer<ffi.Char>)>();
+
+  int sqlite3session_changeset(
+    ffi.Pointer<imp$1.sqlite3_session> pSession,
+    ffi.Pointer<ffi.Int> pnChangeset,
+    ffi.Pointer<ffi.Pointer<ffi.Void>> ppChangeset,
+  ) {
+    return _sqlite3session_changeset(
+      pSession,
+      pnChangeset,
+      ppChangeset,
+    );
+  }
+
+  late final _sqlite3session_changesetPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3_session>,
+              ffi.Pointer<ffi.Int>,
+              ffi.Pointer<ffi.Pointer<ffi.Void>>)>>('sqlite3session_changeset');
+  late final _sqlite3session_changeset =
+      _sqlite3session_changesetPtr.asFunction<
+          int Function(ffi.Pointer<imp$1.sqlite3_session>, ffi.Pointer<ffi.Int>,
+              ffi.Pointer<ffi.Pointer<ffi.Void>>)>();
+
+  int sqlite3session_changeset_size(
+    ffi.Pointer<imp$1.sqlite3_session> pSession,
+  ) {
+    return _sqlite3session_changeset_size(
+      pSession,
+    );
+  }
+
+  late final _sqlite3session_changeset_sizePtr = _lookup<
+          ffi.NativeFunction<
+              ffi.LongLong Function(ffi.Pointer<imp$1.sqlite3_session>)>>(
+      'sqlite3session_changeset_size');
+  late final _sqlite3session_changeset_size = _sqlite3session_changeset_sizePtr
+      .asFunction<int Function(ffi.Pointer<imp$1.sqlite3_session>)>();
+
+  int sqlite3session_config(
+    int op,
+    ffi.Pointer<ffi.Void> pArg,
+  ) {
+    return _sqlite3session_config(
+      op,
+      pArg,
+    );
+  }
+
+  late final _sqlite3session_configPtr = _lookup<
+          ffi.NativeFunction<ffi.Int Function(ffi.Int, ffi.Pointer<ffi.Void>)>>(
+      'sqlite3session_config');
+  late final _sqlite3session_config = _sqlite3session_configPtr
+      .asFunction<int Function(int, ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3session_create(
+    ffi.Pointer<imp$1.sqlite3> db,
+    ffi.Pointer<ffi.Char> zDb,
+    ffi.Pointer<ffi.Pointer<imp$1.sqlite3_session>> ppSession,
+  ) {
+    return _sqlite3session_create(
+      db,
+      zDb,
+      ppSession,
+    );
+  }
+
+  late final _sqlite3session_createPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(
+                  ffi.Pointer<imp$1.sqlite3>,
+                  ffi.Pointer<ffi.Char>,
+                  ffi.Pointer<ffi.Pointer<imp$1.sqlite3_session>>)>>(
+      'sqlite3session_create');
+  late final _sqlite3session_create = _sqlite3session_createPtr.asFunction<
+      int Function(ffi.Pointer<imp$1.sqlite3>, ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Pointer<imp$1.sqlite3_session>>)>();
+
+  void sqlite3session_delete(
+    ffi.Pointer<imp$1.sqlite3_session> pSession,
+  ) {
+    return _sqlite3session_delete(
+      pSession,
+    );
+  }
+
+  late final _sqlite3session_deletePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              ffi.Pointer<imp$1.sqlite3_session>)>>('sqlite3session_delete');
+  late final _sqlite3session_delete = _sqlite3session_deletePtr
+      .asFunction<void Function(ffi.Pointer<imp$1.sqlite3_session>)>();
+
+  int sqlite3session_diff(
+    ffi.Pointer<imp$1.sqlite3_session> pSession,
+    ffi.Pointer<ffi.Char> zFromDb,
+    ffi.Pointer<ffi.Char> zTbl,
+    ffi.Pointer<ffi.Pointer<ffi.Char>> pzErrMsg,
+  ) {
+    return _sqlite3session_diff(
+      pSession,
+      zFromDb,
+      zTbl,
+      pzErrMsg,
+    );
+  }
+
+  late final _sqlite3session_diffPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3_session>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Pointer<ffi.Char>>)>>('sqlite3session_diff');
+  late final _sqlite3session_diff = _sqlite3session_diffPtr.asFunction<
+      int Function(ffi.Pointer<imp$1.sqlite3_session>, ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Pointer<ffi.Char>>)>();
+
+  int sqlite3session_enable(
+    ffi.Pointer<imp$1.sqlite3_session> pSession,
+    int bEnable,
+  ) {
+    return _sqlite3session_enable(
+      pSession,
+      bEnable,
+    );
+  }
+
+  late final _sqlite3session_enablePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<imp$1.sqlite3_session>,
+              ffi.Int)>>('sqlite3session_enable');
+  late final _sqlite3session_enable = _sqlite3session_enablePtr
+      .asFunction<int Function(ffi.Pointer<imp$1.sqlite3_session>, int)>();
+
+  int sqlite3session_indirect(
+    ffi.Pointer<imp$1.sqlite3_session> pSession,
+    int bIndirect,
+  ) {
+    return _sqlite3session_indirect(
+      pSession,
+      bIndirect,
+    );
+  }
+
+  late final _sqlite3session_indirectPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<imp$1.sqlite3_session>,
+              ffi.Int)>>('sqlite3session_indirect');
+  late final _sqlite3session_indirect = _sqlite3session_indirectPtr
+      .asFunction<int Function(ffi.Pointer<imp$1.sqlite3_session>, int)>();
+
+  int sqlite3session_isempty(
+    ffi.Pointer<imp$1.sqlite3_session> pSession,
+  ) {
+    return _sqlite3session_isempty(
+      pSession,
+    );
+  }
+
+  late final _sqlite3session_isemptyPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3_session>)>>('sqlite3session_isempty');
+  late final _sqlite3session_isempty = _sqlite3session_isemptyPtr
+      .asFunction<int Function(ffi.Pointer<imp$1.sqlite3_session>)>();
+
+  int sqlite3session_memory_used(
+    ffi.Pointer<imp$1.sqlite3_session> pSession,
+  ) {
+    return _sqlite3session_memory_used(
+      pSession,
+    );
+  }
+
+  late final _sqlite3session_memory_usedPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.LongLong Function(ffi.Pointer<imp$1.sqlite3_session>)>>(
+      'sqlite3session_memory_used');
+  late final _sqlite3session_memory_used = _sqlite3session_memory_usedPtr
+      .asFunction<int Function(ffi.Pointer<imp$1.sqlite3_session>)>();
+
+  int sqlite3session_object_config(
+    ffi.Pointer<imp$1.sqlite3_session> arg0,
+    int op,
+    ffi.Pointer<ffi.Void> pArg,
+  ) {
+    return _sqlite3session_object_config(
+      arg0,
+      op,
+      pArg,
+    );
+  }
+
+  late final _sqlite3session_object_configPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<imp$1.sqlite3_session>, ffi.Int,
+              ffi.Pointer<ffi.Void>)>>('sqlite3session_object_config');
+  late final _sqlite3session_object_config =
+      _sqlite3session_object_configPtr.asFunction<
+          int Function(ffi.Pointer<imp$1.sqlite3_session>, int,
+              ffi.Pointer<ffi.Void>)>();
+
+  int sqlite3session_patchset(
+    ffi.Pointer<imp$1.sqlite3_session> pSession,
+    ffi.Pointer<ffi.Int> pnPatchset,
+    ffi.Pointer<ffi.Pointer<ffi.Void>> ppPatchset,
+  ) {
+    return _sqlite3session_patchset(
+      pSession,
+      pnPatchset,
+      ppPatchset,
+    );
+  }
+
+  late final _sqlite3session_patchsetPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(
+              ffi.Pointer<imp$1.sqlite3_session>,
+              ffi.Pointer<ffi.Int>,
+              ffi.Pointer<ffi.Pointer<ffi.Void>>)>>('sqlite3session_patchset');
+  late final _sqlite3session_patchset = _sqlite3session_patchsetPtr.asFunction<
+      int Function(ffi.Pointer<imp$1.sqlite3_session>, ffi.Pointer<ffi.Int>,
+          ffi.Pointer<ffi.Pointer<ffi.Void>>)>();
+
+  void sqlite3session_table_filter(
+    ffi.Pointer<imp$1.sqlite3_session> pSession,
+    ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(
+                    ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)>>
+        xFilter,
+    ffi.Pointer<ffi.Void> pCtx,
+  ) {
+    return _sqlite3session_table_filter(
+      pSession,
+      xFilter,
+      pCtx,
+    );
+  }
+
+  late final _sqlite3session_table_filterPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              ffi.Pointer<imp$1.sqlite3_session>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Pointer<ffi.Char> zTab)>>,
+              ffi.Pointer<ffi.Void>)>>('sqlite3session_table_filter');
+  late final _sqlite3session_table_filter =
+      _sqlite3session_table_filterPtr.asFunction<
+          void Function(
+              ffi.Pointer<imp$1.sqlite3_session>,
+              ffi.Pointer<
+                  ffi.NativeFunction<
+                      ffi.Int Function(ffi.Pointer<ffi.Void> pCtx,
+                          ffi.Pointer<ffi.Char> zTab)>>,
+              ffi.Pointer<ffi.Void>)>();
 }
