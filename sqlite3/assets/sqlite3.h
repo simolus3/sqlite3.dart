@@ -9,6 +9,40 @@ typedef struct sqlite3_stmt sqlite3_stmt;
 typedef struct sqlite3_backup sqlite3_backup;
 typedef struct sqlite3_api_routines sqlite3_api_routines;
 
+/*
+** CAPI3REF: 64-Bit Integer Types {H10200} <S10110>
+** KEYWORDS: sqlite_int64 sqlite_uint64
+**
+** Because there is no cross-platform way to specify 64-bit integer types
+** SQLite includes typedefs for 64-bit signed and unsigned integers.
+**
+** The sqlite3_int64 and sqlite3_uint64 are the preferred type definitions.
+** The sqlite_int64 and sqlite_uint64 types are supported for backwards
+** compatibility only.
+**
+** Requirements: [H10201] [H10202]
+*/
+#ifdef SQLITE_INT64_TYPE
+  typedef SQLITE_INT64_TYPE sqlite_int64;
+  typedef unsigned SQLITE_INT64_TYPE sqlite_uint64;
+#elif defined(_MSC_VER) || defined(__BORLANDC__)
+  typedef __int64 sqlite_int64;
+  typedef unsigned __int64 sqlite_uint64;
+#else
+  typedef long long int sqlite_int64;
+  typedef unsigned long long int sqlite_uint64;
+#endif
+typedef sqlite_int64 sqlite3_int64;
+typedef sqlite_uint64 sqlite3_uint64;
+
+/*
+** If compiling for a processor that lacks floating point support,
+** substitute integer for floating-point.
+*/
+#ifdef SQLITE_OMIT_FLOATING_POINT
+# define double sqlite3_int64
+#endif
+
 sqlite3_char *sqlite3_temp_directory;
 
 int sqlite3_initialize();
