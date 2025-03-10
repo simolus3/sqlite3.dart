@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'database.dart';
+import 'session.dart';
 import 'vfs.dart';
 
 /// Provides access to `sqlite3` functions, such as opening new databases.
@@ -7,6 +10,30 @@ import 'vfs.dart';
 abstract interface class CommonSqlite3 {
   /// The version of the sqlite3 library in used.
   Version get version;
+
+  CommonSession createSession(CommonDatabase database, String name);
+
+  void sessionAttach(CommonSession session, String? name);
+
+  Uint8List sessionChangeset(CommonSession session);
+
+  Uint8List sessionPatchset(CommonSession session);
+
+  void sessionDelete(CommonSession session);
+
+  void sessionChangesetApply(
+    CommonDatabase database,
+    Uint8List changeset, {
+    int Function(
+      CommonDatabase ctx,
+      String tableName,
+    )? filter,
+    ApplyChangesetRule Function(
+      CommonDatabase ctx,
+      ApplyChangesetConflict eConflict,
+      CommonChangesetIterator iter,
+    )? conflict,
+  });
 
   /// Opens a database file.
   ///

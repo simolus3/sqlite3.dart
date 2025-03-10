@@ -8,6 +8,10 @@ import 'package:meta/meta.dart';
 import '../functions.dart';
 import '../vfs.dart';
 
+abstract base class RawSqliteSession {}
+
+abstract base class RawChangesetIterator {}
+
 // ignore_for_file: non_constant_identifier_names
 
 /// Defines a lightweight abstraction layer around sqlite3 that can be accessed
@@ -27,6 +31,30 @@ import '../vfs.dart';
 /// All of the classes and methods defined here are internal and can be changed
 /// as needed.
 abstract base class RawSqliteBindings {
+  // Session extension
+  SqliteResult<RawSqliteSession> sqlite3session_create(
+      RawSqliteDatabase db, String name);
+  int sqlite3session_attach(RawSqliteSession session, String? name);
+  Uint8List sqlite3session_changeset(RawSqliteSession session);
+  Uint8List sqlite3session_patchset(RawSqliteSession session);
+  void sqlite3session_delete(RawSqliteSession session);
+  void sqlite3changeset_apply(
+    RawSqliteDatabase database,
+    Uint8List changeset,
+    int Function(
+      RawSqliteDatabase ctx,
+      String tableName,
+    )? filter,
+    int Function(
+      RawSqliteDatabase ctx,
+      int eConflict,
+      RawChangesetIterator iter,
+    )? conflict,
+    RawSqliteDatabase ctx,
+  );
+  Uint8List sqlite3changeset_invert(Uint8List session);
+  Uint8List sqlite3changeset_concat(Uint8List a, Uint8List b);
+
   String sqlite3_libversion();
   String sqlite3_sourceid();
   int sqlite3_libversion_number();

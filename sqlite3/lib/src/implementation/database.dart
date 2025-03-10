@@ -10,6 +10,7 @@ import '../database.dart';
 import '../exception.dart';
 import '../functions.dart';
 import '../result_set.dart';
+import '../session.dart';
 import '../statement.dart';
 import 'bindings.dart';
 import 'exception.dart';
@@ -51,6 +52,43 @@ final class FinalizableDatabase extends FinalizablePart {
   }
 }
 
+base class ChangesetIteratorImplementation implements CommonChangesetIterator {
+  final RawSqliteBindings bindings;
+  final RawChangesetIterator iterator;
+
+  ChangesetIteratorImplementation(this.bindings, this.iterator);
+}
+
+base class SessionImplementation implements CommonSession {
+  final RawSqliteBindings bindings;
+  final RawSqliteSession session;
+
+  SessionImplementation(this.bindings, this.session);
+
+  @override
+  void attach([String? name]) {
+    final result = bindings.sqlite3session_attach(session, name);
+    if (result != SqlError.SQLITE_OK) {
+      throw SqliteException(result, 'Could not attach session');
+    }
+  }
+
+  @override
+  Uint8List changeset() {
+    return bindings.sqlite3session_changeset(session);
+  }
+
+  @override
+  Uint8List patchset() {
+    return bindings.sqlite3session_patchset(session);
+  }
+
+  @override
+  void delete() {
+    bindings.sqlite3session_delete(session);
+  }
+}
+
 base class DatabaseImplementation implements CommonDatabase {
   final RawSqliteBindings bindings;
   final RawSqliteDatabase database;
@@ -65,6 +103,60 @@ base class DatabaseImplementation implements CommonDatabase {
 
   @override
   DatabaseConfig get config => DatabaseConfigImplementation(this);
+
+  @override
+  CommonSession createSession(String name) {
+    final result = bindings.sqlite3session_create(database, name);
+    return SessionImplementation(bindings, result.result);
+  }
+
+  @override
+  void changesetApply(
+    Uint8List changeset, {
+    int Function(
+      CommonDatabase ctx,
+      String tableName,
+    )? filter,
+    ApplyChangesetRule Function(
+      CommonDatabase ctx,
+      ApplyChangesetConflict eConflict,
+      CommonChangesetIterator iter,
+    )? conflict,
+  }) {
+    int Function(RawSqliteDatabase, String)? _filter;
+    int Function(RawSqliteDatabase, int, RawChangesetIterator)? _conflict;
+
+    if (filter != null) {
+      _filter = (db, table) => filter(this, table);
+    }
+
+    if (conflict != null) {
+      _conflict = (db, conflictCode, iterator) {
+        final conflictType = ApplyChangesetConflict.parse(conflictCode);
+        final iteratorImpl = ChangesetIteratorImplementation(bindings, iterator);
+        final result =  conflict(this, conflictType, iteratorImpl);
+        return result.raw;
+      };
+    }
+
+    bindings.sqlite3changeset_apply(
+      database,
+      changeset,
+      _filter,
+      _conflict,
+      database,
+    );
+  }
+
+  @override
+  Uint8List changesetInvert(Uint8List session) {
+    return bindings.sqlite3changeset_invert(session);
+  }
+
+  @override
+  Uint8List changesetConcat(Uint8List a, Uint8List b) {
+    return bindings.sqlite3changeset_concat(a, b);
+  }
 
   @override
   int get userVersion {
