@@ -10,6 +10,11 @@ void main() {
   // Create a new in-memory database. To use a database backed by a file, you
   // can replace this with sqlite3.open(yourFilePath).
   final db = sqlite3.openInMemory();
+  final db2 = sqlite3.openInMemory();
+
+  final session = sqlite3.createSession(db, 'main');
+
+  print('session: ${session.runtimeType}');
 
   // Create a table and insert some data
   db.execute('''
@@ -18,6 +23,15 @@ void main() {
       name TEXT NOT NULL
     );
   ''');
+  db2.execute('''
+    CREATE TABLE artists (
+      id INTEGER NOT NULL PRIMARY KEY,
+      name TEXT NOT NULL
+    );
+  ''');
+
+  session.attach('artists');
+  print('attached to artists');
 
   // Prepare a statement to run it multiple times:
   final stmt = db.prepare('INSERT INTO artists (name) VALUES (?)');
@@ -29,6 +43,34 @@ void main() {
 
   // Dispose a statement when you don't need it anymore to clean up resources.
   stmt.dispose();
+
+  // final changeset = session.changeset();
+  // print('changeset: ${changeset.lengthInBytes} bytes');
+
+  final changeset = session.patchset();
+  print('patchset: ${changeset.lengthInBytes} bytes');
+
+  // apply changes
+  db2.changesetApply(
+    changeset,
+    // conflict: (ctx, eConflict, iter) {
+    //   print('conflict: $eConflict');
+    //   return ApplyChangesetRule.omit;
+    // },
+    // filter: (ctx, table) {
+    //   print('filter: $table');
+    //   return 1;
+    // },
+  );
+
+  // query the database using a simple select statement
+  final result = db2.select('SELECT * FROM artists');
+  for (final row in result) {
+    print('cs: Artist[id: ${row['id']}, name: ${row['name']}]');
+  }
+
+  session.delete();
+  print('deleted session');
 
   // You can run select statements with PreparedStatement.select, or directly
   // on the database:
