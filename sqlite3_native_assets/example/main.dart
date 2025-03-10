@@ -51,7 +51,8 @@ void main() {
   print('patchset: ${changeset.lengthInBytes} bytes');
 
   // apply changes
-  db2.changesetApply(
+  sqlite3.sessionChangesetApply(
+    db2,
     changeset,
     // conflict: (ctx, eConflict, iter) {
     //   print('conflict: $eConflict');
@@ -62,6 +63,9 @@ void main() {
     //   return 1;
     // },
   );
+
+  // save to ./changeset.bin
+  File('./changeset.bin').writeAsBytes(changeset);
 
   // query the database using a simple select statement
   final result = db2.select('SELECT * FROM artists');
