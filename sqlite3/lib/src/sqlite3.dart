@@ -4,6 +4,51 @@ import 'database.dart';
 import 'session.dart';
 import 'vfs.dart';
 
+
+enum ApplyChangesetRule {
+  /// SQLITE_CHANGESET_OMIT
+  /// If a conflict handler returns this value no special action is taken. The change that caused the conflict is not applied. The session module continues to the next change in the changeset.
+  omit(0),
+
+  /// SQLITE_CHANGESET_REPLACE
+  /// This value may only be returned if the second argument to the conflict handler was SQLITE_CHANGESET_DATA or SQLITE_CHANGESET_CONFLICT. If this is not the case, any changes applied so far are rolled back and the call to sqlite3changeset_apply() returns SQLITE_MISUSE.
+  /// If CHANGESET_REPLACE is returned by an SQLITE_CHANGESET_DATA conflict handler, then the conflicting row is either updated or deleted, depending on the type of change.
+  ///
+  /// If CHANGESET_REPLACE is returned by an SQLITE_CHANGESET_CONFLICT conflict handler, then the conflicting row is removed from the database and a second attempt to apply the change is made. If this second attempt fails, the original row is restored to the database before continuing.
+  replace(1),
+
+  /// SQLITE_CHANGESET_ABORT
+  /// If this value is returned, any changes applied so far are rolled back and the call to sqlite3changeset_apply() returns SQLITE_ABORT.
+  abort(2);
+
+  final int raw;
+  const ApplyChangesetRule(this.raw);
+}
+
+enum ApplyChangesetConflict {
+  /// SQLITE_CHANGESET_DATA
+  data(1),
+
+  /// SQLITE_CHANGESET_NOTFOUND
+  notFound(2),
+
+  /// SQLITE_CHANGESET_CONFLICT
+  conflict(3),
+
+  /// SQLITE_CHANGESET_CONSTRAINT
+  constraint(4),
+
+  /// SQLITE_CHANGESET_FOREIGN_KEY
+  foreignKey(5);
+
+  final int raw;
+  const ApplyChangesetConflict(this.raw);
+
+  static ApplyChangesetConflict parse(int value) {
+    return ApplyChangesetConflict.values.firstWhere((e) => e.raw == value);
+  }
+}
+
 /// Provides access to `sqlite3` functions, such as opening new databases.
 ///
 /// {@category common}

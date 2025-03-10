@@ -11,6 +11,7 @@ import '../vfs.dart';
 import 'bindings.dart';
 import 'database.dart';
 import 'exception.dart';
+import 'session.dart';
 
 base class Sqlite3Implementation implements CommonSqlite3 {
   final RawSqliteBindings bindings;
@@ -24,7 +25,9 @@ base class Sqlite3Implementation implements CommonSqlite3 {
 
   @override
   CommonSession createSession(CommonDatabase database, String name) {
-    return database.createSession(name);
+    final db = (database as DatabaseImplementation).database;
+    final result = bindings.sqlite3session_create(db, name);
+    return SessionImplementation(bindings, result.result);
   }
 
   @override
