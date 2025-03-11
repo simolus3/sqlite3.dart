@@ -4,6 +4,7 @@ import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
 import 'package:sqlite3_web/sqlite3_web.dart';
+import 'package:sqlite3_web/src/client.dart';
 import 'package:web/web.dart';
 
 import 'controller.dart';
@@ -43,12 +44,43 @@ void main() {
   _addCallbackForWebDriver('open_only_vfs', (arg) => _open(arg, true));
   _addCallbackForWebDriver('exec', _exec);
   _addCallbackForWebDriver('test_second', (arg) async {
-    final endpoint = await database!.additionalConnection();
-    final second = await WebSqlite.connectToPort(endpoint);
+    final sqlite = initializeSqlite();
+    // Open one database to occupy the database id of zero in the worker
+    final unused = await sqlite.connect(
+        'a', StorageMode.inMemory, AccessMode.throughSharedWorker);
+    await unused.execute('CREATE TABLE unused (bar TEXT);');
 
-    await second.execute('SELECT 1');
+    // Then open another one
+    final first = await sqlite.connect(
+            'b', StorageMode.inMemory, AccessMode.throughSharedWorker)
+        as RemoteDatabase;
+    await first.execute('CREATE TABLE foo (bar TEXT);');
+
+    final endpoint = await first.additionalConnection();
+    final second = await WebSqlite.connectToPort(endpoint) as RemoteDatabase;
+
+    // First and second should have different internal ids (that's what the
+    // setup with the unused database was trying to accomplish).
+    if (first.databaseId == second.databaseId) {
+      return 'Unexpected same id'.toJS;
+    }
+
+    await second.execute('SELECT * FROM foo;');
+
+    var receivedUpdates = 0;
+    second.updates.listen((_) => receivedUpdates++);
+
+    await first.execute('INSERT INTO foo VALUES (?)', ['a']);
+    await unused.execute('INSERT INTO unused VALUES (?)', ['a']);
+
+    await Future.delayed(const Duration(milliseconds: 200));
+
+    await unused.dispose();
+    await first.dispose();
     await second.dispose();
-    return true.toJS;
+    // This should have received the update from the first database without
+    // receiving the one from the unrelated database.
+    return (receivedUpdates == 1).toJS;
   });
   _addCallbackForWebDriver('assert_file', (arg) async {
     final vfs = database!.fileSystem;
