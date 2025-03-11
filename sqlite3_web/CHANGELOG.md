@@ -1,3 +1,7 @@
+## 0.3.1
+
+- Fix hooks not being delivered to all databases.
+
 ## 0.3.0
 
 - Allow passing data to worker when opening databases.
