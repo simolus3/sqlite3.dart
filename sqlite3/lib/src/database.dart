@@ -1,7 +1,53 @@
+import 'dart:typed_data';
+
 import 'functions.dart';
 import 'result_set.dart';
+import 'session.dart';
 import 'statement.dart';
 import 'constants.dart';
+
+class CreateSessionOptions {
+  /// A specific table to track changes for. By default, changes to all tables are tracked.
+  final String? table;
+
+  /// Name of the database to track. This is useful when multiple databases have been added using
+  /// [`ATTACH DATABASE`](https://www.sqlite.org/lang_attach.html).
+  final String db;
+
+  const CreateSessionOptions({this.table, this.db = 'main'});
+}
+
+class ApplyChangesetOptions {
+  /// Skip changes that, when targeted table name is supplied to this function, return a truthy value.
+  /// By default, all changes are attempted.
+  final bool Function(String tableName)? filter;
+
+  /// Determines how conflicts are handled. **Default**: `SQLITE_CHANGESET_ABORT`.
+  final ApplyChangesetConflict? onConflict;
+
+  const ApplyChangesetOptions({this.filter, this.onConflict});
+}
+
+// #define SQLITE_CHANGESET_OMIT       0
+// #define SQLITE_CHANGESET_REPLACE    1
+// #define SQLITE_CHANGESET_ABORT      2
+enum ApplyChangesetConflict {
+  /// Abort the changeset application.
+  abort(2),
+
+  /// Replace the conflicting row.
+  replace(1),
+
+  /// Omit the current change.
+  omit(0);
+
+  final int flag;
+  const ApplyChangesetConflict(this.flag);
+
+  static ApplyChangesetConflict parse(int flag) {
+    return ApplyChangesetConflict.values.firstWhere((e) => e.flag == flag);
+  }
+}
 
 /// An opened sqlite3 database.
 ///
@@ -244,6 +290,44 @@ abstract class CommonDatabase {
   ///
   /// For details, see https://www.sqlite.org/c3ref/get_autocommit.html
   bool get autocommit;
+
+  /// Creates and attaches a session to the database. This method is a wrapper around
+  /// [`sqlite3session_create()`](https://www.sqlite.org/session/sqlite3session_create.html) and
+  /// [`sqlite3session_attach()`](https://www.sqlite.org/session/sqlite3session_attach.html).
+  /// @param options The configuration options for the session.
+  /// @returns A session handle.
+  CommonSession createSession([
+    CreateSessionOptions options = const CreateSessionOptions(),
+  ]);
+
+  /// An exception is thrown if the database is not
+  /// open. This method is a wrapper around
+  /// [`sqlite3changeset_apply()`](https://www.sqlite.org/session/sqlite3changeset_apply.html).
+  ///
+  /// ```js
+  /// const sourceDb = new DatabaseSync(':memory:');
+  /// const targetDb = new DatabaseSync(':memory:');
+  ///
+  /// sourceDb.exec('CREATE TABLE data(key INTEGER PRIMARY KEY, value TEXT)');
+  /// targetDb.exec('CREATE TABLE data(key INTEGER PRIMARY KEY, value TEXT)');
+  ///
+  /// const session = sourceDb.createSession();
+  ///
+  /// const insert = sourceDb.prepare('INSERT INTO data (key, value) VALUES (?, ?)');
+  /// insert.run(1, 'hello');
+  /// insert.run(2, 'world');
+  ///
+  /// const changeset = session.changeset();
+  /// targetDb.applyChangeset(changeset);
+  /// // Now that the changeset has been applied, targetDb contains the same data as sourceDb.
+  /// ```
+  /// @param changeset A binary changeset or patchset.
+  /// @param options The configuration options for how the changes will be applied.
+  /// @returns Whether the changeset was applied successfully without being aborted.
+  void applyChangeset(
+    Uint8List changeset, [
+    ApplyChangesetOptions options = const ApplyChangesetOptions(),
+  ]);
 
   /// Closes this database and releases associated resources.
   void dispose();

@@ -5,13 +5,11 @@ import 'package:meta/meta.dart';
 import '../constants.dart';
 import '../database.dart';
 import '../exception.dart';
-import '../session.dart';
 import '../sqlite3.dart';
 import '../vfs.dart';
 import 'bindings.dart';
 import 'database.dart';
 import 'exception.dart';
-import 'session.dart';
 
 base class Sqlite3Implementation implements CommonSqlite3 {
   final RawSqliteBindings bindings;
@@ -21,76 +19,6 @@ base class Sqlite3Implementation implements CommonSqlite3 {
   @visibleForOverriding
   CommonDatabase wrapDatabase(RawSqliteDatabase rawDb) {
     return DatabaseImplementation(bindings, rawDb);
-  }
-
-  @override
-  CommonSession createSession(CommonDatabase database, String name) {
-    final db = (database as DatabaseImplementation).database;
-    final result = bindings.sqlite3session_create(db, name);
-    return SessionImplementation(bindings, result.result);
-  }
-
-  @override
-  void sessionAttach(CommonSession session, String? name) {
-    final instance = session as SessionImplementation;
-    final rc = bindings.sqlite3session_attach(instance.session, name);
-    if (rc != 0) {
-      throw SqliteException(rc, 'Error returned by sqlite3_initialize');
-    }
-  }
-
-  @override
-  Uint8List sessionChangeset(CommonSession session) {
-    final instance = session as SessionImplementation;
-    return bindings.sqlite3session_changeset(instance.session);
-  }
-
-  @override
-  Uint8List sessionPatchset(CommonSession session) {
-    final instance = session as SessionImplementation;
-    return bindings.sqlite3session_patchset(instance.session);
-  }
-
-  @override
-  void sessionDelete(CommonSession session) {
-    final instance = session as SessionImplementation;
-    bindings.sqlite3session_delete(instance.session);
-  }
-
-  @override
-  void sessionChangesetApply(
-    CommonDatabase database,
-    Uint8List changeset, {
-    int Function(
-      CommonDatabase ctx,
-      String tableName,
-    )? filter,
-    ApplyChangesetRule Function(
-      CommonDatabase ctx,
-      ApplyChangesetConflict eConflict,
-      CommonChangesetIterator iter,
-    )? conflict,
-  }) {
-    final db = (database as DatabaseImplementation).database;
-
-    int Function(RawSqliteDatabase, String)? _filter;
-    int Function(RawSqliteDatabase, int, RawChangesetIterator)? _conflict;
-
-    if (filter != null) {
-      _filter = (db, table) => filter(database, table);
-    }
-
-    if (conflict != null) {
-      _conflict = (db, conflictCode, iterator) {
-        final conflictType = ApplyChangesetConflict.parse(conflictCode);
-        final iteratorImpl =
-            ChangesetIteratorImplementation(bindings, iterator);
-        final result = conflict(database, conflictType, iteratorImpl);
-        return result.raw;
-      };
-    }
-
-    bindings.sqlite3changeset_apply(db, changeset, _filter, _conflict, db);
   }
 
   @override
@@ -164,6 +92,15 @@ base class Sqlite3Implementation implements CommonSqlite3 {
   @override
   void unregisterVirtualFileSystem(VirtualFileSystem vfs) {
     bindings.unregisterVirtualFileSystem(vfs);
+  }
+
+  @override
+  Uint8List invertChangeset(Uint8List changeset) {
+    final result = bindings.sqlite3changeset_invert(changeset);
+    if (result.resultCode != SqlError.SQLITE_OK) {
+      throw SqliteException(result.resultCode, 'Could not invert changeset');
+    }
+    return result.result;
   }
 
   @override

@@ -10,10 +10,12 @@ import '../database.dart';
 import '../exception.dart';
 import '../functions.dart';
 import '../result_set.dart';
+import '../session.dart';
 import '../statement.dart';
 import 'bindings.dart';
 import 'exception.dart';
 import 'finalizer.dart';
+import 'session.dart';
 import 'statement.dart';
 import 'utils.dart';
 
@@ -176,6 +178,43 @@ base class DatabaseImplementation implements CommonDatabase {
     }
 
     return Uint8List.fromList(functionNameBytes);
+  }
+
+  @override
+  CommonSession createSession([
+    CreateSessionOptions options = const CreateSessionOptions(),
+  ]) {
+    final result = bindings.sqlite3session_create(database, options.db);
+    final session = SessionImplementation(bindings, result.result);
+    session.attach(options.table);
+    return session;
+  }
+
+  @override
+  void applyChangeset(
+    Uint8List changeset, [
+    ApplyChangesetOptions options = const ApplyChangesetOptions(),
+  ]) {
+    int Function(RawSqliteDatabase, String)? filter;
+    int Function(RawSqliteDatabase, int, RawChangesetIterator)? conflict;
+    if (options.filter != null) {
+      filter = (db, table) {
+        final result = options.filter!(table);
+        return result ? 1 : 0;
+      };
+    }
+    if (options.onConflict != null) {
+      conflict = (db, conflictCode, iterator) {
+        return (options.onConflict ?? ApplyChangesetConflict.abort).flag;
+      };
+    }
+    bindings.sqlite3changeset_apply(
+      database,
+      changeset,
+      filter,
+      conflict,
+      database,
+    );
   }
 
   @override

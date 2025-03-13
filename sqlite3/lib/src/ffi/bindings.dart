@@ -107,71 +107,21 @@ final class FfiBindings extends RawSqliteBindings {
   }
 
   @override
-  int sqlite3session_attach(RawSqliteSession session, String? name) {
-    final sessionImpl = session as FfiSession;
-    final namePtr = name?.toNativeUtf8().cast<Char>() ?? nullptr;
-    final result = bindings.bindings.sqlite3session_attach(
-      sessionImpl.session,
-      namePtr,
-    );
-    if (name != null) {
-      namePtr.free();
-    }
-    return result;
+  SqliteResult<RawSqliteRebaser> sqlite3rebaser_create() {
+    final rebaserPtr = ffi.calloc<Pointer<sqlite3_rebaser>>();
+    final result = bindings.bindings.sqlite3rebaser_create(rebaserPtr);
+    return SqliteResult(result, FfiSqliteRebaser(bindings, rebaserPtr.value));
   }
 
   @override
-  Uint8List sqlite3session_changeset(RawSqliteSession session) {
-    final sessionImpl = session as FfiSession;
-    final outSize = allocate<Int>();
-    final outChangeset = allocate<Pointer<Void>>();
-    final result = bindings.bindings.sqlite3session_changeset(
-      sessionImpl.session,
-      outSize,
-      outChangeset,
-    );
-    if (result != SqlError.SQLITE_OK) {
-      outSize.free();
-      outChangeset.free();
-      throw SqliteException(result, 'Could not get changeset');
-    }
-    final size = outSize.value;
-    final changeset = outChangeset.value.cast<Uint8>().asTypedList(size);
-    outSize.free();
-    outChangeset.free();
-    return changeset;
+  SqliteResult<RawSqliteChangeGroup> sqlite3changegroup_new() {
+    final groupPtr = ffi.calloc<Pointer<sqlite3_changegroup>>();
+    final result = bindings.bindings.sqlite3changegroup_new(groupPtr);
+    return SqliteResult(result, FfiChangeGroup(bindings, groupPtr.value));
   }
 
   @override
-  Uint8List sqlite3session_patchset(RawSqliteSession session) {
-    final sessionImpl = session as FfiSession;
-    final outSize = allocate<Int>();
-    final outPatchset = allocate<Pointer<Void>>();
-    final result = bindings.bindings.sqlite3session_patchset(
-      sessionImpl.session,
-      outSize,
-      outPatchset,
-    );
-    if (result != SqlError.SQLITE_OK) {
-      outSize.free();
-      outPatchset.free();
-      throw SqliteException(result, 'Could not get patchset');
-    }
-    final size = outSize.value;
-    final patchset = outPatchset.value.cast<Uint8>().asTypedList(size);
-    outSize.free();
-    outPatchset.free();
-    return patchset;
-  }
-
-  @override
-  void sqlite3session_delete(RawSqliteSession session) {
-    final sessionImpl = session as FfiSession;
-    bindings.bindings.sqlite3session_delete(sessionImpl.session);
-  }
-
-  @override
-  void sqlite3changeset_apply(
+  int sqlite3changeset_apply(
     RawSqliteDatabase database,
     Uint8List changeset,
     int Function(
@@ -234,34 +184,90 @@ final class FfiBindings extends RawSqliteBindings {
     if (result != SqlError.SQLITE_OK) {
       throw SqliteException(result, 'Could not apply changeset');
     }
+    return result;
   }
 
   @override
-  Uint8List sqlite3changeset_invert(Uint8List session) {
-    final sessionPtr = allocateBytes(session).cast<Void>();
+  SqliteResult<Uint8List> sqlite3changeset_apply_v2(
+    RawSqliteDatabase database,
+    Uint8List changeset,
+    int Function(
+      RawSqliteDatabase ctx,
+      String tableName,
+    )? filter,
+    int Function(
+      RawSqliteDatabase ctx,
+      int eConflict,
+      RawChangesetIterator iter,
+    )? conflict,
+    RawSqliteDatabase ctx,
+    int flags,
+  ) {
+    final dbImpl = database as FfiDatabase;
+    final changesetPtr = allocateBytes(changeset).cast<Void>();
+    final ctxPtr = dbImpl.db.cast<Void>();
+
+    // filter
+    final Pointer<NativeFunction<Int Function(Pointer<Void>, Pointer<Char>)>>
+        filterPtr = filter == null
+            ? nullPtr()
+            : NativeCallable<
+                Int Function(Pointer<Void>, Pointer<Char>)>.isolateLocal(
+                (Pointer<Void> ctx, Pointer<Char> zTab) {
+                  final tbl = zTab.cast<sqlite3_char>().readString();
+                  final db = FfiDatabase(bindings, ctx.cast());
+                  return filter(db, tbl);
+                },
+                exceptionalReturn: 0,
+              ).nativeFunction;
+
+    // conflict
+    final Pointer<
+            NativeFunction<
+                Int Function(
+                    Pointer<Void>, Int, Pointer<sqlite3_changeset_iter>)>>
+        conflictPtr = conflict == null
+            ? nullPtr()
+            : NativeCallable<
+                Int Function(Pointer<Void>, Int,
+                    Pointer<sqlite3_changeset_iter>)>.isolateLocal(
+                (Pointer<Void> ctx, int eConflict,
+                    Pointer<sqlite3_changeset_iter> p) {
+                  final db = FfiDatabase(bindings, ctx.cast());
+                  final iter = FfiChangesetIterator(bindings, p);
+                  return conflict(db, eConflict, iter);
+                },
+                exceptionalReturn: 0,
+              ).nativeFunction;
+
     final outSize = allocate<Int>();
     final outChangeset = allocate<Pointer<Void>>();
-    final result = bindings.bindings.sqlite3changeset_invert(
-      session.length,
-      sessionPtr,
-      outSize,
+    final result = bindings.bindings.sqlite3changeset_apply_v2(
+      dbImpl.db,
+      changeset.length,
+      changesetPtr,
+      filterPtr,
+      conflictPtr,
+      ctxPtr,
       outChangeset,
+      outSize,
+      flags,
     );
-    sessionPtr.free();
+    changesetPtr.free();
     if (result != SqlError.SQLITE_OK) {
       outSize.free();
       outChangeset.free();
-      throw SqliteException(result, 'Could not invert changeset');
+      throw SqliteException(result, 'Could not apply changeset');
     }
     final size = outSize.value;
-    final changeset = outChangeset.value.cast<Uint8>().asTypedList(size);
+    final appliedChangeset = outChangeset.value.cast<Uint8>().asTypedList(size);
     outSize.free();
     outChangeset.free();
-    return changeset;
+    return SqliteResult(result, appliedChangeset);
   }
 
   @override
-  Uint8List sqlite3changeset_concat(Uint8List a, Uint8List b) {
+  SqliteResult<Uint8List> sqlite3changeset_concat(Uint8List a, Uint8List b) {
     final aPtr = allocateBytes(a).cast<Void>();
     final bPtr = allocateBytes(b).cast<Void>();
     final outSize = allocate<Int>();
@@ -285,7 +291,31 @@ final class FfiBindings extends RawSqliteBindings {
     final changeset = outChangeset.value.cast<Uint8>().asTypedList(size);
     outSize.free();
     outChangeset.free();
-    return changeset;
+    return SqliteResult(result, changeset);
+  }
+
+  @override
+  SqliteResult<Uint8List> sqlite3changeset_invert(Uint8List session) {
+    final sessionPtr = allocateBytes(session).cast<Void>();
+    final outSize = allocate<Int>();
+    final outChangeset = allocate<Pointer<Void>>();
+    final result = bindings.bindings.sqlite3changeset_invert(
+      session.length,
+      sessionPtr,
+      outSize,
+      outChangeset,
+    );
+    sessionPtr.free();
+    if (result != SqlError.SQLITE_OK) {
+      outSize.free();
+      outChangeset.free();
+      throw SqliteException(result, 'Could not invert changeset');
+    }
+    final size = outSize.value;
+    final changeset = outChangeset.value.cast<Uint8>().asTypedList(size);
+    outSize.free();
+    outChangeset.free();
+    return SqliteResult(result, changeset);
   }
 
   @override
@@ -634,6 +664,205 @@ final class FfiSession extends RawSqliteSession {
   final Pointer<sqlite3_session> session;
 
   FfiSession(this.bindings, this.session);
+
+  @override
+  int sqlite3session_attach([String? name]) {
+    final namePtr = name?.toNativeUtf8().cast<Char>() ?? nullptr;
+    final result = bindings.bindings.sqlite3session_attach(
+      session,
+      namePtr,
+    );
+    if (name != null) {
+      namePtr.free();
+    }
+    return result;
+  }
+
+  @override
+  int sqlite3session_changeset_size() {
+    return bindings.bindings.sqlite3session_changeset_size(session);
+  }
+
+  @override
+  SqliteResult<Uint8List> sqlite3session_changeset() {
+    final outSize = allocate<Int>();
+    final outChangeset = allocate<Pointer<Void>>();
+    final result = bindings.bindings.sqlite3session_changeset(
+      session,
+      outSize,
+      outChangeset,
+    );
+    if (result != SqlError.SQLITE_OK) {
+      outSize.free();
+      outChangeset.free();
+      throw SqliteException(result, 'Could not get changeset');
+    }
+    final size = outSize.value;
+    final changeset = outChangeset.value.cast<Uint8>().asTypedList(size);
+    outSize.free();
+    outChangeset.free();
+    return SqliteResult(result, changeset);
+  }
+
+  @override
+  SqliteResult<Uint8List> sqlite3session_patchset() {
+    final outSize = allocate<Int>();
+    final outPatchset = allocate<Pointer<Void>>();
+    final result = bindings.bindings.sqlite3session_patchset(
+      session,
+      outSize,
+      outPatchset,
+    );
+    if (result != SqlError.SQLITE_OK) {
+      outSize.free();
+      outPatchset.free();
+      throw SqliteException(result, 'Could not get patchset');
+    }
+    final size = outSize.value;
+    final changeset = outPatchset.value.cast<Uint8>().asTypedList(size);
+    outSize.free();
+    outPatchset.free();
+    return SqliteResult(result, changeset);
+  }
+
+  @override
+  void sqlite3session_delete() {
+    bindings.bindings.sqlite3session_delete(session);
+  }
+
+  @override
+  int sqlite3session_diff(String fromDb, String table) {
+    final fromDbPtr = fromDb.toNativeUtf8().cast<Char>();
+    final tablePtr = table.toNativeUtf8().cast<Char>();
+    final errorMsg = allocate<Pointer<Char>>();
+    final result = bindings.bindings.sqlite3session_diff(
+      session,
+      fromDbPtr,
+      tablePtr,
+      errorMsg,
+    );
+    fromDbPtr.free();
+    tablePtr.free();
+    if (result != SqlError.SQLITE_OK) {
+      final message = errorMsg.value != nullptr
+          ? errorMsg.value.cast<sqlite3_char>().readString()
+          : 'Could not diff';
+      errorMsg.free();
+      throw SqliteException(result, message);
+    }
+    return result;
+  }
+
+  @override
+  int sqlite3session_enable(int enable) {
+    return bindings.bindings.sqlite3session_enable(session, enable);
+  }
+
+  @override
+  int sqlite3session_indirect(int indirect) {
+    return bindings.bindings.sqlite3session_indirect(session, indirect);
+  }
+
+  @override
+  int sqlite3session_isempty() {
+    return bindings.bindings.sqlite3session_isempty(session);
+  }
+
+  @override
+  int sqlite3session_memory_used() {
+    return bindings.bindings.sqlite3session_memory_used(session);
+  }
+
+  @override
+  void sqlite3session_table_filter(int Function(String tableName)? filter) {
+    final Pointer<NativeFunction<Int Function(Pointer<Void>, Pointer<Char>)>>
+        ptr = filter == null
+            ? nullPtr()
+            : NativeCallable<
+                Int Function(Pointer<Void>, Pointer<Char>)>.isolateLocal(
+                (Pointer<Void> session, Pointer<Char> tableName) {
+                  return filter(tableName.cast<sqlite3_char>().readString());
+                },
+                exceptionalReturn: 0,
+              ).nativeFunction;
+    bindings.bindings.sqlite3session_table_filter(
+      session,
+      ptr,
+      session.cast<Void>(),
+    );
+  }
+}
+
+final class FfiChangeGroup extends RawSqliteChangeGroup {
+  final BindingsWithLibrary bindings;
+  final Pointer<sqlite3_changegroup> instance;
+
+  FfiChangeGroup(this.bindings, this.instance);
+
+  @override
+  int sqlite3changegroup_add_change(RawChangesetIterator iter) {
+    final iterImpl = iter as FfiChangesetIterator;
+    return bindings.bindings.sqlite3changegroup_add_change(
+      instance,
+      iterImpl.iterator,
+    );
+  }
+
+  @override
+  void sqlite3changegroup_delete() {
+    bindings.bindings.sqlite3changegroup_delete(instance);
+  }
+
+  @override
+  int sqlite3changegroup_add(Uint8List changeset) {
+    final changesetPtr = allocateBytes(changeset).cast<Void>();
+    final result = bindings.bindings.sqlite3changegroup_add(
+      instance,
+      changeset.length,
+      changesetPtr,
+    );
+    changesetPtr.free();
+    return result;
+  }
+
+  @override
+  SqliteResult<Uint8List> output() {
+    final outSize = allocate<Int>();
+    final outChangeset = allocate<Pointer<Void>>();
+    final result = bindings.bindings.sqlite3changegroup_output(
+      instance,
+      outSize,
+      outChangeset,
+    );
+    if (result != SqlError.SQLITE_OK) {
+      outSize.free();
+      outChangeset.free();
+      throw SqliteException(result, 'Could not get changeset');
+    }
+    final size = outSize.value;
+    final changeset = outChangeset.value.cast<Uint8>().asTypedList(size);
+    outSize.free();
+    outChangeset.free();
+    return SqliteResult(result, changeset);
+  }
+
+  @override
+  void sqlite3changegroup_schema(
+    RawSqliteDatabase db, {
+    String zDb = 'main',
+  }) {
+    final dbImpl = db as FfiDatabase;
+    final zDbPtr = zDb.toNativeUtf8().cast<Char>();
+    final result = bindings.bindings.sqlite3changegroup_schema(
+      instance,
+      dbImpl.db,
+      zDbPtr,
+    );
+    zDbPtr.free();
+    if (result != SqlError.SQLITE_OK) {
+      throw SqliteException(result, 'Could not set schema');
+    }
+  }
 }
 
 final class FfiChangesetIterator extends RawChangesetIterator {
@@ -641,6 +870,265 @@ final class FfiChangesetIterator extends RawChangesetIterator {
   final Pointer<sqlite3_changeset_iter> iterator;
 
   FfiChangesetIterator(this.bindings, this.iterator);
+
+  @override
+  SqliteResult<RawSqliteValue?> sqlite3changeset_conflict(int columnNumber) {
+    final outValue = allocate<Pointer<sqlite3_value>>();
+    final result = bindings.bindings.sqlite3changeset_conflict(
+      iterator,
+      columnNumber,
+      outValue,
+    );
+    if (result != SqlError.SQLITE_OK) {
+      outValue.free();
+      return SqliteResult(result, null);
+    }
+    return SqliteResult(
+      result,
+      FfiValue(bindings.bindings, outValue.value),
+    );
+  }
+
+  @override
+  int sqlite3changeset_finalize() {
+    return bindings.bindings.sqlite3changeset_finalize(iterator);
+  }
+
+  @override
+  SqliteResult<int> sqlite3changeset_fk_conflicts(int pnOut) {
+    final out = allocate<Int>();
+    final result = bindings.bindings.sqlite3changeset_fk_conflicts(
+      iterator,
+      out,
+    );
+    if (result != SqlError.SQLITE_OK) {
+      out.free();
+      return SqliteResult(result, 0);
+    }
+    final value = out.value;
+    out.free();
+    return SqliteResult(result, value);
+  }
+
+  @override
+  SqliteResult<RawSqliteValue?> sqlite3changeset_new(int columnNumber) {
+    final outValue = allocate<Pointer<sqlite3_value>>();
+    final result = bindings.bindings.sqlite3changeset_new(
+      iterator,
+      columnNumber,
+      outValue,
+    );
+    if (result != SqlError.SQLITE_OK) {
+      outValue.free();
+      return SqliteResult(result, null);
+    }
+    return SqliteResult(
+      result,
+      FfiValue(bindings.bindings, outValue.value),
+    );
+  }
+
+  @override
+  int sqlite3changeset_next() {
+    return bindings.bindings.sqlite3changeset_next(iterator);
+  }
+
+  @override
+  SqliteResult<RawSqliteValue?> sqlite3changeset_old(int columnNumber) {
+    final outValue = allocate<Pointer<sqlite3_value>>();
+    final result = bindings.bindings.sqlite3changeset_old(
+      iterator,
+      columnNumber,
+      outValue,
+    );
+    if (result != SqlError.SQLITE_OK) {
+      outValue.free();
+      return SqliteResult(result, null);
+    }
+    return SqliteResult(
+      result,
+      FfiValue(bindings.bindings, outValue.value),
+    );
+  }
+
+  @override
+  SqliteResult<RawChangeSetOp> sqlite3changeset_op() {
+    final tablePtr = allocate<Pointer<Char>>();
+    final columnCountPtr = allocate<Int>();
+    final typePtr = allocate<Int>();
+    final indirectPtr = allocate<Int>();
+    final result = bindings.bindings.sqlite3changeset_op(
+      iterator,
+      tablePtr,
+      columnCountPtr,
+      typePtr,
+      indirectPtr,
+    );
+    if (result != SqlError.SQLITE_OK) {
+      tablePtr.free();
+      columnCountPtr.free();
+      typePtr.free();
+      indirectPtr.free();
+      throw SqliteException(result, 'Could not get changeset op');
+    }
+    final table = tablePtr.value.cast<sqlite3_char>().readString();
+    final columnCount = columnCountPtr.value;
+    final type = typePtr.value;
+    final indirect = indirectPtr.value;
+    tablePtr.free();
+    columnCountPtr.free();
+    typePtr.free();
+    indirectPtr.free();
+    return SqliteResult(
+      result,
+      RawChangeSetOp(
+        tableName: table,
+        columnCount: columnCount,
+        operation: type,
+        indirect: indirect,
+      ),
+    );
+  }
+
+  @override
+  SqliteResult<List<bool>> sqlite3changeset_pk() {
+    final outArray = allocate<Pointer<UnsignedChar>>();
+    final outCount = allocate<Int>();
+    final result = bindings.bindings.sqlite3changeset_pk(
+      iterator,
+      outArray,
+      outCount,
+    );
+    if (result != SqlError.SQLITE_OK) {
+      outArray.free();
+      outCount.free();
+      throw SqliteException(result, 'Could not get primary key');
+    }
+    final count = outCount.value;
+    final array = outArray.value.cast<Uint8>().asTypedList(count);
+    outArray.free();
+    outCount.free();
+    return SqliteResult(result, array.map((e) => e == 1).toList());
+  }
+
+  @override
+  int sqlite3changeset_start(Uint8List changeset) {
+    final changesetPtr = allocateBytes(changeset).cast<Void>();
+    final outIterator = allocate<Pointer<sqlite3_changeset_iter>>();
+    final result = bindings.bindings.sqlite3changeset_start(
+      outIterator,
+      changeset.length,
+      changesetPtr,
+    );
+    changesetPtr.free();
+    if (result != SqlError.SQLITE_OK) {
+      outIterator.free();
+      throw SqliteException(result, 'Could not start changeset');
+    }
+    outIterator.free();
+    return result;
+  }
+
+  @override
+  int sqlite3changeset_start_v2(Uint8List changeset, int flags) {
+    final changesetPtr = allocateBytes(changeset).cast<Void>();
+    final outIterator = allocate<Pointer<sqlite3_changeset_iter>>();
+    final result = bindings.bindings.sqlite3changeset_start_v2(
+      outIterator,
+      changeset.length,
+      changesetPtr,
+      flags,
+    );
+    changesetPtr.free();
+    if (result != SqlError.SQLITE_OK) {
+      outIterator.free();
+      throw SqliteException(result, 'Could not start changeset');
+    }
+    outIterator.free();
+    return result;
+  }
+
+  @override
+  SqliteResult<Uint8List> sqlite3changeset_upgrade(
+    RawSqliteDatabase database,
+    String name,
+    Uint8List changeset,
+  ) {
+    final aPtr = allocateBytes(changeset).cast<Void>();
+    final outSize = allocate<Int>();
+    final outChangeset = allocate<Pointer<Void>>();
+    final dbImpl = database as FfiDatabase;
+    final namePtr = name.toNativeUtf8().cast<Char>();
+    final result = bindings.bindings.sqlite3changeset_upgrade(
+      dbImpl.db,
+      namePtr,
+      changeset.length,
+      aPtr,
+      outSize,
+      outChangeset,
+    );
+    aPtr.free();
+    namePtr.free();
+    if (result != SqlError.SQLITE_OK) {
+      outSize.free();
+      outChangeset.free();
+      throw SqliteException(result, 'Could not upgrade changeset');
+    }
+    final size = outSize.value;
+    final changesetOut = outChangeset.value.cast<Uint8>().asTypedList(size);
+    outSize.free();
+    outChangeset.free();
+    return SqliteResult(result, changesetOut);
+  }
+}
+
+final class FfiSqliteRebaser extends RawSqliteRebaser {
+  final BindingsWithLibrary bindings;
+  final Pointer<sqlite3_rebaser> instance;
+
+  FfiSqliteRebaser(this.bindings, this.instance);
+
+  @override
+  int configure(Uint8List rebase) {
+    final rebasePtr = allocateBytes(rebase).cast<Void>();
+    final result = bindings.bindings.sqlite3rebaser_configure(
+      instance,
+      rebase.length,
+      rebasePtr,
+    );
+    rebasePtr.free();
+    return result;
+  }
+
+  @override
+  void delete() {
+    bindings.bindings.sqlite3rebaser_delete(instance);
+  }
+
+  @override
+  SqliteResult<Uint8List> rebase(Uint8List input) {
+    final inputPtr = allocateBytes(input).cast<Void>();
+    final outSize = allocate<Int>();
+    final outRebased = allocate<Pointer<Void>>();
+    final result = bindings.bindings.sqlite3rebaser_rebase(
+      instance,
+      input.length,
+      inputPtr,
+      outSize,
+      outRebased,
+    );
+    inputPtr.free();
+    if (result != SqlError.SQLITE_OK) {
+      outSize.free();
+      outRebased.free();
+      throw SqliteException(result, 'Could not rebase');
+    }
+    final size = outSize.value;
+    final rebased = outRebased.value.cast<Uint8>().asTypedList(size);
+    outSize.free();
+    outRebased.free();
+    return SqliteResult(result, rebased);
+  }
 }
 
 final class FfiDatabase extends RawSqliteDatabase {
