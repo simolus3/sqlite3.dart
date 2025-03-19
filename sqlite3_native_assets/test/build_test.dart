@@ -18,6 +18,11 @@ void main() {
       database.execute('CREATE VIRTUAL TABLE foo USING rtree(a, b, c);');
     });
 
+    test('enables math functions', () {
+      final [row] = database.select('SELECT sin(pi());');
+      expect(row.values, [closeTo(0, 0.00001)]);
+    });
+
     test('disables double-quoted string literals by default', () {
       expect(
         () => database.execute('SELECT "not a string";'),
