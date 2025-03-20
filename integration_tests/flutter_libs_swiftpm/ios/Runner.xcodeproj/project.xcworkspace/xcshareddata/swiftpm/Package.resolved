@@ -1,4 +1,5 @@
 {
+  "originHash" : "bd6c054a79241b2259c9768a532c8a99406fa9b75ad8eacb3a3d60a6e170925f",
   "pins" : [
     {
       "identity" : "csqlite",
@@ -9,5 +10,5 @@
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }

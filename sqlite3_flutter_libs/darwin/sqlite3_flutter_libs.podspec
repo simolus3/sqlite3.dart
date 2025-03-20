@@ -25,4 +25,5 @@ Pod::Spec.new do |s|
     s.dependency 'sqlite3/perf-threadsafe'
     s.dependency 'sqlite3/rtree'
     s.dependency 'sqlite3/dbstatvtab'
+    s.dependency 'sqlite3/math'
 end
