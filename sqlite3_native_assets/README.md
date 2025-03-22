@@ -7,7 +7,7 @@ except that it works without Flutter.
 
 ## Getting started
 
-Add this package to your dependencies: `dart pub add sqlite3_native_assetes`.
+Add this package to your dependencies: `dart pub add sqlite3_native_assets`.
 That's it! No build scripts to worry about, it works out of the box.
 
 ## Usage
