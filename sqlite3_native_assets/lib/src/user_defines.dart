@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:native_assets_cli/native_assets_cli.dart';
+import 'package:path/path.dart';
 
 /// A mockable wrapper around `HookInputUserDefines`.
 sealed class UserDefinesOptions {
@@ -10,6 +11,8 @@ sealed class UserDefinesOptions {
   factory UserDefinesOptions.fromHooks(HookInput input) = _UserDefines;
 
   Object? operator [](String key);
+
+  String inputPath(String path);
 
   /// Reads [key] under the expectation that it contains a nested structure.
   ///
@@ -31,6 +34,9 @@ final class _OptionsFromMap extends UserDefinesOptions {
 
   @override
   Object? operator [](String key) => options[key];
+
+  @override
+  String inputPath(String path) => path;
 }
 
 final class _UserDefines extends UserDefinesOptions {
@@ -40,4 +46,9 @@ final class _UserDefines extends UserDefinesOptions {
 
   @override
   Object? operator [](String key) => input.userDefines[key];
+
+  @override
+  String inputPath(String path) => absolute(
+    normalize(join(input.outputDirectory.path, '../../../../../../', path)),
+  );
 }
