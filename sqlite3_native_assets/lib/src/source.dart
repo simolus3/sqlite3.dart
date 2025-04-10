@@ -9,7 +9,9 @@ sealed class SqliteSource {
       {'amalgamation': final source} => DownloadAmalgamation(
         uri: source as String,
       ),
-      {'local': final local} => ExistingAmalgamation(local as String),
+      {'local': final local} => ExistingAmalgamation(
+        options.inputPath(local as String),
+      ),
       {'system': _} => const UseFromSystem(),
       {'process': _} => const UseFromProcess(),
       {'executable': _} => const UseFromExecutable(),
