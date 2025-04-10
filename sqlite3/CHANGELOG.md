@@ -1,3 +1,9 @@
+## 2.7.6
+
+- Export `package:sqlite3/native_assets.dart`, making it easier for libraries
+  to support both the regular `sqlite3` getter and the upcoming
+  `sqlite3NativeAssets` variant.
+
 ## 2.7.5
 
 - On Windows, try loading `winsqlite3.dll` as a fallback if loading
