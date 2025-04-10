@@ -1,0 +1,122 @@
+import 'package:sqlite3_native_assets/src/defines.dart';
+import 'package:sqlite3_native_assets/src/source.dart';
+import 'package:sqlite3_native_assets/src/user_defines.dart';
+import 'package:test/test.dart';
+
+void main() {
+  group('parses sources', () {
+    test('default', () {
+      final source = SqliteSource.parse(UserDefinesOptions.fromMap({}));
+      expect(source, isA<DownloadAmalgamation>());
+    });
+
+    test('explicit url', () {
+      final source = SqliteSource.parse(
+        UserDefinesOptions.fromMap({
+          'source': {'amalgamation': 'https://example.org/sqlite.zip'},
+        }),
+      );
+      expect(
+        source,
+        isA<DownloadAmalgamation>().having(
+          (e) => e.uri,
+          'uri',
+          'https://example.org/sqlite.zip',
+        ),
+      );
+    });
+
+    test('local source', () {
+      final source = SqliteSource.parse(
+        UserDefinesOptions.fromMap({
+          'source': {'local': 'src/sqlite3.c'},
+        }),
+      );
+      expect(
+        source,
+        isA<ExistingAmalgamation>().having(
+          (e) => e.sqliteSource,
+          'sqliteSource',
+          'src/sqlite3.c',
+        ),
+      );
+    });
+
+    test('use from system', () {
+      final source = SqliteSource.parse(
+        UserDefinesOptions.fromMap({
+          'source': {'system': null},
+        }),
+      );
+      expect(source, isA<UseFromSystem>());
+    });
+
+    test('use from executable', () {
+      final source = SqliteSource.parse(
+        UserDefinesOptions.fromMap({
+          'source': {'executable': null},
+        }),
+      );
+      expect(source, isA<UseFromExecutable>());
+    });
+
+    test('use from process', () {
+      final source = SqliteSource.parse(
+        UserDefinesOptions.fromMap({
+          'source': {'process': null},
+        }),
+      );
+      expect(source, isA<UseFromProcess>());
+    });
+
+    test('dont build', () {
+      final source = SqliteSource.parse(
+        UserDefinesOptions.fromMap({'source': false}),
+      );
+      expect(source, isA<DontLinkSqlite>());
+    });
+  });
+
+  group('parses compile-time options', () {
+    test('default', () {
+      final defines = CompilerDefines.parse(UserDefinesOptions.fromMap({}));
+      expect(defines, contains('SQLITE_OMIT_TRACE'));
+    });
+
+    test('with additional list', () {
+      final defines = CompilerDefines.parse(
+        UserDefinesOptions.fromMap({
+          'defines': ['FOO', 'BAR=1'],
+        }),
+      );
+      expect(defines, contains('FOO'));
+      expect(defines, contains('BAR'));
+    });
+
+    test('overriding defaults', () {
+      final defines = CompilerDefines.parse(
+        UserDefinesOptions.fromMap({
+          'defines': {
+            'defines': {'SQLITE_OMIT_TRACE': '0'},
+          },
+        }),
+      );
+
+      expect(defines, contains('SQLITE_ENABLE_MATH_FUNCTIONS'));
+      expect(defines['SQLITE_OMIT_TRACE'], '0');
+    });
+
+    test('disabling defaults', () {
+      final defines = CompilerDefines.parse(
+        UserDefinesOptions.fromMap({
+          'defines': {
+            'default_options': false,
+            'defines': {'SQLITE_OMIT_TRACE': '0'},
+          },
+        }),
+      );
+
+      expect(defines, {'SQLITE_OMIT_TRACE': '0'});
+    });
+  });
+}
