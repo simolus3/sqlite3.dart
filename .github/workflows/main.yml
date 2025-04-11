@@ -36,7 +36,7 @@ jobs:
         make -j
         mkdir ../out
         cp sqlite3 ../out
-        cp .libs/libsqlite3.so ../out
+        cp libsqlite3.so ../out
         cp *.h ../out
     - name: Compile sqlite3 on Linux (no autoinit)
       if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Linux'
@@ -62,7 +62,7 @@ jobs:
         make -j
         mkdir ../out
         cp sqlite3 ../out
-        cp .libs/libsqlite3.dylib ../out
+        cp libsqlite3.dylib ../out
         cp *.h ../out
     - uses: ilammy/msvc-dev-cmd@v1
       if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Windows'
