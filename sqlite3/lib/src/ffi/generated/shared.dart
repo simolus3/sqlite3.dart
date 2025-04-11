@@ -413,7 +413,7 @@ abstract interface class SqliteLibrary {
   int sqlite3_backup_pagecount(ffi.Pointer<sqlite3_backup> p);
   int sqlite3_auto_extension(ffi.Pointer<ffi.Void> xEntryPoint);
   int sqlite3_db_config(
-      ffi.Pointer<sqlite3> db, int op, int va, ffi.Pointer<ffi.Int> va1);
+      ffi.Pointer<sqlite3> db, int op, int va, ffi.Pointer<ffi.Int> va$1);
   int sqlite3_vfs_register(ffi.Pointer<sqlite3_vfs> arg0, int makeDflt);
   int sqlite3_vfs_unregister(ffi.Pointer<sqlite3_vfs> arg0);
 }

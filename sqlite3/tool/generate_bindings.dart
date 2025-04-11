@@ -4,7 +4,6 @@ import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart' hide Declaration;
 import 'package:dart_style/dart_style.dart';
 import 'package:ffigen/ffigen.dart';
-import 'package:ffigen/src/config_provider/config_impl.dart';
 import 'package:ffigen/src/config_provider/config_types.dart';
 import 'package:ffigen/src/config_provider/spec_utils.dart';
 import 'package:ffigen/src/code_generator.dart';
@@ -40,10 +39,10 @@ void postProcess() {
   final dynamicBindingsContents = dynamicBindingsFile.readAsStringSync();
 
   String patchSource(String source) {
-    // The generated bindings use `imp1.` as a prefix to reference members in
+    // The generated bindings use `imp$1.` as a prefix to reference members in
     // the shared Dart file. We're appending to that file though, so no need to
     // include that.
-    return source.replaceAll('imp1.', '');
+    return source.replaceAll(r'imp$1.', '');
   }
 
   final generatedBindings = parseString(content: dynamicBindingsContents).unit;
@@ -107,7 +106,7 @@ void postProcess() {
 
   dynamicBindingsFile.writeAsStringSync(dynamicBindingsContents.replaceFirst(
       'class NativeLibrary',
-      'final class NativeLibrary implements imp1.SqliteLibrary'));
+      r'final class NativeLibrary implements imp$1.SqliteLibrary'));
 
   File('lib/src/ffi/generated/native_library.dart')
       .writeAsStringSync(formatter.format(nativeImplementation.toString()));
@@ -133,7 +132,7 @@ enum _GenerationMode {
           [symbolUri.toString()], libraryImports, null, null);
     }
 
-    final config = Config(
+    return Config(
       preamble: '// ignore_for_file: type=lint',
       ffiNativeConfig: FfiNativeConfig(
           enabled: this == native,
@@ -151,13 +150,9 @@ enum _GenerationMode {
           RawVarArgFunction('', ['int', 'int*'])
         ],
       }, libraryImports),
-    ) as ConfigImpl;
-
-    // Adding these throug the constructor unmangles their keys, which causes
-    // the header parser to no longer recognize them.
-    config.libraryImports.addAll(libraryImports);
-    config.usrTypeMappings.addAll(typeMappings);
-    return config;
+      libraryImports: libraryImports.values.toList(),
+      usrTypeMappings: typeMappings,
+    );
   }
 
   static Uri symbolUri = Uri.parse('lib/src/ffi/generated/shared_symbols.yml');

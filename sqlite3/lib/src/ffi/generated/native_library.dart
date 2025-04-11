@@ -484,8 +484,8 @@ final class NativeAssetsLibrary implements SqliteLibrary {
 
   @override
   int sqlite3_db_config(
-      ffi.Pointer<sqlite3> db, int op, int va, ffi.Pointer<ffi.Int> va1) {
-    return native.sqlite3_db_config(db, op, va, va1);
+      ffi.Pointer<sqlite3> db, int op, int va, ffi.Pointer<ffi.Int> va$1) {
+    return native.sqlite3_db_config(db, op, va, va$1);
   }
 
   @override
