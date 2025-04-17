@@ -186,7 +186,13 @@ base class DatabaseImplementation implements CommonDatabase {
   ]) {
     final result = bindings.sqlite3session_create(database, options.db);
     final session = SessionImplementation(bindings, result.result);
-    session.attach(options.table);
+    if (options.tables == null) {
+      session.attach();
+    } else {
+      for (final table in options.tables!) {
+        session.attach(table);
+      }
+    }
     return session;
   }
 

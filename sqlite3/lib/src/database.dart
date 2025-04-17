@@ -8,13 +8,13 @@ import 'constants.dart';
 
 class CreateSessionOptions {
   /// A specific table to track changes for. By default, changes to all tables are tracked.
-  final String? table;
+  final List<String>? tables;
 
   /// Name of the database to track. This is useful when multiple databases have been added using
   /// [`ATTACH DATABASE`](https://www.sqlite.org/lang_attach.html).
   final String db;
 
-  const CreateSessionOptions({this.table, this.db = 'main'});
+  const CreateSessionOptions({this.tables, this.db = 'main'});
 }
 
 class ApplyChangesetOptions {

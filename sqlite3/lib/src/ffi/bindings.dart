@@ -668,7 +668,7 @@ final class FfiSession extends RawSqliteSession {
 
   @override
   int sqlite3session_attach([String? name]) {
-    final namePtr = name?.toNativeUtf8().cast<Char>() ?? nullptr;
+    final namePtr = name?.toNativeUtf8().cast<Char>() ?? nullPtr();
     final result = bindings.bindings.sqlite3session_attach(
       session,
       namePtr,

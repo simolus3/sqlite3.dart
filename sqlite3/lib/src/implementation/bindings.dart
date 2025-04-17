@@ -137,6 +137,7 @@ class RawChangeSetOp {
 /// All of the classes and methods defined here are internal and can be changed
 /// as needed.
 abstract base class RawSqliteBindings {
+
   // int sqlite3session_create(
   //   sqlite3 *db,                    /* Database handle */
   //   const char *zDb,                /* Name of db (e.g. "main") */
