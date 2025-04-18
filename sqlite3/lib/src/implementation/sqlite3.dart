@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:meta/meta.dart';
 
 import '../constants.dart';
@@ -92,15 +90,6 @@ base class Sqlite3Implementation implements CommonSqlite3 {
   @override
   void unregisterVirtualFileSystem(VirtualFileSystem vfs) {
     bindings.unregisterVirtualFileSystem(vfs);
-  }
-
-  @override
-  Uint8List invertChangeset(Uint8List changeset) {
-    final result = bindings.sqlite3changeset_invert(changeset);
-    if (result.resultCode != SqlError.SQLITE_OK) {
-      throw SqliteException(result.resultCode, 'Could not invert changeset');
-    }
-    return result.result;
   }
 
   @override

@@ -10,8 +10,6 @@ files:
         name: sqlite3_api_routines
       c:@S@sqlite3_backup:
         name: sqlite3_backup
-      c:@S@sqlite3_changegroup:
-        name: sqlite3_changegroup
       c:@S@sqlite3_changeset_iter:
         name: sqlite3_changeset_iter
       c:@S@sqlite3_char:
@@ -22,8 +20,6 @@ files:
         name: sqlite3_file
       c:@S@sqlite3_io_methods:
         name: sqlite3_io_methods
-      c:@S@sqlite3_rebaser:
-        name: sqlite3_rebaser
       c:@S@sqlite3_session:
         name: sqlite3_session
       c:@S@sqlite3_stmt:
