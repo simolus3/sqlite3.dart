@@ -604,15 +604,6 @@ final class NativeAssetsLibrary implements SqliteLibrary {
   }
 
   @override
-  int sqlite3session_diff(
-      ffi.Pointer<sqlite3_session> pSession,
-      ffi.Pointer<ffi.Char> zFromDb,
-      ffi.Pointer<ffi.Char> zTbl,
-      ffi.Pointer<ffi.Pointer<ffi.Char>> pzErrMsg) {
-    return native.sqlite3session_diff(pSession, zFromDb, zTbl, pzErrMsg);
-  }
-
-  @override
   int sqlite3session_patchset(
       ffi.Pointer<sqlite3_session> pSession,
       ffi.Pointer<ffi.Int> pnPatchset,
@@ -635,7 +626,16 @@ final class NativeAssetsLibrary implements SqliteLibrary {
 
   @override
   int sqlite3session_attach(
-      ffi.Pointer<sqlite3_session> pSession, ffi.Pointer<ffi.Char> zTab) {
+      ffi.Pointer<sqlite3_session> pSession, ffi.Pointer<sqlite3_char> zTab) {
     return native.sqlite3session_attach(pSession, zTab);
+  }
+
+  @override
+  int sqlite3session_diff(
+      ffi.Pointer<sqlite3_session> pSession,
+      ffi.Pointer<sqlite3_char> zFromDb,
+      ffi.Pointer<sqlite3_char> zTbl,
+      ffi.Pointer<ffi.Pointer<sqlite3_char>> pzErrMsg) {
+    return native.sqlite3session_diff(pSession, zFromDb, zTbl, pzErrMsg);
   }
 }

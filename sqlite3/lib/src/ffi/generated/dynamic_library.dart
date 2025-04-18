@@ -1829,31 +1829,6 @@ final class NativeLibrary implements imp$1.SqliteLibrary {
       int Function(int, ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Int>,
           ffi.Pointer<ffi.Pointer<ffi.Void>>)>();
 
-  int sqlite3session_diff(
-    ffi.Pointer<imp$1.sqlite3_session> pSession,
-    ffi.Pointer<ffi.Char> zFromDb,
-    ffi.Pointer<ffi.Char> zTbl,
-    ffi.Pointer<ffi.Pointer<ffi.Char>> pzErrMsg,
-  ) {
-    return _sqlite3session_diff(
-      pSession,
-      zFromDb,
-      zTbl,
-      pzErrMsg,
-    );
-  }
-
-  late final _sqlite3session_diffPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Int Function(
-              ffi.Pointer<imp$1.sqlite3_session>,
-              ffi.Pointer<ffi.Char>,
-              ffi.Pointer<ffi.Char>,
-              ffi.Pointer<ffi.Pointer<ffi.Char>>)>>('sqlite3session_diff');
-  late final _sqlite3session_diff = _sqlite3session_diffPtr.asFunction<
-      int Function(ffi.Pointer<imp$1.sqlite3_session>, ffi.Pointer<ffi.Char>,
-          ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Pointer<ffi.Char>>)>();
-
   int sqlite3session_patchset(
     ffi.Pointer<imp$1.sqlite3_session> pSession,
     ffi.Pointer<ffi.Int> pnPatchset,
@@ -1916,7 +1891,7 @@ final class NativeLibrary implements imp$1.SqliteLibrary {
 
   int sqlite3session_attach(
     ffi.Pointer<imp$1.sqlite3_session> pSession,
-    ffi.Pointer<ffi.Char> zTab,
+    ffi.Pointer<imp$1.sqlite3_char> zTab,
   ) {
     return _sqlite3session_attach(
       pSession,
@@ -1927,10 +1902,39 @@ final class NativeLibrary implements imp$1.SqliteLibrary {
   late final _sqlite3session_attachPtr = _lookup<
       ffi.NativeFunction<
           ffi.Int Function(ffi.Pointer<imp$1.sqlite3_session>,
-              ffi.Pointer<ffi.Char>)>>('sqlite3session_attach');
+              ffi.Pointer<imp$1.sqlite3_char>)>>('sqlite3session_attach');
   late final _sqlite3session_attach = _sqlite3session_attachPtr.asFunction<
+      int Function(ffi.Pointer<imp$1.sqlite3_session>,
+          ffi.Pointer<imp$1.sqlite3_char>)>();
+
+  int sqlite3session_diff(
+    ffi.Pointer<imp$1.sqlite3_session> pSession,
+    ffi.Pointer<imp$1.sqlite3_char> zFromDb,
+    ffi.Pointer<imp$1.sqlite3_char> zTbl,
+    ffi.Pointer<ffi.Pointer<imp$1.sqlite3_char>> pzErrMsg,
+  ) {
+    return _sqlite3session_diff(
+      pSession,
+      zFromDb,
+      zTbl,
+      pzErrMsg,
+    );
+  }
+
+  late final _sqlite3session_diffPtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Int Function(
+                  ffi.Pointer<imp$1.sqlite3_session>,
+                  ffi.Pointer<imp$1.sqlite3_char>,
+                  ffi.Pointer<imp$1.sqlite3_char>,
+                  ffi.Pointer<ffi.Pointer<imp$1.sqlite3_char>>)>>(
+      'sqlite3session_diff');
+  late final _sqlite3session_diff = _sqlite3session_diffPtr.asFunction<
       int Function(
-          ffi.Pointer<imp$1.sqlite3_session>, ffi.Pointer<ffi.Char>)>();
+          ffi.Pointer<imp$1.sqlite3_session>,
+          ffi.Pointer<imp$1.sqlite3_char>,
+          ffi.Pointer<imp$1.sqlite3_char>,
+          ffi.Pointer<ffi.Pointer<imp$1.sqlite3_char>>)>();
 
   late final addresses = _SymbolAddresses(this);
 }

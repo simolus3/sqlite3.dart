@@ -277,12 +277,6 @@ int sqlite3changeset_invert(
   int nIn, const void *pIn,       /* Input changeset */
   int *pnOut, void **ppOut        /* OUT: Inverse of input */
 );
-int sqlite3session_diff(
-  sqlite3_session *pSession,
-  const char *zFromDb,
-  const char *zTbl,
-  char **pzErrMsg
-);
 int sqlite3session_patchset(
   sqlite3_session *pSession,      /* Session object */
   int *pnPatchset,                /* OUT: Size of buffer at *ppPatchset */
@@ -296,11 +290,11 @@ int sqlite3session_changeset(
 int sqlite3session_isempty(sqlite3_session *pSession);
 int sqlite3session_attach(
   sqlite3_session *pSession,      /* Session object */
-  const char *zTab                /* Table name */
+  const sqlite3_char *zTab        /* Table name */
 );
 int sqlite3session_diff(
   sqlite3_session *pSession,
-  const char *zFromDb,
-  const char *zTbl,
-  char **pzErrMsg
+  const sqlite3_char *zFromDb,
+  const sqlite3_char *zTbl,
+  sqlite3_char **pzErrMsg
 );

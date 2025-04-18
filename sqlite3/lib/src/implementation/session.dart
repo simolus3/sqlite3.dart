@@ -84,7 +84,7 @@ final class SessionImplementation implements Session {
   }
 
   @override
-  bool get isEmpty => session.sqlite3session_isempty() == 1;
+  bool get isEmpty => session.sqlite3session_isempty() != 0;
 
   @override
   bool get isNotEmpty => !isEmpty;
