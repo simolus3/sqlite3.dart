@@ -14,6 +14,10 @@ final class sqlite3_backup extends ffi.Opaque {}
 
 final class sqlite3_api_routines extends ffi.Opaque {}
 
+final class sqlite3_session extends ffi.Opaque {}
+
+final class sqlite3_changeset_iter extends ffi.Opaque {}
+
 final class sqlite3_value extends ffi.Opaque {}
 
 final class sqlite3_context extends ffi.Opaque {}
@@ -221,18 +225,24 @@ final class sqlite3_vfs extends ffi.Struct {
       xNextSystemCall;
 }
 
-final class sqlite3_changegroup extends ffi.Opaque {}
-
-final class sqlite3_changeset_iter extends ffi.Opaque {}
-
-final class sqlite3_rebaser extends ffi.Opaque {}
-
-final class sqlite3_session extends ffi.Opaque {}
+abstract interface class SharedSymbolAddresses {
+  ffi.Pointer<
+          ffi.NativeFunction<
+              ffi.Int Function(ffi.Pointer<sqlite3_changeset_iter>)>>
+      get sqlite3changeset_finalize;
+  ffi.Pointer<
+          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_session>)>>
+      get sqlite3session_delete;
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
+      get sqlite3_free;
+}
 
 abstract interface class SqliteLibrary {
+  SharedSymbolAddresses get addresses;
   ffi.Pointer<sqlite3_char> get sqlite3_temp_directory;
   set sqlite3_temp_directory(ffi.Pointer<sqlite3_char> value);
   int sqlite3_initialize();
+  void sqlite3_free(ffi.Pointer<ffi.Void> arg0);
   int sqlite3_open_v2(
       ffi.Pointer<sqlite3_char> filename,
       ffi.Pointer<ffi.Pointer<sqlite3>> ppDb,
@@ -247,7 +257,6 @@ abstract interface class SqliteLibrary {
   ffi.Pointer<sqlite3_char> sqlite3_errmsg(ffi.Pointer<sqlite3> db);
   ffi.Pointer<sqlite3_char> sqlite3_errstr(int code);
   int sqlite3_error_offset(ffi.Pointer<sqlite3> db);
-  void sqlite3_free(ffi.Pointer<ffi.Void> ptr);
   ffi.Pointer<sqlite3_char> sqlite3_libversion();
   ffi.Pointer<sqlite3_char> sqlite3_sourceid();
   int sqlite3_libversion_number();
@@ -424,174 +433,30 @@ abstract interface class SqliteLibrary {
       ffi.Pointer<sqlite3> db, int op, int va, ffi.Pointer<ffi.Int> va$1);
   int sqlite3_vfs_register(ffi.Pointer<sqlite3_vfs> arg0, int makeDflt);
   int sqlite3_vfs_unregister(ffi.Pointer<sqlite3_vfs> arg0);
-  int sqlite3changegroup_add(ffi.Pointer<sqlite3_changegroup> arg0, int nData,
-      ffi.Pointer<ffi.Void> pData);
-  int sqlite3changegroup_add_change(ffi.Pointer<sqlite3_changegroup> arg0,
-      ffi.Pointer<sqlite3_changeset_iter> arg1);
-  int sqlite3changeset_apply_strm(
+  int sqlite3session_create(
       ffi.Pointer<sqlite3> db,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pIn,
-                      ffi.Pointer<ffi.Void> pData,
-                      ffi.Pointer<ffi.Int> pnData)>>
-          xInput,
-      ffi.Pointer<ffi.Void> pIn,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)>>
-          xFilter,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pCtx,
-                      ffi.Int eConflict,
-                      ffi.Pointer<sqlite3_changeset_iter> p)>>
-          xConflict,
-      ffi.Pointer<ffi.Void> pCtx);
-  int sqlite3changeset_apply_v2_strm(
-      ffi.Pointer<sqlite3> db,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pIn,
-                      ffi.Pointer<ffi.Void> pData,
-                      ffi.Pointer<ffi.Int> pnData)>>
-          xInput,
-      ffi.Pointer<ffi.Void> pIn,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)>>
-          xFilter,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pCtx,
-                      ffi.Int eConflict,
-                      ffi.Pointer<sqlite3_changeset_iter> p)>>
-          xConflict,
-      ffi.Pointer<ffi.Void> pCtx,
-      ffi.Pointer<ffi.Pointer<ffi.Void>> ppRebase,
-      ffi.Pointer<ffi.Int> pnRebase,
-      int flags);
-  int sqlite3changeset_concat_strm(
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pIn,
-                      ffi.Pointer<ffi.Void> pData,
-                      ffi.Pointer<ffi.Int> pnData)>>
-          xInputA,
-      ffi.Pointer<ffi.Void> pInA,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pIn,
-                      ffi.Pointer<ffi.Void> pData,
-                      ffi.Pointer<ffi.Int> pnData)>>
-          xInputB,
-      ffi.Pointer<ffi.Void> pInB,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
-                      ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>
-          xOutput,
-      ffi.Pointer<ffi.Void> pOut);
-  int sqlite3changeset_invert_strm(
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pIn,
-                      ffi.Pointer<ffi.Void> pData,
-                      ffi.Pointer<ffi.Int> pnData)>>
-          xInput,
-      ffi.Pointer<ffi.Void> pIn,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
-                      ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>
-          xOutput,
-      ffi.Pointer<ffi.Void> pOut);
-  int sqlite3changeset_start_strm(
+      ffi.Pointer<sqlite3_char> zDb,
+      ffi.Pointer<ffi.Pointer<sqlite3_session>> ppSession);
+  void sqlite3session_delete(ffi.Pointer<sqlite3_session> pSession);
+  int sqlite3session_enable(ffi.Pointer<sqlite3_session> pSession, int bEnable);
+  int sqlite3session_indirect(
+      ffi.Pointer<sqlite3_session> pSession, int bIndirect);
+  int sqlite3changeset_start(
       ffi.Pointer<ffi.Pointer<sqlite3_changeset_iter>> pp,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pIn,
-                      ffi.Pointer<ffi.Void> pData,
-                      ffi.Pointer<ffi.Int> pnData)>>
-          xInput,
-      ffi.Pointer<ffi.Void> pIn);
-  int sqlite3changeset_start_v2_strm(
-      ffi.Pointer<ffi.Pointer<sqlite3_changeset_iter>> pp,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pIn,
-                      ffi.Pointer<ffi.Void> pData,
-                      ffi.Pointer<ffi.Int> pnData)>>
-          xInput,
-      ffi.Pointer<ffi.Void> pIn,
-      int flags);
-  int sqlite3session_changeset_strm(
-      ffi.Pointer<sqlite3_session> pSession,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
-                      ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>
-          xOutput,
-      ffi.Pointer<ffi.Void> pOut);
-  int sqlite3session_patchset_strm(
-      ffi.Pointer<sqlite3_session> pSession,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
-                      ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>
-          xOutput,
-      ffi.Pointer<ffi.Void> pOut);
-  int sqlite3changegroup_add_strm(
-      ffi.Pointer<sqlite3_changegroup> arg0,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pIn,
-                      ffi.Pointer<ffi.Void> pData,
-                      ffi.Pointer<ffi.Int> pnData)>>
-          xInput,
-      ffi.Pointer<ffi.Void> pIn);
-  int sqlite3changegroup_output_strm(
-      ffi.Pointer<sqlite3_changegroup> arg0,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
-                      ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>
-          xOutput,
-      ffi.Pointer<ffi.Void> pOut);
-  int sqlite3rebaser_rebase_strm(
-      ffi.Pointer<sqlite3_rebaser> pRebaser,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pIn,
-                      ffi.Pointer<ffi.Void> pData,
-                      ffi.Pointer<ffi.Int> pnData)>>
-          xInput,
-      ffi.Pointer<ffi.Void> pIn,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(ffi.Pointer<ffi.Void> pOut,
-                      ffi.Pointer<ffi.Void> pData, ffi.Int nData)>>
-          xOutput,
-      ffi.Pointer<ffi.Void> pOut);
-  void sqlite3changegroup_delete(ffi.Pointer<sqlite3_changegroup> arg0);
-  int sqlite3changegroup_new(ffi.Pointer<ffi.Pointer<sqlite3_changegroup>> pp);
-  int sqlite3changegroup_output(ffi.Pointer<sqlite3_changegroup> arg0,
-      ffi.Pointer<ffi.Int> pnData, ffi.Pointer<ffi.Pointer<ffi.Void>> ppData);
-  int sqlite3changegroup_schema(ffi.Pointer<sqlite3_changegroup> arg0,
-      ffi.Pointer<sqlite3> arg1, ffi.Pointer<ffi.Char> zDb);
+      int nChangeset,
+      ffi.Pointer<ffi.Void> pChangeset);
+  int sqlite3changeset_finalize(ffi.Pointer<sqlite3_changeset_iter> pIter);
+  int sqlite3changeset_next(ffi.Pointer<sqlite3_changeset_iter> pIter);
+  int sqlite3changeset_op(
+      ffi.Pointer<sqlite3_changeset_iter> pIter,
+      ffi.Pointer<ffi.Pointer<sqlite3_char>> pzTab,
+      ffi.Pointer<ffi.Int> pnCol,
+      ffi.Pointer<ffi.Int> pOp,
+      ffi.Pointer<ffi.Int> pbIndirect);
+  int sqlite3changeset_old(ffi.Pointer<sqlite3_changeset_iter> pIter, int iVal,
+      ffi.Pointer<ffi.Pointer<sqlite3_value>> ppValue);
+  int sqlite3changeset_new(ffi.Pointer<sqlite3_changeset_iter> pIter, int iVal,
+      ffi.Pointer<ffi.Pointer<sqlite3_value>> ppValue);
   int sqlite3changeset_apply(
       ffi.Pointer<sqlite3> db,
       int nChangeset,
@@ -609,114 +474,22 @@ abstract interface class SqliteLibrary {
                       ffi.Pointer<sqlite3_changeset_iter> p)>>
           xConflict,
       ffi.Pointer<ffi.Void> pCtx);
-  int sqlite3changeset_apply_v2(
-      ffi.Pointer<sqlite3> db,
-      int nChangeset,
-      ffi.Pointer<ffi.Void> pChangeset,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)>>
-          xFilter,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pCtx,
-                      ffi.Int eConflict,
-                      ffi.Pointer<sqlite3_changeset_iter> p)>>
-          xConflict,
-      ffi.Pointer<ffi.Void> pCtx,
-      ffi.Pointer<ffi.Pointer<ffi.Void>> ppRebase,
-      ffi.Pointer<ffi.Int> pnRebase,
-      int flags);
-  int sqlite3changeset_concat(
-      int nA,
-      ffi.Pointer<ffi.Void> pA,
-      int nB,
-      ffi.Pointer<ffi.Void> pB,
-      ffi.Pointer<ffi.Int> pnOut,
-      ffi.Pointer<ffi.Pointer<ffi.Void>> ppOut);
-  int sqlite3changeset_conflict(ffi.Pointer<sqlite3_changeset_iter> pIter,
-      int iVal, ffi.Pointer<ffi.Pointer<sqlite3_value>> ppValue);
-  int sqlite3changeset_finalize(ffi.Pointer<sqlite3_changeset_iter> pIter);
-  int sqlite3changeset_fk_conflicts(
-      ffi.Pointer<sqlite3_changeset_iter> pIter, ffi.Pointer<ffi.Int> pnOut);
   int sqlite3changeset_invert(int nIn, ffi.Pointer<ffi.Void> pIn,
       ffi.Pointer<ffi.Int> pnOut, ffi.Pointer<ffi.Pointer<ffi.Void>> ppOut);
-  int sqlite3changeset_new(ffi.Pointer<sqlite3_changeset_iter> pIter, int iVal,
-      ffi.Pointer<ffi.Pointer<sqlite3_value>> ppValue);
-  int sqlite3changeset_next(ffi.Pointer<sqlite3_changeset_iter> pIter);
-  int sqlite3changeset_old(ffi.Pointer<sqlite3_changeset_iter> pIter, int iVal,
-      ffi.Pointer<ffi.Pointer<sqlite3_value>> ppValue);
-  int sqlite3changeset_op(
-      ffi.Pointer<sqlite3_changeset_iter> pIter,
-      ffi.Pointer<ffi.Pointer<ffi.Char>> pzTab,
-      ffi.Pointer<ffi.Int> pnCol,
-      ffi.Pointer<ffi.Int> pOp,
-      ffi.Pointer<ffi.Int> pbIndirect);
-  int sqlite3changeset_pk(
-      ffi.Pointer<sqlite3_changeset_iter> pIter,
-      ffi.Pointer<ffi.Pointer<ffi.UnsignedChar>> pabPK,
-      ffi.Pointer<ffi.Int> pnCol);
-  int sqlite3changeset_start(
-      ffi.Pointer<ffi.Pointer<sqlite3_changeset_iter>> pp,
-      int nChangeset,
-      ffi.Pointer<ffi.Void> pChangeset);
-  int sqlite3changeset_start_v2(
-      ffi.Pointer<ffi.Pointer<sqlite3_changeset_iter>> pp,
-      int nChangeset,
-      ffi.Pointer<ffi.Void> pChangeset,
-      int flags);
-  int sqlite3changeset_upgrade(
-      ffi.Pointer<sqlite3> db,
-      ffi.Pointer<ffi.Char> zDb,
-      int nIn,
-      ffi.Pointer<ffi.Void> pIn,
-      ffi.Pointer<ffi.Int> pnOut,
-      ffi.Pointer<ffi.Pointer<ffi.Void>> ppOut);
-  int sqlite3rebaser_configure(ffi.Pointer<sqlite3_rebaser> arg0, int nRebase,
-      ffi.Pointer<ffi.Void> pRebase);
-  int sqlite3rebaser_create(ffi.Pointer<ffi.Pointer<sqlite3_rebaser>> ppNew);
-  void sqlite3rebaser_delete(ffi.Pointer<sqlite3_rebaser> p);
-  int sqlite3rebaser_rebase(
-      ffi.Pointer<sqlite3_rebaser> arg0,
-      int nIn,
-      ffi.Pointer<ffi.Void> pIn,
-      ffi.Pointer<ffi.Int> pnOut,
-      ffi.Pointer<ffi.Pointer<ffi.Void>> ppOut);
-  int sqlite3session_attach(
-      ffi.Pointer<sqlite3_session> pSession, ffi.Pointer<ffi.Char> zTab);
-  int sqlite3session_changeset(
-      ffi.Pointer<sqlite3_session> pSession,
-      ffi.Pointer<ffi.Int> pnChangeset,
-      ffi.Pointer<ffi.Pointer<ffi.Void>> ppChangeset);
-  int sqlite3session_changeset_size(ffi.Pointer<sqlite3_session> pSession);
-  int sqlite3session_config(int op, ffi.Pointer<ffi.Void> pArg);
-  int sqlite3session_create(ffi.Pointer<sqlite3> db, ffi.Pointer<ffi.Char> zDb,
-      ffi.Pointer<ffi.Pointer<sqlite3_session>> ppSession);
-  void sqlite3session_delete(ffi.Pointer<sqlite3_session> pSession);
   int sqlite3session_diff(
       ffi.Pointer<sqlite3_session> pSession,
       ffi.Pointer<ffi.Char> zFromDb,
       ffi.Pointer<ffi.Char> zTbl,
       ffi.Pointer<ffi.Pointer<ffi.Char>> pzErrMsg);
-  int sqlite3session_enable(ffi.Pointer<sqlite3_session> pSession, int bEnable);
-  int sqlite3session_indirect(
-      ffi.Pointer<sqlite3_session> pSession, int bIndirect);
-  int sqlite3session_isempty(ffi.Pointer<sqlite3_session> pSession);
-  int sqlite3session_memory_used(ffi.Pointer<sqlite3_session> pSession);
-  int sqlite3session_object_config(
-      ffi.Pointer<sqlite3_session> arg0, int op, ffi.Pointer<ffi.Void> pArg);
   int sqlite3session_patchset(
       ffi.Pointer<sqlite3_session> pSession,
       ffi.Pointer<ffi.Int> pnPatchset,
       ffi.Pointer<ffi.Pointer<ffi.Void>> ppPatchset);
-  void sqlite3session_table_filter(
+  int sqlite3session_changeset(
       ffi.Pointer<sqlite3_session> pSession,
-      ffi.Pointer<
-              ffi.NativeFunction<
-                  ffi.Int Function(
-                      ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)>>
-          xFilter,
-      ffi.Pointer<ffi.Void> pCtx);
+      ffi.Pointer<ffi.Int> pnChangeset,
+      ffi.Pointer<ffi.Pointer<ffi.Void>> ppChangeset);
+  int sqlite3session_isempty(ffi.Pointer<sqlite3_session> pSession);
+  int sqlite3session_attach(
+      ffi.Pointer<sqlite3_session> pSession, ffi.Pointer<ffi.Char> zTab);
 }

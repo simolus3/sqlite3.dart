@@ -10,12 +10,10 @@ import '../database.dart';
 import '../exception.dart';
 import '../functions.dart';
 import '../result_set.dart';
-import '../session.dart';
 import '../statement.dart';
 import 'bindings.dart';
 import 'exception.dart';
 import 'finalizer.dart';
-import 'session.dart';
 import 'statement.dart';
 import 'utils.dart';
 
@@ -113,20 +111,9 @@ base class DatabaseImplementation implements CommonDatabase {
       database: this,
       register: () {
         database.sqlite3_update_hook((kind, tableName, rowId) {
-          SqliteUpdateKind updateKind;
-
-          switch (kind) {
-            case SQLITE_INSERT:
-              updateKind = SqliteUpdateKind.insert;
-              break;
-            case SQLITE_UPDATE:
-              updateKind = SqliteUpdateKind.update;
-              break;
-            case SQLITE_DELETE:
-              updateKind = SqliteUpdateKind.delete;
-              break;
-            default:
-              return;
+          final updateKind = SqliteUpdateKind.fromCode(kind);
+          if (updateKind == null) {
+            return;
           }
 
           final update = SqliteUpdate(updateKind, tableName, rowId);
@@ -178,49 +165,6 @@ base class DatabaseImplementation implements CommonDatabase {
     }
 
     return Uint8List.fromList(functionNameBytes);
-  }
-
-  @override
-  CommonSession createSession([
-    CreateSessionOptions options = const CreateSessionOptions(),
-  ]) {
-    final result = bindings.sqlite3session_create(database, options.db);
-    final session = SessionImplementation(bindings, result.result);
-    if (options.tables == null) {
-      session.attach();
-    } else {
-      for (final table in options.tables!) {
-        session.attach(table);
-      }
-    }
-    return session;
-  }
-
-  @override
-  void applyChangeset(
-    Uint8List changeset, [
-    ApplyChangesetOptions options = const ApplyChangesetOptions(),
-  ]) {
-    int Function(RawSqliteDatabase, String)? filter;
-    int Function(RawSqliteDatabase, int, RawChangesetIterator)? conflict;
-    if (options.filter != null) {
-      filter = (db, table) {
-        final result = options.filter!(table);
-        return result ? 1 : 0;
-      };
-    }
-    if (options.onConflict != null) {
-      conflict = (db, conflictCode, iterator) {
-        return (options.onConflict ?? ApplyChangesetConflict.abort).flag;
-      };
-    }
-    bindings.sqlite3changeset_apply(
-      database,
-      changeset,
-      filter,
-      conflict,
-      database,
-    );
   }
 
   @override
@@ -591,27 +535,7 @@ class ValueList extends ListBase<Object?> {
     );
     RangeError.checkValidIndex(index, this, 'index', length);
 
-    final cached = _cachedCopies[index];
-    if (cached != null) {
-      return cached;
-    }
-
-    final result = rawValues[index];
-    final type = result.sqlite3_value_type();
-
-    switch (type) {
-      case SqlType.SQLITE_INTEGER:
-        return result.sqlite3_value_int64();
-      case SqlType.SQLITE_FLOAT:
-        return result.sqlite3_value_double();
-      case SqlType.SQLITE_TEXT:
-        return result.sqlite3_value_text();
-      case SqlType.SQLITE_BLOB:
-        return result.sqlite3_value_blob();
-      case SqlType.SQLITE_NULL:
-      default:
-        return null;
-    }
+    return _cachedCopies[index] ??= rawValues[index].read();
   }
 
   @override

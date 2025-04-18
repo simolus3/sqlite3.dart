@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'database.dart';
 import 'vfs.dart';
 
@@ -9,10 +7,6 @@ import 'vfs.dart';
 abstract interface class CommonSqlite3 {
   /// The version of the sqlite3 library in used.
   Version get version;
-
-  /// Inverts a changeset, returning the changes that would need to be made to
-  /// undo the changeset.
-  Uint8List invertChangeset(Uint8List changeset);
 
   /// Opens a database file.
   ///
