@@ -1,6 +1,8 @@
 @internal
 library;
 
+// ignore_for_file: non_constant_identifier_names
+
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
@@ -8,7 +10,50 @@ import 'package:meta/meta.dart';
 import '../functions.dart';
 import '../vfs.dart';
 
-// ignore_for_file: non_constant_identifier_names
+abstract base class RawChangesetIterator {
+  // int sqlite3changeset_finalize(sqlite3_changeset_iter *pIter);
+  int sqlite3changeset_finalize();
+
+  // int sqlite3changeset_new(
+  //   sqlite3_changeset_iter *pIter,  /* Changeset iterator */
+  //   int iVal,                       /* Column number */
+  //   sqlite3_value **ppValue         /* OUT: New value (or NULL pointer) */
+  // );
+  SqliteResult<RawSqliteValue> sqlite3changeset_new(int columnNumber);
+
+  // int sqlite3changeset_next(sqlite3_changeset_iter *pIter);
+  int sqlite3changeset_next();
+
+  // int sqlite3changeset_old(
+  //   sqlite3_changeset_iter *pIter,  /* Changeset iterator */
+  //   int iVal,                       /* Column number */
+  //   sqlite3_value **ppValue         /* OUT: Old value (or NULL pointer) */
+  // );
+  SqliteResult<RawSqliteValue> sqlite3changeset_old(int columnNumber);
+
+  // int sqlite3changeset_op(
+  //   sqlite3_changeset_iter *pIter,  /* Iterator object */
+  //   const char **pzTab,             /* OUT: Pointer to table name */
+  //   int *pnCol,                     /* OUT: Number of columns in table */
+  //   int *pOp,                       /* OUT: SQLITE_INSERT, DELETE or UPDATE */
+  //   int *pbIndirect                 /* OUT: True for an 'indirect' change */
+  // );
+  RawChangeSetOp sqlite3changeset_op();
+}
+
+final class RawChangeSetOp {
+  final String tableName;
+  final int columnCount;
+  final int operation;
+  final int indirect;
+
+  RawChangeSetOp({
+    required this.tableName,
+    required this.columnCount,
+    required this.operation,
+    required this.indirect,
+  });
+}
 
 /// Defines a lightweight abstraction layer around sqlite3 that can be accessed
 /// without platform-specific APIs (`dart:ffi` or `dart:js`).
@@ -27,6 +72,52 @@ import '../vfs.dart';
 /// All of the classes and methods defined here are internal and can be changed
 /// as needed.
 abstract base class RawSqliteBindings {
+  // int sqlite3session_create(
+  //   sqlite3 *db,                    /* Database handle */
+  //   const char *zDb,                /* Name of db (e.g. "main") */
+  //   sqlite3_session **ppSession     /* OUT: New session object */
+  // );
+  SqliteResult<RawSqliteSession> sqlite3session_create(
+    RawSqliteDatabase db,
+    String name,
+  );
+
+  // int sqlite3changeset_apply(
+  //   sqlite3 *db,                    /* Apply change to "main" db of this handle */
+  //   int nChangeset,                 /* Size of changeset in bytes */
+  //   void *pChangeset,               /* Changeset blob */
+  //   int(*xFilter)(
+  //     void *pCtx,                   /* Copy of sixth arg to _apply() */
+  //     const char *zTab              /* Table name */
+  //   ),
+  //   int(*xConflict)(
+  //     void *pCtx,                   /* Copy of sixth arg to _apply() */
+  //     int eConflict,                /* DATA, MISSING, CONFLICT, CONSTRAINT */
+  //     sqlite3_changeset_iter *p     /* Handle describing change and conflict */
+  //   ),
+  //   void *pCtx                      /* First argument passed to xConflict */
+  // );
+  int sqlite3changeset_apply(
+    RawSqliteDatabase database,
+    Uint8List changeset,
+    int Function(
+      String tableName,
+    )? filter,
+    int Function(
+      int eConflict,
+      RawChangesetIterator iter,
+    )? conflict,
+  );
+
+  // int sqlite3changeset_start(
+  //   sqlite3_changeset_iter **pp,    /* OUT: New changeset iterator handle */
+  //   int nChangeset,                 /* Size of changeset blob in bytes */
+  //   void *pChangeset                /* Pointer to blob containing changeset */
+  // );
+  RawChangesetIterator sqlite3changeset_start(Uint8List changeset);
+
+  Uint8List sqlite3changeset_invert(Uint8List changeset);
+
   String sqlite3_libversion();
   String sqlite3_sourceid();
   int sqlite3_libversion_number();
@@ -42,6 +133,41 @@ abstract base class RawSqliteBindings {
   void unregisterVirtualFileSystem(VirtualFileSystem vfs);
 
   int sqlite3_initialize();
+}
+
+abstract base class RawSqliteSession {
+  // int sqlite3session_attach(
+  //   sqlite3_session *pSession,      /* Session object */
+  //   const char *zTab                /* Table name */
+  // );
+  int sqlite3session_attach([String? name]);
+
+  // int sqlite3session_changeset(
+  //   sqlite3_session *pSession,      /* Session object */
+  //   int *pnChangeset,               /* OUT: Size of buffer at *ppChangeset */
+  //   void **ppChangeset              /* OUT: Buffer containing changeset */
+  // );
+  Uint8List sqlite3session_changeset();
+  Uint8List sqlite3session_patchset();
+
+  // void sqlite3session_delete(sqlite3_session *pSession);
+  void sqlite3session_delete();
+
+  // int sqlite3session_diff(
+  //   sqlite3_session *pSession,
+  //   const char *zFromDb,
+  //   const char *zTbl,
+  //   char **pzErrMsg
+  // );
+  int sqlite3session_diff(String fromDb, String table);
+
+  // int sqlite3session_enable(sqlite3_session *pSession, int bEnable);
+  int sqlite3session_enable(int enable);
+
+  // int sqlite3session_indirect(sqlite3_session *pSession, int bIndirect);
+  int sqlite3session_indirect(int indirect);
+
+  int sqlite3session_isempty();
 }
 
 /// Combines a sqlite result code and the result object.

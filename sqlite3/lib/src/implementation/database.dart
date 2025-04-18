@@ -111,20 +111,9 @@ base class DatabaseImplementation implements CommonDatabase {
       database: this,
       register: () {
         database.sqlite3_update_hook((kind, tableName, rowId) {
-          SqliteUpdateKind updateKind;
-
-          switch (kind) {
-            case SQLITE_INSERT:
-              updateKind = SqliteUpdateKind.insert;
-              break;
-            case SQLITE_UPDATE:
-              updateKind = SqliteUpdateKind.update;
-              break;
-            case SQLITE_DELETE:
-              updateKind = SqliteUpdateKind.delete;
-              break;
-            default:
-              return;
+          final updateKind = SqliteUpdateKind.fromCode(kind);
+          if (updateKind == null) {
+            return;
           }
 
           final update = SqliteUpdate(updateKind, tableName, rowId);
@@ -546,27 +535,7 @@ class ValueList extends ListBase<Object?> {
     );
     RangeError.checkValidIndex(index, this, 'index', length);
 
-    final cached = _cachedCopies[index];
-    if (cached != null) {
-      return cached;
-    }
-
-    final result = rawValues[index];
-    final type = result.sqlite3_value_type();
-
-    switch (type) {
-      case SqlType.SQLITE_INTEGER:
-        return result.sqlite3_value_int64();
-      case SqlType.SQLITE_FLOAT:
-        return result.sqlite3_value_double();
-      case SqlType.SQLITE_TEXT:
-        return result.sqlite3_value_text();
-      case SqlType.SQLITE_BLOB:
-        return result.sqlite3_value_blob();
-      case SqlType.SQLITE_NULL:
-      default:
-        return null;
-    }
+    return _cachedCopies[index] ??= rawValues[index].read();
   }
 
   @override
