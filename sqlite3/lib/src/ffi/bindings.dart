@@ -102,15 +102,16 @@ final class FfiBindings extends RawSqliteBindings {
   ) {
     final dbImpl = db as FfiDatabase;
     final namePtr = Utf8Utils.allocateZeroTerminated(name);
-    final sessionPtr = ffi.calloc<Pointer<sqlite3_session>>();
+    final sessionPtr = allocate<Pointer<sqlite3_session>>();
     final result = bindings.bindings.sqlite3session_create(
       dbImpl.db,
       namePtr,
       sessionPtr,
     );
     namePtr.free();
+    final sessionValue = sessionPtr.value;
     sessionPtr.free();
-    return SqliteResult(result, FfiSession(this, sessionPtr.value));
+    return SqliteResult(result, FfiSession(this, sessionValue));
   }
 
   @override
@@ -568,7 +569,9 @@ final class FfiSession extends RawSqliteSession implements Finalizable {
 
   @override
   int sqlite3session_attach([String? name]) {
-    final namePtr = name?.toNativeUtf8().cast<Char>() ?? nullPtr();
+    final namePtr = name == null
+        ? nullPtr<sqlite3_char>()
+        : Utf8Utils.allocateZeroTerminated(name);
     final result = _library.sqlite3session_attach(
       session,
       namePtr,
@@ -633,24 +636,16 @@ final class FfiSession extends RawSqliteSession implements Finalizable {
 
   @override
   int sqlite3session_diff(String fromDb, String table) {
-    final fromDbPtr = fromDb.toNativeUtf8().cast<Char>();
-    final tablePtr = table.toNativeUtf8().cast<Char>();
-    final errorMsg = allocate<Pointer<Char>>();
+    final fromDbPtr = Utf8Utils.allocateZeroTerminated(fromDb);
+    final tablePtr = Utf8Utils.allocateZeroTerminated(table);
     final result = _library.sqlite3session_diff(
       session,
       fromDbPtr,
       tablePtr,
-      errorMsg,
+      nullPtr(),
     );
     fromDbPtr.free();
     tablePtr.free();
-    if (result != SqlError.SQLITE_OK) {
-      final message = errorMsg.value != nullptr
-          ? errorMsg.value.cast<sqlite3_char>().readString()
-          : 'Could not diff';
-      errorMsg.free();
-      throw SqliteException(result, message);
-    }
     return result;
   }
 

@@ -743,16 +743,6 @@ external int sqlite3changeset_invert(
 );
 
 @ffi.Native<
-    ffi.Int Function(ffi.Pointer<imp$1.sqlite3_session>, ffi.Pointer<ffi.Char>,
-        ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Pointer<ffi.Char>>)>()
-external int sqlite3session_diff(
-  ffi.Pointer<imp$1.sqlite3_session> pSession,
-  ffi.Pointer<ffi.Char> zFromDb,
-  ffi.Pointer<ffi.Char> zTbl,
-  ffi.Pointer<ffi.Pointer<ffi.Char>> pzErrMsg,
-);
-
-@ffi.Native<
     ffi.Int Function(ffi.Pointer<imp$1.sqlite3_session>, ffi.Pointer<ffi.Int>,
         ffi.Pointer<ffi.Pointer<ffi.Void>>)>()
 external int sqlite3session_patchset(
@@ -777,10 +767,23 @@ external int sqlite3session_isempty(
 
 @ffi.Native<
     ffi.Int Function(
-        ffi.Pointer<imp$1.sqlite3_session>, ffi.Pointer<ffi.Char>)>()
+        ffi.Pointer<imp$1.sqlite3_session>, ffi.Pointer<imp$1.sqlite3_char>)>()
 external int sqlite3session_attach(
   ffi.Pointer<imp$1.sqlite3_session> pSession,
-  ffi.Pointer<ffi.Char> zTab,
+  ffi.Pointer<imp$1.sqlite3_char> zTab,
+);
+
+@ffi.Native<
+    ffi.Int Function(
+        ffi.Pointer<imp$1.sqlite3_session>,
+        ffi.Pointer<imp$1.sqlite3_char>,
+        ffi.Pointer<imp$1.sqlite3_char>,
+        ffi.Pointer<ffi.Pointer<imp$1.sqlite3_char>>)>()
+external int sqlite3session_diff(
+  ffi.Pointer<imp$1.sqlite3_session> pSession,
+  ffi.Pointer<imp$1.sqlite3_char> zFromDb,
+  ffi.Pointer<imp$1.sqlite3_char> zTbl,
+  ffi.Pointer<ffi.Pointer<imp$1.sqlite3_char>> pzErrMsg,
 );
 
 const addresses = _SymbolAddresses();

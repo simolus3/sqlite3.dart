@@ -476,11 +476,6 @@ abstract interface class SqliteLibrary {
       ffi.Pointer<ffi.Void> pCtx);
   int sqlite3changeset_invert(int nIn, ffi.Pointer<ffi.Void> pIn,
       ffi.Pointer<ffi.Int> pnOut, ffi.Pointer<ffi.Pointer<ffi.Void>> ppOut);
-  int sqlite3session_diff(
-      ffi.Pointer<sqlite3_session> pSession,
-      ffi.Pointer<ffi.Char> zFromDb,
-      ffi.Pointer<ffi.Char> zTbl,
-      ffi.Pointer<ffi.Pointer<ffi.Char>> pzErrMsg);
   int sqlite3session_patchset(
       ffi.Pointer<sqlite3_session> pSession,
       ffi.Pointer<ffi.Int> pnPatchset,
@@ -491,5 +486,10 @@ abstract interface class SqliteLibrary {
       ffi.Pointer<ffi.Pointer<ffi.Void>> ppChangeset);
   int sqlite3session_isempty(ffi.Pointer<sqlite3_session> pSession);
   int sqlite3session_attach(
-      ffi.Pointer<sqlite3_session> pSession, ffi.Pointer<ffi.Char> zTab);
+      ffi.Pointer<sqlite3_session> pSession, ffi.Pointer<sqlite3_char> zTab);
+  int sqlite3session_diff(
+      ffi.Pointer<sqlite3_session> pSession,
+      ffi.Pointer<sqlite3_char> zFromDb,
+      ffi.Pointer<sqlite3_char> zTbl,
+      ffi.Pointer<ffi.Pointer<sqlite3_char>> pzErrMsg);
 }
