@@ -258,5 +258,9 @@ final class _TestConfiguration {
         await driver.checkReadWrite();
       });
     }
+
+    test('can share databases', () async {
+      await driver.testSecond();
+    });
   }
 }

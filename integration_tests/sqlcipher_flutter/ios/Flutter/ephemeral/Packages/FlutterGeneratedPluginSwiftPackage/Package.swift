@@ -15,7 +15,7 @@ let package = Package(
         .library(name: "FlutterGeneratedPluginSwiftPackage", type: .static, targets: ["FlutterGeneratedPluginSwiftPackage"])
     ],
     dependencies: [
-        .package(name: "integration_test", path: "/Users/simon/fvm/versions/master/packages/integration_test/ios/integration_test")
+        .package(name: "integration_test", path: "/Users/simon/fvm/versions/stable/packages/integration_test/ios/integration_test")
     ],
     targets: [
         .target(

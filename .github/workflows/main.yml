@@ -16,7 +16,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       SQLITE_YEAR: "2025"
-      SQLITE_VERSION: "3480000"
+      SQLITE_VERSION: "3490100"
 
     steps:
     - uses: actions/cache@v4
@@ -36,13 +36,13 @@ jobs:
         make -j
         mkdir ../out
         cp sqlite3 ../out
-        cp .libs/libsqlite3.so ../out
+        cp libsqlite3.so ../out
         cp *.h ../out
     - name: Compile sqlite3 on Linux (no autoinit)
       if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Linux'
       working-directory: sqlite
       run: |
-        curl https://www.sqlite.org/$SQLITE_YEAR/sqlite-amalgamation-$SQLITE_VERSION.zip --output sqlite.zip
+        curl -L https://sqlite.org/$SQLITE_YEAR/sqlite-amalgamation-$SQLITE_VERSION.zip --output sqlite.zip
         unzip sqlite.zip
 
         cd sqlite-amalgamation-$SQLITE_VERSION
@@ -62,7 +62,7 @@ jobs:
         make -j
         mkdir ../out
         cp sqlite3 ../out
-        cp .libs/libsqlite3.dylib ../out
+        cp libsqlite3.dylib ../out
         cp *.h ../out
     - uses: ilammy/msvc-dev-cmd@v1
       if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Windows'

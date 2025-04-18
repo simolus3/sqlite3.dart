@@ -187,7 +187,7 @@ class TestWebDriver {
     await driver.executeAsync('exec(arguments[0], arguments[1])', [sql]);
   }
 
-  Future<void> testSecond(String sql) async {
+  Future<void> testSecond() async {
     final res = await driver.executeAsync('test_second("", arguments[0])', []);
     if (res != true) {
       throw 'test_second failed! More information may be available in the console.';

@@ -1,6 +1,6 @@
 name: sqlite3_native_assets
 description: Access to SQLite with the `sqlite3` package and the upcoming "Native assets" feature. This package will eventually replace `sqlite3_flutter_libs`.
-version: 0.0.2
+version: 0.0.4
 homepage: https://github.com/simolus3/sqlite3.dart/tree/main/sqlite3_native_assets
 issue_tracker: https://github.com/simolus3/sqlite3.dart/issues
 
@@ -9,8 +9,8 @@ environment:
 
 dependencies:
   sqlite3: ^2.7.4
-  native_assets_cli: ^0.11.0
-  native_toolchain_c: ^0.8.0
+  native_assets_cli: ^0.14.0
+  native_toolchain_c: ^0.11.0
   logging: ^1.3.0
   http: ^1.3.0
   archive: ^4.0.2

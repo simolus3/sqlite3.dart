@@ -1,3 +1,7 @@
+## 0.5.32
+
+- Enable builtin math functions.
+
 ## 0.5.31
 
 - Upgrade sqlite to version `3.49.1`.
