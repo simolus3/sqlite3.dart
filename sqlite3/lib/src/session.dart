@@ -12,9 +12,7 @@ import 'implementation/session.dart';
 abstract interface class Session {
   factory Session(CommonDatabase database, {String name = 'main'}) {
     final asImpl = database as DatabaseImplementation;
-
-    return SessionImplementation.createSession(
-        asImpl.bindings, asImpl.database, name);
+    return SessionImplementation.createSession(asImpl, name);
   }
 
   /// Changeset generates a changeset from a session.
@@ -67,7 +65,7 @@ abstract interface class Patchset implements Iterable<ChangesetOperation> {
 }
 
 abstract interface class Changeset implements Patchset {
-  operator -();
+  Changeset operator -();
 }
 
 final class ChangesetOperation {
@@ -75,8 +73,8 @@ final class ChangesetOperation {
   final int columnCount;
   final SqliteUpdateKind operation;
 
-  final List<Object?> oldValues;
-  final List<Object?> newValues;
+  final List<Object?>? oldValues;
+  final List<Object?>? newValues;
 
   ChangesetOperation({
     required this.table,
@@ -85,6 +83,11 @@ final class ChangesetOperation {
     required this.oldValues,
     required this.newValues,
   });
+
+  @override
+  String toString() {
+    return 'ChangesetOperation: $operation on $table. old: $oldValues, new: $newValues';
+  }
 }
 
 abstract interface class ChangesetIterator
