@@ -148,7 +148,7 @@ final class FfiBindings extends RawSqliteBindings {
             : (NativeCallable.isolateLocal(
                 (Pointer<Void> ctx, int eConflict,
                     Pointer<sqlite3_changeset_iter> p) {
-                  final iter = FfiChangesetIterator(this, null, p);
+                  final iter = FfiChangesetIterator(this, p);
                   return conflict(eConflict, iter);
                 },
                 exceptionalReturn: 1,
@@ -184,7 +184,8 @@ final class FfiBindings extends RawSqliteBindings {
       throw createExceptionOutsideOfDatabase(this, result);
     }
 
-    return FfiChangesetIterator(this, asPtr, iterator);
+    // TODO: Deallocate asPtr when deallocated
+    return FfiChangesetIterator(this, iterator);
   }
 
   @override
@@ -560,11 +561,13 @@ final class _DartFile extends Struct {
 final class FfiSession extends RawSqliteSession implements Finalizable {
   final FfiBindings bindings;
   final Pointer<sqlite3_session> session;
+  final Object detachToken = Object();
 
   SqliteLibrary get _library => bindings.bindings.bindings;
 
   FfiSession(this.bindings, this.session) {
-    bindings.bindings.sessionDelete.attach(this, session.cast());
+    bindings.bindings.sessionDelete
+        .attach(this, session.cast(), detach: detachToken);
   }
 
   @override
@@ -630,7 +633,7 @@ final class FfiSession extends RawSqliteSession implements Finalizable {
 
   @override
   void sqlite3session_delete() {
-    bindings.bindings.sessionDelete.detach(this);
+    bindings.bindings.sessionDelete.detach(detachToken);
     _library.sqlite3session_delete(session);
   }
 
@@ -669,24 +672,20 @@ final class FfiChangesetIterator extends RawChangesetIterator
     implements Finalizable {
   final FfiBindings bindings;
 
-  final Pointer<Uint8>? changesetBytes;
   final Pointer<sqlite3_changeset_iter> iterator;
+  final Object detachToken = Object();
 
   SqliteLibrary get _library => bindings.bindings.bindings;
 
-  FfiChangesetIterator(this.bindings, this.changesetBytes, this.iterator) {
-    if (changesetBytes case final ownedChangeset?) {
-      freeFinalizer.attach(this, ownedChangeset.cast());
-    }
-
-    bindings.bindings.changesetIteratorFinalize.attach(this, iterator.cast());
+  FfiChangesetIterator(this.bindings, this.iterator) {
+    bindings.bindings.changesetIteratorFinalize
+        .attach(this, iterator.cast(), detach: detachToken);
   }
 
   @override
   int sqlite3changeset_finalize() {
+    bindings.bindings.changesetIteratorFinalize.detach(detachToken);
     final result = _library.sqlite3changeset_finalize(iterator);
-    freeFinalizer.detach(this);
-    bindings.bindings.changesetIteratorFinalize.detach(this);
     return result;
   }
 
@@ -752,10 +751,6 @@ final class FfiChangesetIterator extends RawChangesetIterator
     }
 
     final table = tableValue.readString();
-    tablePtr.free();
-    columnCountPtr.free();
-    typePtr.free();
-    indirectPtr.free();
     return RawChangeSetOp(
       tableName: table,
       columnCount: columnCountValue,

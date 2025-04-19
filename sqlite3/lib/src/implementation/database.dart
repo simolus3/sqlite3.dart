@@ -27,6 +27,7 @@ final class FinalizableDatabase extends FinalizablePart {
   final RawSqliteDatabase database;
 
   final List<FinalizableStatement> _statements = [];
+  final List<void Function()> dartCleanup = [];
 
   FinalizableDatabase(this.bindings, this.database);
 
@@ -34,6 +35,10 @@ final class FinalizableDatabase extends FinalizablePart {
   void dispose() {
     for (final stmt in _statements) {
       stmt.dispose();
+    }
+
+    for (final cleanup in dartCleanup.toList()) {
+      cleanup();
     }
 
     final code = database.sqlite3_close_v2();

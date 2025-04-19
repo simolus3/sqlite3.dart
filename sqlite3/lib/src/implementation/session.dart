@@ -11,18 +11,22 @@ import 'utils.dart';
 final class SessionImplementation implements Session {
   final RawSqliteBindings bindings;
   final RawSqliteSession session;
+  final FinalizableDatabase database;
 
   bool _deleted = false;
 
-  SessionImplementation(this.bindings, this.session);
+  SessionImplementation(this.bindings, this.session, this.database) {
+    database.dartCleanup.add(delete);
+  }
 
   static SessionImplementation createSession(
-      RawSqliteBindings bindings, RawSqliteDatabase db, String name) {
+      DatabaseImplementation db, String name) {
+    final bindings = db.bindings;
     final result = bindings
-        .sqlite3session_create(db, name)
+        .sqlite3session_create(db.database, name)
         .okOrThrowOutsideOfDatabase(bindings);
 
-    return SessionImplementation(bindings, result);
+    return SessionImplementation(bindings, result, db.finalizable);
   }
 
   void _checkNotDeleted() {
@@ -50,6 +54,7 @@ final class SessionImplementation implements Session {
     if (!_deleted) {
       _deleted = true;
       session.sqlite3session_delete();
+      database.dartCleanup.remove(delete);
     }
   }
 
@@ -62,10 +67,14 @@ final class SessionImplementation implements Session {
   }
 
   @override
-  bool get enabled => session.sqlite3session_enable(-1) == 1;
+  bool get enabled {
+    _checkNotDeleted();
+    return session.sqlite3session_enable(-1) == 1;
+  }
 
   @override
   set enabled(bool enabled) {
+    _checkNotDeleted();
     final result = session.sqlite3session_enable(enabled ? 1 : 0);
     if (result != SqlError.SQLITE_OK) {
       throw createExceptionOutsideOfDatabase(bindings, result);
@@ -73,10 +82,14 @@ final class SessionImplementation implements Session {
   }
 
   @override
-  bool get isIndirect => session.sqlite3session_indirect(-1) == 1;
+  bool get isIndirect {
+    _checkNotDeleted();
+    return session.sqlite3session_indirect(-1) == 1;
+  }
 
   @override
   set isIndirect(bool isIndirect) {
+    _checkNotDeleted();
     final result = session.sqlite3session_enable(isIndirect ? 1 : 0);
     if (result != SqlError.SQLITE_OK) {
       throw createExceptionOutsideOfDatabase(bindings, result);
@@ -84,13 +97,17 @@ final class SessionImplementation implements Session {
   }
 
   @override
-  bool get isEmpty => session.sqlite3session_isempty() != 0;
+  bool get isEmpty {
+    _checkNotDeleted();
+    return session.sqlite3session_isempty() != 0;
+  }
 
   @override
   bool get isNotEmpty => !isEmpty;
 
   @override
   void attach([String? table]) {
+    _checkNotDeleted();
     final result = session.sqlite3session_attach(table);
     if (result != SqlError.SQLITE_OK) {
       throw createExceptionOutsideOfDatabase(bindings, result);
@@ -146,7 +163,7 @@ final class ChangesetImplementation extends PatchsetImplementation
   ChangesetImplementation(super.bytes, super.bindings);
 
   @override
-  operator -() {
+  Changeset operator -() {
     final result = bindings.sqlite3changeset_invert(bytes);
     return ChangesetImplementation(result, bindings);
   }
@@ -174,20 +191,24 @@ final class ChangesetIteratorImplementation implements ChangesetIterator {
       final op = raw.sqlite3changeset_op();
       final kind = SqliteUpdateKind.fromCode(op.operation)!;
 
-      final oldColumns = List.generate(
-        op.columnCount,
-        (i) => raw
-            .sqlite3changeset_old(i)
-            .okOrThrowOutsideOfDatabase(bindings)
-            .read(),
-      );
-      final newColumns = List.generate(
-        op.columnCount,
-        (i) => raw
-            .sqlite3changeset_new(i)
-            .okOrThrowOutsideOfDatabase(bindings)
-            .read(),
-      );
+      final oldColumns = kind != SqliteUpdateKind.insert
+          ? List.generate(
+              op.columnCount,
+              (i) => raw
+                  .sqlite3changeset_old(i)
+                  .okOrThrowOutsideOfDatabase(bindings)
+                  .read(),
+            )
+          : null;
+      final newColumns = kind != SqliteUpdateKind.delete
+          ? List.generate(
+              op.columnCount,
+              (i) => raw
+                  .sqlite3changeset_new(i)
+                  .okOrThrowOutsideOfDatabase(bindings)
+                  .read(),
+            )
+          : null;
       current = ChangesetOperation(
         table: op.tableName,
         columnCount: op.columnCount,
@@ -209,8 +230,8 @@ final class ChangesetIteratorImplementation implements ChangesetIterator {
       return;
     }
 
-    final result = raw.sqlite3changeset_finalize();
     _isFinalized = true;
+    final result = raw.sqlite3changeset_finalize();
     if (result != SqlError.SQLITE_OK) {
       throw createExceptionOutsideOfDatabase(bindings, result);
     }
