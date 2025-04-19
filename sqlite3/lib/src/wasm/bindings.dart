@@ -7,6 +7,7 @@ import 'package:sqlite3/src/vfs.dart';
 import '../constants.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
+import '../implementation/exception.dart';
 import 'wasm_interop.dart' as wasm;
 import 'sqlite3_wasm.g.dart';
 import 'wasm_interop.dart';
@@ -111,6 +112,108 @@ final class WasmSqliteBindings extends RawSqliteBindings {
 
     final dartId = bindings.memory.int32ValueOfPointer(pAppDataPtr);
     bindings.callbacks.registeredVfs.remove(dartId);
+  }
+
+  @override
+  RawSqliteSession sqlite3session_create(RawSqliteDatabase db, String name) {
+    final zDb = bindings.allocateZeroTerminated(name);
+    final sessionPtr = bindings.malloc(WasmBindings.pointerSize);
+
+    final result = bindings.sqlite3session_create(
+      (db as WasmDatabase).db,
+      zDb,
+      sessionPtr,
+    );
+
+    final session = bindings.memory.int32ValueOfPointer(sessionPtr);
+    bindings
+      ..free(zDb)
+      ..free(sessionPtr);
+
+    if (result != 0) {
+      throw createExceptionOutsideOfDatabase(this, result);
+    }
+
+    return WasmSession(this, session);
+  }
+
+  @override
+  int sqlite3changeset_apply(
+    RawSqliteDatabase database,
+    Uint8List changeset,
+    int Function(String tableName)? filter,
+    int Function(int eConflict, RawChangesetIterator iter) conflict,
+  ) {
+    final callbacks = SessionApplyCallbacks(
+      switch (filter) {
+        null => null,
+        final filter => (Pointer tableName) {
+            final table = bindings.memory.readString(tableName);
+            return filter(table);
+          },
+      },
+      (int eConflict, Pointer iterator) {
+        final impl = WasmChangesetIterator(this, iterator, owned: false);
+        return conflict(eConflict, impl);
+      },
+    );
+    final callbackId = bindings.callbacks.registerChangesetApply(callbacks);
+    final changesetPtr = bindings.allocateBytes(changeset);
+
+    final result = bindings.dart_sqlite3changeset_apply(
+      (database as WasmDatabase).db,
+      changeset.length,
+      changesetPtr,
+      callbackId,
+      filter != null ? 1 : 0,
+    );
+
+    bindings.callbacks.sessionApply.remove(callbackId);
+    bindings.free(changesetPtr);
+    return result;
+  }
+
+  @override
+  Uint8List sqlite3changeset_invert(Uint8List changeset) {
+    final originalPtr = bindings.allocateBytes(changeset);
+    final lengthPtr = bindings.malloc(WasmBindings.pointerSize);
+    final outPtr = bindings.malloc(WasmBindings.pointerSize);
+    final result = bindings.sqlite3changeset_invert(
+        changeset.length, originalPtr, lengthPtr, outPtr);
+
+    final length = bindings.memory.int32ValueOfPointer(lengthPtr);
+    final inverted = bindings.memory.int32ValueOfPointer(outPtr);
+
+    bindings
+      ..free(originalPtr)
+      ..free(lengthPtr)
+      ..free(outPtr);
+
+    if (result != 0) {
+      throw createExceptionOutsideOfDatabase(this, result);
+    }
+
+    final out = bindings.memory.copyRange(inverted, length);
+    bindings.sqlite3_free(inverted);
+    return out;
+  }
+
+  @override
+  RawChangesetIterator sqlite3changeset_start(Uint8List changeset) {
+    final changesetPtr = bindings.allocateBytes(changeset);
+    final outPtr = bindings.malloc(WasmBindings.pointerSize);
+    final result =
+        bindings.sqlite3changeset_start(outPtr, changeset.length, changesetPtr);
+
+    final iterator = bindings.memory.int32ValueOfPointer(outPtr);
+    bindings
+      ..free(changesetPtr)
+      ..free(outPtr);
+
+    if (result != 0) {
+      throw createExceptionOutsideOfDatabase(this, result);
+    }
+    return WasmChangesetIterator(this, iterator);
   }
 }
 
@@ -640,5 +743,175 @@ class WasmValueList extends ListBase<WasmValue> {
   @override
   void operator []=(int index, WasmValue value) {
     throw UnsupportedError('Setting element in WasmValueList');
+  }
+}
+
+final class WasmSession extends RawSqliteSession {
+  static final Finalizer<(WasmBindings, int)> _finalizer = Finalizer((args) {
+    args.$1.sqlite3session_delete(args.$2);
+  });
+
+  final WasmSqliteBindings bindings;
+  final int pointer; // the sqlite3_session ptr
+  final Object detach = Object();
+
+  final WasmBindings _bindings;
+
+  WasmSession(this.bindings, this.pointer) : _bindings = bindings.bindings {
+    _finalizer.attach(this, (_bindings, pointer), detach: detach);
+  }
+
+  @override
+  int sqlite3session_attach([String? name]) {
+    final zTab = name == null ? 0 : _bindings.malloc(WasmBindings.pointerSize);
+    final resultCode = _bindings.sqlite3session_attach(pointer, zTab);
+    if (name != null) {
+      _bindings.free(zTab);
+    }
+
+    return resultCode;
+  }
+
+  Uint8List _extractBytes(int Function(Pointer, Pointer, Pointer) raw) {
+    final sizePtr = _bindings.malloc(WasmBindings.pointerSize);
+    final patchsetPtr = _bindings.malloc(WasmBindings.pointerSize);
+
+    final rc = raw(pointer, sizePtr, patchsetPtr);
+    if (rc != 0) {
+      throw createExceptionOutsideOfDatabase(bindings, rc);
+    }
+
+    final length = _bindings.memory.int32ValueOfPointer(sizePtr);
+    final patchset = _bindings.memory.int32ValueOfPointer(patchsetPtr);
+    _bindings
+      ..free(sizePtr)
+      ..free(patchsetPtr);
+
+    final bytes = _bindings.memory.copyRange(patchset, length);
+    _bindings.sqlite3_free(patchset);
+
+    return bytes;
+  }
+
+  @override
+  Uint8List sqlite3session_changeset() {
+    return _extractBytes(_bindings.sqlite3session_changeset);
+  }
+
+  @override
+  Uint8List sqlite3session_patchset() {
+    return _extractBytes(_bindings.sqlite3session_patchset);
+  }
+
+  @override
+  void sqlite3session_delete() {
+    _finalizer.detach(this);
+    _bindings.sqlite3session_delete(pointer);
+  }
+
+  @override
+  int sqlite3session_diff(String fromDb, String table) {
+    final dbPtr = _bindings.allocateZeroTerminated(fromDb);
+    final tableptr = _bindings.allocateZeroTerminated(table);
+    final code = _bindings.sqlite3session_diff(pointer, dbPtr, tableptr, 0);
+    _bindings
+      ..free(dbPtr)
+      ..free(tableptr);
+
+    return code;
+  }
+
+  @override
+  int sqlite3session_enable(int enable) {
+    return _bindings.sqlite3session_enable(pointer, enable);
+  }
+
+  @override
+  int sqlite3session_indirect(int indirect) {
+    return _bindings.sqlite3session_indirect(pointer, indirect);
+  }
+
+  @override
+  int sqlite3session_isempty() => _bindings.sqlite3session_isempty(pointer);
+}
+
+final class WasmChangesetIterator extends RawChangesetIterator {
+  static final Finalizer<(WasmBindings, int)> _finalizer = Finalizer((args) {
+    args.$1.sqlite3changeset_finalize(args.$2);
+  });
+
+  final WasmSqliteBindings bindings;
+  final int pointer; // the sqlite3_changeset_iter ptr
+  final Object detach = Object();
+
+  final WasmBindings _bindings;
+
+  WasmChangesetIterator(this.bindings, this.pointer, {bool owned = true})
+      : _bindings = bindings.bindings {
+    if (owned) {
+      _finalizer.attach(this, (_bindings, pointer), detach: detach);
+    }
+  }
+
+  @override
+  int sqlite3changeset_finalize() {
+    _finalizer.detach(detach);
+
+    return _bindings.sqlite3changeset_finalize(pointer);
+  }
+
+  @override
+  int sqlite3changeset_next() => _bindings.sqlite3changeset_next(pointer);
+
+  SqliteResult<RawSqliteValue> _extractValue(
+      int Function(Pointer, int, Pointer) extract, int index) {
+    final outValue = _bindings.malloc(WasmBindings.pointerSize);
+    final resultCode = extract(pointer, index, outValue);
+    final value = _bindings.memory.int32ValueOfPointer(outValue);
+    _bindings.free(outValue);
+
+    return SqliteResult(resultCode, WasmValue(_bindings, value));
+  }
+
+  @override
+  SqliteResult<RawSqliteValue> sqlite3changeset_old(int columnNumber) {
+    return _extractValue(_bindings.sqlite3changeset_old, columnNumber);
+  }
+
+  @override
+  SqliteResult<RawSqliteValue> sqlite3changeset_new(int columnNumber) {
+    return _extractValue(_bindings.sqlite3changeset_old, columnNumber);
+  }
+
+  @override
+  RawChangeSetOp sqlite3changeset_op() {
+    final outTable = _bindings.malloc(WasmBindings.pointerSize);
+    final outColCount = _bindings.malloc(WasmBindings.pointerSize);
+    final outOp = _bindings.malloc(WasmBindings.pointerSize);
+    final outIndirect = _bindings.malloc(WasmBindings.pointerSize);
+
+    final value = _bindings.sqlite3changeset_op(
+        pointer, outTable, outColCount, outOp, outIndirect);
+    final colCount = _bindings.memory.int32ValueOfPointer(outColCount);
+    final op = _bindings.memory.int32ValueOfPointer(outOp);
+    final indirect = _bindings.memory.int32ValueOfPointer(outIndirect);
+    final table = value == 0 ? _bindings.memory.readString(outTable) : '';
+
+    _bindings
+      ..free(outTable)
+      ..free(outColCount)
+      ..free(outOp)
+      ..free(outIndirect);
+
+    if (value != 0) {
+      throw createExceptionOutsideOfDatabase(bindings, value);
+    }
+
+    return RawChangeSetOp(
+      tableName: table,
+      columnCount: colCount,
+      operation: op,
+      indirect: indirect,
+    );
   }
 }

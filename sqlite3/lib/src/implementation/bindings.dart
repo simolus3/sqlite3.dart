@@ -77,7 +77,7 @@ abstract base class RawSqliteBindings {
   //   const char *zDb,                /* Name of db (e.g. "main") */
   //   sqlite3_session **ppSession     /* OUT: New session object */
   // );
-  SqliteResult<RawSqliteSession> sqlite3session_create(
+  RawSqliteSession sqlite3session_create(
     RawSqliteDatabase db,
     String name,
   );
@@ -106,7 +106,7 @@ abstract base class RawSqliteBindings {
     int Function(
       int eConflict,
       RawChangesetIterator iter,
-    )? conflict,
+    ) conflict,
   );
 
   // int sqlite3changeset_start(

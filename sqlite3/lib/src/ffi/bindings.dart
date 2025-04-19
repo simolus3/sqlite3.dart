@@ -96,7 +96,7 @@ final class FfiBindings extends RawSqliteBindings {
   FfiBindings(this.bindings);
 
   @override
-  SqliteResult<RawSqliteSession> sqlite3session_create(
+  RawSqliteSession sqlite3session_create(
     RawSqliteDatabase db,
     String name,
   ) {
@@ -111,7 +111,12 @@ final class FfiBindings extends RawSqliteBindings {
     namePtr.free();
     final sessionValue = sessionPtr.value;
     sessionPtr.free();
-    return SqliteResult(result, FfiSession(this, sessionValue));
+
+    if (result != 0) {
+      throw createExceptionOutsideOfDatabase(this, result);
+    }
+
+    return FfiSession(this, sessionValue);
   }
 
   @override
@@ -124,7 +129,7 @@ final class FfiBindings extends RawSqliteBindings {
     int Function(
       int eConflict,
       RawChangesetIterator iter,
-    )? conflict,
+    ) conflict,
   ) {
     final dbImpl = database as FfiDatabase;
     final changesetPtr = allocateBytes(changeset);
@@ -142,29 +147,26 @@ final class FfiBindings extends RawSqliteBindings {
               )..keepIsolateAlive = true);
 
     final NativeCallable<
-            Int Function(Pointer<Void>, Int, Pointer<sqlite3_changeset_iter>)>?
-        conflictImpl = conflict == null
-            ? null
-            : (NativeCallable.isolateLocal(
-                (Pointer<Void> ctx, int eConflict,
-                    Pointer<sqlite3_changeset_iter> p) {
-                  final iter = FfiChangesetIterator(this, p);
-                  return conflict(eConflict, iter);
-                },
-                exceptionalReturn: 1,
-              )..keepIsolateAlive = true);
+            Int Function(Pointer<Void>, Int, Pointer<sqlite3_changeset_iter>)>
+        conflictImpl = (NativeCallable.isolateLocal(
+      (Pointer<Void> ctx, int eConflict, Pointer<sqlite3_changeset_iter> p) {
+        final iter = FfiChangesetIterator(this, p, owned: false);
+        return conflict(eConflict, iter);
+      },
+      exceptionalReturn: 1,
+    )..keepIsolateAlive = true);
 
     final result = bindings.bindings.sqlite3changeset_apply(
       dbImpl.db,
       changeset.length,
       changesetPtr.cast(),
       filterImpl?.nativeFunction ?? nullPtr(),
-      conflictImpl?.nativeFunction ?? nullPtr(),
+      conflictImpl.nativeFunction,
       ctxPtr,
     );
     changesetPtr.free();
     filterImpl?.close();
-    conflictImpl?.close();
+    conflictImpl.close();
 
     return result;
   }
@@ -674,13 +676,16 @@ final class FfiChangesetIterator extends RawChangesetIterator
   final FfiBindings bindings;
 
   final Pointer<sqlite3_changeset_iter> iterator;
+  final bool owned;
   final Object detachToken = Object();
 
   SqliteLibrary get _library => bindings.bindings.bindings;
 
-  FfiChangesetIterator(this.bindings, this.iterator) {
-    bindings.bindings.changesetIteratorFinalize
-        .attach(this, iterator.cast(), detach: detachToken);
+  FfiChangesetIterator(this.bindings, this.iterator, {this.owned = true}) {
+    if (owned) {
+      bindings.bindings.changesetIteratorFinalize
+          .attach(this, iterator.cast(), detach: detachToken);
+    }
   }
 
   @override

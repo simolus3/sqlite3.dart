@@ -11,6 +11,7 @@ typedef Pointer = int;
 extension type SqliteExports(JSObject raw) implements JSObject {
   external Global get sqlite3_temp_directory;
   external JSFunction? get sqlite3_initialize;
+  external void sqlite3_free(Pointer/*<void *>*/ arg0);
   external int sqlite3_open_v2(
       Pointer/*<struct sqlite3_char *>*/ filename,
       Pointer/*<struct sqlite3 * *>*/ ppDb,
@@ -24,7 +25,6 @@ extension type SqliteExports(JSObject raw) implements JSObject {
       Pointer/*<struct sqlite3 *>*/ db);
   external Pointer/*<struct sqlite3_char *>*/ sqlite3_errstr(int code);
   external JSFunction? get sqlite3_error_offset;
-  external void sqlite3_free(Pointer/*<void *>*/ ptr);
   external Pointer/*<struct sqlite3_char *>*/ sqlite3_libversion();
   external Pointer/*<struct sqlite3_char *>*/ sqlite3_sourceid();
   external int sqlite3_libversion_number();
@@ -128,6 +128,23 @@ extension type SqliteExports(JSObject raw) implements JSObject {
   external JSFunction? get sqlite3_result_subtype;
   external JSFunction? get sqlite3_db_config;
   external int sqlite3_vfs_unregister(Pointer/*<struct sqlite3_vfs *>*/ arg0);
+  external JSFunction? get sqlite3session_create;
+  external JSFunction? get sqlite3session_delete;
+  external JSFunction? get sqlite3session_enable;
+  external JSFunction? get sqlite3session_indirect;
+  external JSFunction? get sqlite3changeset_start;
+  external JSFunction? get sqlite3changeset_finalize;
+  external JSFunction? get sqlite3changeset_next;
+  external JSFunction? get sqlite3changeset_op;
+  external JSFunction? get sqlite3changeset_old;
+  external JSFunction? get sqlite3changeset_new;
+  external JSFunction? get sqlite3changeset_apply;
+  external JSFunction? get sqlite3changeset_invert;
+  external JSFunction? get sqlite3session_patchset;
+  external JSFunction? get sqlite3session_changeset;
+  external JSFunction? get sqlite3session_isempty;
+  external JSFunction? get sqlite3session_attach;
+  external JSFunction? get sqlite3session_diff;
   external Pointer/*<void *>*/ dart_sqlite3_malloc(int size);
   external void dart_sqlite3_free(Pointer/*<void *>*/ ptr);
   external Pointer/*<struct sqlite3_vfs *>*/ dart_sqlite3_register_vfs(

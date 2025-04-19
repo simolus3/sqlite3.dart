@@ -330,6 +330,93 @@ class WasmBindings {
     }
   }
 
+  int sqlite3session_create(Pointer db, Pointer zDb, Pointer sessionOut) {
+    return sqlite3.sqlite3session_create!
+        .callReturningInt3(db.toJS, zDb.toJS, sessionOut.toJS);
+  }
+
+  void sqlite3session_delete(Pointer session) {
+    sqlite3.sqlite3session_delete!.callAsFunction(null, session.toJS);
+  }
+
+  int sqlite3session_enable(Pointer session, int enable) {
+    return sqlite3.sqlite3session_enable!
+        .callReturningInt2(session.toJS, enable.toJS);
+  }
+
+  int sqlite3session_indirect(Pointer session, int enable) {
+    return sqlite3.sqlite3session_indirect!
+        .callReturningInt2(session.toJS, enable.toJS);
+  }
+
+  int sqlite3session_isempty(Pointer session) {
+    return sqlite3.sqlite3session_isempty!.callReturningInt(session.toJS);
+  }
+
+  int sqlite3session_attach(Pointer session, Pointer zTab) {
+    return sqlite3.sqlite3session_attach!
+        .callReturningInt2(session.toJS, zTab.toJS);
+  }
+
+  int sqlite3session_diff(
+      Pointer session, Pointer zFromDb, Pointer zTbl, Pointer pzErrMsg) {
+    return sqlite3.sqlite3session_diff!.callReturningInt4(
+        session.toJS, zFromDb.toJS, zTbl.toJS, pzErrMsg.toJS);
+  }
+
+  int sqlite3session_patchset(
+      Pointer session, Pointer pnPatchset, Pointer ppPatchset) {
+    return sqlite3.sqlite3session_patchset!
+        .callReturningInt3(session.toJS, pnPatchset.toJS, ppPatchset.toJS);
+  }
+
+  int sqlite3session_changeset(
+      Pointer session, Pointer pnPatchset, Pointer ppPatchset) {
+    return sqlite3.sqlite3session_changeset!
+        .callReturningInt3(session.toJS, pnPatchset.toJS, ppPatchset.toJS);
+  }
+
+  int sqlite3changeset_invert(
+      int nIn, Pointer pIn, Pointer pnOut, Pointer ppOut) {
+    return sqlite3.sqlite3changeset_invert!
+        .callReturningInt4(nIn.toJS, pIn.toJS, pnOut.toJS, ppOut.toJS);
+  }
+
+  int sqlite3changeset_start(Pointer outPtr, int size, Pointer changeset) {
+    return sqlite3.sqlite3changeset_start!
+        .callReturningInt3(outPtr.toJS, size.toJS, changeset.toJS);
+  }
+
+  int sqlite3changeset_finalize(Pointer iterator) {
+    return sqlite3.sqlite3changeset_finalize!.callReturningInt(iterator.toJS);
+  }
+
+  int sqlite3changeset_next(Pointer iterator) {
+    return sqlite3.sqlite3changeset_next!.callReturningInt(iterator.toJS);
+  }
+
+  int sqlite3changeset_op(Pointer iterator, Pointer outTable,
+      Pointer outColCount, Pointer outOp, Pointer outIndirect) {
+    return sqlite3.sqlite3changeset_op!.callReturningInt5(iterator.toJS,
+        outTable.toJS, outColCount.toJS, outOp.toJS, outIndirect.toJS);
+  }
+
+  int sqlite3changeset_old(Pointer iterator, int iVal, Pointer outValue) {
+    return sqlite3.sqlite3changeset_old!
+        .callReturningInt3(iterator.toJS, iVal.toJS, outValue.toJS);
+  }
+
+  int sqlite3changeset_new(Pointer iterator, int iVal, Pointer outValue) {
+    return sqlite3.sqlite3changeset_apply!
+        .callReturningInt3(iterator.toJS, iVal.toJS, outValue.toJS);
+  }
+
+  int dart_sqlite3changeset_apply(
+      Pointer db, int length, Pointer changeset, Pointer context, int filter) {
+    return sqlite3.sqlite3changeset_apply!.callReturningInt5(
+        db.toJS, length.toJS, changeset.toJS, context.toJS, filter.toJS);
+  }
+
   Pointer get sqlite3_temp_directory {
     return sqlite3.sqlite3_temp_directory.value.toDartInt;
   }
@@ -654,6 +741,7 @@ class DartCallbacks {
 
   final Map<int, VirtualFileSystem> registeredVfs = {};
   final Map<int, VirtualFileSystemFile> openedFiles = {};
+  final Map<int, SessionApplyCallbacks> sessionApply = {};
 
   RawUpdateHook? installedUpdateHook;
   RawCommitHook? installedCommitHook;
@@ -666,14 +754,20 @@ class DartCallbacks {
   }
 
   int registerVfs(VirtualFileSystem vfs) {
-    final id = registeredVfs.length;
+    final id = _id++;
     registeredVfs[id] = vfs;
     return id;
   }
 
   int registerFile(VirtualFileSystemFile file) {
-    final id = openedFiles.length;
+    final id = _id++;
     openedFiles[id] = file;
+    return id;
+  }
+
+  int registerChangesetApply(SessionApplyCallbacks cb) {
+    final id = _id++;
+    sessionApply[id] = cb;
     return id;
   }
 
@@ -702,6 +796,17 @@ class RegisteredFunctionSet {
   });
 }
 
+typedef RawFilter = int Function(Pointer tableName);
+
+typedef RawConflict = int Function(int eConflict, Pointer iterator);
+
+final class SessionApplyCallbacks {
+  final RawFilter? filter;
+  final RawConflict? conflict;
+
+  SessionApplyCallbacks(this.filter, this.conflict);
+}
+
 extension on JSFunction {
   @JS('call')
   external JSNumber _call5(
@@ -713,6 +818,10 @@ extension on JSFunction {
 
   int callReturningInt(JSAny? arg) {
     return (callAsFunction(null, arg) as JSNumber).toDartInt;
+  }
+
+  int callReturningInt2(JSAny? arg0, JSAny? arg1) {
+    return (callAsFunction(null, arg0, arg1) as JSNumber).toDartInt;
   }
 
   int callReturningInt3(JSAny? arg0, JSAny? arg1, JSAny? arg2) {
