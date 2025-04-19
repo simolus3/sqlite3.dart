@@ -928,6 +928,15 @@ class _InjectedValues {
           // the other fields don't matter though, localtime_r is not supposed
           // to set them.
         }).toJS,
+        'changeset_apply_filter': (Pointer context, Pointer zTab) {
+          final cb = callbacks.sessionApply[context]!;
+          return cb.filter!(zTab);
+        }.toJS,
+        'changeset_apply_conflict':
+            (Pointer context, int eConflict, Pointer iter) {
+          final cb = callbacks.sessionApply[context]!;
+          return cb.conflict!(eConflict, iter);
+        }.toJS,
       }
     };
   }
