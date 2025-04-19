@@ -90,7 +90,24 @@ class WasmBindings {
       _sqlite3_initialize,
       _commit_hooks,
       _rollback_hooks,
-      _sqlite3_error_offset;
+      _sqlite3_error_offset,
+      _sqlite3session_create,
+      _sqlite3session_delete,
+      _sqlite3session_enable,
+      _sqlite3session_indirect,
+      _sqlite3changeset_invert,
+      _sqlite3changeset_start,
+      _sqlite3changeset_finalize,
+      _sqlite3changeset_next,
+      _sqlite3changeset_op,
+      _sqlite3changeset_old,
+      _sqlite3changeset_new,
+      _dart_sqlite3changeset_apply,
+      _sqlite3session_patchset,
+      _sqlite3session_changeset,
+      _sqlite3session_isempty,
+      _sqlite3session_attach,
+      _sqlite3session_diff;
 
   final Global _sqlite3_temp_directory;
 
@@ -171,7 +188,30 @@ class WasmBindings {
         _sqlite3_error_offset = instance.functions['sqlite3_error_offset'],
         _commit_hooks = instance.functions['dart_sqlite3_commits'],
         _rollback_hooks = instance.functions['dart_sqlite3_rollbacks'],
-        _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']!
+        _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']!,
+        _sqlite3session_create = instance.functions['sqlite3session_create'],
+        _sqlite3session_delete = instance.functions['sqlite3session_delete'],
+        _sqlite3session_enable = instance.functions['sqlite3session_enable'],
+        _sqlite3session_indirect =
+            instance.functions['sqlite3session_indirect'],
+        _sqlite3changeset_invert =
+            instance.functions['sqlite3changeset_invert'],
+        _sqlite3changeset_start = instance.functions['sqlite3changeset_start'],
+        _sqlite3changeset_finalize =
+            instance.functions['sqlite3changeset_finalize'],
+        _sqlite3changeset_next = instance.functions['sqlite3changeset_next'],
+        _sqlite3changeset_op = instance.functions['sqlite3changeset_op'],
+        _sqlite3changeset_old = instance.functions['sqlite3changeset_old'],
+        _sqlite3changeset_new = instance.functions['sqlite3changeset_new'],
+        _dart_sqlite3changeset_apply =
+            instance.functions['dart_sqlite3changeset_apply'],
+        _sqlite3session_patchset =
+            instance.functions['sqlite3session_patchset'],
+        _sqlite3session_changeset =
+            instance.functions['sqlite3session_changeset'],
+        _sqlite3session_isempty = instance.functions['sqlite3session_isempty'],
+        _sqlite3session_attach = instance.functions['sqlite3session_attach'],
+        _sqlite3session_diff = instance.functions['sqlite3session_diff']
 
   // Note when adding new fields: We remove functions from the wasm module that
   // aren't referenced in Dart. We consider a symbol used when it appears in a
@@ -491,6 +531,91 @@ class WasmBindings {
     } else {
       return 1; // Not supported with this wasm build
     }
+  }
+
+  int sqlite3session_create(Pointer db, Pointer zDb, Pointer sessionOut) {
+    return _sqlite3session_create!
+        .callReturningInt3(db.toJS, zDb.toJS, sessionOut.toJS);
+  }
+
+  void sqlite3session_delete(Pointer session) {
+    _sqlite3session_delete!.callAsFunction(null, session.toJS);
+  }
+
+  int sqlite3session_enable(Pointer session, int enable) {
+    return _sqlite3session_enable!.callReturningInt2(session.toJS, enable.toJS);
+  }
+
+  int sqlite3session_indirect(Pointer session, int enable) {
+    return _sqlite3session_indirect!
+        .callReturningInt2(session.toJS, enable.toJS);
+  }
+
+  int sqlite3session_isempty(Pointer session) {
+    return _sqlite3session_isempty!.callReturningInt(session.toJS);
+  }
+
+  int sqlite3session_attach(Pointer session, Pointer zTab) {
+    return _sqlite3session_attach!.callReturningInt2(session.toJS, zTab.toJS);
+  }
+
+  int sqlite3session_diff(
+      Pointer session, Pointer zFromDb, Pointer zTbl, Pointer pzErrMsg) {
+    return _sqlite3session_diff!.callReturningInt4(
+        session.toJS, zFromDb.toJS, zTbl.toJS, pzErrMsg.toJS);
+  }
+
+  int sqlite3session_patchset(
+      Pointer session, Pointer pnPatchset, Pointer ppPatchset) {
+    return _sqlite3session_patchset!
+        .callReturningInt3(session.toJS, pnPatchset.toJS, ppPatchset.toJS);
+  }
+
+  int sqlite3session_changeset(
+      Pointer session, Pointer pnPatchset, Pointer ppPatchset) {
+    return _sqlite3session_changeset!
+        .callReturningInt3(session.toJS, pnPatchset.toJS, ppPatchset.toJS);
+  }
+
+  int sqlite3changeset_invert(
+      int nIn, Pointer pIn, Pointer pnOut, Pointer ppOut) {
+    return _sqlite3changeset_invert!
+        .callReturningInt4(nIn.toJS, pIn.toJS, pnOut.toJS, ppOut.toJS);
+  }
+
+  int sqlite3changeset_start(Pointer outPtr, int size, Pointer changeset) {
+    return _sqlite3changeset_start!
+        .callReturningInt3(outPtr.toJS, size.toJS, changeset.toJS);
+  }
+
+  int sqlite3changeset_finalize(Pointer iterator) {
+    return _sqlite3changeset_finalize!.callReturningInt(iterator.toJS);
+  }
+
+  int sqlite3changeset_next(Pointer iterator) {
+    return _sqlite3changeset_next!.callReturningInt(iterator.toJS);
+  }
+
+  int sqlite3changeset_op(Pointer iterator, Pointer outTable,
+      Pointer outColCount, Pointer outOp, Pointer outIndirect) {
+    return _sqlite3changeset_op!.callReturningInt5(iterator.toJS, outTable.toJS,
+        outColCount.toJS, outOp.toJS, outIndirect.toJS);
+  }
+
+  int sqlite3changeset_old(Pointer iterator, int iVal, Pointer outValue) {
+    return _sqlite3changeset_old!
+        .callReturningInt3(iterator.toJS, iVal.toJS, outValue.toJS);
+  }
+
+  int sqlite3changeset_new(Pointer iterator, int iVal, Pointer outValue) {
+    return _sqlite3changeset_new!
+        .callReturningInt3(iterator.toJS, iVal.toJS, outValue.toJS);
+  }
+
+  int dart_sqlite3changeset_apply(
+      Pointer db, int length, Pointer changeset, Pointer context, int filter) {
+    return _dart_sqlite3changeset_apply!.callReturningInt5(
+        db.toJS, length.toJS, changeset.toJS, context.toJS, filter.toJS);
   }
 
   Pointer get sqlite3_temp_directory {
@@ -817,6 +942,7 @@ class DartCallbacks {
 
   final Map<int, VirtualFileSystem> registeredVfs = {};
   final Map<int, VirtualFileSystemFile> openedFiles = {};
+  final Map<int, SessionApplyCallbacks> sessionApply = {};
 
   RawUpdateHook? installedUpdateHook;
   RawCommitHook? installedCommitHook;
@@ -829,14 +955,20 @@ class DartCallbacks {
   }
 
   int registerVfs(VirtualFileSystem vfs) {
-    final id = registeredVfs.length;
+    final id = _id++;
     registeredVfs[id] = vfs;
     return id;
   }
 
   int registerFile(VirtualFileSystemFile file) {
-    final id = openedFiles.length;
+    final id = _id++;
     openedFiles[id] = file;
+    return id;
+  }
+
+  int registerChangesetApply(SessionApplyCallbacks cb) {
+    final id = _id++;
+    sessionApply[id] = cb;
     return id;
   }
 
@@ -863,6 +995,17 @@ class RegisteredFunctionSet {
     this.xInverse,
     this.collation,
   });
+}
+
+typedef RawFilter = int Function(Pointer tableName);
+
+typedef RawConflict = int Function(int eConflict, Pointer iterator);
+
+final class SessionApplyCallbacks {
+  final RawFilter? filter;
+  final RawConflict? conflict;
+
+  SessionApplyCallbacks(this.filter, this.conflict);
 }
 
 extension on JSFunction {

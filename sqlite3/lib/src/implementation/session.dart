@@ -22,10 +22,7 @@ final class SessionImplementation implements Session {
   static SessionImplementation createSession(
       DatabaseImplementation db, String name) {
     final bindings = db.bindings;
-    final result = bindings
-        .sqlite3session_create(db.database, name)
-        .okOrThrowOutsideOfDatabase(bindings);
-
+    final result = bindings.sqlite3session_create(db.database, name);
     return SessionImplementation(bindings, result, db.finalizable);
   }
 
@@ -137,7 +134,9 @@ final class PatchsetImplementation
     };
 
     final conflict = switch (options.onConflict) {
-      null => null,
+      null => (int _, RawChangesetIterator __) {
+          return ApplyChangesetConflict.abort.flag;
+        },
       final conflict => (int conflictKind, RawChangesetIterator it) {
           return conflict.flag;
         }
