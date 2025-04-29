@@ -10,7 +10,7 @@ option(OPENSSL_USE_STATIC_LIBS "Whether to prefer linking to OpenSSL statically"
 find_package(OpenSSL REQUIRED)
 
 # Using a prebuilt sqlcipher amalgation because building it requires TCL/TK which no one has.
-file(DOWNLOAD "https://fsn1.your-objectstorage.com/simon-public/assets/sqlcipher/v4_6_1.c" "${CMAKE_CURRENT_BINARY_DIR}/sqlcipher.c" EXPECTED_HASH SHA512=6c401bb020ceff69ea79dfde3f5ddf8802fb7dcd9da589b92de34a283a28f0802b98f28a87fbcb7b8bfa3bedb180dfd6d183eed567bbf12eea4f311e266f2e72)
+file(DOWNLOAD "https://fsn1.your-objectstorage.com/simon-public/assets/sqlcipher/v4_8_0.c" "${CMAKE_CURRENT_BINARY_DIR}/sqlcipher.c" EXPECTED_HASH SHA512=553d8c0e0b55893d53115abd3c177b2c93a71a0e87aaab4d1b067596712c99b006faa80bddde428893f0846fea7d1ebd7ea4f7efdccb7a3ae43138ed3ddd88ec)
 
 add_library(${PLUGIN_NAME} SHARED
   "sqlite3_flutter_libs_plugin.cc"
