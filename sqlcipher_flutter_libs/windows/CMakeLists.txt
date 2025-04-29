@@ -36,9 +36,12 @@ set_property(SOURCE "sqlite3_flutter.c" APPEND PROPERTY OBJECT_DEPENDS "${CMAKE_
 target_link_libraries(sqlite3 PRIVATE OpenSSL::Crypto)
 
 # Note: Keep in sync with https://github.com/simolus3/sqlite-native-libraries/blob/master/sqlite3-native-library/cpp/CMakeLists.txt
-# SQLITE_HAS_CODEC is required for sqlcipher
+# SQLITE_HAS_CODEC, SQLITE_EXTRA_INIT, SQLITE_EXTRA_SHUTDOWN are required for sqlcipher
 target_compile_definitions(sqlite3 PRIVATE
   SQLITE_HAS_CODEC
+  SQLITE_EXTRA_INIT=sqlcipher_extra_init
+  SQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown
+  HAVE_STDINT_H
   SQLITE_DQS=0
   SQLITE_THREADSAFE=1
   SQLITE_DEFAULT_MEMSTATUS=0
