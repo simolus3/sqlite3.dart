@@ -8,6 +8,7 @@ library;
 
 export 'src/constants.dart';
 export 'src/database.dart';
+export 'src/session.dart';
 export 'src/exception.dart';
 export 'src/functions.dart';
 export 'src/in_memory_vfs.dart' show InMemoryFileSystem;

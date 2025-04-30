@@ -1,0 +1,6 @@
+[submodule "sqlite3_android"]
+	path = sqlite3_android
+	url = https://github.com/rodydavis/sqlite-native-libraries
+[submodule "sqlite_swift_package"]
+	path = sqlite_swift_package
+	url = https://github.com/rodydavis/CSQLite

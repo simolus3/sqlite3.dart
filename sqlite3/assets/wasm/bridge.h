@@ -64,3 +64,12 @@ import_dart("function_compare") extern int dartXCompare(void *id, int lengthA,
 
 import_dart("localtime") extern int dartLocalTime(int64_t time,
                                                   struct tm *result);
+import_dart("changeset_apply_filter") extern int dartChangesetApplyFilter(
+  void* context,
+  const char *zTab
+);
+import_dart("changeset_apply_conflict") extern int dartChangesetApplyConflict(
+  void* context,
+  int eConflict,
+  sqlite3_changeset_iter *p
+);
