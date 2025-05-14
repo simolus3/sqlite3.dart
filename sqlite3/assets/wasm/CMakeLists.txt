@@ -43,6 +43,7 @@ macro(base_sqlite3_target name debug crypto)
   set(output ${init_output})
 
   set(sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/libc_helpers.c
     ${CMAKE_CURRENT_SOURCE_DIR}/os_web.c
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.c
   )
@@ -50,7 +51,6 @@ macro(base_sqlite3_target name debug crypto)
 
   if(${crypto})
     list(APPEND sources "${sqlite3mc_SOURCE_DIR}/sqlite3mc_amalgamation.c")
-    list(APPEND sources "${CMAKE_CURRENT_SOURCE_DIR}/getentropy.c")
     # We only want to support the chacha20 cipher, some of the others are tricky to
     # compile to webassembly.
     list(APPEND flags

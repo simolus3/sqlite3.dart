@@ -22,6 +22,7 @@ fn main() {
         .flag(&sysroot)
         .file(sqlite3_src.join("sqlite3.c"))
         .file("../../assets/wasm/helpers.c")
+        .file("../../assets/wasm/libc_helpers.c")
         .flag("-flto=thin")
         .include(&sqlite3_src)
         .include("../../assets/wasm/")
