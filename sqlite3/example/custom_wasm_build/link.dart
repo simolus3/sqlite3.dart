@@ -2,7 +2,7 @@ import 'dart:io';
 
 void main(List<String> args) {
   if (args.length != 1) {
-    print("Usage: dart link.dart target/wasm32-wasi/<buildtype>");
+    print("Usage: dart link.dart target/wasm32-unknown-unknown/<buildtype>");
   }
 
   final directory = Directory(args[0]);

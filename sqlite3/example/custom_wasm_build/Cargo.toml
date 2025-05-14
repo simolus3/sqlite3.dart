@@ -7,6 +7,8 @@ edition = "2021"
 crate-type = ["staticlib"]
 
 [dependencies]
+unicode-segmentation = "1.10.1"
+unicode-normalization = "0.1.22"
 
 [build-dependencies]
 cc = "1.0.46"

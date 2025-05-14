@@ -18,6 +18,7 @@ fn main() {
     let objects = c_build
         .target("wasm32-unknown-wasi")
         .cargo_warnings(false)
+        .flag("-std=c23")
         .flag("--sysroot")
         .flag(&sysroot)
         .file(sqlite3_src.join("sqlite3.c"))
