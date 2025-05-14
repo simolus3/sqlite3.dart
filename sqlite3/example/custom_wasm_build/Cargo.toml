@@ -7,8 +7,10 @@ edition = "2021"
 crate-type = ["staticlib"]
 
 [dependencies]
-unicode-segmentation = "1.10.1"
-unicode-normalization = "0.1.22"
+unicode-segmentation = { version = "1.10.1", "default-features" = false }
+unicode-normalization = { version = "0.1.22" , "default-features" = false }
+# libc without `std`
+libc = { version = "0.2", "default-features" = false, features = [] }
 
 [build-dependencies]
 cc = "1.0.46"
