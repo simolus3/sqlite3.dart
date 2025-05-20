@@ -26,6 +26,20 @@ Note that, on Android, this library will bundle sqlite3 for all of the following
 If you don't intend to release to 32-bit `x86` devices, you'll need to apply a
 [filter](https://developer.android.com/ndk/guides/abis#gc) in your `build.gradle`:
 
+For Kotlin buildscripts (`.gradle.kts`):
+
+```Kotlin
+android {
+    defaultConfig {
+        ndk {
+            abiFilters += setOf("armeabi-v7a", "arm64-v8a", "x86_64")
+        }
+    }
+}
+```
+
+Or for Groovy (`.gradle`):
+
 ```gradle
 android {
     defaultConfig {
