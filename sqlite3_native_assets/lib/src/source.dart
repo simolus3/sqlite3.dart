@@ -26,7 +26,7 @@ final class DownloadAmalgamation implements SqliteSource {
   final String uri;
 
   const DownloadAmalgamation({
-    this.uri = 'https://sqlite.org/2025/sqlite-amalgamation-3490100.zip',
+    this.uri = 'https://sqlite.org/2025/sqlite-amalgamation-3490200.zip',
   });
 }
 
