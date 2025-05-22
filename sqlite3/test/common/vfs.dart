@@ -53,6 +53,23 @@ void testVfs(FutureOr<CommonSqlite3> Function() loadSqlite) {
       {'r': '2024-11-19 00:00:00'}
     ]);
   });
+
+  test('can use temporary files', () {
+    final memory = InMemoryFileSystem(name: 'dart-tmp');
+    sqlite3.registerVirtualFileSystem(memory);
+    addTearDown(() => sqlite3.unregisterVirtualFileSystem(memory));
+
+    final db = sqlite3.open('/db', vfs: 'dart-tmp');
+    addTearDown(db.dispose);
+
+    db.execute('CREATE TEMP TABLE foo (bar TEXT);');
+    final insert = db.prepare('INSERT INTO foo (bar) VALUES (?);');
+    final data = 'new row' * 100;
+    for (var i = 0; i < 10000; i++) {
+      insert.execute([data]);
+    }
+    insert.dispose();
+  });
 }
 
 final class TestVfs extends VirtualFileSystem {
