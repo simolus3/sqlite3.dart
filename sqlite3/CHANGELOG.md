@@ -1,13 +1,10 @@
-## 2.7.7
-
-- Fix dereferencing null pointer when reading file names for temporary files in
-  native VFS implementation.
-
 ## 2.7.6
 
 - Export `package:sqlite3/native_assets.dart`, making it easier for libraries
   to support both the regular `sqlite3` getter and the upcoming
   `sqlite3NativeAssets` variant.
+- Fix dereferencing null pointer when reading file names for temporary files in
+  native VFS implementation.
 
 ## 2.7.5
 
