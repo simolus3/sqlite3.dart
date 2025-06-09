@@ -16,39 +16,12 @@ No other modules are included in these builds.
 
 ### Included platforms
 
-Note that, on Android, this library will bundle sqlite3 for all of the following platforms:
+Note that, on Android, this library will bundle sqlite3 for the following platforms:
 
 - `arm64-v8a`
 - `armeabi-v7a`
-- `x86`
 - `x86_64`
 
-If you don't intend to release to 32-bit `x86` devices, you'll need to apply a
-[filter](https://developer.android.com/ndk/guides/abis#gc) in your `build.gradle`:
-
-For Kotlin buildscripts (`.gradle.kts`):
-
-```Kotlin
-android {
-    defaultConfig {
-        ndk {
-            abiFilters += setOf("armeabi-v7a", "arm64-v8a", "x86_64")
-        }
-    }
-}
-```
-
-Or for Groovy (`.gradle`):
-
-```gradle
-android {
-    defaultConfig {
-        ndk {
-            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86_64'
-        }
-    }
-}
-```
 
 ### Problems on Android 6
 
