@@ -245,13 +245,10 @@ SQLITE_API int dart_sqlite3_db_config_int(sqlite3 *db, int op, int arg) {
   return sqlite3_db_config(db, op, arg);
 }
 
-SQLITE_API int dart_sqlite3changeset_apply(sqlite3 *db, int nChangeset, void *pChangeset, void *pCtx, bool filter) {
-  return sqlite3changeset_apply(
-    db,
-    nChangeset,
-    pChangeset,
-    filter ? &dartChangesetApplyFilter : 0,
-    &dartChangesetApplyConflict,
-    pCtx
-  );
+SQLITE_API int dart_sqlite3changeset_apply(sqlite3 *db, int nChangeset,
+                                           void *pChangeset, void *pCtx,
+                                           bool filter) {
+  return sqlite3changeset_apply(db, nChangeset, pChangeset,
+                                filter ? &dartChangesetApplyFilter : 0,
+                                &dartChangesetApplyConflict, pCtx);
 }
