@@ -206,14 +206,12 @@ final class WasmSqliteBindings extends RawSqliteBindings {
         bindings.sqlite3changeset_start(outPtr, changeset.length, changesetPtr);
 
     final iterator = bindings.memory.int32ValueOfPointer(outPtr);
-    bindings
-      ..free(changesetPtr)
-      ..free(outPtr);
+    bindings.free(outPtr);
 
     if (result != 0) {
       throw createExceptionOutsideOfDatabase(this, result);
     }
-    return WasmChangesetIterator(this, iterator);
+    return WasmChangesetIterator(this, iterator, dataPointer: changesetPtr);
   }
 }
 
@@ -836,26 +834,40 @@ final class WasmSession extends RawSqliteSession {
 }
 
 final class WasmChangesetIterator extends RawChangesetIterator {
-  static final Finalizer<(WasmBindings, int)> _finalizer = Finalizer((args) {
-    args.$1.sqlite3changeset_finalize(args.$2);
+  static final Finalizer<(WasmBindings, int?, int)> _finalizer =
+      Finalizer((args) {
+    if (args.$2 case final underlyingBytes?) {
+      args.$1.free(underlyingBytes);
+    }
+
+    args.$1.sqlite3changeset_finalize(args.$3);
   });
 
   final WasmSqliteBindings bindings;
+
+  /// If this iterator was created from an uint8list allocated when creating it,
+  /// the pointer towards that.
+  final int? dataPointer;
   final int pointer; // the sqlite3_changeset_iter ptr
   final Object detach = Object();
 
   final WasmBindings _bindings;
 
-  WasmChangesetIterator(this.bindings, this.pointer, {bool owned = true})
+  WasmChangesetIterator(this.bindings, this.pointer,
+      {this.dataPointer, bool owned = true})
       : _bindings = bindings.bindings {
     if (owned) {
-      _finalizer.attach(this, (_bindings, pointer), detach: detach);
+      _finalizer.attach(this, (_bindings, dataPointer, pointer),
+          detach: detach);
     }
   }
 
   @override
   int sqlite3changeset_finalize() {
     _finalizer.detach(detach);
+    if (dataPointer case final data?) {
+      _bindings.free(data);
+    }
 
     return _bindings.sqlite3changeset_finalize(pointer);
   }
@@ -880,7 +892,7 @@ final class WasmChangesetIterator extends RawChangesetIterator {
 
   @override
   SqliteResult<RawSqliteValue> sqlite3changeset_new(int columnNumber) {
-    return _extractValue(_bindings.sqlite3changeset_old, columnNumber);
+    return _extractValue(_bindings.sqlite3changeset_new, columnNumber);
   }
 
   @override
@@ -892,10 +904,12 @@ final class WasmChangesetIterator extends RawChangesetIterator {
 
     final value = _bindings.sqlite3changeset_op(
         pointer, outTable, outColCount, outOp, outIndirect);
+
     final colCount = _bindings.memory.int32ValueOfPointer(outColCount);
     final op = _bindings.memory.int32ValueOfPointer(outOp);
     final indirect = _bindings.memory.int32ValueOfPointer(outIndirect);
-    final table = value == 0 ? _bindings.memory.readString(outTable) : '';
+    final rawTable = _bindings.memory.int32ValueOfPointer(outTable);
+    final table = value == 0 ? _bindings.memory.readString(rawTable) : '';
 
     _bindings
       ..free(outTable)
