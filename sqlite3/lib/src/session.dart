@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'database.dart';
 import 'implementation/database.dart';
 import 'implementation/session.dart';
+import 'implementation/sqlite3.dart';
+import 'sqlite3.dart';
 
 /// A Session tracks database changes made by a Conn.
 //
@@ -55,16 +57,26 @@ abstract interface class Patchset implements Iterable<ChangesetOperation> {
   /// The binary representation of this patchset or changeset.
   Uint8List get bytes;
 
+  @override
+  ChangesetIterator get iterator;
+
+  factory Patchset.fromBytes(Uint8List bytes, CommonSqlite3 bindings) {
+    return PatchsetImplementation(
+        bytes, (bindings as Sqlite3Implementation).bindings);
+  }
+
   void applyTo(
     CommonDatabase database, [
     ApplyChangesetOptions options = const ApplyChangesetOptions(),
   ]);
-
-  @override
-  ChangesetIterator get iterator;
 }
 
 abstract interface class Changeset implements Patchset {
+  factory Changeset.fromBytes(Uint8List bytes, CommonSqlite3 bindings) {
+    return ChangesetImplementation(
+        bytes, (bindings as Sqlite3Implementation).bindings);
+  }
+
   Changeset operator -();
 }
 

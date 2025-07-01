@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:convert/convert.dart';
 import 'package:sqlite3/common.dart';
 import 'package:test/test.dart';
 
@@ -59,7 +61,8 @@ void testSession(
       ..execute('UPDATE entries SET content = ?', ['b']);
 
     final changeset = session.changeset();
-    expect(changeset.bytes, isNotEmpty);
+    expect(hex.encode(changeset.bytes),
+        '54020100656e7472696573001200010000000000000001030162');
     expect(changeset, [
       isOp(
         operation: SqliteUpdateKind.insert,
@@ -67,6 +70,17 @@ void testSession(
         newValues: [1, 'b'],
       )
     ]);
+  });
+
+  test('bytes', () {
+    final changeset = Changeset.fromBytes(
+      hex.decode('54020100656e7472696573001200010000000000000001030162')
+          as Uint8List,
+      sqlite3,
+    );
+
+    expect(hex.encode((-changeset).bytes),
+        '54020100656e7472696573000900010000000000000001030162');
   });
 
   test('changeset invert', () {
