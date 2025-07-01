@@ -14,7 +14,7 @@ typedef struct sqlite3_changeset_iter sqlite3_changeset_iter;
 sqlite3_char *sqlite3_temp_directory;
 
 int sqlite3_initialize();
-void sqlite3_free(void*);
+void sqlite3_free(void *);
 
 int sqlite3_open_v2(sqlite3_char *filename, sqlite3 **ppDb, int flags,
                     sqlite3_char *zVfs);
@@ -223,76 +223,69 @@ int sqlite3_vfs_unregister(sqlite3_vfs *);
 // Session
 
 int sqlite3session_create(
-  sqlite3 *db,                    /* Database handle */
-  const sqlite3_char *zDb,        /* Name of db (e.g. "main") */
-  sqlite3_session **ppSession     /* OUT: New session object */
+    sqlite3 *db,                /* Database handle */
+    const sqlite3_char *zDb,    /* Name of db (e.g. "main") */
+    sqlite3_session **ppSession /* OUT: New session object */
 );
 void sqlite3session_delete(sqlite3_session *pSession);
 int sqlite3session_enable(sqlite3_session *pSession, int bEnable);
 int sqlite3session_indirect(sqlite3_session *pSession, int bIndirect);
 
 int sqlite3changeset_start(
-  sqlite3_changeset_iter **pp,    /* OUT: New changeset iterator handle */
-  int nChangeset,                 /* Size of changeset blob in bytes */
-  void *pChangeset                /* Pointer to blob containing changeset */
+    sqlite3_changeset_iter **pp, /* OUT: New changeset iterator handle */
+    int nChangeset,              /* Size of changeset blob in bytes */
+    void *pChangeset             /* Pointer to blob containing changeset */
 );
 int sqlite3changeset_finalize(sqlite3_changeset_iter *pIter);
 int sqlite3changeset_next(sqlite3_changeset_iter *pIter);
 int sqlite3changeset_op(
-  sqlite3_changeset_iter *pIter,  /* Iterator object */
-  const sqlite3_char **pzTab,     /* OUT: Pointer to table name */
-  int *pnCol,                     /* OUT: Number of columns in table */
-  int *pOp,                       /* OUT: SQLITE_INSERT, DELETE or UPDATE */
-  int *pbIndirect                 /* OUT: True for an 'indirect' change */
+    sqlite3_changeset_iter *pIter, /* Iterator object */
+    const sqlite3_char **pzTab,    /* OUT: Pointer to table name */
+    int *pnCol,                    /* OUT: Number of columns in table */
+    int *pOp,                      /* OUT: SQLITE_INSERT, DELETE or UPDATE */
+    int *pbIndirect                /* OUT: True for an 'indirect' change */
 );
 int sqlite3changeset_old(
-  sqlite3_changeset_iter *pIter,  /* Changeset iterator */
-  int iVal,                       /* Column number */
-  sqlite3_value **ppValue         /* OUT: Old value (or NULL pointer) */
+    sqlite3_changeset_iter *pIter, /* Changeset iterator */
+    int iVal,                      /* Column number */
+    sqlite3_value **ppValue        /* OUT: Old value (or NULL pointer) */
 );
 int sqlite3changeset_new(
-  sqlite3_changeset_iter *pIter,  /* Changeset iterator */
-  int iVal,                       /* Column number */
-  sqlite3_value **ppValue         /* OUT: Old value (or NULL pointer) */
+    sqlite3_changeset_iter *pIter, /* Changeset iterator */
+    int iVal,                      /* Column number */
+    sqlite3_value **ppValue        /* OUT: Old value (or NULL pointer) */
 );
 int sqlite3changeset_apply(
-  sqlite3 *db,                    /* Apply change to "main" db of this handle */
-  int nChangeset,                 /* Size of changeset in bytes */
-  void *pChangeset,               /* Changeset blob */
-  int(*xFilter)(
-    void *pCtx,                   /* Copy of sixth arg to _apply() */
-    const char *zTab              /* Table name */
-  ),
-  int(*xConflict)(
-    void *pCtx,                   /* Copy of sixth arg to _apply() */
-    int eConflict,                /* DATA, MISSING, CONFLICT, CONSTRAINT */
-    sqlite3_changeset_iter *p     /* Handle describing change and conflict */
-  ),
-  void *pCtx                      /* First argument passed to xConflict */
+    sqlite3 *db,               /* Apply change to "main" db of this handle */
+    int nChangeset,            /* Size of changeset in bytes */
+    void *pChangeset,          /* Changeset blob */
+    int (*xFilter)(void *pCtx, /* Copy of sixth arg to _apply() */
+                   const char *zTab /* Table name */
+                   ),
+    int (*xConflict)(
+        void *pCtx,               /* Copy of sixth arg to _apply() */
+        int eConflict,            /* DATA, MISSING, CONFLICT, CONSTRAINT */
+        sqlite3_changeset_iter *p /* Handle describing change and conflict */
+        ),
+    void *pCtx /* First argument passed to xConflict */
 );
 
-int sqlite3changeset_invert(
-  int nIn, const void *pIn,       /* Input changeset */
-  int *pnOut, void **ppOut        /* OUT: Inverse of input */
+int sqlite3changeset_invert(int nIn, const void *pIn, /* Input changeset */
+                            int *pnOut, void **ppOut /* OUT: Inverse of input */
 );
 int sqlite3session_patchset(
-  sqlite3_session *pSession,      /* Session object */
-  int *pnPatchset,                /* OUT: Size of buffer at *ppPatchset */
-  void **ppPatchset               /* OUT: Buffer containing patchset */
+    sqlite3_session *pSession, /* Session object */
+    int *pnPatchset,           /* OUT: Size of buffer at *ppPatchset */
+    void **ppPatchset          /* OUT: Buffer containing patchset */
 );
 int sqlite3session_changeset(
-  sqlite3_session *pSession,      /* Session object */
-  int *pnChangeset,               /* OUT: Size of buffer at *ppChangeset */
-  void **ppChangeset              /* OUT: Buffer containing changeset */
+    sqlite3_session *pSession, /* Session object */
+    int *pnChangeset,          /* OUT: Size of buffer at *ppChangeset */
+    void **ppChangeset         /* OUT: Buffer containing changeset */
 );
 int sqlite3session_isempty(sqlite3_session *pSession);
-int sqlite3session_attach(
-  sqlite3_session *pSession,      /* Session object */
-  const sqlite3_char *zTab        /* Table name */
+int sqlite3session_attach(sqlite3_session *pSession, /* Session object */
+                          const sqlite3_char *zTab   /* Table name */
 );
-int sqlite3session_diff(
-  sqlite3_session *pSession,
-  const sqlite3_char *zFromDb,
-  const sqlite3_char *zTbl,
-  sqlite3_char **pzErrMsg
-);
+int sqlite3session_diff(sqlite3_session *pSession, const sqlite3_char *zFromDb,
+                        const sqlite3_char *zTbl, sqlite3_char **pzErrMsg);
