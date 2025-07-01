@@ -15,14 +15,11 @@ let package = Package(
         .library(name: "FlutterGeneratedPluginSwiftPackage", type: .static, targets: ["FlutterGeneratedPluginSwiftPackage"])
     ],
     dependencies: [
-        .package(name: "integration_test", path: "/Users/simon/fvm/versions/stable/packages/integration_test/ios/integration_test")
+        
     ],
     targets: [
         .target(
-            name: "FlutterGeneratedPluginSwiftPackage",
-            dependencies: [
-                .product(name: "integration-test", package: "integration_test")
-            ]
+            name: "FlutterGeneratedPluginSwiftPackage"
         )
     ]
 )

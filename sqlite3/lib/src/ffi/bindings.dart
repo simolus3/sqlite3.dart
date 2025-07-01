@@ -373,7 +373,8 @@ final class _RegisteredVfs {
   static int _xOpen(Pointer<sqlite3_vfs> vfsPtr, Pointer<Char> zName,
       Pointer<sqlite3_file> file, int flags, Pointer<Int> pOutFlags) {
     return _runVfs(vfsPtr, (vfs) {
-      final fileName = Sqlite3Filename(zName.cast<sqlite3_char>().readString());
+      final fileName = Sqlite3Filename(
+          zName.isNullPointer ? null : zName.cast<sqlite3_char>().readString());
       final dartFilePtr = file.cast<_DartFile>();
 
       final (file: dartFile, :outFlags) = vfs.xOpen(fileName, flags);

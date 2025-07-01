@@ -1,16 +1,19 @@
 PODS:
   - Flutter (1.0.0)
-  - SQLCipher (4.6.1):
-    - SQLCipher/standard (= 4.6.1)
-  - SQLCipher/common (4.6.1)
-  - SQLCipher/standard (4.6.1):
+  - integration_test (0.0.1):
+    - Flutter
+  - SQLCipher (4.9.0):
+    - SQLCipher/standard (= 4.9.0)
+  - SQLCipher/common (4.9.0)
+  - SQLCipher/standard (4.9.0):
     - SQLCipher/common
   - sqlcipher_flutter_libs (0.0.1):
     - Flutter
-    - SQLCipher (~> 4.6.1)
+    - SQLCipher (~> 4.9.0)
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
   - sqlcipher_flutter_libs (from `.symlinks/plugins/sqlcipher_flutter_libs/ios`)
 
 SPEC REPOS:
@@ -20,13 +23,16 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   Flutter:
     :path: Flutter
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
   sqlcipher_flutter_libs:
     :path: ".symlinks/plugins/sqlcipher_flutter_libs/ios"
 
 SPEC CHECKSUMS:
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
-  SQLCipher: 77fbe633cd84db04b07876dd50766b4924b57d61
-  sqlcipher_flutter_libs: 4d7cf8e35b46debcc8ab7903123e32c8dbb943f5
+  integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
+  SQLCipher: 31878d8ebd27e5c96db0b7cb695c96e9f8ad77da
+  sqlcipher_flutter_libs: 1113000114375a0e57c0a367c586aceee78cd23b
 
 PODFILE CHECKSUM: c4c93c5f6502fe2754f48404d3594bf779584011
 

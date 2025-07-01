@@ -17,7 +17,7 @@ A new flutter plugin project.
   s.public_header_files = 'Classes/**/*.h'
   s.dependency 'FlutterMacOS'
 
-  s.dependency 'SQLCipher', '~> 4.6.1'
+  s.dependency 'SQLCipher', '~> 4.9.0'
 
   s.platform = :osx, '10.11'
   s.pod_target_xcconfig = {
