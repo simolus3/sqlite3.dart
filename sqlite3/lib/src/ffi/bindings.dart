@@ -28,8 +28,8 @@ class BindingsWithLibrary {
 
   final SqliteLibrary bindings;
   final DynamicLibrary? library;
-  final NativeFinalizer sessionDelete;
-  final NativeFinalizer changesetIteratorFinalize;
+  final NativeFinalizer? sessionDelete;
+  final NativeFinalizer? changesetIteratorFinalize;
 
   final bool supportsPrepareV3;
   final bool supportsErrorOffset;
@@ -61,9 +61,9 @@ class BindingsWithLibrary {
     }
 
     return BindingsWithLibrary._(
-      bindings,
-      library,
-      hasColumnMetadata,
+      bindings: bindings,
+      library: library,
+      supportsColumnTableName: hasColumnMetadata,
     );
   }
 
@@ -71,22 +71,42 @@ class BindingsWithLibrary {
     final bindings = native.NativeAssetsLibrary();
 
     return BindingsWithLibrary._(
-      bindings,
-      null,
-      false,
+      bindings: bindings,
+      library: null,
+      supportsColumnTableName: false,
     );
   }
 
-  BindingsWithLibrary._(
-      this.bindings, this.library, this.supportsColumnTableName)
-      : supportsErrorOffset =
+  BindingsWithLibrary._({
+    required this.bindings,
+    required this.library,
+    required this.supportsColumnTableName,
+  })  : supportsErrorOffset =
             bindings.sqlite3_libversion_number() >= _firstVersionForErrorOffset,
         supportsPrepareV3 =
             bindings.sqlite3_libversion_number() >= _firstVersionForV3,
-        sessionDelete =
-            NativeFinalizer(bindings.addresses.sqlite3session_delete.cast()),
-        changesetIteratorFinalize = NativeFinalizer(
-            bindings.addresses.sqlite3changeset_finalize.cast());
+        sessionDelete = _sessionDeleteFinalizer(library, bindings),
+        changesetIteratorFinalize =
+            _changesetFinalizeFinalizer(library, bindings);
+
+  static NativeFinalizer? _sessionDeleteFinalizer(
+      DynamicLibrary? library, SqliteLibrary bindings) {
+    if (library != null && !library.providesSymbol('sqlite3session_delete')) {
+      return null;
+    }
+
+    return NativeFinalizer(bindings.addresses.sqlite3session_delete.cast());
+  }
+
+  static NativeFinalizer? _changesetFinalizeFinalizer(
+      DynamicLibrary? library, SqliteLibrary bindings) {
+    if (library != null &&
+        !library.providesSymbol('sqlite3changeset_finalize')) {
+      return null;
+    }
+
+    return NativeFinalizer(bindings.addresses.sqlite3changeset_finalize.cast());
+  }
 }
 
 final class FfiBindings extends RawSqliteBindings {
@@ -570,7 +590,7 @@ final class FfiSession extends RawSqliteSession implements Finalizable {
 
   FfiSession(this.bindings, this.session) {
     bindings.bindings.sessionDelete
-        .attach(this, session.cast(), detach: detachToken);
+        ?.attach(this, session.cast(), detach: detachToken);
   }
 
   @override
@@ -636,7 +656,7 @@ final class FfiSession extends RawSqliteSession implements Finalizable {
 
   @override
   void sqlite3session_delete() {
-    bindings.bindings.sessionDelete.detach(detachToken);
+    bindings.bindings.sessionDelete?.detach(detachToken);
     _library.sqlite3session_delete(session);
   }
 
@@ -684,13 +704,13 @@ final class FfiChangesetIterator extends RawChangesetIterator
   FfiChangesetIterator(this.bindings, this.iterator, {this.owned = true}) {
     if (owned) {
       bindings.bindings.changesetIteratorFinalize
-          .attach(this, iterator.cast(), detach: detachToken);
+          ?.attach(this, iterator.cast(), detach: detachToken);
     }
   }
 
   @override
   int sqlite3changeset_finalize() {
-    bindings.bindings.changesetIteratorFinalize.detach(detachToken);
+    bindings.bindings.changesetIteratorFinalize?.detach(detachToken);
     final result = _library.sqlite3changeset_finalize(iterator);
     return result;
   }
