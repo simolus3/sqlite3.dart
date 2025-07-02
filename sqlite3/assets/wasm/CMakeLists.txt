@@ -80,6 +80,8 @@ macro(base_sqlite3_target name debug crypto)
       ${flags}
       -o ${clang_output}
       -I ${PROJECT_SOURCE_DIR} -I ${sqlite3_SOURCE_DIR}
+      -DSQLITE_ENABLE_SESSION
+      -DSQLITE_ENABLE_PREUPDATE_HOOK
       -D_HAVE_SQLITE_CONFIG_H
       -D__WASM__
       -mcpu=generic
