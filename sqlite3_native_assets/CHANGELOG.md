@@ -1,3 +1,7 @@
+## 0.0.5
+
+- Update to sqlite 3.50.2
+
 ## 0.0.4
 
 - Add user-defines to control how SQLite gets downloaded and compiled.
