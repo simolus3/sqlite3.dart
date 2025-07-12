@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:archive/archive.dart';
+import 'package:code_assets/code_assets.dart';
+import 'package:hooks/hooks.dart';
 import 'package:http/http.dart';
 import 'package:logging/logging.dart';
-import 'package:native_assets_cli/code_assets_builder.dart';
-import 'package:native_assets_cli/native_assets_cli.dart';
 import 'package:native_toolchain_c/native_toolchain_c.dart';
 import 'package:path/path.dart';
 
@@ -61,17 +61,32 @@ final class SqliteBuild {
       defines: defines,
     );
 
-    await builder.run(
-      input: input,
-      output:
-          trackSourcesAsDependencyForCompilation
-              ? output
-              : _IgnoreSourceDependency(output),
-      logger:
-          Logger('')
-            ..level = Level.ALL
-            ..onRecord.listen((record) => print(record.message)),
-    );
+    if (trackSourcesAsDependencyForCompilation) {
+      // We can just run a regular build.
+      await builder.run(
+        input: input,
+        output: output,
+        logger:
+            Logger('')
+              ..level = Level.ALL
+              ..onRecord.listen((record) => print(record.message)),
+      );
+    } else {
+      final temporaryOutputs = BuildOutputBuilder();
+      await builder.run(
+        input: input,
+        output: temporaryOutputs,
+        logger:
+            Logger('')
+              ..level = Level.ALL
+              ..onRecord.listen((record) => print(record.message)),
+      );
+
+      // Forward generated assets but ignore dependencies
+      for (final rawAsset in temporaryOutputs.json['assets'] as List) {
+        output.assets.addEncodedAsset(EncodedAsset.fromJson(rawAsset));
+      }
+    }
   }
 
   Future<void> runBuild() async {
@@ -81,30 +96,14 @@ final class SqliteBuild {
       await _compile(resolvedSourceFile);
     } else if (source case final DontCompileSqlite dontCompile) {
       if (dontCompile.resolveLinkMode(input) case final linkMode?) {
-        output.assets.addEncodedAsset(
+        output.assets.code.add(
           CodeAsset(
             package: input.packageName,
             name: 'sqlite3_native_assets.dart',
             linkMode: linkMode,
-            os: input.config.code.targetOS,
-            architecture: input.config.code.targetArchitecture,
-          ).encode(),
+          ),
         );
       }
     }
-  }
-}
-
-final class _IgnoreSourceDependency extends BuildOutputBuilder {
-  final BuildOutputBuilder _inner;
-
-  _IgnoreSourceDependency(this._inner);
-
-  @override
-  EncodedAssetBuildOutputBuilder get assets => _inner.assets;
-
-  @override
-  void addDependencies(Iterable<Uri> uris) {
-    super.addDependencies(uris.where((e) => url.extension(e.path) != '.c'));
   }
 }

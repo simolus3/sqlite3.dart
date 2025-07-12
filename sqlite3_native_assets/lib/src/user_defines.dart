@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:native_assets_cli/native_assets_cli.dart';
+import 'package:hooks/hooks.dart';
 import 'package:path/path.dart';
 
 /// A mockable wrapper around `HookInputUserDefines`.
@@ -8,7 +8,7 @@ sealed class UserDefinesOptions {
   const UserDefinesOptions._();
   factory UserDefinesOptions.fromMap(Map<String, Object?> options) =
       _OptionsFromMap;
-  factory UserDefinesOptions.fromHooks(HookInput input) = _UserDefines;
+  factory UserDefinesOptions.fromHooks(BuildInput input) = _UserDefines;
 
   Object? operator [](String key);
 
@@ -40,7 +40,7 @@ final class _OptionsFromMap extends UserDefinesOptions {
 }
 
 final class _UserDefines extends UserDefinesOptions {
-  final HookInput input;
+  final BuildInput input;
 
   _UserDefines(this.input) : super._();
 
