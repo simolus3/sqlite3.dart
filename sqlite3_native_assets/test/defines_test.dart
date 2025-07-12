@@ -26,6 +26,25 @@ void main() {
       );
     });
 
+    test('explicit url, custom file', () {
+      final source = SqliteSource.parse(
+        UserDefinesOptions.fromMap({
+          'source': {
+            'amalgamation': {
+              'uri': 'https://example.org/sqlite.zip',
+              'filename': 'sqlite3mc.c',
+            },
+          },
+        }),
+      );
+      expect(
+        source,
+        isA<DownloadAmalgamation>()
+            .having((e) => e.uri, 'uri', 'https://example.org/sqlite.zip')
+            .having((e) => e.filename, 'filename', 'sqlite3mc.c'),
+      );
+    });
+
     test('local source', () {
       final source = SqliteSource.parse(
         UserDefinesOptions.fromMap({

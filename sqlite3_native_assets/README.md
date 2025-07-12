@@ -60,6 +60,18 @@ hooks:
         amalgamation: https://sqlite.org/2025/sqlite-amalgamation-3490100.zip
 ```
 
+You can also change the name of the main library file:
+
+```yaml
+hooks:
+  user_defines:
+    sqlite3_native_assets:
+      source:
+        amalgamation:
+          uri: https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.2.1/sqlite3mc-2.2.1-sqlite-3.50.2-amalgamation.zip
+          filename: sqlite3mc_amalgamation.c
+```
+
 __Using a local `sqlite3.c`__
 
 If you already have a `sqlite3.c` file in your project that you want to use instead of downloading

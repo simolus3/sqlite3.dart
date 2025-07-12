@@ -1,3 +1,8 @@
+## 0.0.6
+
+- Migrate to `package:hooks`.
+- Allow using custom amalgamations as sources.
+
 ## 0.0.5
 
 - Update to sqlite 3.50.2

@@ -26,7 +26,7 @@ final class SqliteBuild {
 
   Future<String?> _prepareBuild() async {
     switch (source) {
-      case DownloadAmalgamation(:final uri):
+      case DownloadAmalgamation(:final uri, :final filename):
         // Don't track the source because we're the ones creating the local
         // copy.
         final response = await get(Uri.parse(uri));
@@ -37,7 +37,7 @@ final class SqliteBuild {
         final filepath =
             input.outputDirectory.resolve('sqlite3.c').toFilePath();
         for (final file in archive) {
-          if (posix.basename(file.name) == 'sqlite3.c') {
+          if (posix.basename(file.name) == filename) {
             await File(filepath).writeAsBytes(file.content);
           }
         }

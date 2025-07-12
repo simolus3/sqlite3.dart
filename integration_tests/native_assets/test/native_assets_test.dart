@@ -82,10 +82,7 @@ void bar() {}
 
     await _compileNativeAssets();
     await _expectNativeAsset({
-      _key: [
-        'absolute',
-        endsWith('.dart_tool/native_assets/lib/libsqlite3.so'),
-      ],
+      _key: ['absolute', endsWith('.dart_tool/lib/libsqlite3.so')],
     });
 
     final config = loadYaml(

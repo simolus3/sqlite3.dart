@@ -7,9 +7,7 @@ import 'user_defines.dart';
 sealed class SqliteSource {
   static SqliteSource parse(UserDefinesOptions options) {
     return switch (options.readObject('source')) {
-      {'amalgamation': final source} => DownloadAmalgamation(
-        uri: source as String,
-      ),
+      {'amalgamation': final source} => DownloadAmalgamation._parse(source!),
       {'local': final local} => ExistingAmalgamation(
         options.inputPath(local as String),
       ),
@@ -24,11 +22,33 @@ sealed class SqliteSource {
 
 /// Obtain a copy of SQLite by downloading the amalgamation.
 final class DownloadAmalgamation implements SqliteSource {
+  /// The URL to download SQLite from.
   final String uri;
+
+  /// The name of the single C file to compile from the downloaded archive.
+  final String filename;
 
   const DownloadAmalgamation({
     this.uri = 'https://sqlite.org/2025/sqlite-amalgamation-3500200.zip',
+    this.filename = 'sqlite3.c',
   });
+
+  factory DownloadAmalgamation._parse(Object definition) {
+    if (definition is String) {
+      return DownloadAmalgamation(uri: definition);
+    } else if (definition is Map) {
+      return DownloadAmalgamation(
+        uri: definition['uri'] as String,
+        filename: (definition['filename'] as String?) ?? 'sqlite3.c',
+      );
+    } else {
+      throw ArgumentError.value(
+        definition,
+        'definition',
+        'Unknown amalgamation description',
+      );
+    }
+  }
 }
 
 /// Compile SQLite from an existing `sqlite3.c` file.
