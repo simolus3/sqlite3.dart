@@ -190,7 +190,6 @@ void main() {
       check(0.0);
       check(double.infinity, expectDecodesAs: 'Infinity');
       check(double.negativeInfinity, expectDecodesAs: '-Infinity');
-      check(double.nan, expectDecodesAs: 'NaN');
       check('hello world');
       check('hello " world');
       check('hello \n world');
@@ -206,6 +205,11 @@ void main() {
       check({});
       check({'foo': 'bar'});
       check({'a': null, 'b': true, 'c': 0, 'd': 0.1, 'e': 'hi'});
+    });
+
+    test('throws on nan', () {
+      expect(() => jsonb.encode(double.nan),
+          throwsA(isA<JsonUnsupportedObjectError>()));
     });
 
     test(

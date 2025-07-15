@@ -309,6 +309,12 @@ final class _JsonbEncodingOperation {
   }
 
   void writeDouble(double value) {
+    if (value.isNaN) {
+      // Recent SQLite versions don't accept NaN anymore, and this is consistent
+      // with the json codec from the SDK.
+      throw JsonUnsupportedObjectError(value);
+    }
+
     final encoded = utf8.encode(value.toString());
     // RFC 8259 does not support infinity or NaN.
     writeHeader(encoded.length,

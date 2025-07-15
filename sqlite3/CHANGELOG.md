@@ -1,3 +1,8 @@
+## 2.7.7
+
+- `jsonb` codec: Refuse to encode NaN values since recent SQLite versions
+  reject them.
+
 ## 2.7.6
 
 - Export `package:sqlite3/native_assets.dart`, making it easier for libraries
