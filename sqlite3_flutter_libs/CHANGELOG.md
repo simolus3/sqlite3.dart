@@ -1,3 +1,7 @@
+## 0.5.36
+
+- Update Android Gradle buildscript to avoid compiler warnings on recent JDKs.
+
 ## 0.5.35
 
 - Upgrade sqlite to version `3.50.2`.

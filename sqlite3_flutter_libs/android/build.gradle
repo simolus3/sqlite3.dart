@@ -1,36 +1,41 @@
-group 'eu.simonbinder.sqlite3_flutter_libs'
-version '1.0'
+group = "eu.simonbinder.sqlite3_flutter_libs"
+version = "1.0-SNAPSHOT"
 
 buildscript {
     repositories {
-        mavenLocal()
         google()
         mavenCentral()
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.0.1'
+        classpath("com.android.tools.build:gradle:8.7.3")
     }
 }
 
-apply plugin: 'com.android.library'
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: "com.android.library"
 
 android {
-    compileSdkVersion 35
+    namespace = "eu.simonbinder.sqlite3_flutter_libs"
 
-    // Conditional for compatibility with AGP <4.2.
-    if (project.android.hasProperty("namespace")) {
-        namespace 'eu.simonbinder.sqlite3_flutter_libs'
+    compileSdk = 35
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     defaultConfig {
-        minSdkVersion 16
-    }
-    lintOptions {
-        disable 'InvalidPackage'
+        minSdk = 21
     }
 }
 
 dependencies {
-    implementation 'eu.simonbinder:sqlite3-native-library:3.50.2'
+    implementation "eu.simonbinder:sqlite3-native-library:3.50.2"
 }
