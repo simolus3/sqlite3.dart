@@ -7,12 +7,18 @@ library;
 
 import 'dart:ffi' as ffi;
 import 'shared.dart' as imp$1;
+import '' as self;
 
 @ffi.Native<ffi.Pointer<imp$1.sqlite3_char>>()
 external ffi.Pointer<imp$1.sqlite3_char> sqlite3_temp_directory;
 
 @ffi.Native<ffi.Int Function()>()
 external int sqlite3_initialize();
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>)>()
+external void sqlite3_free(
+  ffi.Pointer<ffi.Void> arg0,
+);
 
 @ffi.Native<
     ffi.Int Function(
@@ -70,11 +76,6 @@ external ffi.Pointer<imp$1.sqlite3_char> sqlite3_errstr(
 @ffi.Native<ffi.Int Function(ffi.Pointer<imp$1.sqlite3>)>()
 external int sqlite3_error_offset(
   ffi.Pointer<imp$1.sqlite3> db,
-);
-
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>)>()
-external void sqlite3_free(
-  ffi.Pointer<ffi.Void> ptr,
 );
 
 @ffi.Native<ffi.Pointer<imp$1.sqlite3_char> Function()>()
@@ -619,3 +620,186 @@ external int sqlite3_vfs_register(
 external int sqlite3_vfs_unregister(
   ffi.Pointer<imp$1.sqlite3_vfs> arg0,
 );
+
+@ffi.Native<
+    ffi.Int Function(
+        ffi.Pointer<imp$1.sqlite3>,
+        ffi.Pointer<imp$1.sqlite3_char>,
+        ffi.Pointer<ffi.Pointer<imp$1.sqlite3_session>>)>()
+external int sqlite3session_create(
+  ffi.Pointer<imp$1.sqlite3> db,
+  ffi.Pointer<imp$1.sqlite3_char> zDb,
+  ffi.Pointer<ffi.Pointer<imp$1.sqlite3_session>> ppSession,
+);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<imp$1.sqlite3_session>)>()
+external void sqlite3session_delete(
+  ffi.Pointer<imp$1.sqlite3_session> pSession,
+);
+
+@ffi.Native<ffi.Int Function(ffi.Pointer<imp$1.sqlite3_session>, ffi.Int)>()
+external int sqlite3session_enable(
+  ffi.Pointer<imp$1.sqlite3_session> pSession,
+  int bEnable,
+);
+
+@ffi.Native<ffi.Int Function(ffi.Pointer<imp$1.sqlite3_session>, ffi.Int)>()
+external int sqlite3session_indirect(
+  ffi.Pointer<imp$1.sqlite3_session> pSession,
+  int bIndirect,
+);
+
+@ffi.Native<
+    ffi.Int Function(ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changeset_iter>>,
+        ffi.Int, ffi.Pointer<ffi.Void>)>()
+external int sqlite3changeset_start(
+  ffi.Pointer<ffi.Pointer<imp$1.sqlite3_changeset_iter>> pp,
+  int nChangeset,
+  ffi.Pointer<ffi.Void> pChangeset,
+);
+
+@ffi.Native<ffi.Int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>)>()
+external int sqlite3changeset_finalize(
+  ffi.Pointer<imp$1.sqlite3_changeset_iter> pIter,
+);
+
+@ffi.Native<ffi.Int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>)>()
+external int sqlite3changeset_next(
+  ffi.Pointer<imp$1.sqlite3_changeset_iter> pIter,
+);
+
+@ffi.Native<
+    ffi.Int Function(
+        ffi.Pointer<imp$1.sqlite3_changeset_iter>,
+        ffi.Pointer<ffi.Pointer<imp$1.sqlite3_char>>,
+        ffi.Pointer<ffi.Int>,
+        ffi.Pointer<ffi.Int>,
+        ffi.Pointer<ffi.Int>)>()
+external int sqlite3changeset_op(
+  ffi.Pointer<imp$1.sqlite3_changeset_iter> pIter,
+  ffi.Pointer<ffi.Pointer<imp$1.sqlite3_char>> pzTab,
+  ffi.Pointer<ffi.Int> pnCol,
+  ffi.Pointer<ffi.Int> pOp,
+  ffi.Pointer<ffi.Int> pbIndirect,
+);
+
+@ffi.Native<
+    ffi.Int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>, ffi.Int,
+        ffi.Pointer<ffi.Pointer<imp$1.sqlite3_value>>)>()
+external int sqlite3changeset_old(
+  ffi.Pointer<imp$1.sqlite3_changeset_iter> pIter,
+  int iVal,
+  ffi.Pointer<ffi.Pointer<imp$1.sqlite3_value>> ppValue,
+);
+
+@ffi.Native<
+    ffi.Int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>, ffi.Int,
+        ffi.Pointer<ffi.Pointer<imp$1.sqlite3_value>>)>()
+external int sqlite3changeset_new(
+  ffi.Pointer<imp$1.sqlite3_changeset_iter> pIter,
+  int iVal,
+  ffi.Pointer<ffi.Pointer<imp$1.sqlite3_value>> ppValue,
+);
+
+@ffi.Native<
+    ffi.Int Function(
+        ffi.Pointer<imp$1.sqlite3>,
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(
+                    ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)>>,
+        ffi.Pointer<
+            ffi.NativeFunction<
+                ffi.Int Function(ffi.Pointer<ffi.Void> pCtx, ffi.Int eConflict,
+                    ffi.Pointer<imp$1.sqlite3_changeset_iter> p)>>,
+        ffi.Pointer<ffi.Void>)>()
+external int sqlite3changeset_apply(
+  ffi.Pointer<imp$1.sqlite3> db,
+  int nChangeset,
+  ffi.Pointer<ffi.Void> pChangeset,
+  ffi.Pointer<
+          ffi.NativeFunction<
+              ffi.Int Function(
+                  ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)>>
+      xFilter,
+  ffi.Pointer<
+          ffi.NativeFunction<
+              ffi.Int Function(ffi.Pointer<ffi.Void> pCtx, ffi.Int eConflict,
+                  ffi.Pointer<imp$1.sqlite3_changeset_iter> p)>>
+      xConflict,
+  ffi.Pointer<ffi.Void> pCtx,
+);
+
+@ffi.Native<
+    ffi.Int Function(ffi.Int, ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Int>,
+        ffi.Pointer<ffi.Pointer<ffi.Void>>)>()
+external int sqlite3changeset_invert(
+  int nIn,
+  ffi.Pointer<ffi.Void> pIn,
+  ffi.Pointer<ffi.Int> pnOut,
+  ffi.Pointer<ffi.Pointer<ffi.Void>> ppOut,
+);
+
+@ffi.Native<
+    ffi.Int Function(ffi.Pointer<imp$1.sqlite3_session>, ffi.Pointer<ffi.Int>,
+        ffi.Pointer<ffi.Pointer<ffi.Void>>)>()
+external int sqlite3session_patchset(
+  ffi.Pointer<imp$1.sqlite3_session> pSession,
+  ffi.Pointer<ffi.Int> pnPatchset,
+  ffi.Pointer<ffi.Pointer<ffi.Void>> ppPatchset,
+);
+
+@ffi.Native<
+    ffi.Int Function(ffi.Pointer<imp$1.sqlite3_session>, ffi.Pointer<ffi.Int>,
+        ffi.Pointer<ffi.Pointer<ffi.Void>>)>()
+external int sqlite3session_changeset(
+  ffi.Pointer<imp$1.sqlite3_session> pSession,
+  ffi.Pointer<ffi.Int> pnChangeset,
+  ffi.Pointer<ffi.Pointer<ffi.Void>> ppChangeset,
+);
+
+@ffi.Native<ffi.Int Function(ffi.Pointer<imp$1.sqlite3_session>)>()
+external int sqlite3session_isempty(
+  ffi.Pointer<imp$1.sqlite3_session> pSession,
+);
+
+@ffi.Native<
+    ffi.Int Function(
+        ffi.Pointer<imp$1.sqlite3_session>, ffi.Pointer<imp$1.sqlite3_char>)>()
+external int sqlite3session_attach(
+  ffi.Pointer<imp$1.sqlite3_session> pSession,
+  ffi.Pointer<imp$1.sqlite3_char> zTab,
+);
+
+@ffi.Native<
+    ffi.Int Function(
+        ffi.Pointer<imp$1.sqlite3_session>,
+        ffi.Pointer<imp$1.sqlite3_char>,
+        ffi.Pointer<imp$1.sqlite3_char>,
+        ffi.Pointer<ffi.Pointer<imp$1.sqlite3_char>>)>()
+external int sqlite3session_diff(
+  ffi.Pointer<imp$1.sqlite3_session> pSession,
+  ffi.Pointer<imp$1.sqlite3_char> zFromDb,
+  ffi.Pointer<imp$1.sqlite3_char> zTbl,
+  ffi.Pointer<ffi.Pointer<imp$1.sqlite3_char>> pzErrMsg,
+);
+
+const addresses = _SymbolAddresses();
+
+final class _SymbolAddresses implements imp$1.SharedSymbolAddresses {
+  const _SymbolAddresses();
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
+      get sqlite3_free => ffi.Native.addressOf(self.sqlite3_free);
+  ffi.Pointer<
+          ffi.NativeFunction<
+              ffi.Void Function(ffi.Pointer<imp$1.sqlite3_session>)>>
+      get sqlite3session_delete =>
+          ffi.Native.addressOf(self.sqlite3session_delete);
+  ffi.Pointer<
+          ffi.NativeFunction<
+              ffi.Int Function(ffi.Pointer<imp$1.sqlite3_changeset_iter>)>>
+      get sqlite3changeset_finalize =>
+          ffi.Native.addressOf(self.sqlite3changeset_finalize);
+}
