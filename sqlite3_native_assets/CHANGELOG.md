@@ -1,3 +1,7 @@
+## 0.0.7
+
+- Update to sqlite 3.50.3
+
 ## 0.0.6
 
 - Migrate to `package:hooks`.
