@@ -256,13 +256,28 @@ enum SqliteUpdateKind {
   // used in the sqlite3_web protocol.
 
   /// Notification for a new row being inserted into the database.
-  insert,
+  insert(SQLITE_INSERT),
 
   /// Notification for a row being updated.
-  update,
+  update(SQLITE_UPDATE),
 
   /// Notification for a row being deleted.
-  delete
+  delete(SQLITE_DELETE);
+
+  /// The raw code to identify this update kind.
+  final int code;
+
+  const SqliteUpdateKind(this.code);
+
+  /// Attempts to extract a [SqliteUpdateKind] from the raw [flags].
+  static SqliteUpdateKind? fromCode(int code) {
+    return switch (code) {
+      SQLITE_INSERT => insert,
+      SQLITE_UPDATE => update,
+      SQLITE_DELETE => delete,
+      _ => null,
+    };
+  }
 }
 
 /// A data change notification from sqlite.

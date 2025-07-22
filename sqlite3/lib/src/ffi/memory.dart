@@ -8,6 +8,8 @@ import 'generated/shared.dart';
 
 const allocate = ffi.malloc;
 
+final freeFinalizer = NativeFinalizer(allocate.nativeFree);
+
 /// Loads a null-pointer with a specified type.
 ///
 /// The [nullptr] getter from `dart:ffi` can be slow due to being a
@@ -15,17 +17,6 @@ const allocate = ffi.malloc;
 /// https://github.com/dart-lang/sdk/issues/39488
 @pragma('vm:prefer-inline')
 Pointer<T> nullPtr<T extends NativeType>() => nullptr.cast<T>();
-
-Pointer<Void> _freeImpl(Pointer<Void> ptr) {
-  ptr.free();
-  return nullPtr();
-}
-
-/// Pointer to a function that frees memory we allocated.
-///
-/// This corresponds to `void(*)(void*)` arguments found in sqlite.
-final Pointer<NativeFunction<Pointer<Void> Function(Pointer<Void>)>>
-    freeFunctionPtr = Pointer.fromFunction(_freeImpl);
 
 extension FreePointerExtension on Pointer {
   void free() => allocate.free(this);
