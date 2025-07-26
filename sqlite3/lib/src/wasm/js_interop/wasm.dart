@@ -4,39 +4,11 @@ library;
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
-import 'core.dart';
-
 import 'package:web/web.dart' as web;
 
 @JS('WebAssembly.Instance')
-extension type _WasmInstance._(JSObject _) implements JSObject {
+extension type WasmInstance._(JSObject _) implements JSObject {
   external JSObject get exports;
-}
-
-extension type _ResultObject._(JSObject _) implements JSObject {
-  external _WasmInstance get instance;
-}
-
-@JS('WebAssembly.instantiateStreaming')
-external JSPromise<_ResultObject> _instantiateStreaming(
-    JSAny? source, JSObject imports);
-
-class WasmInstance {
-  final Map<String, JSFunction> functions = {};
-  final Map<String, Global> globals = {};
-
-  WasmInstance._(_WasmInstance nativeInstance) {
-    for (final rawKey in WrappedJSObject.keys(nativeInstance.exports).toDart) {
-      final key = (rawKey as JSString).toDart;
-      final value = nativeInstance.exports.getProperty(rawKey);
-
-      if (value.typeofEquals('function')) {
-        functions[key] = value as JSFunction;
-      } else if (value.instanceof(_globalConstructor)) {
-        globals[key] = value as Global;
-      }
-    }
-  }
 
   static Future<WasmInstance> load(
     web.Response response,
@@ -66,6 +38,14 @@ class WasmInstance {
   }
 }
 
+extension type _ResultObject._(JSObject _) implements JSObject {
+  external WasmInstance get instance;
+}
+
+@JS('WebAssembly.instantiateStreaming')
+external JSPromise<_ResultObject> _instantiateStreaming(
+    JSAny? source, JSObject imports);
+
 @JS()
 extension type MemoryDescriptor._(JSObject _) implements JSObject {
   external factory MemoryDescriptor({
@@ -81,9 +61,6 @@ extension type Memory._(JSObject _) implements JSObject {
 
   external JSArrayBuffer get buffer;
 }
-
-@JS('WebAssembly.Global')
-external JSFunction get _globalConstructor;
 
 @JS('WebAssembly.Global')
 extension type Global._(JSObject _) implements JSObject {

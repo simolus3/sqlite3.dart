@@ -11,9 +11,9 @@ import 'js_interop.dart';
 
 import 'package:web/web.dart' as web;
 
-// ignore_for_file: non_constant_identifier_names
+import 'sqlite3_wasm.g.dart';
 
-typedef Pointer = int;
+// ignore_for_file: non_constant_identifier_names
 
 class WasmBindings {
   // We're compiling to 32bit wasm
@@ -23,166 +23,12 @@ class WasmBindings {
   final Memory memory;
 
   final DartCallbacks callbacks;
-
-  final JSFunction _malloc,
-      _free,
-      _create_window,
-      _create_collation,
-      _create_scalar,
-      _create_aggregate,
-      _register_vfs,
-      _unregister_vfs,
-      _update_hooks,
-      _sqlite3_libversion,
-      _sqlite3_sourceid,
-      _sqlite3_libversion_number,
-      _sqlite3_open_v2,
-      _sqlite3_close_v2,
-      _sqlite3_extended_errcode,
-      _sqlite3_errmsg,
-      _sqlite3_errstr,
-      _sqlite3_extended_result_codes,
-      _sqlite3_exec,
-      _sqlite3_free,
-      _sqlite3_prepare_v3,
-      _sqlite3_bind_parameter_count,
-      _sqlite3_column_count,
-      _sqlite3_column_name,
-      _sqlite3_reset,
-      _sqlite3_step,
-      _sqlite3_column_type,
-      _sqlite3_column_int64,
-      _sqlite3_column_double,
-      _sqlite3_column_bytes,
-      _sqlite3_column_text,
-      _sqlite3_column_blob,
-      _sqlite3_bind_null,
-      _sqlite3_bind_int64,
-      _sqlite3_bind_double,
-      _sqlite3_bind_text,
-      _sqlite3_bind_blob64,
-      _sqlite3_bind_parameter_index,
-      _sqlite3_finalize,
-      _sqlite3_changes,
-      _sqlite3_last_insert_rowid,
-      _sqlite3_user_data,
-      _sqlite3_result_null,
-      _sqlite3_result_int64,
-      _sqlite3_result_double,
-      _sqlite3_result_text,
-      _sqlite3_result_blob64,
-      _sqlite3_result_error,
-      _sqlite3_value_type,
-      _sqlite3_value_int64,
-      _sqlite3_value_double,
-      _sqlite3_value_bytes,
-      _sqlite3_value_text,
-      _sqlite3_value_blob,
-      _sqlite3_aggregate_context,
-      _sqlite3_get_autocommit,
-      _sqlite3_stmt_readonly,
-      _sqlite3_stmt_isexplain;
-
-  // The released WASM bundle only exposes functions referenced in this file.
-  // So, when we release a new version of `package:sqlite3` using additional
-  // functions, we can't assume that existing bundles also have those functions.
-  final JSFunction? _sqlite3_db_config,
-      _sqlite3_initialize,
-      _commit_hooks,
-      _rollback_hooks,
-      _sqlite3_error_offset,
-      _sqlite3_result_subtype,
-      _sqlite3_value_subtype;
-
-  final Global _sqlite3_temp_directory;
+  final SqliteExports sqlite3;
 
   WasmBindings._(this.instance, _InjectedValues values)
       : memory = values.memory,
         callbacks = values.callbacks,
-        _malloc = instance.functions['dart_sqlite3_malloc']!,
-        _free = instance.functions['dart_sqlite3_free']!,
-        _create_scalar =
-            instance.functions['dart_sqlite3_create_scalar_function']!,
-        _create_aggregate =
-            instance.functions['dart_sqlite3_create_aggregate_function']!,
-        _create_window =
-            instance.functions['dart_sqlite3_create_window_function']!,
-        _create_collation =
-            instance.functions['dart_sqlite3_create_collation']!,
-        _register_vfs = instance.functions['dart_sqlite3_register_vfs']!,
-        _unregister_vfs = instance.functions['sqlite3_vfs_unregister']!,
-        _update_hooks = instance.functions['dart_sqlite3_updates']!,
-        _sqlite3_libversion = instance.functions['sqlite3_libversion']!,
-        _sqlite3_sourceid = instance.functions['sqlite3_sourceid']!,
-        _sqlite3_libversion_number =
-            instance.functions['sqlite3_libversion_number']!,
-        _sqlite3_open_v2 = instance.functions['sqlite3_open_v2']!,
-        _sqlite3_close_v2 = instance.functions['sqlite3_close_v2']!,
-        _sqlite3_extended_errcode =
-            instance.functions['sqlite3_extended_errcode']!,
-        _sqlite3_errmsg = instance.functions['sqlite3_errmsg']!,
-        _sqlite3_errstr = instance.functions['sqlite3_errstr']!,
-        _sqlite3_extended_result_codes =
-            instance.functions['sqlite3_extended_result_codes']!,
-        _sqlite3_exec = instance.functions['sqlite3_exec']!,
-        _sqlite3_free = instance.functions['sqlite3_free']!,
-        _sqlite3_prepare_v3 = instance.functions['sqlite3_prepare_v3']!,
-        _sqlite3_bind_parameter_count =
-            instance.functions['sqlite3_bind_parameter_count']!,
-        _sqlite3_column_count = instance.functions['sqlite3_column_count']!,
-        _sqlite3_column_name = instance.functions['sqlite3_column_name']!,
-        _sqlite3_reset = instance.functions['sqlite3_reset']!,
-        _sqlite3_step = instance.functions['sqlite3_step']!,
-        _sqlite3_finalize = instance.functions['sqlite3_finalize']!,
-        _sqlite3_column_type = instance.functions['sqlite3_column_type']!,
-        _sqlite3_column_int64 = instance.functions['sqlite3_column_int64']!,
-        _sqlite3_column_double = instance.functions['sqlite3_column_double']!,
-        _sqlite3_column_bytes = instance.functions['sqlite3_column_bytes']!,
-        _sqlite3_column_blob = instance.functions['sqlite3_column_blob']!,
-        _sqlite3_column_text = instance.functions['sqlite3_column_text']!,
-        _sqlite3_bind_null = instance.functions['sqlite3_bind_null']!,
-        _sqlite3_bind_int64 = instance.functions['sqlite3_bind_int64']!,
-        _sqlite3_bind_double = instance.functions['sqlite3_bind_double']!,
-        _sqlite3_bind_text = instance.functions['sqlite3_bind_text']!,
-        _sqlite3_bind_blob64 = instance.functions['sqlite3_bind_blob64']!,
-        _sqlite3_bind_parameter_index =
-            instance.functions['sqlite3_bind_parameter_index']!,
-        _sqlite3_changes = instance.functions['sqlite3_changes']!,
-        _sqlite3_last_insert_rowid =
-            instance.functions['sqlite3_last_insert_rowid']!,
-        _sqlite3_user_data = instance.functions['sqlite3_user_data']!,
-        _sqlite3_result_null = instance.functions['sqlite3_result_null']!,
-        _sqlite3_result_int64 = instance.functions['sqlite3_result_int64']!,
-        _sqlite3_result_double = instance.functions['sqlite3_result_double']!,
-        _sqlite3_result_text = instance.functions['sqlite3_result_text']!,
-        _sqlite3_result_blob64 = instance.functions['sqlite3_result_blob64']!,
-        _sqlite3_result_error = instance.functions['sqlite3_result_error']!,
-        _sqlite3_value_type = instance.functions['sqlite3_value_type']!,
-        _sqlite3_value_int64 = instance.functions['sqlite3_value_int64']!,
-        _sqlite3_value_double = instance.functions['sqlite3_value_double']!,
-        _sqlite3_value_bytes = instance.functions['sqlite3_value_bytes']!,
-        _sqlite3_value_text = instance.functions['sqlite3_value_text']!,
-        _sqlite3_value_blob = instance.functions['sqlite3_value_blob']!,
-        _sqlite3_aggregate_context =
-            instance.functions['sqlite3_aggregate_context']!,
-        _sqlite3_get_autocommit = instance.functions['sqlite3_get_autocommit']!,
-        _sqlite3_stmt_isexplain = instance.functions['sqlite3_stmt_isexplain']!,
-        _sqlite3_stmt_readonly = instance.functions['sqlite3_stmt_readonly']!,
-        _sqlite3_db_config = instance.functions['dart_sqlite3_db_config_int'],
-        _sqlite3_initialize = instance.functions['sqlite3_initialize'],
-        _sqlite3_error_offset = instance.functions['sqlite3_error_offset'],
-        _commit_hooks = instance.functions['dart_sqlite3_commits'],
-        _rollback_hooks = instance.functions['dart_sqlite3_rollbacks'],
-        _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']!,
-        _sqlite3_result_subtype = instance.functions['sqlite3_result_subtype'],
-        _sqlite3_value_subtype = instance.functions['sqlite3_value_subtype']
-
-  // Note when adding new fields: We remove functions from the wasm module that
-  // aren't referenced in Dart. We consider a symbol used when it appears in a
-  // string literal in an initializer of this constructor (`tool/wasm_dce.dart`).
-  // Keep in mind that new symbols can only be tested with release wasm builds
-  // after adding them here and re-running the sqlite3 wasm build.
-  {
+        sqlite3 = SqliteExports(instance.exports) {
     values.bindings = this;
   }
 
@@ -217,17 +63,17 @@ class WasmBindings {
   }
 
   Pointer malloc(int size) {
-    return _malloc.callReturningInt(size.toJS);
+    return sqlite3.dart_sqlite3_malloc(size);
   }
 
   void free(Pointer pointer) {
-    _free.callReturningVoid(pointer.toJS);
+    sqlite3.dart_sqlite3_free(pointer);
   }
 
-  void sqlite3_free(Pointer ptr) => _sqlite3_free.callReturningVoid(ptr.toJS);
+  void sqlite3_free(Pointer ptr) => sqlite3.sqlite3_free(ptr);
 
   int sqlite3_initialize() {
-    return switch (_sqlite3_initialize) {
+    return switch (sqlite3.sqlite3_initialize) {
       final fun? => fun.callReturningInt0(),
       null => 0,
     };
@@ -235,269 +81,248 @@ class WasmBindings {
 
   int create_scalar_function(
       Pointer db, Pointer functionName, int nArg, int eTextRep, int id) {
-    return _create_scalar.callReturningInt5(
-        db.toJS, functionName.toJS, nArg.toJS, eTextRep.toJS, id.toJS);
+    return sqlite3.dart_sqlite3_create_scalar_function(
+        db, functionName, nArg, eTextRep, id);
   }
 
   int create_aggregate_function(
       Pointer db, Pointer functionName, int nArg, int eTextRep, int id) {
-    return _create_aggregate.callReturningInt5(
-        db.toJS, functionName.toJS, nArg.toJS, eTextRep.toJS, id.toJS);
+    return sqlite3.dart_sqlite3_create_aggregate_function(
+        db, functionName, nArg, eTextRep, id);
   }
 
   int create_window_function(
       Pointer db, Pointer functionName, int nArg, int eTextRep, int id) {
-    final function = _checkForPresence(_create_window, 'createWindow');
+    final function = _checkForPresence(
+        sqlite3.dart_sqlite3_create_window_function, 'createWindow');
     return function.callReturningInt5(
         db.toJS, functionName.toJS, nArg.toJS, eTextRep.toJS, id.toJS);
   }
 
   int create_collation(Pointer db, Pointer name, int eTextRep, int id) {
-    final function = _checkForPresence(_create_collation, 'createCollation');
+    final function = _checkForPresence(
+        sqlite3.dart_sqlite3_create_collation, 'createCollation');
     return function.callReturningInt4(
         db.toJS, name.toJS, eTextRep.toJS, id.toJS);
   }
 
   Pointer dart_sqlite3_register_vfs(Pointer name, int dartId, int makeDefault) {
-    return _register_vfs.callReturningInt3(
-        name.toJS, dartId.toJS, makeDefault.toJS);
+    return sqlite3.dart_sqlite3_register_vfs(name, dartId, makeDefault);
   }
 
   int sqlite3_vfs_unregister(Pointer vfs) {
-    return _unregister_vfs.callReturningInt(vfs.toJS);
+    return sqlite3.sqlite3_vfs_unregister(vfs);
   }
 
-  int sqlite3_libversion() => _sqlite3_libversion.callReturningInt0();
+  int sqlite3_libversion() => sqlite3.sqlite3_libversion();
 
-  Pointer sqlite3_sourceid() => _sqlite3_sourceid.callReturningInt0();
+  Pointer sqlite3_sourceid() => sqlite3.sqlite3_sourceid();
 
-  int sqlite3_libversion_number() =>
-      _sqlite3_libversion_number.callReturningInt0();
+  int sqlite3_libversion_number() => sqlite3.sqlite3_libversion_number();
 
   int sqlite3_open_v2(Pointer filename, Pointer ppDb, int flags, Pointer zVfs) {
-    return _sqlite3_open_v2.callReturningInt4(
-        filename.toJS, ppDb.toJS, flags.toJS, zVfs.toJS);
+    return sqlite3.sqlite3_open_v2(filename, ppDb, flags, zVfs);
   }
 
-  int sqlite3_close_v2(Pointer db) =>
-      _sqlite3_close_v2.callReturningInt(db.toJS);
+  int sqlite3_close_v2(Pointer db) => sqlite3.sqlite3_close_v2(db);
 
   int sqlite3_extended_errcode(Pointer db) =>
-      _sqlite3_extended_errcode.callReturningInt(db.toJS);
+      sqlite3.sqlite3_extended_errcode(db);
 
-  Pointer sqlite3_errmsg(Pointer db) =>
-      _sqlite3_errmsg.callReturningInt(db.toJS);
+  Pointer sqlite3_errmsg(Pointer db) => sqlite3.sqlite3_errmsg(db);
 
-  Pointer sqlite3_errstr(int resultCode) =>
-      _sqlite3_errstr.callReturningInt(resultCode.toJS);
+  Pointer sqlite3_errstr(int resultCode) => sqlite3.sqlite3_errstr(resultCode);
 
   int sqlite3_error_offset(Pointer db) {
-    return _sqlite3_error_offset?.callReturningInt(db.toJS) ?? -1;
+    return sqlite3.sqlite3_error_offset?.callReturningInt(db.toJS) ?? -1;
   }
 
   int sqlite3_extended_result_codes(Pointer db, int onoff) {
-    return _sqlite3_extended_result_codes.callReturningInt2(
-        db.toJS, onoff.toJS);
+    return sqlite3.sqlite3_extended_result_codes(db, onoff);
   }
 
   /// Pass a non-negative [id] to enable update tracking on the db, a negative
   /// one to stop it.
   void dart_sqlite3_updates(Pointer db, int id) {
-    _update_hooks.callReturningVoid2(db.toJS, id.toJS);
+    return sqlite3.dart_sqlite3_updates?.callReturningVoid2(db.toJS, id.toJS);
   }
 
   void dart_sqlite3_commits(Pointer db, int id) {
-    return _commit_hooks?.callReturningVoid2(db.toJS, id.toJS);
+    return sqlite3.dart_sqlite3_commits?.callReturningVoid2(db.toJS, id.toJS);
   }
 
   void dart_sqlite3_rollbacks(Pointer db, int id) {
-    return _rollback_hooks?.callReturningVoid2(db.toJS, id.toJS);
+    return sqlite3.dart_sqlite3_rollbacks?.callReturningVoid2(db.toJS, id.toJS);
   }
 
   int sqlite3_exec(Pointer db, Pointer sql, Pointer callback,
       Pointer callbackArg, Pointer errorOut) {
-    return _sqlite3_exec.callReturningInt5(
-        db.toJS, sql.toJS, callback.toJS, callbackArg.toJS, errorOut.toJS);
+    return sqlite3.sqlite3_exec(db, sql, callback, callbackArg, errorOut);
   }
 
   int sqlite3_prepare_v3(Pointer db, Pointer sql, int length, int prepFlags,
       Pointer ppStmt, Pointer pzTail) {
-    return _sqlite3_prepare_v3.callReturningInt6(db.toJS, sql.toJS, length.toJS,
-        prepFlags.toJS, ppStmt.toJS, pzTail.toJS);
+    return sqlite3.sqlite3_prepare_v3(
+        db, sql, length, prepFlags, ppStmt, pzTail);
   }
 
   int sqlite3_bind_parameter_count(Pointer stmt) {
-    return _sqlite3_bind_parameter_count.callReturningInt(stmt.toJS);
+    return sqlite3.sqlite3_bind_parameter_count(stmt);
   }
 
   int sqlite3_bind_null(Pointer stmt, int index) {
-    return _sqlite3_bind_null.callReturningInt2(stmt.toJS, index.toJS);
+    return sqlite3.sqlite3_bind_null(stmt, index);
   }
 
   int sqlite3_bind_int64(Pointer stmt, int index, BigInt value) {
-    return _sqlite3_bind_int64.callReturningInt3(
-        stmt.toJS, index.toJS, JsBigInt.fromBigInt(value).jsObject);
+    return sqlite3.sqlite3_bind_int64(
+        stmt, index, JsBigInt.fromBigInt(value).jsObject);
   }
 
   int sqlite3_bind_int(Pointer stmt, int index, int value) {
-    return _sqlite3_bind_int64.callReturningInt3(
-        stmt.toJS, index.toJS, JsBigInt.fromInt(value).jsObject);
+    return sqlite3.sqlite3_bind_int64(
+        stmt, index, JsBigInt.fromInt(value).jsObject);
   }
 
   int sqlite3_bind_double(Pointer stmt, int index, double value) {
-    return _sqlite3_bind_double.callReturningInt3(
-        stmt.toJS, index.toJS, value.toJS);
+    return sqlite3.sqlite3_bind_double(stmt, index, value);
   }
 
   int sqlite3_bind_text(
       Pointer stmt, int index, Pointer text, int length, Pointer a) {
-    return _sqlite3_bind_text.callReturningInt5(
-        stmt.toJS, index.toJS, text.toJS, length.toJS, a.toJS);
+    return sqlite3.sqlite3_bind_text(stmt, index, text, length, a);
   }
 
   int sqlite3_bind_blob64(
       Pointer stmt, int index, Pointer test, int length, Pointer a) {
-    return _sqlite3_bind_blob64.callReturningInt5(stmt.toJS, index.toJS,
-        test.toJS, JsBigInt.fromInt(length).jsObject, a.toJS);
+    return sqlite3.sqlite3_bind_blob64(
+        stmt, index, test, JsBigInt.fromInt(length), a);
   }
 
   int sqlite3_bind_parameter_index(Pointer statement, Pointer key) {
-    return _sqlite3_bind_parameter_index.callReturningInt2(
-        statement.toJS, key.toJS);
+    return sqlite3.sqlite3_bind_parameter_index(statement, key);
   }
 
   int sqlite3_column_count(Pointer stmt) {
-    return _sqlite3_column_count.callReturningInt(stmt.toJS);
+    return sqlite3.sqlite3_column_count(stmt);
   }
 
   Pointer sqlite3_column_name(Pointer stmt, int index) {
-    return _sqlite3_column_name.callReturningInt2(stmt.toJS, index.toJS);
+    return sqlite3.sqlite3_column_name(stmt, index);
   }
 
   int sqlite3_column_type(Pointer stmt, int index) {
-    return _sqlite3_column_type.callReturningInt2(stmt.toJS, index.toJS);
+    return sqlite3.sqlite3_column_type(stmt, index);
   }
 
   JsBigInt sqlite3_column_int64(Pointer stmt, int index) {
-    return JsBigInt(_sqlite3_column_int64.callAsFunction(
-        null, stmt.toJS, index.toJS) as JSBigInt);
+    return JsBigInt(sqlite3.sqlite3_column_int64(stmt, index));
   }
 
   double sqlite3_column_double(Pointer stmt, int index) {
-    return (_sqlite3_column_double.callAsFunction(null, stmt.toJS, index.toJS)
-            as JSNumber)
-        .toDartDouble;
+    return sqlite3.sqlite3_column_double(stmt, index);
   }
 
   int sqlite3_column_bytes(Pointer stmt, int index) {
-    return _sqlite3_column_bytes.callReturningInt2(stmt.toJS, index.toJS);
+    return sqlite3.sqlite3_column_bytes(stmt, index);
   }
 
   Pointer sqlite3_column_text(Pointer stmt, int index) {
-    return _sqlite3_column_text.callReturningInt2(stmt.toJS, index.toJS);
+    return sqlite3.sqlite3_column_text(stmt, index);
   }
 
   Pointer sqlite3_column_blob(Pointer stmt, int index) {
-    return _sqlite3_column_blob.callReturningInt2(stmt.toJS, index.toJS);
+    return sqlite3.sqlite3_column_blob(stmt, index);
   }
 
   int sqlite3_value_type(Pointer value) {
-    return _sqlite3_value_type.callReturningInt(value.toJS);
+    return sqlite3.sqlite3_value_type(value);
   }
 
   int sqlite3_value_subtype(Pointer value) {
-    return _sqlite3_value_subtype?.callReturningInt(value.toJS) ?? 0;
+    return sqlite3.sqlite3_value_subtype?.callReturningInt(value.toJS) ?? 0;
   }
 
   JsBigInt sqlite3_value_int64(Pointer value) {
-    return JsBigInt(
-        _sqlite3_value_int64.callAsFunction(null, value.toJS) as JSBigInt);
+    return JsBigInt(sqlite3.sqlite3_value_int64(value));
   }
 
   double sqlite3_value_double(Pointer value) {
-    return (_sqlite3_value_double.callAsFunction(null, value.toJS) as JSNumber)
-        .toDartDouble;
+    return sqlite3.sqlite3_value_double(value);
   }
 
   int sqlite3_value_bytes(Pointer value) {
-    return _sqlite3_value_bytes.callReturningInt(value.toJS);
+    return sqlite3.sqlite3_value_bytes(value);
   }
 
   Pointer sqlite3_value_text(Pointer value) {
-    return _sqlite3_value_text.callReturningInt(value.toJS);
+    return sqlite3.sqlite3_value_text(value);
   }
 
   Pointer sqlite3_value_blob(Pointer value) {
-    return _sqlite3_value_blob.callReturningInt(value.toJS);
+    return sqlite3.sqlite3_value_blob(value);
   }
 
   void sqlite3_result_null(Pointer context) {
-    _sqlite3_result_null.callReturningVoid(context.toJS);
+    sqlite3.sqlite3_result_null(context);
   }
 
   void sqlite3_result_int64(Pointer context, BigInt value) {
-    _sqlite3_result_int64.callReturningVoid2(
-        context.toJS, JsBigInt.fromBigInt(value).jsObject);
+    sqlite3.sqlite3_result_int64(context, JsBigInt.fromBigInt(value).jsObject);
   }
 
   void sqlite3_result_double(Pointer context, double value) {
-    _sqlite3_result_double.callReturningVoid2(context.toJS, value.toJS);
+    sqlite3.sqlite3_result_double(context, value);
   }
 
   void sqlite3_result_text(
       Pointer context, Pointer text, int length, Pointer a) {
-    _sqlite3_result_text.callReturningVoid4(
-        context.toJS, text.toJS, length.toJS, a.toJS);
+    sqlite3.sqlite3_result_text(context, text, length, a);
   }
 
   void sqlite3_result_blob64(
       Pointer context, Pointer blob, int length, Pointer a) {
-    _sqlite3_result_blob64.callReturningVoid4(
-        context.toJS, blob.toJS, JsBigInt.fromInt(length).jsObject, a.toJS);
+    sqlite3.sqlite3_result_blob64(context, blob, JsBigInt.fromInt(length), a);
   }
 
   void sqlite3_result_error(Pointer context, Pointer text, int length) {
-    _sqlite3_result_error.callReturningVoid3(
-        context.toJS, text.toJS, length.toJS);
+    sqlite3.sqlite3_result_error(context, text, length);
   }
 
   void sqlite3_result_subtype(Pointer context, int subtype) {
-    _sqlite3_result_subtype?.callReturningVoid2(context.toJS, subtype.toJS);
+    sqlite3.sqlite3_result_subtype
+        ?.callReturningVoid2(context.toJS, subtype.toJS);
   }
 
   int sqlite3_user_data(Pointer context) {
-    return _sqlite3_user_data.callReturningInt(context.toJS);
+    return sqlite3.sqlite3_user_data(context);
   }
 
   Pointer sqlite3_aggregate_context(Pointer context, int nBytes) {
-    return _sqlite3_aggregate_context.callReturningInt2(
-        context.toJS, nBytes.toJS);
+    return sqlite3.sqlite3_aggregate_context(context, nBytes);
   }
 
-  int sqlite3_step(Pointer stmt) => _sqlite3_step.callReturningInt(stmt.toJS);
+  int sqlite3_step(Pointer stmt) => sqlite3.sqlite3_step(stmt);
 
-  int sqlite3_reset(Pointer stmt) => _sqlite3_reset.callReturningInt(stmt.toJS);
+  int sqlite3_reset(Pointer stmt) => sqlite3.sqlite3_reset(stmt);
 
-  int sqlite3_finalize(Pointer stmt) =>
-      _sqlite3_finalize.callReturningInt(stmt.toJS);
+  int sqlite3_finalize(Pointer stmt) => sqlite3.sqlite3_finalize(stmt);
 
-  int sqlite3_changes(Pointer db) => _sqlite3_changes.callReturningInt(db.toJS);
+  int sqlite3_changes(Pointer db) => sqlite3.sqlite3_changes(db);
 
   int sqlite3_stmt_isexplain(Pointer stmt) =>
-      _sqlite3_stmt_isexplain.callReturningInt(stmt.toJS);
+      sqlite3.sqlite3_stmt_isexplain(stmt);
 
   int sqlite3_stmt_readonly(Pointer stmt) =>
-      _sqlite3_stmt_readonly.callReturningInt(stmt.toJS);
+      sqlite3.sqlite3_stmt_readonly(stmt);
 
   int sqlite3_last_insert_rowid(Pointer db) =>
-      JsBigInt(_sqlite3_last_insert_rowid.callReturningBigInt(db.toJS))
-          .asDartInt;
+      JsBigInt(sqlite3.sqlite3_last_insert_rowid(db)).asDartInt;
 
-  int sqlite3_get_autocommit(Pointer db) =>
-      _sqlite3_get_autocommit.callReturningInt(db.toJS);
+  int sqlite3_get_autocommit(Pointer db) => sqlite3.sqlite3_get_autocommit(db);
 
   int sqlite3_db_config(Pointer db, int op, int value) {
-    final function = _sqlite3_db_config;
+    final function = sqlite3.dart_sqlite3_db_config_int;
     if (function != null) {
       return function.callReturningInt3(db.toJS, op.toJS, value.toJS);
     } else {
@@ -506,11 +331,11 @@ class WasmBindings {
   }
 
   Pointer get sqlite3_temp_directory {
-    return _sqlite3_temp_directory.value.toDartInt;
+    return sqlite3.sqlite3_temp_directory.value.toDartInt;
   }
 
   set sqlite3_temp_directory(Pointer value) {
-    _sqlite3_temp_directory.value = value.toJS;
+    sqlite3.sqlite3_temp_directory.value = value.toJS;
   }
 }
 
@@ -882,20 +707,12 @@ extension on JSFunction {
   external JSNumber _call5(
       JSAny? r, JSAny? a0, JSAny? a1, JSAny? a2, JSAny? a3, JSAny? a4);
 
-  @JS('call')
-  external JSNumber _call6(JSAny? r, JSAny? a0, JSAny? a1, JSAny? a2, JSAny? a3,
-      JSAny? a4, JSAny? a5);
-
   int callReturningInt0() {
     return (callAsFunction(null) as JSNumber).toDartInt;
   }
 
   int callReturningInt(JSAny? arg) {
     return (callAsFunction(null, arg) as JSNumber).toDartInt;
-  }
-
-  int callReturningInt2(JSAny? arg0, JSAny? arg1) {
-    return (callAsFunction(null, arg0, arg1) as JSNumber).toDartInt;
   }
 
   int callReturningInt3(JSAny? arg0, JSAny? arg1, JSAny? arg2) {
@@ -911,28 +728,7 @@ extension on JSFunction {
     return _call5(null, arg0, arg1, arg2, arg3, arg4).toDartInt;
   }
 
-  int callReturningInt6(JSAny? arg0, JSAny? arg1, JSAny? arg2, JSAny? arg3,
-      JSAny? arg4, JSAny? arg5) {
-    return _call6(null, arg0, arg1, arg2, arg3, arg4, arg5).toDartInt;
-  }
-
-  JSBigInt callReturningBigInt([JSAny? arg]) {
-    return callAsFunction(null, arg) as JSBigInt;
-  }
-
-  void callReturningVoid([JSAny? arg]) {
-    callAsFunction(null, arg);
-  }
-
   void callReturningVoid2(JSAny? arg0, JSAny? arg1) {
     callAsFunction(null, arg0, arg1);
-  }
-
-  void callReturningVoid3(JSAny? arg0, JSAny? arg1, JSAny? arg2) {
-    callAsFunction(null, arg0, arg1, arg2);
-  }
-
-  void callReturningVoid4(JSAny? arg0, JSAny? arg1, JSAny? arg2, JSAny? arg3) {
-    callAsFunction(null, arg0, arg1, arg2, arg3);
   }
 }

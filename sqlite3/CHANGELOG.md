@@ -3,6 +3,7 @@
 - Add the `SubtypedValue` extension type to allow returning values with a subtype.
 - Add the `subtypeOf` method to the `SqliteArguments` interface passed to user-defined
   functions. It returns the subtype assigned to an argument.
+- Web: Refactor SQLite bindings to make them easier for compilers to optimize.
 
 ## 2.7.7
 
