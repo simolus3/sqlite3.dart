@@ -8,6 +8,7 @@ import '../constants.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
 import 'wasm_interop.dart' as wasm;
+import 'sqlite3_wasm.g.dart';
 import 'wasm_interop.dart';
 
 // ignore_for_file: non_constant_identifier_names
@@ -115,7 +116,7 @@ final class WasmSqliteBindings extends RawSqliteBindings {
 
 final class WasmDatabase extends RawSqliteDatabase {
   final wasm.WasmBindings bindings;
-  final wasm.Pointer db;
+  final Pointer db;
 
   WasmDatabase(this.bindings, this.db);
 
