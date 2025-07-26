@@ -1008,6 +1008,11 @@ final class FfiContext extends RawSqliteContext {
     ptr.free();
   }
 
+  @override
+  void sqlite3_result_subtype(int value) {
+    bindings.sqlite3_result_subtype(context, value);
+  }
+
   void freeContext() {
     final ctxId = _rawAggregateContext.value;
     _contexts.remove(ctxId);

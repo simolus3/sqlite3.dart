@@ -192,6 +192,7 @@ abstract base class RawSqliteContext {
   void sqlite3_result_text(String text);
   void sqlite3_result_blob64(List<int> blob);
   void sqlite3_result_error(String message);
+  void sqlite3_result_subtype(int value);
 }
 
 abstract base class RawSqliteValue {

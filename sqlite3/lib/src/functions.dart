@@ -15,12 +15,13 @@ typedef CollatingFunction = int Function(String? textA, String? textB);
 ///
 /// {@template sqlite3_function_behavior}
 /// The function must either return a `bool`, `num`, `String`, `List<int>`,
-/// `BigInt` or `null`.
+/// `BigInt` or `null`. It may also return a [SubtypedValue] thereof, see that
+/// class for more details
 ///
 /// If invoking the function throws a Dart exception, the sql function will
 /// result with an error result as well.
 /// {@endtemplate}
-typedef ScalarFunction = Object? Function(List<Object?> arguments);
+typedef ScalarFunction = Object? Function(SqliteArguments arguments);
 
 /// Interface for application-defined aggregate functions.
 ///
@@ -66,7 +67,7 @@ abstract class AggregateFunction<V> {
   ///
   /// The [context] should be modified to reflect the new row calling this
   /// function with [arguments].
-  void step(List<Object?> arguments, AggregateContext<V> context);
+  void step(SqliteArguments arguments, AggregateContext<V> context);
 
   /// Computes the final value from a populated [context].
   ///
@@ -128,7 +129,7 @@ abstract class WindowFunction<V> implements AggregateFunction<V> {
   Object? value(AggregateContext<V> context);
 
   /// Removes the row of [arguments] from this window.
-  void inverse(List<Object?> arguments, AggregateContext<V> context);
+  void inverse(SqliteArguments arguments, AggregateContext<V> context);
 }
 
 /// Application-defined context used to compute results in aggregate functions.
@@ -150,4 +151,16 @@ final class AllowedArgumentCount {
 
   const AllowedArgumentCount(this.allowedArgs);
   const AllowedArgumentCount.any() : allowedArgs = -1;
+}
+
+abstract interface class SqliteArguments implements List<Object?> {}
+
+/// A value that will be passed to SQLite as a return value with an additional
+/// subtype (encoded as a byte value) attached to it.
+///
+/// For more information, see [Setting The Subtype Of An SQL Function](https://sqlite.org/c3ref/result_subtype.html).
+extension type SubtypedValue._((Object?, int) info) {
+  factory SubtypedValue(Object value, int subtype) {
+    return SubtypedValue._((value, subtype));
+  }
 }

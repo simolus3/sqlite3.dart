@@ -1293,6 +1293,23 @@ final class NativeLibrary implements imp$1.SqliteLibrary {
       void Function(ffi.Pointer<imp$1.sqlite3_context>,
           ffi.Pointer<imp$1.sqlite3_char>, int, ffi.Pointer<ffi.Void>)>();
 
+  void sqlite3_result_subtype(
+    ffi.Pointer<imp$1.sqlite3_context> ctx,
+    int subtype,
+  ) {
+    return _sqlite3_result_subtype(
+      ctx,
+      subtype,
+    );
+  }
+
+  late final _sqlite3_result_subtypePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<imp$1.sqlite3_context>,
+              ffi.UnsignedInt)>>('sqlite3_result_subtype');
+  late final _sqlite3_result_subtype = _sqlite3_result_subtypePtr
+      .asFunction<void Function(ffi.Pointer<imp$1.sqlite3_context>, int)>();
+
   int sqlite3_create_collation_v2(
     ffi.Pointer<imp$1.sqlite3> arg0,
     ffi.Pointer<imp$1.sqlite3_char> zName,

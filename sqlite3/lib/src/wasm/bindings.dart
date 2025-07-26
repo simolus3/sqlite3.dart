@@ -568,6 +568,11 @@ final class WasmContext extends RawSqliteContext {
         context, ptr, encoded.length, SqlSpecialDestructor.SQLITE_TRANSIENT);
     bindings.free(ptr);
   }
+
+  @override
+  void sqlite3_result_subtype(int value) {
+    bindings.sqlite3_result_subtype(context, value);
+  }
 }
 
 final class WasmValue extends RawSqliteValue {

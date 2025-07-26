@@ -90,7 +90,8 @@ class WasmBindings {
       _sqlite3_initialize,
       _commit_hooks,
       _rollback_hooks,
-      _sqlite3_error_offset;
+      _sqlite3_error_offset,
+      _sqlite3_result_subtype;
 
   final Global _sqlite3_temp_directory;
 
@@ -171,7 +172,8 @@ class WasmBindings {
         _sqlite3_error_offset = instance.functions['sqlite3_error_offset'],
         _commit_hooks = instance.functions['dart_sqlite3_commits'],
         _rollback_hooks = instance.functions['dart_sqlite3_rollbacks'],
-        _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']!
+        _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']!,
+        _sqlite3_result_subtype = instance.functions['sqlite3_value_subtype']
 
   // Note when adding new fields: We remove functions from the wasm module that
   // aren't referenced in Dart. We consider a symbol used when it appears in a
@@ -451,6 +453,10 @@ class WasmBindings {
   void sqlite3_result_error(Pointer context, Pointer text, int length) {
     _sqlite3_result_error.callReturningVoid3(
         context.toJS, text.toJS, length.toJS);
+  }
+
+  void sqlite3_result_subtype(Pointer context, int subtype) {
+    _sqlite3_result_subtype?.callReturningVoid2(context.toJS, subtype.toJS);
   }
 
   int sqlite3_user_data(Pointer context) {

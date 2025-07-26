@@ -529,6 +529,13 @@ external void sqlite3_result_text(
 );
 
 @ffi.Native<
+    ffi.Void Function(ffi.Pointer<imp$1.sqlite3_context>, ffi.UnsignedInt)>()
+external void sqlite3_result_subtype(
+  ffi.Pointer<imp$1.sqlite3_context> ctx,
+  int subtype,
+);
+
+@ffi.Native<
     ffi.Int Function(
         ffi.Pointer<imp$1.sqlite3>,
         ffi.Pointer<imp$1.sqlite3_char>,

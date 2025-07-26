@@ -390,6 +390,7 @@ abstract interface class SqliteLibrary {
       ffi.Pointer<sqlite3_char> data,
       int length,
       ffi.Pointer<ffi.Void> destructor);
+  void sqlite3_result_subtype(ffi.Pointer<sqlite3_context> ctx, int subtype);
   int sqlite3_create_collation_v2(
       ffi.Pointer<sqlite3> arg0,
       ffi.Pointer<sqlite3_char> zName,
