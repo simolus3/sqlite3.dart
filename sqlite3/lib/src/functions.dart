@@ -1,3 +1,6 @@
+/// @docImport 'dart:typed_data';
+library;
+
 import 'package:meta/meta.dart';
 
 /// A filter function without any arguments.
@@ -153,14 +156,38 @@ final class AllowedArgumentCount {
   const AllowedArgumentCount.any() : allowedArgs = -1;
 }
 
-abstract interface class SqliteArguments implements List<Object?> {}
+/// Arguments passed to a user-defined SQLite function.
+///
+/// Arguments are represented as a regular [List] of Dart [Object]s of the
+/// following types: [int], [double], [String], [Null], [Uint8List].
+///
+/// In addition, the [subtypeOf] method can be used to obtain the
+/// [subtype](https://sqlite.org/c3ref/value_subtype.html) of data passed to the
+/// function. To use [subtypeOf], the `subtype: true` parameter should be set
+/// when registering the function.
+/// {@category common}
+abstract interface class SqliteArguments implements List<Object?> {
+  /// Returns the [subtype](https://sqlite.org/c3ref/value_subtype.html) of an
+  /// argument passed to the function.
+  int subtypeOf(int argumentIndex);
+}
 
 /// A value that will be passed to SQLite as a return value with an additional
 /// subtype (encoded as a byte value) attached to it.
 ///
+/// For functions that may return this value, the `subtype: true` parameter
+/// should be set when registering the function.
+///
 /// For more information, see [Setting The Subtype Of An SQL Function](https://sqlite.org/c3ref/result_subtype.html).
-extension type SubtypedValue._((Object?, int) info) {
-  factory SubtypedValue(Object value, int subtype) {
+/// {@category common}
+extension type SubtypedValue._((Object?, int) _info) {
+  factory SubtypedValue(Object? value, int subtype) {
     return SubtypedValue._((value, subtype));
   }
+
+  /// The underlying value to return.
+  Object? get originalValue => _info.$1;
+
+  /// The configured subtype of the value.
+  int get subtype => _info.$2;
 }

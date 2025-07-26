@@ -609,6 +609,11 @@ final class WasmValue extends RawSqliteValue {
   int sqlite3_value_type() {
     return bindings.sqlite3_value_type(value);
   }
+
+  @override
+  int sqlite3_value_subtype() {
+    return bindings.sqlite3_value_subtype(value);
+  }
 }
 
 class WasmValueList extends ListBase<WasmValue> {

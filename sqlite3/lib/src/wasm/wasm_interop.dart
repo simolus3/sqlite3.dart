@@ -91,7 +91,8 @@ class WasmBindings {
       _commit_hooks,
       _rollback_hooks,
       _sqlite3_error_offset,
-      _sqlite3_result_subtype;
+      _sqlite3_result_subtype,
+      _sqlite3_value_subtype;
 
   final Global _sqlite3_temp_directory;
 
@@ -173,7 +174,8 @@ class WasmBindings {
         _commit_hooks = instance.functions['dart_sqlite3_commits'],
         _rollback_hooks = instance.functions['dart_sqlite3_rollbacks'],
         _sqlite3_temp_directory = instance.globals['sqlite3_temp_directory']!,
-        _sqlite3_result_subtype = instance.functions['sqlite3_value_subtype']
+        _sqlite3_result_subtype = instance.functions['sqlite3_result_subtype'],
+        _sqlite3_value_subtype = instance.functions['sqlite3_value_subtype']
 
   // Note when adding new fields: We remove functions from the wasm module that
   // aren't referenced in Dart. We consider a symbol used when it appears in a
@@ -401,6 +403,10 @@ class WasmBindings {
 
   int sqlite3_value_type(Pointer value) {
     return _sqlite3_value_type.callReturningInt(value.toJS);
+  }
+
+  int sqlite3_value_subtype(Pointer value) {
+    return _sqlite3_value_subtype?.callReturningInt(value.toJS) ?? 0;
   }
 
   JsBigInt sqlite3_value_int64(Pointer value) {

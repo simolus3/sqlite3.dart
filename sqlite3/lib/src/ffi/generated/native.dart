@@ -373,6 +373,11 @@ external int sqlite3_value_bytes(
   ffi.Pointer<imp$1.sqlite3_value> value,
 );
 
+@ffi.Native<ffi.UnsignedInt Function(ffi.Pointer<imp$1.sqlite3_value>)>()
+external int sqlite3_value_subtype(
+  ffi.Pointer<imp$1.sqlite3_value> value,
+);
+
 @ffi.Native<
     ffi.Int Function(
         ffi.Pointer<imp$1.sqlite3>,

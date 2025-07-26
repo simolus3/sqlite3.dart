@@ -1,3 +1,9 @@
+## 2.8.0
+
+- Add the `SubtypedValue` extension type to allow returning values with a subtype.
+- Add the `subtypeOf` method to the `SqliteArguments` interface passed to user-defined
+  functions. It returns the subtype assigned to an argument.
+
 ## 2.7.7
 
 - `jsonb` codec: Refuse to encode NaN values since recent SQLite versions

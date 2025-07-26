@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:sqlite3/common.dart';
@@ -444,6 +445,47 @@ void testDatabase(
           expect(stmt.select(), [
             {'result': 'hello from Dart'}
           ]);
+        });
+
+        test('can return subtypes', () {
+          const int $J = 0x4A;
+          database.createFunction(
+            functionName: 'my_function',
+            function: (_) => SubtypedValue(json.encode({'hello': 'dart'}), $J),
+            subtype: true,
+          );
+
+          final stmt = database
+              .prepare("SELECT json_object('foo', my_function()) AS result");
+
+          expect(stmt.select(), [
+            {
+              // Importantly, the returned JSON object should be embedded
+              // directly (instead of being a string) because we're including
+              // the JSON subtype.
+              'result': json.encode({
+                'foo': {'hello': 'dart'}
+              })
+            }
+          ]);
+        });
+
+        test('can read subtypes', () {
+          database.createFunction(
+            functionName: 'dart_get_subtype',
+            function: (args) {
+              return switch (args.subtypeOf(0)) {
+                0 => null,
+                final other => String.fromCharCode(other)
+              };
+            },
+            argumentCount: const AllowedArgumentCount(1),
+            subtype: true,
+          );
+
+          final [row] =
+              database.select('SELECT dart_get_subtype(json_object()) AS r');
+          expect(row, {'r': 'J'});
         });
       });
 

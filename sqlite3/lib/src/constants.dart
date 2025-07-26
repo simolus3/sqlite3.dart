@@ -529,6 +529,9 @@ final class SqlFunctionFlag {
   ///The SQLITE_SUBTYPE flag indicates to SQLite that a function may call sqlite3_value_subtypestatic const int ) to inspect the sub-types of its arguments.
   static const SQLITE_SUBTYPE = 0x000100000;
 
+  /// The SQLITE_RESULT_SUBTYPE flag indicates to SQLite that a function might call sqlite3_result_subtype to cause a sub-type to be associated with its result.
+  static const SQLITE_RESULT_SUBTYPE = 0x001000000;
+
   ///The SQLITE_INNOCUOUS flag means that the function is unlikely to cause problems even if misused.
   static const SQLITE_INNOCUOUS = 0x000200000;
 }

@@ -185,9 +185,10 @@ base class DatabaseImplementation implements CommonDatabase {
     AllowedArgumentCount argumentCount = const AllowedArgumentCount.any(),
     bool deterministic = false,
     bool directOnly = true,
+    bool subtype = false,
   }) {
     final name = _validateAndEncodeFunctionName(functionName);
-    final textRep = eTextRep(deterministic, directOnly);
+    final textRep = eTextRep(deterministic, directOnly, subtype);
     int result;
 
     AggregateContext<V> readOrCreateContext(RawSqliteContext raw) {
@@ -251,11 +252,12 @@ base class DatabaseImplementation implements CommonDatabase {
     AllowedArgumentCount argumentCount = const AllowedArgumentCount.any(),
     bool deterministic = false,
     bool directOnly = true,
+    bool subtype = false,
   }) {
     final returnCode = database.sqlite3_create_function_v2(
       functionName: _validateAndEncodeFunctionName(functionName),
       nArg: argumentCount.allowedArgs,
-      eTextRep: eTextRep(deterministic, directOnly),
+      eTextRep: eTextRep(deterministic, directOnly, subtype),
       xFunc: (context, args) {
         context.runWithArgsAndSetResult(function, args);
       },
@@ -271,7 +273,7 @@ base class DatabaseImplementation implements CommonDatabase {
       {required String name, required CollatingFunction function}) {
     final result = database.sqlite3_create_collation_v2(
       collationName: _validateAndEncodeFunctionName(name),
-      eTextRep: eTextRep(false, false),
+      eTextRep: eTextRep(false, false, false),
       collation: function,
     );
 
@@ -486,7 +488,7 @@ base class DatabaseImplementation implements CommonDatabase {
 
 extension on RawSqliteContext {
   void runWithArgsAndSetResult(
-      Object? Function(List<Object?>) function, List<RawSqliteValue> args) {
+      Object? Function(SqliteArguments) function, List<RawSqliteValue> args) {
     final dartArgs = ValueList(args);
     try {
       setResult(function(dartArgs));
@@ -513,12 +515,18 @@ extension on RawSqliteContext {
         bool() => sqlite3_result_int64(result ? 1 : 0),
         String() => sqlite3_result_text(result),
         List<int>() => sqlite3_result_blob64(result),
+        SubtypedValue() => setSubtypedResult(result),
         _ => throw ArgumentError.value(result, 'result', 'Unsupported type')
       };
+
+  void setSubtypedResult(SubtypedValue result) {
+    setResult(result.originalValue);
+    sqlite3_result_subtype(result.subtype);
+  }
 }
 
 /// An unmodifiable Dart list backed by native sqlite3 values.
-class ValueList extends ListBase<Object?> {
+class ValueList extends ListBase<Object?> implements SqliteArguments {
   final List<RawSqliteValue> rawValues;
   final List<Object?> _cachedCopies;
 
@@ -572,6 +580,13 @@ class ValueList extends ListBase<Object?> {
   @override
   void operator []=(int index, Object? value) {
     throw ArgumentError('The argument list is unmodifiable');
+  }
+
+  @override
+  int subtypeOf(int argumentIndex) {
+    final value = rawValues[RangeError.checkValidIndex(
+        argumentIndex, this, 'argumentIndex', length)];
+    return value.sqlite3_value_subtype();
   }
 }
 

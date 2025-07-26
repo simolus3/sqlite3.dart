@@ -327,6 +327,7 @@ abstract interface class SqliteLibrary {
   ffi.Pointer<sqlite3_char> sqlite3_value_text(
       ffi.Pointer<sqlite3_value> value);
   int sqlite3_value_bytes(ffi.Pointer<sqlite3_value> value);
+  int sqlite3_value_subtype(ffi.Pointer<sqlite3_value> value);
   int sqlite3_create_function_v2(
       ffi.Pointer<sqlite3> db,
       ffi.Pointer<sqlite3_char> zFunctionName,

@@ -198,6 +198,11 @@ abstract class CommonDatabase {
   /// be invoked when opening a malicious database file. sqlite3 recommends
   /// this flag for all application-defined functions, especially if they have
   /// side-effects or if they could potentially leak sensitive information.
+  ///
+  /// The [subtype] flag (defaults to `false`) indicates that the function can
+  /// receive subtypes in arguments (meaning that [SqliteArguments.subtypeOf]
+  /// can be used) and that the function can return values with subtypes (by
+  /// returning an [SubtypedValue]).
   /// {@endtemplate}
   ///
   /// The [function] can be any Dart closure, it's not restricted to top-level
@@ -213,6 +218,7 @@ abstract class CommonDatabase {
     AllowedArgumentCount argumentCount = const AllowedArgumentCount.any(),
     bool deterministic = false,
     bool directOnly = true,
+    bool subtype = false,
   });
 
   /// Creates an application-defined aggregate function that can be used from
@@ -235,6 +241,7 @@ abstract class CommonDatabase {
     AllowedArgumentCount argumentCount = const AllowedArgumentCount.any(),
     bool deterministic = false,
     bool directOnly = true,
+    bool subtype = false,
   });
 
   /// Checks whether the connection is in autocommit mode. The connection is in

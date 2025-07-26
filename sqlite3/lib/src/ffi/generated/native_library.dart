@@ -324,6 +324,11 @@ final class NativeAssetsLibrary implements SqliteLibrary {
   }
 
   @override
+  int sqlite3_value_subtype(ffi.Pointer<sqlite3_value> value) {
+    return native.sqlite3_value_subtype(value);
+  }
+
+  @override
   int sqlite3_create_function_v2(
       ffi.Pointer<sqlite3> db,
       ffi.Pointer<sqlite3_char> zFunctionName,

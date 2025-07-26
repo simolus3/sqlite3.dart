@@ -944,6 +944,21 @@ final class NativeLibrary implements imp$1.SqliteLibrary {
   late final _sqlite3_value_bytes = _sqlite3_value_bytesPtr
       .asFunction<int Function(ffi.Pointer<imp$1.sqlite3_value>)>();
 
+  int sqlite3_value_subtype(
+    ffi.Pointer<imp$1.sqlite3_value> value,
+  ) {
+    return _sqlite3_value_subtype(
+      value,
+    );
+  }
+
+  late final _sqlite3_value_subtypePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.UnsignedInt Function(
+              ffi.Pointer<imp$1.sqlite3_value>)>>('sqlite3_value_subtype');
+  late final _sqlite3_value_subtype = _sqlite3_value_subtypePtr
+      .asFunction<int Function(ffi.Pointer<imp$1.sqlite3_value>)>();
+
   int sqlite3_create_function_v2(
     ffi.Pointer<imp$1.sqlite3> db,
     ffi.Pointer<imp$1.sqlite3_char> zFunctionName,

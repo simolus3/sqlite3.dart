@@ -201,4 +201,5 @@ abstract base class RawSqliteValue {
   double sqlite3_value_double();
   String sqlite3_value_text();
   Uint8List sqlite3_value_blob();
+  int sqlite3_value_subtype();
 }

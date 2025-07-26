@@ -88,6 +88,7 @@ int sqlite3_value_type(sqlite3_value *value);
 int64_t sqlite3_value_int64(sqlite3_value *value);
 sqlite3_char *sqlite3_value_text(sqlite3_value *value);
 int sqlite3_value_bytes(sqlite3_value *value);
+unsigned int sqlite3_value_subtype(sqlite3_value *value);
 
 // Functions
 
