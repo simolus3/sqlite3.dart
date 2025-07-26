@@ -118,7 +118,7 @@ void sqlite3_result_int64(sqlite3_context *ctx, int64_t result);
 void sqlite3_result_null(sqlite3_context *ctx);
 void sqlite3_result_text(sqlite3_context *ctx, sqlite3_char *data, int length,
                          void *destructor);
-void sqlite3_result_subtype(sqlite3_context* ctx, unsigned int subtype);
+void sqlite3_result_subtype(sqlite3_context *ctx, unsigned int subtype);
 
 // Collations
 int sqlite3_create_collation_v2(sqlite3 *, sqlite3_char *zName, int eTextRep,
