@@ -450,13 +450,13 @@ void testDatabase(
         test('can return subtypes', () {
           const int $J = 0x4A;
           database.createFunction(
-            functionName: 'my_function',
+            functionName: 'dart_json_function',
             function: (_) => SubtypedValue(json.encode({'hello': 'dart'}), $J),
             subtype: true,
           );
 
-          final stmt = database
-              .prepare("SELECT json_object('foo', my_function()) AS result");
+          final stmt = database.prepare(
+              "SELECT json_object('foo', dart_json_function()) AS result");
 
           expect(stmt.select(), [
             {
