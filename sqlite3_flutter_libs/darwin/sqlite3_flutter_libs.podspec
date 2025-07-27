@@ -26,4 +26,5 @@ Pod::Spec.new do |s|
     s.dependency 'sqlite3/rtree'
     s.dependency 'sqlite3/dbstatvtab'
     s.dependency 'sqlite3/math'
+    s.dependency 'sqlite3/session'
 end

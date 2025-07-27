@@ -1,3 +1,7 @@
+## 0.5.38
+
+- Enable pre-update hooks and the session extension.
+
 ## 0.5.37
 
 - Upgrade sqlite to version `3.50.3`.

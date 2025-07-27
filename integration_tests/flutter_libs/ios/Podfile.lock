@@ -15,6 +15,8 @@ PODS:
     - sqlite3/common
   - sqlite3/rtree (3.50.3):
     - sqlite3/common
+  - sqlite3/session (3.50.3):
+    - sqlite3/common
   - sqlite3/spellfix1 (3.50.3):
     - sqlite3/common
   - sqlite3_flutter_libs (0.0.1):
@@ -26,6 +28,7 @@ PODS:
     - sqlite3/math
     - sqlite3/perf-threadsafe
     - sqlite3/rtree
+    - sqlite3/session
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
@@ -49,7 +52,7 @@ SPEC CHECKSUMS:
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
   sqlite3: 83105acd294c9137c026e2da1931c30b4588ab81
-  sqlite3_flutter_libs: ce0522d143cee6ef5e16587acfce8f476316e005
+  sqlite3_flutter_libs: 616267f2fca40e9c6af8c5d82324e05667040b6e
 
 PODFILE CHECKSUM: 6e2ae03bcd74fedeb24d86830a8bb8e09fba08f9
 
