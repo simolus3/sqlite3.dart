@@ -109,6 +109,7 @@ void testSession(
     database.execute('INSERT INTO entries (content) VALUES (?);', ['a']);
     final changeset = session.changeset();
     session.delete();
+    expect(changeset, hasLength(1));
 
     database.execute('DELETE FROM entries');
     changeset.applyTo(database);
@@ -148,9 +149,9 @@ void testSession(
       isOp(
           operation: SqliteUpdateKind.update,
           oldValues: [1, 'b'],
-          newValues: [1, 'a'])
+          newValues: [null, 'a'])
     ]);
-  }, skip: "TODO: Figure out what I'm dong wrong");
+  });
 }
 
 TypeMatcher<ChangesetOperation> isOp({

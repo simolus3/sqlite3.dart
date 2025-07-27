@@ -716,7 +716,7 @@ final class FfiChangesetIterator extends RawChangesetIterator
   }
 
   @override
-  SqliteResult<RawSqliteValue> sqlite3changeset_new(int columnNumber) {
+  SqliteResult<RawSqliteValue?> sqlite3changeset_new(int columnNumber) {
     final outValue = allocate<Pointer<sqlite3_value>>();
     final result = _library.sqlite3changeset_new(
       iterator,
@@ -726,7 +726,8 @@ final class FfiChangesetIterator extends RawChangesetIterator
     final value = outValue.value;
     outValue.free();
 
-    return SqliteResult(result, FfiValue(_library, value));
+    return SqliteResult(
+        result, value.isNullPointer ? null : FfiValue(_library, value));
   }
 
   @override
@@ -735,7 +736,7 @@ final class FfiChangesetIterator extends RawChangesetIterator
   }
 
   @override
-  SqliteResult<RawSqliteValue> sqlite3changeset_old(int columnNumber) {
+  SqliteResult<RawSqliteValue?> sqlite3changeset_old(int columnNumber) {
     final outValue = allocate<Pointer<sqlite3_value>>();
     final result = _library.sqlite3changeset_old(
       iterator,
@@ -745,7 +746,8 @@ final class FfiChangesetIterator extends RawChangesetIterator
     final value = outValue.value;
     outValue.free();
 
-    return SqliteResult(result, FfiValue(_library, value));
+    return SqliteResult(
+        result, value.isNullPointer ? null : FfiValue(_library, value));
   }
 
   @override
@@ -1240,7 +1242,7 @@ final class FfiValue extends RawSqliteValue {
   final SqliteLibrary bindings;
   final Pointer<sqlite3_value> value;
 
-  FfiValue(this.bindings, this.value);
+  FfiValue(this.bindings, this.value) : assert(!value.isNullPointer);
 
   @override
   Uint8List sqlite3_value_blob() {

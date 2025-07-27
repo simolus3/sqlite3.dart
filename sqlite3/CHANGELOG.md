@@ -1,5 +1,6 @@
 ## 2.8.0
 
+- Support creating changesets and patchsets via the session extension.
 - Add the `SubtypedValue` extension type to allow returning values with a subtype.
 - Add the `subtypeOf` method to the `SqliteArguments` interface passed to user-defined
   functions. It returns the subtype assigned to an argument.

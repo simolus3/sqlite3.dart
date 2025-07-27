@@ -875,23 +875,24 @@ final class WasmChangesetIterator extends RawChangesetIterator {
   @override
   int sqlite3changeset_next() => _bindings.sqlite3changeset_next(pointer);
 
-  SqliteResult<RawSqliteValue> _extractValue(
+  SqliteResult<RawSqliteValue?> _extractValue(
       int Function(Pointer, int, Pointer) extract, int index) {
     final outValue = _bindings.malloc(WasmBindings.pointerSize);
     final resultCode = extract(pointer, index, outValue);
     final value = _bindings.memory.int32ValueOfPointer(outValue);
     _bindings.free(outValue);
 
-    return SqliteResult(resultCode, WasmValue(_bindings, value));
+    return SqliteResult(
+        resultCode, value != 0 ? WasmValue(_bindings, value) : null);
   }
 
   @override
-  SqliteResult<RawSqliteValue> sqlite3changeset_old(int columnNumber) {
+  SqliteResult<RawSqliteValue?> sqlite3changeset_old(int columnNumber) {
     return _extractValue(_bindings.sqlite3changeset_old, columnNumber);
   }
 
   @override
-  SqliteResult<RawSqliteValue> sqlite3changeset_new(int columnNumber) {
+  SqliteResult<RawSqliteValue?> sqlite3changeset_new(int columnNumber) {
     return _extractValue(_bindings.sqlite3changeset_new, columnNumber);
   }
 

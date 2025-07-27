@@ -138,7 +138,6 @@ extension type SqliteExports(JSObject raw) implements JSObject {
   external JSFunction? get sqlite3changeset_op;
   external JSFunction? get sqlite3changeset_old;
   external JSFunction? get sqlite3changeset_new;
-  external JSFunction? get sqlite3changeset_apply;
   external JSFunction? get sqlite3changeset_invert;
   external JSFunction? get sqlite3session_patchset;
   external JSFunction? get sqlite3session_changeset;
@@ -167,4 +166,5 @@ extension type SqliteExports(JSObject raw) implements JSObject {
   external JSFunction? get dart_sqlite3_rollbacks;
   external JSFunction? get dart_sqlite3_create_collation;
   external JSFunction? get dart_sqlite3_db_config_int;
+  external JSFunction? get dart_sqlite3changeset_apply;
 }

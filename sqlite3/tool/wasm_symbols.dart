@@ -102,5 +102,5 @@ const unstable = {
   'sqlite3changeset_op',
   'sqlite3changeset_old',
   'sqlite3changeset_new',
-  'sqlite3changeset_apply',
+  'dart_sqlite3changeset_apply',
 };

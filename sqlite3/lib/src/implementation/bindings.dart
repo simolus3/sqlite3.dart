@@ -19,7 +19,7 @@ abstract base class RawChangesetIterator {
   //   int iVal,                       /* Column number */
   //   sqlite3_value **ppValue         /* OUT: New value (or NULL pointer) */
   // );
-  SqliteResult<RawSqliteValue> sqlite3changeset_new(int columnNumber);
+  SqliteResult<RawSqliteValue?> sqlite3changeset_new(int columnNumber);
 
   // int sqlite3changeset_next(sqlite3_changeset_iter *pIter);
   int sqlite3changeset_next();
@@ -29,7 +29,7 @@ abstract base class RawChangesetIterator {
   //   int iVal,                       /* Column number */
   //   sqlite3_value **ppValue         /* OUT: Old value (or NULL pointer) */
   // );
-  SqliteResult<RawSqliteValue> sqlite3changeset_old(int columnNumber);
+  SqliteResult<RawSqliteValue?> sqlite3changeset_old(int columnNumber);
 
   // int sqlite3changeset_op(
   //   sqlite3_changeset_iter *pIter,  /* Iterator object */

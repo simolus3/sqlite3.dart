@@ -407,13 +407,13 @@ class WasmBindings {
   }
 
   int sqlite3changeset_new(Pointer iterator, int iVal, Pointer outValue) {
-    return sqlite3.sqlite3changeset_apply!
+    return sqlite3.sqlite3changeset_new!
         .callReturningInt3(iterator.toJS, iVal.toJS, outValue.toJS);
   }
 
   int dart_sqlite3changeset_apply(
       Pointer db, int length, Pointer changeset, Pointer context, int filter) {
-    return sqlite3.sqlite3changeset_apply!.callReturningInt5(
+    return sqlite3.dart_sqlite3changeset_apply!.callReturningInt5(
         db.toJS, length.toJS, changeset.toJS, context.toJS, filter.toJS);
   }
 

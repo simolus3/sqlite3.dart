@@ -23,7 +23,7 @@ jobs:
       id: cache_sqlite_build
       with:
         path: sqlite/out
-        key: sqlite-v4-${{ runner.os }}-${{ env.SQLITE_VERSION }}
+        key: sqlite-v5-${{ runner.os }}-${{ env.SQLITE_VERSION }}
     - name: Compile sqlite3 on Linux
       if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Linux'
       run: |
@@ -32,7 +32,7 @@ jobs:
         curl https://sqlite.org/$SQLITE_YEAR/sqlite-autoconf-$SQLITE_VERSION.tar.gz --output sqlite.tar.gz
         tar zxvf sqlite.tar.gz
         cd sqlite-autoconf-$SQLITE_VERSION
-        ./configure
+        ./configure --session
         make -j
         mkdir ../out
         cp sqlite3 ../out
@@ -46,7 +46,7 @@ jobs:
         unzip sqlite.zip
 
         cd sqlite-amalgamation-$SQLITE_VERSION
-        gcc -DSQLITE_OMIT_AUTOINIT=1 -c -fPIC sqlite3.c -o sqlite3.o
+        gcc -DSQLITE_OMIT_AUTOINIT=1 -DSQLITE_ENABLE_SESSION -DSQLITE_ENABLE_PREUPDATE_HOOK -c -fPIC sqlite3.c -o sqlite3.o
         gcc -shared sqlite3.o -o libsqlite3.so
         mkdir ../out/without_autoinit
         cp libsqlite3.so ../out/without_autoinit
@@ -58,7 +58,7 @@ jobs:
         curl https://sqlite.org/$SQLITE_YEAR/sqlite-autoconf-$SQLITE_VERSION.tar.gz --output sqlite.tar.gz
         tar zxvf sqlite.tar.gz
         cd sqlite-autoconf-$SQLITE_VERSION
-        ./configure
+        ./configure --session
         make -j
         mkdir ../out
         cp sqlite3 ../out
@@ -74,7 +74,7 @@ jobs:
         curl https://sqlite.org/$Env:SQLITE_YEAR/sqlite-autoconf-$Env:SQLITE_VERSION.tar.gz --output sqlite.tar.gz
         tar zxvf sqlite.tar.gz
         cd sqlite-autoconf-$Env:SQLITE_VERSION
-        ./configure
+        ./configure --session
         nmake /f Makefile.msc sqlite3.c
         "#define SQLITE_API __declspec(dllexport)" | Out-File -FilePath sqlite3e.c
         '#include "sqlite3.c"' | Out-File -FilePath sqlite3e.c -Append
@@ -217,8 +217,8 @@ jobs:
 
     - name: Web tests
       run: |
-        curl https://simon-public.fsn1.your-objectstorage.com/assets/sqlite3/2.8.0-dev.0/sqlite3.wasm -o example/web/sqlite3.wasm
-        curl https://simon-public.fsn1.your-objectstorage.com/assets/sqlite3/2.8.0-dev.0/sqlite3mc.wasm -o example/web/sqlite3mc.wasm
+        curl https://simon-public.fsn1.your-objectstorage.com/assets/sqlite3/2.8.0-dev.1/sqlite3.wasm -o example/web/sqlite3.wasm
+        curl https://simon-public.fsn1.your-objectstorage.com/assets/sqlite3/2.8.0-dev.1/sqlite3mc.wasm -o example/web/sqlite3mc.wasm
         dart test -P web -r expanded
       # If browsers behave differently on different platforms, surely that's not our fault...
       # So, only run browser tests on Linux to be faster.
