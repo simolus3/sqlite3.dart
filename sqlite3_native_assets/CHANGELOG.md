@@ -1,3 +1,7 @@
+## 0.0.8
+
+- Include session extension by default.
+
 ## 0.0.7
 
 - Update to sqlite 3.50.3

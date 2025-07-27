@@ -12,7 +12,7 @@ void main() {
   final db = sqlite3.openInMemory();
   final db2 = sqlite3.openInMemory();
 
-  final session = sqlite3.createSession(db, 'main');
+  final session = Session(db);
 
   print('session: ${session.runtimeType}');
 
@@ -48,12 +48,11 @@ void main() {
   // print('changeset: ${changeset.lengthInBytes} bytes');
 
   final changeset = session.patchset();
-  print('patchset: ${changeset.lengthInBytes} bytes');
+  print('patchset: ${changeset.bytes.length} bytes');
 
   // apply changes
-  sqlite3.sessionChangesetApply(
+  changeset.applyTo(
     db2,
-    changeset,
     // conflict: (ctx, eConflict, iter) {
     //   print('conflict: $eConflict');
     //   return ApplyChangesetRule.omit;
@@ -65,7 +64,7 @@ void main() {
   );
 
   // save to ./changeset.bin
-  File('./changeset.bin').writeAsBytes(changeset);
+  File('./changeset.bin').writeAsBytes(changeset.bytes);
 
   // query the database using a simple select statement
   final result = db2.select('SELECT * FROM artists');
