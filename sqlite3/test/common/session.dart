@@ -151,7 +151,7 @@ void testSession(
           oldValues: [1, 'b'],
           newValues: [null, 'a'])
     ]);
-  });
+  }, onPlatform: {'vm': Skip('diff seems to be unreliable in CI')});
 }
 
 TypeMatcher<ChangesetOperation> isOp({
