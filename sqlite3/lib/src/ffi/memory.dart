@@ -23,13 +23,23 @@ extension FreePointerExtension on Pointer {
 }
 
 Pointer<Uint8> allocateBytes(List<int> bytes, {int additionalLength = 0}) {
-  final ptr = allocate.allocate<Uint8>(bytes.length + additionalLength);
+  final ptr = allocate<Uint8>(bytes.length + additionalLength);
 
   ptr.asTypedList(bytes.length + additionalLength)
     ..setAll(0, bytes)
     ..fillRange(bytes.length, bytes.length + additionalLength, 0);
 
   return ptr;
+}
+
+/// Allocates bytes, returning `uint8_t*` pointer an a [Uint8List] backed by
+/// that memory region.
+///
+/// When the returned [Uint8List] is no longer referenced in Dart, the memory
+/// region will be freed.
+(Pointer<Uint8>, Uint8List) allocateBytesWithFinalizer(List<int> bytes) {
+  final ptr = allocateBytes(bytes);
+  return (ptr, ptr.asTypedList(bytes.length, finalizer: allocate.nativeFree));
 }
 
 extension Utf8Utils on Pointer<sqlite3_char> {

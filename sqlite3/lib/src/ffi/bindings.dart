@@ -170,7 +170,7 @@ final class FfiBindings extends RawSqliteBindings {
             Int Function(Pointer<Void>, Int, Pointer<sqlite3_changeset_iter>)>
         conflictImpl = (NativeCallable.isolateLocal(
       (Pointer<Void> ctx, int eConflict, Pointer<sqlite3_changeset_iter> p) {
-        final iter = FfiChangesetIterator(this, p, owned: false);
+        final iter = FfiChangesetIterator(this, p, ownsIterator: false);
         return conflict(eConflict, iter);
       },
       exceptionalReturn: 1,
@@ -193,7 +193,7 @@ final class FfiBindings extends RawSqliteBindings {
 
   @override
   RawChangesetIterator sqlite3changeset_start(Uint8List changeset) {
-    final asPtr = allocateBytes(changeset);
+    final (asPtr, region) = allocateBytesWithFinalizer(changeset);
     final iteratorOut = allocate<Pointer<sqlite3_changeset_iter>>();
 
     final result = bindings.bindings
@@ -206,8 +206,8 @@ final class FfiBindings extends RawSqliteBindings {
       throw createExceptionOutsideOfDatabase(this, result);
     }
 
-    // TODO: Deallocate asPtr when deallocated
-    return FfiChangesetIterator(this, iterator);
+    return FfiChangesetIterator(this, iterator,
+        ownsIterator: true, ownedChangesetBytes: region);
   }
 
   @override
@@ -696,13 +696,19 @@ final class FfiChangesetIterator extends RawChangesetIterator
   final FfiBindings bindings;
 
   final Pointer<sqlite3_changeset_iter> iterator;
-  final bool owned;
   final Object detachToken = Object();
+
+  /// An optional [Uint8List] backing the changeset we're iterating on with a
+  /// native finalizer attached to it.
+  ///
+  /// This ensures that, as the iterator is GCed, so is the changeset.
+  final Uint8List? ownedChangesetBytes;
 
   SqliteLibrary get _library => bindings.bindings.bindings;
 
-  FfiChangesetIterator(this.bindings, this.iterator, {this.owned = true}) {
-    if (owned) {
+  FfiChangesetIterator(this.bindings, this.iterator,
+      {bool ownsIterator = true, this.ownedChangesetBytes}) {
+    if (ownsIterator) {
       bindings.bindings.changesetIteratorFinalize
           ?.attach(this, iterator.cast(), detach: detachToken);
     }
