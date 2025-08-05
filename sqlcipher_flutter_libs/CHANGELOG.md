@@ -1,3 +1,7 @@
+## 0.6.8
+
+- Update SQLCipher to version 4.10.0.
+
 ## 0.6.7
 
 - Update SQLCipher to version 4.9.0.
