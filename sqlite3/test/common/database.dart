@@ -747,6 +747,20 @@ void testDatabase(
       expect(database.updates.listen(null).asFuture(null), completes);
       database.dispose();
     });
+
+    test('can listen synchronously', () async {
+      var notifications = 0;
+      var asyncNotifications = 0;
+
+      database.updatesSync.listen((_) => notifications++);
+      database.updates.listen((_) => asyncNotifications++);
+
+      database.execute('INSERT INTO tbl DEFAULT VALUES');
+      expect(notifications, 1);
+      expect(asyncNotifications, 0);
+      await pumpEventQueue();
+      expect(asyncNotifications, 1);
+    });
   });
 
   group('rollback stream', () {

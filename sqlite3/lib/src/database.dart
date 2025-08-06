@@ -51,7 +51,20 @@ abstract class CommonDatabase {
   ///
   /// See also:
   ///  - [Data Change Notification Callbacks](https://www.sqlite.org/c3ref/update_hook.html)
+  ///  - [updatesSync], a synchronous stream.
   Stream<SqliteUpdate> get updates;
+
+  /// A _synchronous_ stream of data changes happening on this database.
+  ///
+  /// This stream behaves similarly to [updates], except that listeners are
+  /// invoked synchronously (before the update completes).
+  ///
+  /// The purpose of this stream is to avoid a large internal buffer when a
+  /// transaction updates a large amount of rows - instead, the updates can be
+  /// handled one-by-one with this.
+  ///
+  /// It is crucial that listeners on this stream don't modify the database.
+  Stream<SqliteUpdate> get updatesSync;
 
   /// The [VoidPredicate] that is used to filter out transactions before commiting.
   ///
