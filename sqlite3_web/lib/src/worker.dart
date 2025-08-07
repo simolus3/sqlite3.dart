@@ -354,8 +354,6 @@ final class _ClientConnection extends ProtocolChannel
     return SimpleSuccessResponse(response: null, requestId: request.requestId);
   }
 
-  void handleStreamCancelRequest() {}
-
   @override
   void handleNotification(Notification notification) {
     // There aren't supposed to be any notifications from the client.

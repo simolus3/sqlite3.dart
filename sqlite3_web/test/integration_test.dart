@@ -209,6 +209,8 @@ final class _TestConfiguration {
         );
         await driver.assertFile(false);
 
+        expect(await driver.customRequest(), 42);
+
         await driver.execute('CREATE TABLE foo (bar TEXT);');
         var events = await driver.countEvents();
         expect(events.updates, 0);
