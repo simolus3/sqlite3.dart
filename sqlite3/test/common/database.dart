@@ -747,6 +747,20 @@ void testDatabase(
       expect(database.updates.listen(null).asFuture(null), completes);
       database.dispose();
     });
+
+    test('can listen synchronously', () async {
+      var notifications = 0;
+      var asyncNotifications = 0;
+
+      database.updatesSync.listen((_) => notifications++);
+      database.updates.listen((_) => asyncNotifications++);
+
+      database.execute('INSERT INTO tbl DEFAULT VALUES');
+      expect(notifications, 1);
+      expect(asyncNotifications, 0);
+      await pumpEventQueue();
+      expect(asyncNotifications, 1);
+    });
   });
 
   group('rollback stream', () {
@@ -867,6 +881,16 @@ void testDatabase(
       database.execute('BEGIN TRANSACTION;');
       database.execute("INSERT INTO tbl VALUES ('', 1);");
       database.execute("COMMIT;");
+    });
+
+    test('is async', () async {
+      var commits = 0;
+      database.commits.listen((_) => commits++);
+
+      database.execute("INSERT INTO tbl VALUES ('', 1);");
+      expect(commits, 0);
+      await pumpEventQueue();
+      expect(commits, 1);
     });
 
     test('does not emit on implicit commit with commitFilter false', () async {

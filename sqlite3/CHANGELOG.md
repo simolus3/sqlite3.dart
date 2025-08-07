@@ -1,3 +1,7 @@
+## 2.9.0
+
+- Add `CommonDatabase.updatesSync`, a synchronous variant of the updates stream.
+
 ## 2.8.0
 
 - Support creating changesets and patchsets via the session extension.

@@ -210,6 +210,13 @@ class TestWebDriver {
     }
   }
 
+  Future<int> customRequest() async {
+    final res =
+        await driver.executeAsync('custom_request("", arguments[0])', []);
+
+    return res as int;
+  }
+
   Future<void> flush() async {
     final result = await driver.executeAsync('flush("", arguments[0])', []);
     if (result != true) {

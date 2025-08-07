@@ -133,6 +133,9 @@ void main() {
 
     return null;
   });
+  _addCallbackForWebDriver('custom_request', (arg) async {
+    return database!.customRequest(null);
+  });
 
   document.getElementById('selfcheck')?.onClick.listen((event) async {
     print('starting');
@@ -173,6 +176,9 @@ WebSqlite initializeSqlite() {
     worker: workerUri,
     wasmModule: sqlite3WasmUri,
     controller: ExampleController(isInWorker: false),
+    handleCustomRequest: (request) async {
+      return 21.toJS;
+    },
   );
 }
 

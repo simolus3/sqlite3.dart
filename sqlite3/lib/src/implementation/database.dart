@@ -466,6 +466,9 @@ base class DatabaseImplementation implements CommonDatabase {
   Stream<SqliteUpdate> get updates => _updatesHandler().stream;
 
   @override
+  Stream<SqliteUpdate> get updatesSync => _updatesHandler().syncStream;
+
+  @override
   Stream<void> get rollbacks => _rollbackHandler().stream;
 
   @override
@@ -589,7 +592,8 @@ final class DatabaseConfigImplementation extends DatabaseConfig {
 /// commits into rollbacks. This is represented by [_syncCallback].
 final class _StreamHandlers<T, SyncCallback> {
   final DatabaseImplementation _database;
-  final List<MultiStreamController<T>> _asyncListeners = [];
+  final List<({MultiStreamController<T> controller, bool sync})>
+      _asyncListeners = [];
   SyncCallback? _syncCallback;
 
   /// Registers a native callback on the database.
@@ -599,8 +603,10 @@ final class _StreamHandlers<T, SyncCallback> {
   final void Function() _unregister;
 
   Stream<T>? _stream;
+  Stream<T>? _syncStream;
 
-  Stream<T> get stream => _stream!;
+  Stream<T> get stream => _stream ??= _generateStream(false);
+  Stream<T> get syncStream => _syncStream ??= _generateStream(true);
 
   _StreamHandlers({
     required DatabaseImplementation database,
@@ -608,8 +614,10 @@ final class _StreamHandlers<T, SyncCallback> {
     required void Function() unregister,
   })  : _database = database,
         _register = register,
-        _unregister = unregister {
-    _stream = Stream.multi(
+        _unregister = unregister;
+
+  Stream<T> _generateStream(bool dispatchSynchronously) {
+    return Stream.multi(
       (newListener) {
         if (_database._isClosed) {
           newListener.close();
@@ -617,11 +625,11 @@ final class _StreamHandlers<T, SyncCallback> {
         }
 
         void addListener() {
-          _addAsyncListener(newListener);
+          _addAsyncListener(newListener, dispatchSynchronously);
         }
 
         void removeListener() {
-          _removeAsyncListener(newListener);
+          _removeAsyncListener(newListener, dispatchSynchronously);
         }
 
         newListener
@@ -653,17 +661,17 @@ final class _StreamHandlers<T, SyncCallback> {
     }
   }
 
-  void _addAsyncListener(MultiStreamController<T> listener) {
+  void _addAsyncListener(MultiStreamController<T> listener, bool sync) {
     final isFirstListener = !hasListener;
-    _asyncListeners.add(listener);
+    _asyncListeners.add((controller: listener, sync: sync));
 
     if (isFirstListener) {
       _register();
     }
   }
 
-  void _removeAsyncListener(MultiStreamController<T> listener) {
-    _asyncListeners.remove(listener);
+  void _removeAsyncListener(MultiStreamController<T> listener, bool sync) {
+    _asyncListeners.remove((controller: listener, sync: sync));
 
     if (!hasListener && !_database._isClosed) {
       _unregister();
@@ -672,13 +680,17 @@ final class _StreamHandlers<T, SyncCallback> {
 
   void deliverAsyncEvent(T event) {
     for (final listener in _asyncListeners) {
-      listener.add(event);
+      if (listener.sync) {
+        listener.controller.addSync(event);
+      } else {
+        listener.controller.add(event);
+      }
     }
   }
 
   void close() {
     for (final listener in _asyncListeners) {
-      listener.close();
+      listener.controller.close();
     }
     _syncCallback = null;
   }
