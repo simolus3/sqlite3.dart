@@ -123,8 +123,7 @@ abstract class ClientConnection {
   /// because the owning tab is closed.
   Future<void> get closed;
 
-  /// Sends a custom request __towards the client__. This is not currently
-  /// implemented.
+  /// Sends a custom request __towards the client__.
   Future<JSAny?> customRequest(JSAny? request);
 }
 
@@ -230,15 +229,21 @@ abstract class WebSqlite {
   /// The [controller] is used when connecting to a sqlite3 database without
   /// using workers. It should typically be the same implementation as the one
   /// passed to [workerEntrypoint].
+  ///
+  /// The optional [handleCustomRequest] function is invoked when the controller
+  /// sends a custom request to the client (via [ClientConnection.customRequest]).
+  /// If it's absent, the default is to throw an exception when called.
   static WebSqlite open({
     required Uri worker,
     required Uri wasmModule,
     DatabaseController? controller,
+    Future<JSAny?> Function(JSAny?)? handleCustomRequest,
   }) {
     return DatabaseClient(
       worker,
       wasmModule,
       controller ?? const _DefaultDatabaseController(),
+      handleCustomRequest,
     );
   }
 
@@ -253,9 +258,16 @@ abstract class WebSqlite {
   /// be valid as long as the original [Database] where [Database.additionalConnection]
   /// was called. This limitation does not exist for databases hosted by shared
   /// workers.
-  static Future<Database> connectToPort(SqliteWebEndpoint endpoint) {
-    final client =
-        DatabaseClient(Uri.base, Uri.base, const _DefaultDatabaseController());
+  ///
+  /// The optional [handleCustomRequest] function is invoked when the controller
+  /// sends a custom request to the client (via [ClientConnection.customRequest]).
+  /// If it's absent, the default is to throw an exception when called.
+  static Future<Database> connectToPort(
+    SqliteWebEndpoint endpoint, {
+    Future<JSAny?> Function(JSAny?)? handleCustomRequest,
+  }) {
+    final client = DatabaseClient(Uri.base, Uri.base,
+        const _DefaultDatabaseController(), handleCustomRequest);
     return client.connectToExisting(endpoint);
   }
 }

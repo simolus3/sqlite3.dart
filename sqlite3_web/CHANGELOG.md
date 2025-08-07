@@ -1,3 +1,8 @@
+## 0.3.2
+
+- Allow workers to send requests to clients. Previously, only the other
+  direction was implemented.
+
 ## 0.3.1
 
 - Fix hooks not being delivered to all databases.

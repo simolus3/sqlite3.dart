@@ -43,6 +43,9 @@ final class ExampleDatabase extends WorkerDatabase {
   @override
   Future<JSAny?> handleCustomRequest(
       ClientConnection connection, JSAny? request) async {
-    return null;
+    final response =
+        ((await connection.customRequest(null)) as JSNumber).toDartInt;
+
+    return (2 * response).toJS;
   }
 }

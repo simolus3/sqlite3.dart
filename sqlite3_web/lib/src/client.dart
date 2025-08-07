@@ -4,6 +4,7 @@ import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
 import 'package:sqlite3/wasm.dart' hide WorkerOptions;
+import 'package:stream_channel/stream_channel.dart';
 import 'package:web/web.dart'
     hide Response, Request, FileSystem, Notification, Lock;
 
@@ -257,15 +258,21 @@ final class RemoteFileSystem implements FileSystem {
 final class WorkerConnection extends ProtocolChannel {
   final StreamController<Notification> notifications =
       StreamController.broadcast();
+  final Future<JSAny?> Function(JSAny?) handleCustomRequest;
 
-  WorkerConnection(super.channel) {
+  WorkerConnection(super.channel, this.handleCustomRequest) {
     closed.whenComplete(notifications.close);
   }
 
   @override
-  Future<Response> handleRequest(Request request) {
-    // TODO: implement handleRequest
-    throw UnimplementedError();
+  Future<Response> handleRequest(Request request) async {
+    switch (request) {
+      case CustomRequest(requestId: final id, :final payload):
+        final response = await handleCustomRequest(payload);
+        return SimpleSuccessResponse(response: response, requestId: id);
+      default:
+        throw UnimplementedError();
+    }
   }
 
   @override
@@ -278,6 +285,7 @@ final class DatabaseClient implements WebSqlite {
   final Uri workerUri;
   final Uri wasmUri;
   final DatabaseController _localController;
+  final Future<JSAny?> Function(JSAny?) _handleCustomRequest;
 
   final Lock _startWorkersLock = Lock();
   bool _startedWorkers = false;
@@ -289,7 +297,12 @@ final class DatabaseClient implements WebSqlite {
 
   final Set<MissingBrowserFeature> _missingFeatures = {};
 
-  DatabaseClient(this.workerUri, this.wasmUri, this._localController);
+  DatabaseClient(this.workerUri, this.wasmUri, this._localController,
+      Future<JSAny?> Function(JSAny?)? handleCustomRequest)
+      : _handleCustomRequest = handleCustomRequest ??
+            ((_) async {
+              throw StateError('No custom request handler installed');
+            });
 
   Future<void> startWorkers() {
     return _startWorkersLock.synchronized(() async {
@@ -301,6 +314,10 @@ final class DatabaseClient implements WebSqlite {
       await _startDedicated();
       await _startShared();
     });
+  }
+
+  WorkerConnection _connection(StreamChannel<Message> channel) {
+    return WorkerConnection(channel, _handleCustomRequest);
   }
 
   Future<void> _startDedicated() async {
@@ -319,8 +336,7 @@ final class DatabaseClient implements WebSqlite {
       final (endpoint, channel) = await createChannel();
       ConnectRequest(endpoint: endpoint, requestId: 0).sendToWorker(dedicated);
 
-      _connectionToDedicated =
-          WorkerConnection(channel.injectErrorsFrom(dedicated));
+      _connectionToDedicated = _connection(channel.injectErrorsFrom(dedicated));
     } else {
       _missingFeatures.add(MissingBrowserFeature.dedicatedWorkers);
     }
@@ -341,7 +357,7 @@ final class DatabaseClient implements WebSqlite {
       final (endpoint, channel) = await createChannel();
       ConnectRequest(endpoint: endpoint, requestId: 0).sendToPort(shared.port);
 
-      _connectionToShared = WorkerConnection(channel.injectErrorsFrom(shared));
+      _connectionToShared = _connection(channel.injectErrorsFrom(shared));
     } else {
       _missingFeatures.add(MissingBrowserFeature.sharedWorkers);
     }
@@ -358,7 +374,7 @@ final class DatabaseClient implements WebSqlite {
           ConnectRequest(requestId: 0, endpoint: endpoint),
           MessageType.simpleSuccessResponse);
 
-      return _connectionToDedicatedInShared = WorkerConnection(channel);
+      return _connectionToDedicatedInShared = _connection(channel);
     });
   }
 
@@ -374,7 +390,7 @@ final class DatabaseClient implements WebSqlite {
       local
           .addTopLevelMessage(ConnectRequest(requestId: 0, endpoint: endpoint));
 
-      return _connectionToLocal = WorkerConnection(channel);
+      return _connectionToLocal = _connection(channel);
     });
   }
 
@@ -512,7 +528,7 @@ final class DatabaseClient implements WebSqlite {
   }
 
   Future<Database> connectToExisting(SqliteWebEndpoint endpoint) async {
-    final channel = WorkerConnection(
+    final channel = _connection(
         WebEndpoint(port: endpoint.$1, lockName: endpoint.$2).connect());
 
     return RemoteDatabase(
