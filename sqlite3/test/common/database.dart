@@ -883,6 +883,16 @@ void testDatabase(
       database.execute("COMMIT;");
     });
 
+    test('is async', () async {
+      var commits = 0;
+      database.commits.listen((_) => commits++);
+
+      database.execute("INSERT INTO tbl VALUES ('', 1);");
+      expect(commits, 0);
+      await pumpEventQueue();
+      expect(commits, 1);
+    });
+
     test('does not emit on implicit commit with commitFilter false', () async {
       expect(database.commits, neverEmits(anything));
       database.commitFilter = () => false;
