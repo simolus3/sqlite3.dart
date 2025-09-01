@@ -3,6 +3,7 @@ description: Provides lightweight yet convenient bindings to SQLite by using dar
 version: 2.9.0
 homepage: https://github.com/simolus3/sqlite3.dart/tree/main/sqlite3
 issue_tracker: https://github.com/simolus3/sqlite3.dart/issues
+resolution: workspace
 
 environment:
   sdk: '>=3.5.0 <4.0.0'
@@ -38,7 +39,7 @@ dev_dependencies:
   dart_style: ^3.0.1
   ffigen: ^18.1.0
   http: ^1.2.1
-  lints: ^5.0.0
+  lints: ^6.0.0
   shelf: ^1.4.0
   shelf_proxy: ^1.0.2
   shelf_static: ^1.1.0
