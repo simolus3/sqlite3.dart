@@ -18,3 +18,7 @@ dependencies:
   sqlite3:
     path: ../../sqlite3
   test:
+
+flutter:
+  config:
+    enable-swift-package-manager: false

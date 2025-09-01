@@ -20,3 +20,7 @@ dev_dependencies:
     sdk: flutter
   test: ^1.24.0
   sqlite3: ^2.5.0
+
+flutter:
+  config:
+    enable-swift-package-manager: true

@@ -5,7 +5,8 @@ publish_to: 'none'
 version: 1.0.0+1
 
 flutter:
-  disable-swift-package-manager: true
+  config:
+    enable-swift-package-manager: false
 
 environment:
   sdk: ^3.5.0
