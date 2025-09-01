@@ -3,6 +3,7 @@ description: Access to SQLite with the `sqlite3` package and the upcoming "Nativ
 version: 0.0.9
 homepage: https://github.com/simolus3/sqlite3.dart/tree/main/sqlite3_native_assets
 issue_tracker: https://github.com/simolus3/sqlite3.dart/issues
+resolution: workspace
 
 environment:
   sdk: ^3.7.0
@@ -20,7 +21,3 @@ dependencies:
 dev_dependencies:
   lints: ^6.0.0
   test: ^1.24.0
-
-dependency_overrides:
-  sqlite3:
-    path: ../sqlite3/
