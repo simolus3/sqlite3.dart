@@ -27,7 +27,10 @@ final class SqliteBuild {
 
   SqliteBuild(this.input, this.output)
     : source = SqliteSource.parse(UserDefinesOptions.fromHooks(input)),
-      defines = CompilerDefines.parse(UserDefinesOptions.fromHooks(input));
+      defines = CompilerDefines.parse(
+        UserDefinesOptions.fromHooks(input),
+        input.config.code.targetOS,
+      );
 
   Future<String?> _prepareBuild() async {
     _logger.info('Preparing build');
