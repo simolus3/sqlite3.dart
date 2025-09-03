@@ -23,7 +23,7 @@ jobs:
       id: cache_sqlite_build
       with:
         path: sqlite/out
-        key: sqlite-v5-${{ runner.os }}-${{ env.SQLITE_VERSION }}
+        key: sqlite-v6-${{ runner.os }}-${{ env.SQLITE_VERSION }}
     - name: Compile sqlite3 on Linux
       if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Linux'
       run: |
@@ -35,6 +35,7 @@ jobs:
         ./configure --session
         make -j
         mkdir ../out
+        cp sqlite3.c ../out
         cp sqlite3 ../out
         cp libsqlite3.so ../out
         cp *.h ../out
@@ -61,6 +62,7 @@ jobs:
         ./configure --session
         make -j
         mkdir ../out
+        cp sqlite3.c ../out
         cp sqlite3 ../out
         cp libsqlite3.dylib ../out
         cp *.h ../out
@@ -80,6 +82,7 @@ jobs:
         '#include "sqlite3.c"' | Out-File -FilePath sqlite3e.c -Append
         cl sqlite3e.c -link -dll -out:sqlite3.dll
         mkdir ../out
+        cp sqlite3.c ../out
         cp sqlite3.dll ../out
         cp sqlite3.h ../out
         cp sqlite3ext.h ../out
@@ -225,6 +228,29 @@ jobs:
       # todo: Something broke Dart web tests in Dart 2.18, it looks like this is related to finalizers
       if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
       working-directory: sqlite3/
+
+  test_native_assets:
+    needs: [analyze]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    name: Testing with native assets on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dart-lang/setup-dart@v1
+      with:
+        sdk: beta
+    - name: Download compiled sqlite3
+      uses: actions/download-artifact@v4
+      with:
+        name: sqlite3-${{ runner.os }}
+        path: sqlite/out
+    - name: Prepare native assets
+      run: dart run tool/prepare_native_assets_test.dart
+    - name: Native assets test
+      working-directory: sqlite3_native_assets
+      run: dart test
 
 # The integration tests for android are currently broken (the emulator doesn't want to
 # start up...)

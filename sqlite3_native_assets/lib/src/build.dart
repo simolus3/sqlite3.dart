@@ -12,6 +12,11 @@ import 'defines.dart';
 import 'source.dart';
 import 'user_defines.dart';
 
+final _logger =
+    Logger('')
+      ..level = Level.ALL
+      ..onRecord.listen((record) => print(record.message));
+
 final class SqliteBuild {
   final SqliteSource source;
   final CompilerDefines defines;
@@ -22,13 +27,17 @@ final class SqliteBuild {
 
   SqliteBuild(this.input, this.output)
     : source = SqliteSource.parse(UserDefinesOptions.fromHooks(input)),
-      defines = CompilerDefines.parse(UserDefinesOptions.fromHooks(input));
+      defines = CompilerDefines.parse(
+        UserDefinesOptions.fromHooks(input),
+        input.config.code.targetOS,
+      );
 
   Future<String?> _prepareBuild() async {
+    _logger.info('Preparing build');
+
     switch (source) {
       case DownloadAmalgamation(:final uri, :final filename):
-        // Don't track the source because we're the ones creating the local
-        // copy.
+        _logger.info('Downloading sqlite from $uri, filename $filename');
         final response = await get(Uri.parse(uri));
         if (response.statusCode != 200) {
           throw 'Could not download sqlite3: ${response.statusCode} ${response.reasonPhrase} ${response.body}';
@@ -41,14 +50,19 @@ final class SqliteBuild {
             await File(filepath).writeAsBytes(file.content);
           }
         }
+
+        // Don't track the source because we're the ones creating the local
+        // copy.
         trackSourcesAsDependencyForCompilation = false;
         return filepath;
       case ExistingAmalgamation(:final sqliteSource):
+        _logger.info('Using existing source from $sqliteSource');
         return sqliteSource;
       case UseFromSystem():
       case UseFromExecutable():
       case UseFromProcess():
       case DontLinkSqlite():
+        _logger.info('Not in a build mode that needs to compile sqlite');
         return null;
     }
   }
@@ -63,23 +77,13 @@ final class SqliteBuild {
 
     if (trackSourcesAsDependencyForCompilation) {
       // We can just run a regular build.
-      await builder.run(
-        input: input,
-        output: output,
-        logger:
-            Logger('')
-              ..level = Level.ALL
-              ..onRecord.listen((record) => print(record.message)),
-      );
+      await builder.run(input: input, output: output, logger: _logger);
     } else {
       final temporaryOutputs = BuildOutputBuilder();
       await builder.run(
         input: input,
         output: temporaryOutputs,
-        logger:
-            Logger('')
-              ..level = Level.ALL
-              ..onRecord.listen((record) => print(record.message)),
+        logger: _logger,
       );
 
       // Forward generated assets but ignore dependencies

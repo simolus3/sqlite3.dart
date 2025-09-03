@@ -1,3 +1,4 @@
+import 'package:code_assets/code_assets.dart';
 import 'package:sqlite3_native_assets/src/defines.dart';
 import 'package:sqlite3_native_assets/src/source.dart';
 import 'package:sqlite3_native_assets/src/user_defines.dart';
@@ -98,7 +99,10 @@ void main() {
 
   group('parses compile-time options', () {
     test('default', () {
-      final defines = CompilerDefines.parse(UserDefinesOptions.fromMap({}));
+      final defines = CompilerDefines.parse(
+        UserDefinesOptions.fromMap({}),
+        OS.linux,
+      );
       expect(defines, contains('SQLITE_OMIT_TRACE'));
     });
 
@@ -107,7 +111,20 @@ void main() {
         UserDefinesOptions.fromMap({
           'defines': ['FOO', 'BAR=1'],
         }),
+        OS.linux,
       );
+      expect(defines, contains('FOO'));
+      expect(defines, contains('BAR'));
+    });
+
+    test('includes SQLITE_API on Windows', () {
+      final defines = CompilerDefines.parse(
+        UserDefinesOptions.fromMap({
+          'defines': ['FOO', 'BAR=1'],
+        }),
+        OS.windows,
+      );
+      expect(defines, containsPair('SQLITE_API', '__declspec(dllexport)'));
       expect(defines, contains('FOO'));
       expect(defines, contains('BAR'));
     });
@@ -119,6 +136,7 @@ void main() {
             'defines': {'SQLITE_OMIT_TRACE': '0'},
           },
         }),
+        OS.linux,
       );
 
       expect(defines, contains('SQLITE_ENABLE_MATH_FUNCTIONS'));
@@ -133,6 +151,7 @@ void main() {
             'defines': {'SQLITE_OMIT_TRACE': '0'},
           },
         }),
+        OS.linux,
       );
 
       expect(defines, {'SQLITE_OMIT_TRACE': '0'});

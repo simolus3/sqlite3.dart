@@ -48,7 +48,13 @@ final class _UserDefines extends UserDefinesOptions {
   Object? operator [](String key) => input.userDefines[key];
 
   @override
-  String inputPath(String path) => absolute(
-    normalize(join(input.outputDirectory.path, '../../../../../../', path)),
-  );
+  String inputPath(String path) {
+    final basePath =
+        ((input.json['user_defines']
+                    as Map<String, Object?>)['workspace_pubspec']
+                as Map<String, Object?>)['base_path']
+            as String;
+
+    return normalize(join(dirname(basePath), path));
+  }
 }

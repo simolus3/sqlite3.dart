@@ -42,10 +42,6 @@ hooks:
       # Your options here
 ```
 
-> [!NOTE]
-> As of 2025-04-10, support for user-defines in native assets is a _very_ recent feature
-> that's still being rolled out to Flutter and Dart SDKs.
-
 ### Configuring SQLite sources
 
 By default, `sqlite3_native_assets` will download and compile SQLite. It's possible to customize:
@@ -119,8 +115,6 @@ CodeAsset(
   package: 'sqlite3_native_assets',
   name: 'sqlite3_native_assets.dart',
   linkMode: linkMode,
-  os: input.config.code.targetOS,
-  architecture: input.config.code.targetArchitecture,
 )
 ```
 
