@@ -229,6 +229,30 @@ jobs:
       if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
       working-directory: sqlite3/
 
+  test_native_assets:
+    needs: [analyze]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    name: Testing with native assets on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dart-lang/setup-dart@v1
+      with:
+        sdk: beta
+    - name: Download compiled sqlite3
+      if: matrix.sqlite == 'compiled' && (runner.os == 'Linux' || runner.os == 'Windows' || runner.os == 'macOS')
+      uses: actions/download-artifact@v4
+      with:
+        name: sqlite3-${{ runner.os }}
+        path: sqlite/out
+    - name: Prepare native assets
+      run: dart run tool/prepare_native_assets_test.dart
+    - name: Native assets test
+      working-directory: sqlite3_native_assets
+      run: dart test
+
 # The integration tests for android are currently broken (the emulator doesn't want to
 # start up...)
 #
