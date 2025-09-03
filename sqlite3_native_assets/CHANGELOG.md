@@ -1,3 +1,7 @@
+## 0.0.10
+
+- Support latest versions of the `hooks` and `code_assets` packages.
+
 ## 0.0.9
 
 - Update to sqlite 3.50.4
