@@ -1,6 +1,8 @@
 // Note: Keep in sync with https://github.com/simolus3/sqlite-native-libraries/blob/master/sqlite3-native-library/cpp/CMakeLists.txt
 import 'dart:convert';
 
+import 'package:code_assets/code_assets.dart';
+
 import 'user_defines.dart';
 
 /// Definition options to use when compiling SQLite.
@@ -10,7 +12,7 @@ extension type const CompilerDefines(Map<String, String?> flags)
     return CompilerDefines({...flags, ...other.flags});
   }
 
-  static CompilerDefines parse(UserDefinesOptions defines) {
+  static CompilerDefines parse(UserDefinesOptions defines, OS targetOS) {
     final obj = defines.readObject('defines');
 
     // Include default options when not explicitly disabled.
@@ -29,7 +31,7 @@ extension type const CompilerDefines(Map<String, String?> flags)
 
     final start =
         includeDefaults
-            ? CompilerDefines.defaults()
+            ? CompilerDefines.defaults(targetOS == OS.windows)
             : const CompilerDefines({});
 
     return switch (additionalDefines) {
@@ -66,8 +68,12 @@ extension type const CompilerDefines(Map<String, String?> flags)
     return CompilerDefines(entries);
   }
 
-  static CompilerDefines defaults() {
-    return _parseLines(const LineSplitter().convert(_defaultDefines));
+  static CompilerDefines defaults(bool windows) {
+    final defines = _parseLines(const LineSplitter().convert(_defaultDefines));
+    if (windows) {
+      defines['SQLITE_API'] = '__declspec(dllexport)';
+    }
+    return defines;
   }
 }
 
