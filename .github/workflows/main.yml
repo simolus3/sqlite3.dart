@@ -242,7 +242,6 @@ jobs:
       with:
         sdk: beta
     - name: Download compiled sqlite3
-      if: matrix.sqlite == 'compiled' && (runner.os == 'Linux' || runner.os == 'Windows' || runner.os == 'macOS')
       uses: actions/download-artifact@v4
       with:
         name: sqlite3-${{ runner.os }}
