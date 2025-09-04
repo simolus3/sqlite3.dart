@@ -11,6 +11,7 @@ library;
 import 'dart:ffi';
 
 export 'src/sqlite3_native_library.dart';
+export 'src/ffi/pool/pool.dart';
 
 import 'package:meta/meta.dart';
 import 'src/sqlite3_native_library.dart';

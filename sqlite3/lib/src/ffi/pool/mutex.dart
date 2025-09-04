@@ -14,12 +14,12 @@ final class Mutex {
       }
     }
 
-    if (_inCriticalSection) {
+    if (!_inCriticalSection) {
       assert(_waiting.isEmpty);
-      _inCriticalSection = false;
+      _inCriticalSection = true;
       return Future.sync(action).whenComplete(markCompleted);
     } else {
-      assert(!_inCriticalSection);
+      assert(_inCriticalSection);
       final completer = Completer<T>.sync();
 
       _waiting.addLast(() {
