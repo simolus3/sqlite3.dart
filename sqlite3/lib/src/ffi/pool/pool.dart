@@ -12,6 +12,13 @@ import 'mutex.dart';
 /// An asynchronous connection pool backed by a fixed amount of connections
 /// accessed through short-lived isolates using [Isolate.run].
 ///
+/// The pool is backed by a single "write" connection and multiple "read"
+/// connections. The pool does not enforce that read connections are only used
+/// for reads though, nor does it set the connections up.
+/// Typically, one would use connections with `pragma journal_mode = wal` with
+/// a [ConnectionPool], since the single-writer and many-readers pattern matches
+/// what WAL supports natively.
+///
 /// This connection pool implementation is only available when using SQLite with
 /// native assets.
 @experimental
@@ -33,6 +40,7 @@ final class ConnectionPool {
     }
   }
 
+  /// Runs [callback] with the writing connection from the pool.
   Future<T> withWriter<T>(
       FutureOr<T> Function(LeasedDatabase db) callback) async {
     _checkNotClosed();
@@ -40,6 +48,7 @@ final class ConnectionPool {
         () => LeasedDatabase._wrapWithLease(_writer, callback));
   }
 
+  /// Runs [callback] with a reader connection from the pool.
   Future<T> withReader<T>(
       FutureOr<T> Function(LeasedDatabase db) callback) async {
     _checkNotClosed();
@@ -47,6 +56,8 @@ final class ConnectionPool {
         1, (dbs) => LeasedDatabase._wrapWithLease(dbs.single, callback));
   }
 
+  /// First obtains a write lock, then locks all readers at once and calls
+  /// [callback] with all connections.
   Future<T> withAllConnections<T>(
       FutureOr<T> Function(List<LeasedDatabase> readers, LeasedDatabase writer)
           callback) async {
@@ -153,8 +164,13 @@ final class LeasedDatabase {
     return _mutex.withCriticalSection(() => computation(_database));
   }
 
-  Future<T> _computeOnIsolate<T>(
-      FutureOr<T> Function(Database) computation) async {
+  /// On a short-lived isolate, calls [computation] as a critical section with
+  /// the underlying database.
+  ///
+  /// See [unsafeAccess] for potential issues to be aware of when calling this
+  /// method.
+  Future<T> unsafeAccessOnIsolate<T>(
+      FutureOr<T> Function(Database) computation) {
     return unsafeAccess((db) {
       final address = db.handle.address;
       return Isolate.run(() {
@@ -175,7 +191,7 @@ final class LeasedDatabase {
   /// a record of affected rows).
   Future<(ResultSet, ExecuteResult)> select(String sql,
       [List<Object?> parameters = const []]) {
-    return _computeOnIsolate((db) {
+    return unsafeAccessOnIsolate((db) {
       final resultSet = db.select(sql, parameters);
       return (resultSet, _execResult(db));
     });
@@ -184,7 +200,7 @@ final class LeasedDatabase {
   /// Executes [sql] with [parameters] and returns affected rows.
   Future<ExecuteResult> execute(String sql,
       [List<Object?> parameters = const []]) {
-    return _computeOnIsolate((db) {
+    return unsafeAccessOnIsolate((db) {
       db.execute(sql, parameters);
       return _execResult(db);
     });
