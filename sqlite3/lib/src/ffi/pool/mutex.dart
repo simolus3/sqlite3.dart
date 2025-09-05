@@ -1,12 +1,21 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'pool.dart';
+
 final class Mutex {
   bool _inCriticalSection = false;
   final Queue<void Function()> _waiting = Queue();
 
-  Future<T> withCriticalSection<T>(FutureOr<T> Function() action) async {
+  Future<T> withCriticalSection<T>(FutureOr<T> Function() action,
+      {Future<void>? abort}) async {
+    var holdsMutex = false;
+
     void markCompleted() {
+      if (!holdsMutex) {
+        return;
+      }
+
       if (_waiting.isNotEmpty) {
         _waiting.removeFirst()();
       } else {
@@ -17,14 +26,30 @@ final class Mutex {
     if (!_inCriticalSection) {
       assert(_waiting.isEmpty);
       _inCriticalSection = true;
+      holdsMutex = true;
       return Future.sync(action).whenComplete(markCompleted);
     } else {
       assert(_inCriticalSection);
       final completer = Completer<T>.sync();
 
-      _waiting.addLast(() {
+      void complete() {
+        holdsMutex = true;
         completer.complete(Future.sync(action));
+      }
+
+      final function = complete;
+      abort?.whenComplete(() {
+        if (!completer.isCompleted) {
+          final didRemove = _waiting.remove(function);
+
+          // The only way for waiters to get removed is for [complete] to get
+          // called, so we wouldn't enter this branch.
+          assert(didRemove);
+          completer.completeError(const PoolAbortException());
+        }
       });
+
+      _waiting.addLast(function);
       return completer.future.whenComplete(markCompleted);
     }
   }
@@ -43,7 +68,8 @@ final class MultiSemaphore<T> {
 
   int get poolSize => _poolSize;
 
-  Future<R> withPermits<R>(int amount, FutureOr<R> Function(List<T>) action) {
+  Future<R> withPermits<R>(int amount, FutureOr<R> Function(List<T>) action,
+      {Future<void>? abort}) {
     if (amount <= 0) {
       throw RangeError.value(amount, 'amount', 'Must be positive');
     }
@@ -90,6 +116,16 @@ final class MultiSemaphore<T> {
       assert(waiter.remaining > 0);
       _waiters.add(waiter);
 
+      abort?.whenComplete(() {
+        if (!completer.isCompleted) {
+          final didRemove = _waiters.remove(waiter);
+
+          // The only way for waiters to get removed is for their callback to
+          // get called, so we wouldn't enter this branch.
+          assert(didRemove);
+          completer.completeError(const PoolAbortException());
+        }
+      });
       return completer.future
           .whenComplete(() => markCompleted(waiter.acquiredItems));
     }

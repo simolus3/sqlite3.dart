@@ -14,9 +14,9 @@ void main() {
       ..execute('pragma journal_mode = wal;');
   }
 
-  ConnectionPool createPool() {
+  ConnectionPool createPool({int readConnections = 5}) {
     final pool = ConnectionPool(openDatabase(), [
-      for (var i = 0; i < 5; i++) openDatabase(),
+      for (var i = 0; i < readConnections; i++) openDatabase(),
     ]);
     addTearDown(pool.close);
     return pool;
@@ -110,6 +110,78 @@ void main() {
       );
 
       expect(await db.autocommit, isTrue);
+    });
+  });
+
+  group('aborting request', () {
+    test('writer grant', () async {
+      final pool = createPool();
+      // Immediate abort when a writer is available should call the callback.
+      await pool.withWriter(expectAsync1((db) {}), abort: Future.value());
+    });
+
+    test('writer abort', () async {
+      final pool = createPool();
+      final firstWriteDone = Completer();
+
+      pool.withWriter(
+        expectAsync1((db) async {
+          await firstWriteDone.future;
+        }),
+      );
+
+      final abortedRequest = pool.withWriter(
+        expectAsync1((db) {}, count: 0),
+        abort: Future.value(),
+      );
+
+      var secondLockGranted = false;
+      pool.withWriter(expectAsync1((db) => secondLockGranted = true));
+
+      await expectLater(abortedRequest, throwsA(isA<PoolAbortException>()));
+
+      // Aborting the request should not grant the subsequent waiter the mutex.
+      await pumpEventQueue();
+      expect(secondLockGranted, false);
+
+      firstWriteDone.complete();
+      await pumpEventQueue();
+      expect(secondLockGranted, true);
+    });
+
+    test('reader grant', () async {
+      final pool = createPool();
+      // Immediate abort when a reader is available should call the callback.
+      await pool.withReader(expectAsync1((db) {}), abort: Future.value());
+    });
+
+    test('reader abort', () async {
+      final pool = createPool(readConnections: 1);
+
+      final firstReadDone = Completer();
+      pool.withReader(
+        expectAsync1((db) async {
+          await firstReadDone.future;
+        }),
+      );
+
+      final abortedRequest = pool.withReader(
+        expectAsync1((db) {}, count: 0),
+        abort: Future.value(),
+      );
+
+      var secondReadGranted = false;
+      pool.withReader(expectAsync1((db) => secondReadGranted = true));
+
+      await expectLater(abortedRequest, throwsA(isA<PoolAbortException>()));
+
+      // Aborting the request should not grant the subsequent waiter the mutex.
+      await pumpEventQueue();
+      expect(secondReadGranted, false);
+
+      firstReadDone.complete();
+      await pumpEventQueue();
+      expect(secondReadGranted, true);
     });
   });
 
