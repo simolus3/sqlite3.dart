@@ -1,3 +1,8 @@
+## 2.10.0
+
+- native assets: Add experimental `ConnectionPool` API to access an asynchronous
+  pool of WAL connections.
+
 ## 2.9.0
 
 - Add `CommonDatabase.updatesSync`, a synchronous variant of the updates stream.
