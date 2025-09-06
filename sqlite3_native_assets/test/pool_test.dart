@@ -232,7 +232,7 @@ void main() {
 
       var hasLocalWrite = false;
       await grantedToRemote.first;
-      pool.withWriter((db) async => hasLocalWrite = true);
+      final secondWrite = pool.withWriter((db) async => hasLocalWrite = true);
 
       expect(hasLocalWrite, isFalse);
       await pumpEventQueue();
@@ -242,7 +242,7 @@ void main() {
       // return the connection.
       isolate.kill();
       await pumpEventQueue();
-      expect(hasLocalWrite, isTrue);
+      await secondWrite;
     });
 
     test('can abort connections', () async {
