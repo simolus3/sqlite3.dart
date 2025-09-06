@@ -34,6 +34,12 @@ final class LeasedDatabase {
 
   LeasedDatabase._(this._database);
 
+  /// Gets unprotected acccess to the [Database] without a mutex.
+  ///
+  /// Calling this method is unsafe if another call on this [LeasedDatabase] is
+  /// operating concurrently.
+  Database get unsafeRawDatabase => _database;
+
   /// Calls [computation] as a critical section with the underlying database.
   ///
   /// This method is very easy to misuse, and should be used carefully. In
@@ -60,8 +66,7 @@ final class LeasedDatabase {
     return unsafeAccess((db) {
       final address = db.handle.address;
       return Isolate.run(() {
-        final database =
-            FfiSqlite3.nativeAssets().fromPointer(Pointer.fromAddress(address));
+        final database = pointerToDatabase(address);
         return computation(database);
       });
     });
@@ -119,4 +124,8 @@ Future<T> wrapWithLeases<T>(
       db._closed = true;
     }
   });
+}
+
+Database pointerToDatabase(int address) {
+  return FfiSqlite3.nativeAssets().fromPointer(Pointer.fromAddress(address));
 }

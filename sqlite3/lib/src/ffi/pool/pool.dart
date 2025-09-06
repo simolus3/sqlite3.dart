@@ -23,6 +23,11 @@ import 'mutex.dart';
 abstract base class ConnectionPool {
   ConnectionPool._();
 
+  /// Creates a connection pool from a designated [writer] and multiple
+  /// [readers].
+  ///
+  /// These connections should point to a WAL database, the connection pool does
+  /// not configure them in any way.
   factory ConnectionPool(Database writer, Iterable<Database> readers) =
       _LocalPool;
 

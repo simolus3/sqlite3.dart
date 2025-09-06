@@ -13,6 +13,7 @@ import 'dart:ffi';
 export 'src/sqlite3_native_library.dart';
 export 'src/ffi/pool/leased_database.dart' show LeasedDatabase;
 export 'src/ffi/pool/pool.dart' hide PoolImplementation;
+export 'src/ffi/pool/shared.dart' show PoolServer, PoolConnectPort;
 
 import 'package:meta/meta.dart';
 import 'src/sqlite3_native_library.dart';

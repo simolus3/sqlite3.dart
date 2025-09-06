@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:isolate';
 
 import 'package:sqlite3/native_assets.dart';
 import 'package:sqlite3/sqlite3.dart';
@@ -185,6 +186,84 @@ void main() {
     });
   });
 
+  group('server', () {
+    test('write', () async {
+      final pool = createPool();
+      final server = pool.testServer();
+      final completeLocalWrite = Completer();
+      pool.withWriter((db) async {
+        await completeLocalWrite.future;
+      });
+
+      var isolateWriteCompleted = false;
+      final isolateFuture = server.port
+          .isolateRun((pool) {
+            return pool.execute('CREATE TABLE foo (bar TEXT);');
+          })
+          .whenComplete(() => isolateWriteCompleted = true);
+
+      await pumpEventQueue();
+      expect(isolateWriteCompleted, isFalse);
+
+      completeLocalWrite.complete();
+      await pumpEventQueue();
+      await isolateFuture;
+    });
+
+    test('closing the isolate returns connection', () async {
+      final pool = createPool();
+      final server = pool.testServer();
+      final grantedToRemote = ReceivePort();
+
+      void takeForever((PoolConnectPort, SendPort) msg) async {
+        final (connectPort, sendOnGrant) = msg;
+        final pool = connectPort.connect();
+        await pool.withWriter((db) async {
+          sendOnGrant.send(null);
+          await Completer<void>().future;
+        });
+      }
+
+      final isolate = await Isolate.spawn(takeForever, (
+        server.port,
+        grantedToRemote.sendPort,
+      ));
+      await pumpEventQueue();
+
+      var hasLocalWrite = false;
+      await grantedToRemote.first;
+      pool.withWriter((db) async => hasLocalWrite = true);
+
+      expect(hasLocalWrite, isFalse);
+      await pumpEventQueue();
+      expect(hasLocalWrite, isFalse);
+
+      // Killing the isolate without returning the connection should still
+      // return the connection.
+      isolate.kill();
+      await pumpEventQueue();
+      expect(hasLocalWrite, isTrue);
+    });
+
+    test('can abort connections', () async {
+      final pool = createPool(readConnections: 1);
+      final server = pool.testServer();
+      final completeLocal = Completer();
+      pool.withReader((db) async {
+        await completeLocal.future;
+      });
+
+      await expectLater(
+        server.port.isolateRun(
+          (pool) => pool.withReader((db) {}, abort: Future.value()),
+        ),
+        throwsA(isA<PoolAbortException>()),
+      );
+
+      completeLocal.complete();
+    });
+  });
+
   group('cannot use database outside of callback', () {
     test('read', () async {
       final pool = createPool();
@@ -223,4 +302,20 @@ void main() {
       }
     });
   });
+}
+
+extension on ConnectionPool {
+  PoolServer testServer() {
+    final server = PoolServer(this);
+    addTearDown(server.close);
+    return server;
+  }
+}
+
+extension on PoolConnectPort {
+  Future<T> isolateRun<T>(
+    FutureOr<T> Function(ConnectionPool) computation,
+  ) async {
+    return Isolate.run(() => computation(connect()));
+  }
 }
