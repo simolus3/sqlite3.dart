@@ -227,22 +227,42 @@ base class StatementImplementation extends CommonPreparedStatement {
     _latestArguments = paramsAsList;
   }
 
-  void _bindParam(Object? param, int i) => switch (param) {
-        null => statement.sqlite3_bind_null(i),
-        int() => statement.sqlite3_bind_int64(i, param),
-        BigInt() => statement.sqlite3_bind_int64BigInt(i, param.checkRange),
-        bool() => statement.sqlite3_bind_int64(i, param ? 1 : 0),
-        double() => statement.sqlite3_bind_double(i, param),
-        String() => statement.sqlite3_bind_text(i, param),
-        List<int>() => statement.sqlite3_bind_blob64(i, param),
-        CustomStatementParameter() => param.applyTo(this, i),
-        _ => throw ArgumentError.value(
-            param,
-            'params[$i]',
-            'Allowed parameters must either be null or bool, int, num, String or '
-                'List<int>.',
-          )
-      };
+  void _bindParam(Object? param, int i) {
+    final rc = switch (param) {
+      null => statement.sqlite3_bind_null(i),
+      int() => statement.sqlite3_bind_int64(i, param),
+      BigInt() => statement.sqlite3_bind_int64BigInt(i, param.checkRange),
+      bool() => statement.sqlite3_bind_int64(i, param ? 1 : 0),
+      double() => statement.sqlite3_bind_double(i, param),
+      String() => statement.sqlite3_bind_text(i, param),
+      List<int>() => statement.sqlite3_bind_blob64(i, param),
+      _ => _bindCustomParam(param, i)
+    };
+
+    if (rc != SqlError.SQLITE_OK) {
+      throwException(
+        database,
+        rc,
+        operation: 'binding parameter',
+        previousStatement: sql,
+        statementArgs: _latestArguments,
+      );
+    }
+  }
+
+  int _bindCustomParam(Object param, int i) {
+    if (param is CustomStatementParameter) {
+      param.applyTo(this, i);
+      return 0;
+    }
+
+    throw ArgumentError.value(
+      param,
+      'params[$i]',
+      'Allowed parameters must either be null or bool, int, num, String or '
+          'List<int>.',
+    );
+  }
 
   void _bindParams(StatementParameters parameters) {
     switch (parameters) {

@@ -280,12 +280,12 @@ abstract base class RawSqliteStatement {
 
   int sqlite3_bind_parameter_index(String name);
 
-  void sqlite3_bind_null(int index);
-  void sqlite3_bind_int64(int index, int value);
-  void sqlite3_bind_int64BigInt(int index, BigInt value);
-  void sqlite3_bind_double(int index, double value);
-  void sqlite3_bind_text(int index, String value);
-  void sqlite3_bind_blob64(int index, List<int> value);
+  int sqlite3_bind_null(int index);
+  int sqlite3_bind_int64(int index, int value);
+  int sqlite3_bind_int64BigInt(int index, BigInt value);
+  int sqlite3_bind_double(int index, double value);
+  int sqlite3_bind_text(int index, String value);
+  int sqlite3_bind_blob64(int index, List<int> value);
 
   int sqlite3_column_count();
   String sqlite3_column_name(int index);

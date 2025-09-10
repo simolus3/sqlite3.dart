@@ -1,3 +1,7 @@
+## 2.9.1
+
+- Check for error codes when binding values to prepared statements.
+
 ## 2.9.0
 
 - Add `CommonDatabase.updatesSync`, a synchronous variant of the updates stream.

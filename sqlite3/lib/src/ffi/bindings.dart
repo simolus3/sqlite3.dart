@@ -1108,32 +1108,32 @@ final class FfiStatement extends RawSqliteStatement {
   }
 
   @override
-  void sqlite3_bind_blob64(int index, List<int> value) {
+  int sqlite3_bind_blob64(int index, List<int> value) {
     final ptr = allocateBytes(value);
     _allocatedArguments.add(ptr);
 
-    bindings.sqlite3_bind_blob64(
+    return bindings.sqlite3_bind_blob64(
         stmt, index, ptr.cast(), value.length, nullPtr());
   }
 
   @override
-  void sqlite3_bind_double(int index, double value) {
-    bindings.sqlite3_bind_double(stmt, index, value);
+  int sqlite3_bind_double(int index, double value) {
+    return bindings.sqlite3_bind_double(stmt, index, value);
   }
 
   @override
-  void sqlite3_bind_int64(int index, int value) {
-    bindings.sqlite3_bind_int64(stmt, index, value);
+  int sqlite3_bind_int64(int index, int value) {
+    return bindings.sqlite3_bind_int64(stmt, index, value);
   }
 
   @override
-  void sqlite3_bind_int64BigInt(int index, BigInt value) {
-    bindings.sqlite3_bind_int64(stmt, index, value.toInt());
+  int sqlite3_bind_int64BigInt(int index, BigInt value) {
+    return bindings.sqlite3_bind_int64(stmt, index, value.toInt());
   }
 
   @override
-  void sqlite3_bind_null(int index) {
-    bindings.sqlite3_bind_null(stmt, index);
+  int sqlite3_bind_null(int index) {
+    return bindings.sqlite3_bind_null(stmt, index);
   }
 
   @override
@@ -1162,12 +1162,12 @@ final class FfiStatement extends RawSqliteStatement {
   }
 
   @override
-  void sqlite3_bind_text(int index, String value) {
+  int sqlite3_bind_text(int index, String value) {
     final bytes = utf8.encode(value);
     final ptr = allocateBytes(bytes);
     _allocatedArguments.add(ptr);
 
-    bindings.sqlite3_bind_text(
+    return bindings.sqlite3_bind_text(
         stmt, index, ptr.cast(), bytes.length, nullPtr());
   }
 
