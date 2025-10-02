@@ -59,22 +59,22 @@ DynamicLibrary _defaultOpen() {
     // Fall-back to system's libsqlite3 otherwise.
     return DynamicLibrary.open('libsqlite3.so');
   } else if (Platform.isIOS) {
-    try {
-      return DynamicLibrary.open('sqlite3.framework/sqlite3');
-      // Ignoring the error because its the only way to know if it was sucessful
-      // or not...
-      // ignore: avoid_catching_errors
-    } on ArgumentError catch (_) {
-      // In an iOS app without sqlite3_flutter_libs this falls back to using the version provided by iOS.
-      // This version is different for each iOS release.
-      //
-      // When using sqlcipher_flutter_libs this falls back to the version provided by the SQLCipher pod.
-      return DynamicLibrary.process();
-    }
+    // Prefer loading a dynamically-linked framework bundled by the
+    // sqlite3_flutter_libs package.
+    //
+    // If that is unavailable, we can try looking up symbols in the current
+    // process. They'll likely be available there because sqlite3 is part of
+    // Apple SDKs, but we only want to do that as a fallback because the one
+    // shipped with sqlite3_flutter_libs is more recent and supports more
+    // features.
+    return DynamicLibrary.process();
   } else if (Platform.isMacOS) {
+    if (_tryLoadingFromSqliteFlutterLibs() case final opened?) {
+      return opened;
+    }
+
     DynamicLibrary result;
 
-    // First, try to load embed library with Pod
     result = DynamicLibrary.process();
 
     // Check if the process includes sqlite3. If it doesn't, fallback to the
@@ -101,6 +101,30 @@ DynamicLibrary _defaultOpen() {
   }
 
   throw UnsupportedError('Unsupported platform: ${Platform.operatingSystem}');
+}
+
+DynamicLibrary? _tryLoadingFromSqliteFlutterLibs() {
+  const paths = [
+    // With sqlite3_flutter_libs and CocoaPods, we depend on
+    // https://github.com/clemensg/sqlite3pod, which builds a dynamic SQLite
+    // framework.
+    'sqlite3.framework/sqlite3',
+    // With sqlite3_flutter_libs and SwiftPM, we depend on
+    // https://github.com/simolus3/CSQLite/, which builds a dynamic framework
+    // named CSQLite exporting SQLite symbols.
+    'CSQLite.framework/CSQLite',
+  ];
+
+  for (final path in paths) {
+    try {
+      return DynamicLibrary.open(path);
+      // Ignoring the error because its the only way to know if it was sucessful
+      // or not...
+      // ignore: avoid_catching_errors
+    } on ArgumentError catch (_) {}
+  }
+
+  return null;
 }
 
 /// Manages functions that define how to load the [DynamicLibrary] for sqlite.
