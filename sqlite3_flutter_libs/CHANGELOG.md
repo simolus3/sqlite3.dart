@@ -1,3 +1,8 @@
+## 0.5.40
+
+- iOS and macOS: Compile to a shared library when SwiftPM is used to avoid
+  conflicts with the SQLite library from Apple SDKs.
+
 ## 0.5.39
 
 - Upgrade sqlite to version `3.50.4`.

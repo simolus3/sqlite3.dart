@@ -1,6 +1,7 @@
 ## 2.9.1
 
 - Check for error codes when binding values to prepared statements.
+- Flutter: Fix loading SwiftPM libraries from `sqlite3_flutter_libs`.
 
 ## 2.9.0
 
