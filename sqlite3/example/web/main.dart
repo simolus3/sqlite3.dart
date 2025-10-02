@@ -1,4 +1,6 @@
-import 'dart:html';
+import 'dart:js_interop';
+
+import 'package:web/web.dart';
 
 import 'package:sqlite3/wasm.dart';
 
@@ -32,8 +34,8 @@ Future<void> main() async {
   startOpfs.onClick.listen((_) async {
     startOpfs.remove();
 
-    final worker = Worker('worker.dart.js');
-    worker.postMessage('start');
+    final worker = Worker('worker.dart.js'.toJS);
+    worker.postMessage('start'.toJS);
   });
 
   startEncryption.onClick.listen((_) async {
