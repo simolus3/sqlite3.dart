@@ -105,7 +105,7 @@ jobs:
     name: Analyze on Dart ${{ matrix.dart }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{ matrix.dart }}
@@ -146,7 +146,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{ matrix.dart }}
@@ -237,7 +237,7 @@ jobs:
     name: Testing with native assets on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dart-lang/setup-dart@v1
       with:
         sdk: beta
@@ -264,7 +264,7 @@ jobs:
 #          - flutter_libs
 #          - sqlcipher_flutter
 #    steps:
-#      - uses: actions/checkout@v4
+#      - uses: actions/checkout@v5
 #      - uses: subosito/flutter-action@v2
 #        with:
 #          channel: dev
@@ -283,7 +283,7 @@ jobs:
     needs: [test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2
       - name: Setup Flutter
         run: |
@@ -294,7 +294,7 @@ jobs:
 
       - name: sqlite3 driver tests
         run: "flutter pub get && xvfb-run -a flutter test integration_test"
-        working-directory: integration_tests/flutter_libs
+        working-directory: integration_tests/flutter_swiftpm
 
       - name: sqlcipher driver tests
         run: "flutter pub get && xvfb-run -a flutter test integration_test"
@@ -314,15 +314,18 @@ jobs:
           IPHONE=$(xcrun xctrace list devices  2>&1 | grep -m 1 "iPhone" | awk -F'[()]' '{print $4}')
           xcrun simctl boot $IPHONE
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2
 
       - name: Flutter version
         run: flutter --version
 
-      - name: sqlite3 driver tests
+      - name: sqlite3 cocoapods driver tests
         run: "flutter pub get && flutter test integration_test"
-        working-directory: integration_tests/flutter_libs
+        working-directory: integration_tests/flutter_cocoapods
+      - name: sqlite3 swiftpm driver tests
+        run: "flutter pub get && flutter test integration_test"
+        working-directory: integration_tests/flutter_swiftpm
 
       - name: sqlcipher driver tests
         run: "flutter pub get && flutter test integration_test"
@@ -333,7 +336,7 @@ jobs:
     needs: [test]
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2
       - name: Setup Flutter
         run: |

@@ -1,0 +1,20 @@
+name: _
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+workspace:
+  - common
+  - flutter_cocoapods
+  - flutter_swiftpm
+
+dependencies:
+  flutter_lints: ^6.0.0
+  sqlite3:
+
+dependency_overrides:
+  sqlite3:
+    path: ../sqlite3
+  sqlite3_flutter_libs:
+    path: ../sqlite3_flutter_libs

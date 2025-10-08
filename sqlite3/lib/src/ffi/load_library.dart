@@ -67,7 +67,7 @@ DynamicLibrary _defaultOpen() {
     // Apple SDKs, but we only want to do that as a fallback because the one
     // shipped with sqlite3_flutter_libs is more recent and supports more
     // features.
-    return DynamicLibrary.process();
+    return _tryLoadingFromSqliteFlutterLibs() ?? DynamicLibrary.process();
   } else if (Platform.isMacOS) {
     if (_tryLoadingFromSqliteFlutterLibs() case final opened?) {
       return opened;
