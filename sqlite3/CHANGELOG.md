@@ -1,3 +1,8 @@
+## 2.9.2
+
+- Fix a bug introduced in version `2.9.1` where the SQLite framework provided by
+  `sqlite3_flutter_libs` would not load correctly on iOS.
+
 ## 2.9.1
 
 - Check for error codes when binding values to prepared statements.
