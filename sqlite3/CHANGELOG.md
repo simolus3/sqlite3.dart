@@ -1,3 +1,7 @@
+## 2.9.3
+
+- Allow iterating over statements after `SQLITE_BUSY` errors.
+
 ## 2.9.2
 
 - Fix a bug introduced in version `2.9.1` where the SQLite framework provided by
