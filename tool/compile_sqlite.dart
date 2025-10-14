@@ -18,9 +18,12 @@ void main() async {
     ], eagerError: true);
   } else if (Platform.isMacOS) {
     await Future.wait([
-      for (final (triple, name) in _appleAbis)
-        for (final sqlite3mc in [false, true])
-          _compileApple(triple, name, sqlite3mc)
+      for (final sqlite3mc in [false, true]) ...[
+        for (final (triple, name) in _appleAbis)
+          _compileApple(triple, name, sqlite3mc),
+        for (final (triple, name) in _androidAbis)
+          _compileAndroid(triple, name, sqlite3mc)
+      ]
     ], eagerError: true);
   }
 }
@@ -56,9 +59,26 @@ Future<void> _compileLinux(
 
 Future<void> _compileApple(
     String triple, String prefix, bool sqlite3Ciphers) async {
+  await _clangCompile('clang', triple, sqlite3Ciphers,
+      '$prefix-sqlite3${sqlite3Ciphers ? 'mc' : ''}.dylib');
+}
+
+Future<void> _compileAndroid(
+    String triple, String abiName, bool sqlite3Ciphers) async {
+  await _clangCompile(
+    '/Users/simon/Library/Android/sdk/ndk/28.1.13356709/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang-19',
+    triple,
+    sqlite3Ciphers,
+    'android-$abiName-sqlite3${sqlite3Ciphers ? 'mc' : ''}.so',
+  );
+}
+
+Future<void> _clangCompile(String executable, String triple,
+    bool sqlite3Ciphers, String filename) async {
   final args = [
     '-target',
     triple,
+    '-fPIC',
     '-shared',
     '-O3',
     ...defines,
@@ -68,11 +88,11 @@ Future<void> _compileApple(
     '-I',
     sqlite3Ciphers ? 'sqlite3-src/sqlite3mc/' : 'sqlite3-src/sqlite3',
     '-o',
-    'out/$prefix-sqlite3${sqlite3Ciphers ? 'mc' : ''}.dylib',
+    'out/$filename',
   ];
 
-  print('Running clang ${args.join(' ')}');
-  final result = await Process.run('clang', args);
+  print('Running $executable ${args.join(' ')}');
+  final result = await Process.run(executable, args);
 
   if (result.exitCode != 0) {
     throw 'Compiling for $triple (ciphers: $sqlite3Ciphers) failed: ${result.stdout}\n ${result.stderr}';
@@ -93,6 +113,13 @@ const _appleAbis = [
   ('x86_64-apple-ios13.0-simulator', 'ios-sim-x64'),
   ('arm64-apple-ios13.0-simulator', 'ios-sim-aarch64'),
   ('arm64-apple-ios13.0', 'ios-aarch64'),
+];
+
+const _androidAbis = [
+  ('armv7a-linux-androideabi24', 'armv7a'),
+  ('aarch64-linux-android24', 'aarch64'),
+  ('i686-linux-android24', 'x86'),
+  ('x86_64-linux-android24', 'x64'),
 ];
 
 // Keep in sync with sqlite3/lib/src/hook/description.dart
