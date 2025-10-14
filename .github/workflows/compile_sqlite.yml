@@ -39,6 +39,7 @@ jobs:
           retention-days: 1
 
   build_sqlite:
+    needs: [download_sqlite]
     strategy:
       matrix:
         # We only really need this for Ubuntu, but we recommend users run the same
