@@ -8,7 +8,7 @@ on:
 
 jobs:
   fetch_sqlite:
-    uses: .github/workflows/compile_sqlite.yml
+    uses: ./.github/workflows/compile_sqlite.yml
 
   analyze:
     strategy:
