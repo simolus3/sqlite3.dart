@@ -1,3 +1,11 @@
+## 3.0.0-beta.0
+
+- __Breaking change__: Use [build hooks](https://dart.dev/tools/hooks) to load
+  SQLite instead of `DynamicLibrary`.
+  - The SQLite library can only be customized with user defines.
+  - You should drop your dependencies on `sqlite3_flutter_libs` and
+    `sqlcipher_flutter_libs` when upgrading.
+
 ## 2.9.2
 
 - Fix a bug introduced in version `2.9.1` where the SQLite framework provided by
