@@ -66,6 +66,13 @@ jobs:
       - uses: dart-lang/setup-dart@v1
 #        if: steps.cache_build.outputs.cache-hit != 'true'
 
+      - name: Install cross-compiling GCC
+        shell: bash
+        if: ${{ runner.os }} == 'Linux'
+        run: |
+          sudo apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-arm-linux-gnueabihf gcc-i686-linux-gnu
+
+
       - name: Compile sqlite3
 #        if: steps.cache_build.outputs.cache-hit != 'true'
         run: |
