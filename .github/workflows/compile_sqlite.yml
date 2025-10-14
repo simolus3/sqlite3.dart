@@ -6,9 +6,6 @@ on:
       artifact_id:
         description: "ID of the artifact containing prebuilt SQLite libraries"
         value: ${{ jobs.merge_assets.outputs.artifact }}
-  push:
-    branches:
-      - v3
 
 jobs:
   download_sqlite:
