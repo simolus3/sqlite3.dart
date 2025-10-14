@@ -37,3 +37,43 @@ jobs:
           path: out/
           if-no-files-found: error
           retention-days: 1
+
+  build_sqlite:
+    strategy:
+      matrix:
+        # We only really need this for Ubuntu, but we recommend users run the same
+        # steps so we better make sure they work on all platforms.
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+    name: Compile sqlite3
+    steps:
+      - uses: actions/checkout@v4
+      # - uses: actions/cache@v4
+      #   id: cache_build
+      #   with:
+      #     path: out/
+      #     key: sqlite-prebuilt-${{ runner.os }}-${{ hashFiles('tool/') }}
+
+      - name: Download sqlite3 sources
+#        if: steps.cache_build.outputs.cache-hit != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: sqlite3-src
+          path: sqlite3-src
+
+      - uses: dart-lang/setup-dart@v1
+#        if: steps.cache_build.outputs.cache-hit != 'true'
+
+      - name: Compile sqlite3
+#        if: steps.cache_build.outputs.cache-hit != 'true'
+        run: |
+          dart run tool/compile_sqlite.dart
+
+      - name: Upload sqlite3 binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite3-libs-${{ runner.os }}
+          path: out/
+          if-no-files-found: error
+          retention-days: 1

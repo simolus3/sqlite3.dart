@@ -185,6 +185,7 @@ extension type const CompilerDefines(Map<String, String?> flags)
   }
 }
 
+// Keep in sync with tool/compile_sqlite.dart
 const _defaultDefines = '''
   SQLITE_ENABLE_DBSTAT_VTAB
   SQLITE_ENABLE_FTS5
