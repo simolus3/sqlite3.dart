@@ -7,7 +7,7 @@ final defines = const LineSplitter()
     .map((line) => '-D$line')
     .toList();
 
-void main() async {
+void main(List<String> args) async {
   await Directory('out').create();
 
   if (Platform.isLinux) {
@@ -25,6 +25,34 @@ void main() async {
           _compileAndroid(triple, name, sqlite3mc)
       ]
     ], eagerError: true);
+  } else if (Platform.isWindows) {
+    final abiName = args.single;
+    final defines = const LineSplitter()
+        .convert(_defaultDefines)
+        .map((line) => line.trim())
+        .map((line) => '/D$line');
+
+    for (final sqlite3Ciphers in [false, true]) {
+      final args = [
+        '/LD',
+        sqlite3Ciphers
+            ? r'sqlite3-src\sqlite3mc\sqlite3mc_amalgamation.c'
+            : r'sqlite3-src\sqlite3\sqlite3.c',
+        '/DSQLITE_EXPORT=__declspec(dllexport)',
+        '/O2',
+        ...defines,
+        '/I',
+        sqlite3Ciphers ? r'sqlite3-src\sqlite3mc' : 'sqlite3-src\sqlite3',
+        '-o',
+        '/Fe:out\win-$abiName-sqlite3${sqlite3Ciphers ? 'mc' : ''}.dll'
+      ];
+
+      print('Running cl ${args.join(' ')}');
+      final result = await Process.run('cl', args);
+      if (result.exitCode != 0) {
+        throw 'Compiling for $abiName (ciphers: $sqlite3Ciphers) failed: ${result.stdout}\n ${result.stderr}';
+      }
+    }
   }
 }
 

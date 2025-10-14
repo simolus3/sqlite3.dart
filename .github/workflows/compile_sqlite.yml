@@ -44,7 +44,6 @@ jobs:
       matrix:
         # We only really need this for Ubuntu, but we recommend users run the same
         # steps so we better make sure they work on all platforms.
-        #os: [ubuntu-latest, macos-latest, windows-latest]
         os: [ubuntu-latest, macos-latest]
 
     runs-on: ${{ matrix.os }}
@@ -82,6 +81,49 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sqlite3-libs-${{ runner.os }}
+          path: out/
+          if-no-files-found: error
+          retention-days: 1
+
+  build_sqlite_windows:
+    needs: [download_sqlite]
+    strategy:
+      matrix:
+        arch: [amd64, amd64_x86, amd64_arm64]
+
+    runs-on: windows-latest
+    name: Compile sqlite3 Windows
+    steps:
+      - uses: actions/checkout@v4
+      # - uses: actions/cache@v4
+      #   id: cache_build
+      #   with:
+      #     path: out/
+      #     key: sqlite-prebuilt-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('tool/') }}
+
+      - name: Download sqlite3 sources
+#        if: steps.cache_build.outputs.cache-hit != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: sqlite3-src
+          path: sqlite3-src
+
+      - uses: dart-lang/setup-dart@v1
+#        if: steps.cache_build.outputs.cache-hit != 'true'
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+
+      - name: Compile sqlite3
+#        if: steps.cache_build.outputs.cache-hit != 'true'
+        run: |
+          dart run tool/compile_sqlite.dart
+
+      - name: Upload sqlite3 binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite3-libs-${{ runner.os }}-${{ matrix.arch }}
           path: out/
           if-no-files-found: error
           retention-days: 1
