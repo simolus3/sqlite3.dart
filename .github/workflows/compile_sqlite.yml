@@ -1,0 +1,39 @@
+name: Download and compile SQLite
+
+on:
+  workflow_call:
+    outputs:
+      artifact_id:
+        description: "ID of the artifact containing prebuilt SQLite libraries"
+        value: "todo"
+  push:
+    branches:
+      - v3
+
+jobs:
+  download_sqlite:
+    runs-on: ubuntu-latest
+    name: Download SQLite sources
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        id: cache_build
+        with:
+          path: out/
+          key: sqlite-src-${{ hashFiles('tool/') }}
+
+      - uses: dart-lang/setup-dart@v1
+        if: steps.cache_build.outputs.cache-hit != 'true'
+
+      - name: Download sqlite3
+        if: steps.cache_build.outputs.cache-hit != 'true'
+        run: |
+          dart run tool/download_sqlite.dart
+
+      - name: Upload sqlite3 sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite3-src
+          path: out/
+          if-no-files-found: error
+          retention-days: 1
