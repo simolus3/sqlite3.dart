@@ -38,7 +38,8 @@ final sessionDeleteFinalizer =
     NativeFinalizer(addresses.sqlite3session_delete.cast());
 final changesetFinalizeFinalizer =
     NativeFinalizer(addresses.sqlite3changeset_finalize.cast());
-final supportsColumnTableName = false;
+final hasColumnMetadata =
+    ffiBindings.sqlite3_compileoption_used('ENABLE_COLUMN_METADATA') != 0;
 
 final _vfsPointers = Expando<_RegisteredVfs>();
 
@@ -1163,8 +1164,7 @@ final class FfiStatement implements RawSqliteStatement {
   }
 
   @override
-  // TODO: Restore this functionality
-  bool get supportsReadingTableNameForColumn => false;
+  bool get supportsReadingTableNameForColumn => hasColumnMetadata;
 }
 
 final class FfiValue implements RawSqliteValue {
