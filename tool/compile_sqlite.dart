@@ -43,8 +43,7 @@ void main(List<String> args) async {
         ...defines,
         '/I',
         sqlite3Ciphers ? r'sqlite3-src\sqlite3mc' : 'sqlite3-src\sqlite3',
-        '-o',
-        '/Fe:out\win-$abiName-sqlite3${sqlite3Ciphers ? 'mc' : ''}.dll'
+        '/Fe:out\\win-$abiName-sqlite3${sqlite3Ciphers ? 'mc' : ''}.dll'
       ];
 
       print('Running cl ${args.join(' ')}');

@@ -118,7 +118,7 @@ jobs:
       - name: Compile sqlite3
 #        if: steps.cache_build.outputs.cache-hit != 'true'
         run: |
-          dart run tool/compile_sqlite.dart
+          dart run tool/compile_sqlite.dart ${{ matrix.arch }}
 
       - name: Upload sqlite3 binaries
         uses: actions/upload-artifact@v4
