@@ -87,6 +87,7 @@ final class DownloadAmalgamation implements SqliteSources {
     this.filename = 'sqlite3.c',
   });
 
+  // ignore: unused_element
   factory DownloadAmalgamation._parse(Object definition) {
     if (definition is String) {
       return DownloadAmalgamation(uri: definition);
