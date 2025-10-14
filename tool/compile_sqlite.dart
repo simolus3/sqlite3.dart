@@ -65,8 +65,12 @@ Future<void> _compileApple(
 
 Future<void> _compileAndroid(
     String triple, String abiName, bool sqlite3Ciphers) async {
+  // https://github.com/actions/runner-images/blob/main/images/macos/macos-15-Readme.md#environment-variables-1
+  final ndk28 = Platform.environment['ANDROID_NDK_LATEST_HOME']!;
+  final clang = '$ndk28/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang';
+
   await _clangCompile(
-    '/Users/simon/Library/Android/sdk/ndk/28.1.13356709/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang-19',
+    clang,
     triple,
     sqlite3Ciphers,
     'android-$abiName-sqlite3${sqlite3Ciphers ? 'mc' : ''}.so',
