@@ -21,6 +21,11 @@ void main() async {
 
 Future<void> _compileLinux(
     String compiler, String abi, bool sqlite3Ciphers) async {
+  if (abi == 'x86' && sqlite3Ciphers) {
+    // i686 does not support sqlite ciphers.
+    return;
+  }
+
   final args = [
     '-fPIC',
     '-shared',
