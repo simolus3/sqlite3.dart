@@ -14,7 +14,7 @@ import 'wasm_interop.dart';
 
 // ignore_for_file: non_constant_identifier_names
 
-final class WasmSqliteBindings extends RawSqliteBindings {
+final class WasmSqliteBindings implements RawSqliteBindings {
   final wasm.WasmBindings bindings;
 
   WasmSqliteBindings(this.bindings);
@@ -215,7 +215,7 @@ final class WasmSqliteBindings extends RawSqliteBindings {
   }
 }
 
-final class WasmDatabase extends RawSqliteDatabase {
+final class WasmDatabase implements RawSqliteDatabase {
   final wasm.WasmBindings bindings;
   final Pointer db;
 
@@ -388,7 +388,7 @@ final class WasmDatabase extends RawSqliteDatabase {
   }
 }
 
-final class WasmStatementCompiler extends RawStatementCompiler {
+final class WasmStatementCompiler implements RawStatementCompiler {
   final WasmDatabase database;
   final Pointer sql;
   final Pointer stmtOut;
@@ -431,7 +431,7 @@ final class WasmStatementCompiler extends RawStatementCompiler {
   }
 }
 
-final class WasmStatement extends RawSqliteStatement {
+final class WasmStatement implements RawSqliteStatement {
   final WasmDatabase database;
   final Pointer stmt;
   final WasmBindings bindings;
@@ -581,7 +581,7 @@ final class WasmStatement extends RawSqliteStatement {
   bool get supportsReadingTableNameForColumn => false;
 }
 
-final class WasmContext extends RawSqliteContext {
+final class WasmContext implements RawSqliteContext {
   final WasmBindings bindings;
   final Pointer context;
   final DartCallbacks callbacks;
@@ -677,7 +677,7 @@ final class WasmContext extends RawSqliteContext {
   }
 }
 
-final class WasmValue extends RawSqliteValue {
+final class WasmValue implements RawSqliteValue {
   final WasmBindings bindings;
   final Pointer value;
 
@@ -744,7 +744,7 @@ class WasmValueList extends ListBase<WasmValue> {
   }
 }
 
-final class WasmSession extends RawSqliteSession {
+final class WasmSession implements RawSqliteSession {
   static final Finalizer<(WasmBindings, int)> _finalizer = Finalizer((args) {
     args.$1.sqlite3session_delete(args.$2);
   });
@@ -833,7 +833,7 @@ final class WasmSession extends RawSqliteSession {
   int sqlite3session_isempty() => _bindings.sqlite3session_isempty(pointer);
 }
 
-final class WasmChangesetIterator extends RawChangesetIterator {
+final class WasmChangesetIterator implements RawChangesetIterator {
   static final Finalizer<(WasmBindings, int?, int)> _finalizer =
       Finalizer((args) {
     if (args.$2 case final underlyingBytes?) {

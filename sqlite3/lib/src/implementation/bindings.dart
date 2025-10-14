@@ -10,7 +10,7 @@ import 'package:meta/meta.dart';
 import '../functions.dart';
 import '../vfs.dart';
 
-abstract base class RawChangesetIterator {
+abstract interface class RawChangesetIterator {
   // int sqlite3changeset_finalize(sqlite3_changeset_iter *pIter);
   int sqlite3changeset_finalize();
 
@@ -71,7 +71,7 @@ final class RawChangeSetOp {
 ///
 /// All of the classes and methods defined here are internal and can be changed
 /// as needed.
-abstract base class RawSqliteBindings {
+abstract interface class RawSqliteBindings {
   // int sqlite3session_create(
   //   sqlite3 *db,                    /* Database handle */
   //   const char *zDb,                /* Name of db (e.g. "main") */
@@ -135,7 +135,7 @@ abstract base class RawSqliteBindings {
   int sqlite3_initialize();
 }
 
-abstract base class RawSqliteSession {
+abstract interface class RawSqliteSession {
   // int sqlite3session_attach(
   //   sqlite3_session *pSession,      /* Session object */
   //   const char *zTab                /* Table name */
@@ -189,7 +189,7 @@ typedef RawCommitHook = int Function();
 typedef RawRollbackHook = void Function();
 typedef RawCollation = int Function(String? a, String? b);
 
-abstract base class RawSqliteDatabase {
+abstract interface class RawSqliteDatabase {
   int sqlite3_changes();
   int sqlite3_last_insert_rowid();
 
@@ -249,7 +249,7 @@ abstract base class RawSqliteDatabase {
 }
 
 /// A stateful wrapper around multiple `sqlite3_prepare` invocations.
-abstract base class RawStatementCompiler {
+abstract interface class RawStatementCompiler {
   /// The current byte-offset in the SQL statement passed to
   /// [RawSqliteDatabase.newCompiler].
   ///
@@ -269,7 +269,7 @@ abstract base class RawStatementCompiler {
   void close();
 }
 
-abstract base class RawSqliteStatement {
+abstract interface class RawSqliteStatement {
   void sqlite3_reset();
   int sqlite3_step();
   void sqlite3_finalize();
@@ -308,7 +308,7 @@ abstract base class RawSqliteStatement {
   int sqlite3_stmt_isexplain();
 }
 
-abstract base class RawSqliteContext {
+abstract interface class RawSqliteContext {
   AggregateContext<Object?>? dartAggregateContext;
 
   void sqlite3_result_null();
@@ -321,7 +321,7 @@ abstract base class RawSqliteContext {
   void sqlite3_result_subtype(int value);
 }
 
-abstract base class RawSqliteValue {
+abstract interface class RawSqliteValue {
   int sqlite3_value_type();
   int sqlite3_value_int64();
   double sqlite3_value_double();

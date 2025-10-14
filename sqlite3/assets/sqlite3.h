@@ -20,6 +20,7 @@ int sqlite3_open_v2(sqlite3_char *filename, sqlite3 **ppDb, int flags,
                     sqlite3_char *zVfs);
 int sqlite3_close_v2(sqlite3 *db);
 sqlite3_char *sqlite3_db_filename(sqlite3 *db, sqlite3_char *zDbName);
+int sqlite3_compileoption_used(const sqlite3_char *zOptName);
 const sqlite3_char *sqlite3_compileoption_get(int N);
 
 // Error handling

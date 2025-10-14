@@ -12,7 +12,7 @@ import 'exception.dart';
 base class Sqlite3Implementation implements CommonSqlite3 {
   final RawSqliteBindings bindings;
 
-  Sqlite3Implementation(this.bindings);
+  const Sqlite3Implementation(this.bindings);
 
   @visibleForOverriding
   CommonDatabase wrapDatabase(RawSqliteDatabase rawDb) {

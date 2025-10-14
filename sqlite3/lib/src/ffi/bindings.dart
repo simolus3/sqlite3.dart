@@ -1,3 +1,5 @@
+// ignore_for_file: non_constant_identifier_names
+
 import 'dart:collection';
 import 'dart:convert';
 import 'dart:ffi';
@@ -12,108 +14,36 @@ import '../functions.dart';
 import '../implementation/bindings.dart';
 import '../implementation/exception.dart';
 import '../vfs.dart';
-import 'generated/dynamic_library.dart';
-import 'generated/native_library.dart' as native;
+import 'libsqlite3.g.dart';
+import 'libsqlite3.g.dart' as libsqlite3;
 import 'memory.dart';
-import 'generated/shared.dart';
 
-// ignore_for_file: non_constant_identifier_names
+/// The only instance of [FfiBindings].
+///
+/// Since bindings are using native assets, these bindings don't hold any state
+/// (unlike the WASM bindings, which require a `WebAssembly.Module` reference).
+const ffiBindings = FfiBindings._();
 
-class BindingsWithLibrary {
-  // sqlite3_prepare_v3 was added in 3.20.0
-  static const int _firstVersionForV3 = 3020000;
+// sqlite3_prepare_v3 was added in 3.20.0
+const int _firstVersionForV3 = 3020000;
 
-  // sqlite3_prepare_v3 was added in 3.38.0
-  static const int _firstVersionForErrorOffset = 3038000;
+// sqlite3_error_offset was added in 3.38.0
+const int _firstVersionForErrorOffset = 3038000;
 
-  final SqliteLibrary bindings;
-  final DynamicLibrary? library;
-  final NativeFinalizer? sessionDelete;
-  final NativeFinalizer? changesetIteratorFinalize;
+final supportsPrepareV3 = sqlite3_libversion_number() >= _firstVersionForV3;
+final supportsErrorOffset =
+    sqlite3_libversion_number() >= _firstVersionForErrorOffset;
 
-  final bool supportsPrepareV3;
-  final bool supportsErrorOffset;
-  final bool supportsColumnTableName;
+final sessionDeleteFinalizer =
+    NativeFinalizer(addresses.sqlite3session_delete.cast());
+final changesetFinalizeFinalizer =
+    NativeFinalizer(addresses.sqlite3changeset_finalize.cast());
+final supportsColumnTableName = false;
 
-  factory BindingsWithLibrary(DynamicLibrary library) {
-    final bindings = NativeLibrary(library);
-    var hasColumnMetadata = false;
+final _vfsPointers = Expando<_RegisteredVfs>();
 
-    if (library.providesSymbol('sqlite3_compileoption_get')) {
-      var i = 0;
-      String? lastOption;
-      do {
-        final ptr = bindings.sqlite3_compileoption_get(i);
-
-        if (!ptr.isNullPointer) {
-          lastOption = ptr.readString();
-
-          if (lastOption == 'ENABLE_COLUMN_METADATA') {
-            hasColumnMetadata = true;
-            break;
-          }
-        } else {
-          lastOption = null;
-        }
-
-        i++;
-      } while (lastOption != null);
-    }
-
-    return BindingsWithLibrary._(
-      bindings: bindings,
-      library: library,
-      supportsColumnTableName: hasColumnMetadata,
-    );
-  }
-
-  factory BindingsWithLibrary.native() {
-    final bindings = native.NativeAssetsLibrary();
-
-    return BindingsWithLibrary._(
-      bindings: bindings,
-      library: null,
-      supportsColumnTableName: false,
-    );
-  }
-
-  BindingsWithLibrary._({
-    required this.bindings,
-    required this.library,
-    required this.supportsColumnTableName,
-  })  : supportsErrorOffset =
-            bindings.sqlite3_libversion_number() >= _firstVersionForErrorOffset,
-        supportsPrepareV3 =
-            bindings.sqlite3_libversion_number() >= _firstVersionForV3,
-        sessionDelete = _sessionDeleteFinalizer(library, bindings),
-        changesetIteratorFinalize =
-            _changesetFinalizeFinalizer(library, bindings);
-
-  static NativeFinalizer? _sessionDeleteFinalizer(
-      DynamicLibrary? library, SqliteLibrary bindings) {
-    if (library != null && !library.providesSymbol('sqlite3session_delete')) {
-      return null;
-    }
-
-    return NativeFinalizer(bindings.addresses.sqlite3session_delete.cast());
-  }
-
-  static NativeFinalizer? _changesetFinalizeFinalizer(
-      DynamicLibrary? library, SqliteLibrary bindings) {
-    if (library != null &&
-        !library.providesSymbol('sqlite3changeset_finalize')) {
-      return null;
-    }
-
-    return NativeFinalizer(bindings.addresses.sqlite3changeset_finalize.cast());
-  }
-}
-
-final class FfiBindings extends RawSqliteBindings {
-  final BindingsWithLibrary bindings;
-  final _vfsPointers = Expando<_RegisteredVfs>();
-
-  FfiBindings(this.bindings);
+final class FfiBindings implements RawSqliteBindings {
+  const FfiBindings._();
 
   @override
   RawSqliteSession sqlite3session_create(
@@ -123,7 +53,7 @@ final class FfiBindings extends RawSqliteBindings {
     final dbImpl = db as FfiDatabase;
     final namePtr = Utf8Utils.allocateZeroTerminated(name);
     final sessionPtr = allocate<Pointer<sqlite3_session>>();
-    final result = bindings.bindings.sqlite3session_create(
+    final result = libsqlite3.sqlite3session_create(
       dbImpl.db,
       namePtr,
       sessionPtr,
@@ -136,7 +66,7 @@ final class FfiBindings extends RawSqliteBindings {
       throw createExceptionOutsideOfDatabase(this, result);
     }
 
-    return FfiSession(this, sessionValue);
+    return FfiSession(sessionValue);
   }
 
   @override
@@ -170,13 +100,13 @@ final class FfiBindings extends RawSqliteBindings {
             Int Function(Pointer<Void>, Int, Pointer<sqlite3_changeset_iter>)>
         conflictImpl = (NativeCallable.isolateLocal(
       (Pointer<Void> ctx, int eConflict, Pointer<sqlite3_changeset_iter> p) {
-        final iter = FfiChangesetIterator(this, p, ownsIterator: false);
+        final iter = FfiChangesetIterator(p, ownsIterator: false);
         return conflict(eConflict, iter);
       },
       exceptionalReturn: 1,
     )..keepIsolateAlive = true);
 
-    final result = bindings.bindings.sqlite3changeset_apply(
+    final result = libsqlite3.sqlite3changeset_apply(
       dbImpl.db,
       changeset.length,
       changesetPtr.cast(),
@@ -196,8 +126,8 @@ final class FfiBindings extends RawSqliteBindings {
     final (asPtr, region) = allocateBytesWithFinalizer(changeset);
     final iteratorOut = allocate<Pointer<sqlite3_changeset_iter>>();
 
-    final result = bindings.bindings
-        .sqlite3changeset_start(iteratorOut, changeset.length, asPtr.cast());
+    final result = libsqlite3.sqlite3changeset_start(
+        iteratorOut, changeset.length, asPtr.cast());
     final iterator = iteratorOut.value;
     iteratorOut.free();
 
@@ -206,7 +136,7 @@ final class FfiBindings extends RawSqliteBindings {
       throw createExceptionOutsideOfDatabase(this, result);
     }
 
-    return FfiChangesetIterator(this, iterator,
+    return FfiChangesetIterator(iterator,
         ownsIterator: true, ownedChangesetBytes: region);
   }
 
@@ -217,7 +147,7 @@ final class FfiBindings extends RawSqliteBindings {
     final outChangeset = allocate<Pointer<Void>>();
 
     try {
-      final result = bindings.bindings.sqlite3changeset_invert(
+      final result = libsqlite3.sqlite3changeset_invert(
         changeset.length,
         sessionPtr,
         outSize,
@@ -230,7 +160,7 @@ final class FfiBindings extends RawSqliteBindings {
 
       final size = outSize.value;
       final inverted = outChangeset.value.cast<Uint8>().asTypedList(size,
-          finalizer: bindings.bindings.addresses.sqlite3_free.cast());
+          finalizer: libsqlite3.addresses.sqlite3_free.cast());
       return inverted;
     } finally {
       sessionPtr.free();
@@ -241,37 +171,37 @@ final class FfiBindings extends RawSqliteBindings {
 
   @override
   String? get sqlite3_temp_directory {
-    return bindings.bindings.sqlite3_temp_directory.readNullableString();
+    return libsqlite3.sqlite3_temp_directory.readNullableString();
   }
 
   @override
   set sqlite3_temp_directory(String? value) {
     if (value == null) {
-      bindings.bindings.sqlite3_temp_directory = nullPtr();
+      libsqlite3.sqlite3_temp_directory = nullPtr();
     } else {
-      bindings.bindings.sqlite3_temp_directory =
+      libsqlite3.sqlite3_temp_directory =
           Utf8Utils.allocateZeroTerminated(value);
     }
   }
 
   @override
   int sqlite3_initialize() {
-    return bindings.bindings.sqlite3_initialize();
+    return libsqlite3.sqlite3_initialize();
   }
 
   @override
   String sqlite3_errstr(int extendedErrorCode) {
-    return bindings.bindings.sqlite3_errstr(extendedErrorCode).readString();
+    return libsqlite3.sqlite3_errstr(extendedErrorCode).readString();
   }
 
   @override
   String sqlite3_libversion() {
-    return bindings.bindings.sqlite3_libversion().readString();
+    return libsqlite3.sqlite3_libversion().readString();
   }
 
   @override
   int sqlite3_libversion_number() {
-    return bindings.bindings.sqlite3_libversion_number();
+    return libsqlite3.sqlite3_libversion_number();
   }
 
   @override
@@ -284,8 +214,8 @@ final class FfiBindings extends RawSqliteBindings {
         : Utf8Utils.allocateZeroTerminated(zVfs);
 
     final resultCode =
-        bindings.bindings.sqlite3_open_v2(namePtr, outDb, flags, vfsPtr);
-    final result = SqliteResult(resultCode, FfiDatabase(bindings, outDb.value));
+        libsqlite3.sqlite3_open_v2(namePtr, outDb, flags, vfsPtr);
+    final result = SqliteResult(resultCode, FfiDatabase(outDb.value));
 
     namePtr.free();
     outDb.free();
@@ -296,14 +226,13 @@ final class FfiBindings extends RawSqliteBindings {
 
   @override
   String sqlite3_sourceid() {
-    return bindings.bindings.sqlite3_sourceid().readString();
+    return libsqlite3.sqlite3_sourceid().readString();
   }
 
   @override
   void registerVirtualFileSystem(VirtualFileSystem vfs, int makeDefault) {
     final ptr = _RegisteredVfs.allocate(vfs);
-    final result =
-        bindings.bindings.sqlite3_vfs_register(ptr._vfsPtr, makeDefault);
+    final result = libsqlite3.sqlite3_vfs_register(ptr._vfsPtr, makeDefault);
     if (result != SqlError.SQLITE_OK) {
       ptr.deallocate();
       throw SqliteException(result, 'Could not register VFS.');
@@ -319,12 +248,25 @@ final class FfiBindings extends RawSqliteBindings {
       throw StateError('vfs has not been registered');
     }
 
-    final result = bindings.bindings.sqlite3_vfs_unregister(ptr._vfsPtr);
+    final result = libsqlite3.sqlite3_vfs_unregister(ptr._vfsPtr);
     if (result != SqlError.SQLITE_OK) {
       throw SqliteException(result, 'Could not unregister VFS.');
     }
 
     ptr.deallocate();
+  }
+
+  String? sqlite3_compileoption_get(int n) {
+    final ptr = libsqlite3.sqlite3_compileoption_get(n);
+    return ptr.readNullableString();
+  }
+
+  int sqlite3_compileoption_used(String optName) {
+    final namePtr = Utf8Utils.allocateZeroTerminated(optName);
+    final result = libsqlite3.sqlite3_compileoption_used(namePtr);
+    namePtr.free();
+
+    return result;
   }
 }
 
@@ -581,16 +523,12 @@ final class _DartFile extends Struct {
   external int dartFileId;
 }
 
-final class FfiSession extends RawSqliteSession implements Finalizable {
-  final FfiBindings bindings;
+final class FfiSession implements RawSqliteSession, Finalizable {
   final Pointer<sqlite3_session> session;
   final Object detachToken = Object();
 
-  SqliteLibrary get _library => bindings.bindings.bindings;
-
-  FfiSession(this.bindings, this.session) {
-    bindings.bindings.sessionDelete
-        ?.attach(this, session.cast(), detach: detachToken);
+  FfiSession(this.session) {
+    sessionDeleteFinalizer.attach(this, session.cast(), detach: detachToken);
   }
 
   @override
@@ -598,7 +536,7 @@ final class FfiSession extends RawSqliteSession implements Finalizable {
     final namePtr = name == null
         ? nullPtr<sqlite3_char>()
         : Utf8Utils.allocateZeroTerminated(name);
-    final result = _library.sqlite3session_attach(
+    final result = libsqlite3.sqlite3session_attach(
       session,
       namePtr,
     );
@@ -610,19 +548,19 @@ final class FfiSession extends RawSqliteSession implements Finalizable {
 
   Uint8List _handleChangesetResult(int result, int size, Pointer<Void> buffer) {
     if (result != SqlError.SQLITE_OK) {
-      throw createExceptionOutsideOfDatabase(bindings, result);
+      throw createExceptionOutsideOfDatabase(ffiBindings, result);
     }
 
     return buffer
         .cast<Uint8>()
-        .asTypedList(size, finalizer: _library.addresses.sqlite3_free);
+        .asTypedList(size, finalizer: libsqlite3.addresses.sqlite3_free);
   }
 
   @override
   Uint8List sqlite3session_changeset() {
     final outSize = allocate<Int>();
     final outChangeset = allocate<Pointer<Void>>();
-    final result = _library.sqlite3session_changeset(
+    final result = libsqlite3.sqlite3session_changeset(
       session,
       outSize,
       outChangeset,
@@ -640,7 +578,7 @@ final class FfiSession extends RawSqliteSession implements Finalizable {
   Uint8List sqlite3session_patchset() {
     final outSize = allocate<Int>();
     final outPatchset = allocate<Pointer<Void>>();
-    final result = _library.sqlite3session_patchset(
+    final result = libsqlite3.sqlite3session_patchset(
       session,
       outSize,
       outPatchset,
@@ -656,15 +594,15 @@ final class FfiSession extends RawSqliteSession implements Finalizable {
 
   @override
   void sqlite3session_delete() {
-    bindings.bindings.sessionDelete?.detach(detachToken);
-    _library.sqlite3session_delete(session);
+    sessionDeleteFinalizer.detach(detachToken);
+    libsqlite3.sqlite3session_delete(session);
   }
 
   @override
   int sqlite3session_diff(String fromDb, String table) {
     final fromDbPtr = Utf8Utils.allocateZeroTerminated(fromDb);
     final tablePtr = Utf8Utils.allocateZeroTerminated(table);
-    final result = _library.sqlite3session_diff(
+    final result = libsqlite3.sqlite3session_diff(
       session,
       fromDbPtr,
       tablePtr,
@@ -677,24 +615,21 @@ final class FfiSession extends RawSqliteSession implements Finalizable {
 
   @override
   int sqlite3session_enable(int enable) {
-    return _library.sqlite3session_enable(session, enable);
+    return libsqlite3.sqlite3session_enable(session, enable);
   }
 
   @override
   int sqlite3session_indirect(int indirect) {
-    return _library.sqlite3session_indirect(session, indirect);
+    return libsqlite3.sqlite3session_indirect(session, indirect);
   }
 
   @override
   int sqlite3session_isempty() {
-    return _library.sqlite3session_isempty(session);
+    return libsqlite3.sqlite3session_isempty(session);
   }
 }
 
-final class FfiChangesetIterator extends RawChangesetIterator
-    implements Finalizable {
-  final FfiBindings bindings;
-
+final class FfiChangesetIterator implements RawChangesetIterator, Finalizable {
   final Pointer<sqlite3_changeset_iter> iterator;
   final Object detachToken = Object();
 
@@ -704,27 +639,25 @@ final class FfiChangesetIterator extends RawChangesetIterator
   /// This ensures that, as the iterator is GCed, so is the changeset.
   final Uint8List? ownedChangesetBytes;
 
-  SqliteLibrary get _library => bindings.bindings.bindings;
-
-  FfiChangesetIterator(this.bindings, this.iterator,
+  FfiChangesetIterator(this.iterator,
       {bool ownsIterator = true, this.ownedChangesetBytes}) {
     if (ownsIterator) {
-      bindings.bindings.changesetIteratorFinalize
-          ?.attach(this, iterator.cast(), detach: detachToken);
+      changesetFinalizeFinalizer.attach(this, iterator.cast(),
+          detach: detachToken);
     }
   }
 
   @override
   int sqlite3changeset_finalize() {
-    bindings.bindings.changesetIteratorFinalize?.detach(detachToken);
-    final result = _library.sqlite3changeset_finalize(iterator);
+    changesetFinalizeFinalizer.detach(detachToken);
+    final result = libsqlite3.sqlite3changeset_finalize(iterator);
     return result;
   }
 
   @override
   SqliteResult<RawSqliteValue?> sqlite3changeset_new(int columnNumber) {
     final outValue = allocate<Pointer<sqlite3_value>>();
-    final result = _library.sqlite3changeset_new(
+    final result = libsqlite3.sqlite3changeset_new(
       iterator,
       columnNumber,
       outValue,
@@ -732,19 +665,18 @@ final class FfiChangesetIterator extends RawChangesetIterator
     final value = outValue.value;
     outValue.free();
 
-    return SqliteResult(
-        result, value.isNullPointer ? null : FfiValue(_library, value));
+    return SqliteResult(result, value.isNullPointer ? null : FfiValue(value));
   }
 
   @override
   int sqlite3changeset_next() {
-    return _library.sqlite3changeset_next(iterator);
+    return libsqlite3.sqlite3changeset_next(iterator);
   }
 
   @override
   SqliteResult<RawSqliteValue?> sqlite3changeset_old(int columnNumber) {
     final outValue = allocate<Pointer<sqlite3_value>>();
-    final result = _library.sqlite3changeset_old(
+    final result = libsqlite3.sqlite3changeset_old(
       iterator,
       columnNumber,
       outValue,
@@ -752,8 +684,7 @@ final class FfiChangesetIterator extends RawChangesetIterator
     final value = outValue.value;
     outValue.free();
 
-    return SqliteResult(
-        result, value.isNullPointer ? null : FfiValue(_library, value));
+    return SqliteResult(result, value.isNullPointer ? null : FfiValue(value));
   }
 
   @override
@@ -763,7 +694,7 @@ final class FfiChangesetIterator extends RawChangesetIterator
     final typePtr = allocate<Int>();
     final indirectPtr = allocate<Int>();
 
-    final result = _library.sqlite3changeset_op(
+    final result = libsqlite3.sqlite3changeset_op(
       iterator,
       tablePtr,
       columnCountPtr,
@@ -781,7 +712,7 @@ final class FfiChangesetIterator extends RawChangesetIterator
     indirectPtr.free();
 
     if (result != SqlError.SQLITE_OK) {
-      throw createExceptionOutsideOfDatabase(bindings, result);
+      throw createExceptionOutsideOfDatabase(ffiBindings, result);
     }
 
     final table = tableValue.readString();
@@ -794,34 +725,34 @@ final class FfiChangesetIterator extends RawChangesetIterator
   }
 }
 
-final class FfiDatabase extends RawSqliteDatabase {
-  final BindingsWithLibrary bindings;
+final class FfiDatabase implements RawSqliteDatabase {
   final Pointer<sqlite3> db;
+
   NativeCallable<_UpdateHook>? _installedUpdateHook;
   NativeCallable<_CommitHook>? _installedCommitHook;
   NativeCallable<_RollbackHook>? _installedRollbackHook;
 
-  FfiDatabase(this.bindings, this.db);
+  FfiDatabase(this.db);
 
   @override
   int sqlite3_close_v2() {
-    return bindings.bindings.sqlite3_close_v2(db);
+    return libsqlite3.sqlite3_close_v2(db);
   }
 
   @override
   String sqlite3_errmsg() {
-    return bindings.bindings.sqlite3_errmsg(db).readString();
+    return libsqlite3.sqlite3_errmsg(db).readString();
   }
 
   @override
   int sqlite3_extended_errcode() {
-    return bindings.bindings.sqlite3_extended_errcode(db);
+    return libsqlite3.sqlite3_extended_errcode(db);
   }
 
   @override
   int sqlite3_error_offset() {
-    if (bindings.supportsErrorOffset) {
-      return bindings.bindings.sqlite3_error_offset(db);
+    if (supportsErrorOffset) {
+      return libsqlite3.sqlite3_error_offset(db);
     } else {
       return -1;
     }
@@ -829,25 +760,25 @@ final class FfiDatabase extends RawSqliteDatabase {
 
   @override
   void sqlite3_extended_result_codes(int onoff) {
-    bindings.bindings.sqlite3_extended_result_codes(db, onoff);
+    libsqlite3.sqlite3_extended_result_codes(db, onoff);
   }
 
   @override
-  int sqlite3_changes() => bindings.bindings.sqlite3_changes(db);
+  int sqlite3_changes() => libsqlite3.sqlite3_changes(db);
 
   @override
   int sqlite3_exec(String sql) {
     final sqlPtr = Utf8Utils.allocateZeroTerminated(sql);
 
-    final result = bindings.bindings
-        .sqlite3_exec(db, sqlPtr, nullPtr(), nullPtr(), nullPtr());
+    final result =
+        libsqlite3.sqlite3_exec(db, sqlPtr, nullPtr(), nullPtr(), nullPtr());
     sqlPtr.free();
     return result;
   }
 
   @override
   int sqlite3_last_insert_rowid() {
-    return bindings.bindings.sqlite3_last_insert_rowid(db);
+    return libsqlite3.sqlite3_last_insert_rowid(db);
   }
 
   @override
@@ -860,10 +791,9 @@ final class FfiDatabase extends RawSqliteDatabase {
     required RawCollation collation,
   }) {
     final name = allocateBytes(collationName, additionalLength: 1);
-    final bindings = this.bindings.bindings;
-    final compare = collation.toNative(bindings);
+    final compare = collation.toNative();
 
-    final result = bindings.sqlite3_create_collation_v2(
+    final result = libsqlite3.sqlite3_create_collation_v2(
       db,
       name.cast(),
       eTextRep,
@@ -888,13 +818,12 @@ final class FfiDatabase extends RawSqliteDatabase {
   }) {
     final functionNamePtr = allocateBytes(functionName, additionalLength: 1);
 
-    final bindings = this.bindings.bindings;
-    final step = xStep.toNative(bindings);
-    final $final = xFinal.toNative(bindings, true);
-    final value = xValue.toNative(bindings, false);
-    final inverse = xInverse.toNative(bindings);
+    final step = xStep.toNative();
+    final $final = xFinal.toNative(true);
+    final value = xValue.toNative(false);
+    final inverse = xInverse.toNative();
 
-    final result = bindings.sqlite3_create_window_function(
+    final result = libsqlite3.sqlite3_create_window_function(
       db,
       functionNamePtr.cast(),
       nArg,
@@ -921,12 +850,11 @@ final class FfiDatabase extends RawSqliteDatabase {
   }) {
     final functionNamePtr = allocateBytes(functionName, additionalLength: 1);
 
-    final bindings = this.bindings.bindings;
-    final func = xFunc?.toNative(bindings);
-    final step = xStep?.toNative(bindings);
-    final $final = xFinal?.toNative(bindings, true);
+    final func = xFunc?.toNative();
+    final step = xStep?.toNative();
+    final $final = xFinal?.toNative(true);
 
-    final result = bindings.sqlite3_create_function_v2(
+    final result = libsqlite3.sqlite3_create_function_v2(
       db,
       functionNamePtr.cast(),
       nArg,
@@ -951,11 +879,10 @@ final class FfiDatabase extends RawSqliteDatabase {
 
     if (hook == null) {
       _installedUpdateHook = null;
-      bindings.bindings.sqlite3_update_hook(db, nullPtr(), nullPtr());
+      libsqlite3.sqlite3_update_hook(db, nullPtr(), nullPtr());
     } else {
       final native = _installedUpdateHook = hook.toNative();
-      bindings.bindings
-          .sqlite3_update_hook(db, native.nativeFunction, nullPtr());
+      libsqlite3.sqlite3_update_hook(db, native.nativeFunction, nullPtr());
     }
 
     previous?.close();
@@ -967,11 +894,10 @@ final class FfiDatabase extends RawSqliteDatabase {
 
     if (hook == null) {
       _installedCommitHook = null;
-      bindings.bindings.sqlite3_commit_hook(db, nullPtr(), nullPtr());
+      libsqlite3.sqlite3_commit_hook(db, nullPtr(), nullPtr());
     } else {
       final native = _installedCommitHook = hook.toNative();
-      bindings.bindings
-          .sqlite3_commit_hook(db, native.nativeFunction, nullPtr());
+      libsqlite3.sqlite3_commit_hook(db, native.nativeFunction, nullPtr());
     }
 
     previous?.close();
@@ -982,11 +908,10 @@ final class FfiDatabase extends RawSqliteDatabase {
     final previous = _installedRollbackHook;
 
     if (hook == null) {
-      bindings.bindings.sqlite3_rollback_hook(db, nullPtr(), nullPtr());
+      libsqlite3.sqlite3_rollback_hook(db, nullPtr(), nullPtr());
     } else {
       final native = _installedRollbackHook = hook.toNative();
-      bindings.bindings
-          .sqlite3_rollback_hook(db, native.nativeFunction, nullPtr());
+      libsqlite3.sqlite3_rollback_hook(db, native.nativeFunction, nullPtr());
     }
 
     previous?.close();
@@ -994,7 +919,7 @@ final class FfiDatabase extends RawSqliteDatabase {
 
   @override
   int sqlite3_db_config(int op, int value) {
-    final result = bindings.bindings.sqlite3_db_config(
+    final result = libsqlite3.sqlite3_db_config(
       db,
       op,
       value,
@@ -1005,7 +930,7 @@ final class FfiDatabase extends RawSqliteDatabase {
 
   @override
   int sqlite3_get_autocommit() {
-    return bindings.bindings.sqlite3_get_autocommit(db);
+    return libsqlite3.sqlite3_get_autocommit(db);
   }
 
   @override
@@ -1030,7 +955,7 @@ final class FfiDatabase extends RawSqliteDatabase {
   }
 }
 
-final class FfiStatementCompiler extends RawStatementCompiler {
+final class FfiStatementCompiler implements RawStatementCompiler {
   final FfiDatabase database;
   final Pointer<Uint8> sql;
   final Pointer<Pointer<sqlite3_stmt>> stmtOut = allocate();
@@ -1053,8 +978,8 @@ final class FfiStatementCompiler extends RawStatementCompiler {
       int byteOffset, int length, int prepFlag) {
     final int result;
 
-    if (database.bindings.supportsPrepareV3) {
-      result = database.bindings.bindings.sqlite3_prepare_v3(
+    if (supportsPrepareV3) {
+      result = libsqlite3.sqlite3_prepare_v3(
         database.db,
         (sql + byteOffset).cast(),
         length,
@@ -1069,7 +994,7 @@ final class FfiStatementCompiler extends RawStatementCompiler {
         'not support prepare_v3',
       );
 
-      result = database.bindings.bindings.sqlite3_prepare_v2(
+      result = libsqlite3.sqlite3_prepare_v2(
         database.db,
         (sql + byteOffset).cast(),
         length,
@@ -1079,22 +1004,18 @@ final class FfiStatementCompiler extends RawStatementCompiler {
     }
 
     final stmt = stmtOut.value;
-    final libraryStatement =
-        stmt.isNullPointer ? null : FfiStatement(database, stmt);
+    final libraryStatement = stmt.isNullPointer ? null : FfiStatement(stmt);
 
     return SqliteResult(result, libraryStatement);
   }
 }
 
-final class FfiStatement extends RawSqliteStatement {
-  final FfiDatabase database;
-  final SqliteLibrary bindings;
+final class FfiStatement implements RawSqliteStatement {
   final Pointer<sqlite3_stmt> stmt;
 
   final List<Pointer> _allocatedArguments = [];
 
-  FfiStatement(this.database, this.stmt)
-      : bindings = database.bindings.bindings;
+  FfiStatement(this.stmt);
 
   @visibleForTesting
   List<Pointer> get allocatedArguments => _allocatedArguments;
@@ -1112,50 +1033,50 @@ final class FfiStatement extends RawSqliteStatement {
     final ptr = allocateBytes(value);
     _allocatedArguments.add(ptr);
 
-    return bindings.sqlite3_bind_blob64(
+    return libsqlite3.sqlite3_bind_blob64(
         stmt, index, ptr.cast(), value.length, nullPtr());
   }
 
   @override
   int sqlite3_bind_double(int index, double value) {
-    return bindings.sqlite3_bind_double(stmt, index, value);
+    return libsqlite3.sqlite3_bind_double(stmt, index, value);
   }
 
   @override
   int sqlite3_bind_int64(int index, int value) {
-    return bindings.sqlite3_bind_int64(stmt, index, value);
+    return libsqlite3.sqlite3_bind_int64(stmt, index, value);
   }
 
   @override
   int sqlite3_bind_int64BigInt(int index, BigInt value) {
-    return bindings.sqlite3_bind_int64(stmt, index, value.toInt());
+    return libsqlite3.sqlite3_bind_int64(stmt, index, value.toInt());
   }
 
   @override
   int sqlite3_bind_null(int index) {
-    return bindings.sqlite3_bind_null(stmt, index);
+    return libsqlite3.sqlite3_bind_null(stmt, index);
   }
 
   @override
   int sqlite3_bind_parameter_count() {
-    return bindings.sqlite3_bind_parameter_count(stmt);
+    return libsqlite3.sqlite3_bind_parameter_count(stmt);
   }
 
   @override
   int sqlite3_stmt_isexplain() {
-    return bindings.sqlite3_stmt_isexplain(stmt);
+    return libsqlite3.sqlite3_stmt_isexplain(stmt);
   }
 
   @override
   int sqlite3_stmt_readonly() {
-    return bindings.sqlite3_stmt_readonly(stmt);
+    return libsqlite3.sqlite3_stmt_readonly(stmt);
   }
 
   @override
   int sqlite3_bind_parameter_index(String name) {
     final ptr = Utf8Utils.allocateZeroTerminated(name);
     try {
-      return bindings.sqlite3_bind_parameter_index(stmt, ptr);
+      return libsqlite3.sqlite3_bind_parameter_index(stmt, ptr);
     } finally {
       ptr.free();
     }
@@ -1167,134 +1088,134 @@ final class FfiStatement extends RawSqliteStatement {
     final ptr = allocateBytes(bytes);
     _allocatedArguments.add(ptr);
 
-    return bindings.sqlite3_bind_text(
+    return libsqlite3.sqlite3_bind_text(
         stmt, index, ptr.cast(), bytes.length, nullPtr());
   }
 
   @override
   Uint8List sqlite3_column_bytes(int index) {
-    final length = bindings.sqlite3_column_bytes(stmt, index);
+    final length = libsqlite3.sqlite3_column_bytes(stmt, index);
     if (length == 0) {
       // sqlite3_column_blob returns a null pointer for non-null blobs with
       // a length of 0. Note that we can distinguish this from a proper null
       // by checking the type (which isn't SQLITE_NULL)
       return Uint8List(0);
     }
-    return bindings.sqlite3_column_blob(stmt, index).copyRange(length);
+    return libsqlite3.sqlite3_column_blob(stmt, index).copyRange(length);
   }
 
   @override
   int sqlite3_column_count() {
-    return bindings.sqlite3_column_count(stmt);
+    return libsqlite3.sqlite3_column_count(stmt);
   }
 
   @override
   double sqlite3_column_double(int index) {
-    return bindings.sqlite3_column_double(stmt, index);
+    return libsqlite3.sqlite3_column_double(stmt, index);
   }
 
   @override
   int sqlite3_column_int64(int index) {
-    return bindings.sqlite3_column_int64(stmt, index);
+    return libsqlite3.sqlite3_column_int64(stmt, index);
   }
 
   @override
   BigInt sqlite3_column_int64OrBigInt(int index) {
-    return BigInt.from(bindings.sqlite3_column_int64(stmt, index));
+    return BigInt.from(libsqlite3.sqlite3_column_int64(stmt, index));
   }
 
   @override
   String sqlite3_column_name(int index) {
-    return bindings.sqlite3_column_name(stmt, index).readString();
+    return libsqlite3.sqlite3_column_name(stmt, index).readString();
   }
 
   @override
   String? sqlite3_column_table_name(int index) {
-    return bindings.sqlite3_column_table_name(stmt, index).readNullableString();
+    return libsqlite3
+        .sqlite3_column_table_name(stmt, index)
+        .readNullableString();
   }
 
   @override
   String sqlite3_column_text(int index) {
-    final length = bindings.sqlite3_column_bytes(stmt, index);
-    return bindings.sqlite3_column_text(stmt, index).readString(length);
+    final length = libsqlite3.sqlite3_column_bytes(stmt, index);
+    return libsqlite3.sqlite3_column_text(stmt, index).readString(length);
   }
 
   @override
   int sqlite3_column_type(int index) {
-    return bindings.sqlite3_column_type(stmt, index);
+    return libsqlite3.sqlite3_column_type(stmt, index);
   }
 
   @override
   void sqlite3_finalize() {
-    bindings.sqlite3_finalize(stmt);
+    libsqlite3.sqlite3_finalize(stmt);
   }
 
   @override
   void sqlite3_reset() {
-    bindings.sqlite3_reset(stmt);
+    libsqlite3.sqlite3_reset(stmt);
   }
 
   @override
   int sqlite3_step() {
-    return bindings.sqlite3_step(stmt);
+    return libsqlite3.sqlite3_step(stmt);
   }
 
   @override
-  bool get supportsReadingTableNameForColumn =>
-      database.bindings.supportsColumnTableName;
+  // TODO: Restore this functionality
+  bool get supportsReadingTableNameForColumn => false;
 }
 
-final class FfiValue extends RawSqliteValue {
-  final SqliteLibrary bindings;
+final class FfiValue implements RawSqliteValue {
   final Pointer<sqlite3_value> value;
 
-  FfiValue(this.bindings, this.value) : assert(!value.isNullPointer);
+  FfiValue(this.value) : assert(!value.isNullPointer);
 
   @override
   Uint8List sqlite3_value_blob() {
-    final byteLength = bindings.sqlite3_value_bytes(value);
-    return bindings.sqlite3_value_blob(value).copyRange(byteLength);
+    final byteLength = libsqlite3.sqlite3_value_bytes(value);
+    return libsqlite3.sqlite3_value_blob(value).copyRange(byteLength);
   }
 
   @override
   double sqlite3_value_double() {
-    return bindings.sqlite3_value_double(value);
+    return libsqlite3.sqlite3_value_double(value);
   }
 
   @override
   int sqlite3_value_int64() {
-    return bindings.sqlite3_value_int64(value);
+    return libsqlite3.sqlite3_value_int64(value);
   }
 
   @override
   String sqlite3_value_text() {
-    final byteLength = bindings.sqlite3_value_bytes(value);
+    final byteLength = libsqlite3.sqlite3_value_bytes(value);
     return utf8
-        .decode(bindings.sqlite3_value_text(value).copyRange(byteLength));
+        .decode(libsqlite3.sqlite3_value_text(value).copyRange(byteLength));
   }
 
   @override
   int sqlite3_value_type() {
-    return bindings.sqlite3_value_type(value);
+    return libsqlite3.sqlite3_value_type(value);
   }
 
   @override
   int sqlite3_value_subtype() {
-    return bindings.sqlite3_value_subtype(value);
+    return libsqlite3.sqlite3_value_subtype(value);
   }
 }
 
-final class FfiContext extends RawSqliteContext {
+final class FfiContext implements RawSqliteContext {
   static int _aggregateContextId = 1;
   static final Map<int, AggregateContext<Object?>> _contexts = {};
 
-  final SqliteLibrary bindings;
   final Pointer<sqlite3_context> context;
 
-  FfiContext(this.bindings, this.context);
+  FfiContext(this.context);
 
   Pointer<Int64> get _rawAggregateContext {
-    final agCtxPtr = bindings
+    final agCtxPtr = libsqlite3
         .sqlite3_aggregate_context(context, sizeOf<Int64>())
         .cast<Int64>();
 
@@ -1334,37 +1255,37 @@ final class FfiContext extends RawSqliteContext {
   void sqlite3_result_blob64(List<int> blob) {
     final ptr = allocateBytes(blob);
 
-    bindings.sqlite3_result_blob64(context, ptr.cast(), blob.length,
+    libsqlite3.sqlite3_result_blob64(context, ptr.cast(), blob.length,
         Pointer.fromAddress(SqlSpecialDestructor.SQLITE_TRANSIENT));
     ptr.free();
   }
 
   @override
   void sqlite3_result_double(double value) {
-    bindings.sqlite3_result_double(context, value);
+    libsqlite3.sqlite3_result_double(context, value);
   }
 
   @override
   void sqlite3_result_error(String message) {
     final ptr = allocateBytes(utf8.encode(message));
 
-    bindings.sqlite3_result_error(context, ptr.cast(), message.length);
+    libsqlite3.sqlite3_result_error(context, ptr.cast(), message.length);
     ptr.free();
   }
 
   @override
   void sqlite3_result_int64(int value) {
-    bindings.sqlite3_result_int64(context, value);
+    libsqlite3.sqlite3_result_int64(context, value);
   }
 
   @override
   void sqlite3_result_int64BigInt(BigInt value) {
-    bindings.sqlite3_result_int64(context, value.toInt());
+    libsqlite3.sqlite3_result_int64(context, value.toInt());
   }
 
   @override
   void sqlite3_result_null() {
-    bindings.sqlite3_result_null(context);
+    libsqlite3.sqlite3_result_null(context);
   }
 
   @override
@@ -1372,14 +1293,14 @@ final class FfiContext extends RawSqliteContext {
     final bytes = utf8.encode(text);
     final ptr = allocateBytes(bytes);
 
-    bindings.sqlite3_result_text(context, ptr.cast(), bytes.length,
+    libsqlite3.sqlite3_result_text(context, ptr.cast(), bytes.length,
         Pointer.fromAddress(SqlSpecialDestructor.SQLITE_TRANSIENT));
     ptr.free();
   }
 
   @override
   void sqlite3_result_subtype(int value) {
-    bindings.sqlite3_result_subtype(context, value);
+    libsqlite3.sqlite3_result_subtype(context, value);
   }
 
   void freeContext() {
@@ -1392,13 +1313,12 @@ class _ValueList extends ListBase<FfiValue> {
   @override
   int length;
   final Pointer<Pointer<sqlite3_value>> args;
-  final SqliteLibrary bindings;
 
-  _ValueList(this.length, this.args, this.bindings);
+  _ValueList(this.length, this.args);
 
   @override
   FfiValue operator [](int index) {
-    return FfiValue(bindings, args[index]);
+    return FfiValue(args[index]);
   }
 
   @override
@@ -1416,19 +1336,19 @@ typedef _CommitHook = Int Function(Pointer<Void>);
 typedef _RollbackHook = Void Function(Pointer<Void>);
 
 extension on RawXFunc {
-  NativeCallable<_XFunc> toNative(SqliteLibrary bindings) {
+  NativeCallable<_XFunc> toNative() {
     return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx, int nArgs,
         Pointer<Pointer<sqlite3_value>> args) {
-      this(FfiContext(bindings, ctx), _ValueList(nArgs, args, bindings));
+      this(FfiContext(ctx), _ValueList(nArgs, args));
     })
       ..keepIsolateAlive = false;
   }
 }
 
 extension on RawXFinal {
-  NativeCallable<_XFinal> toNative(SqliteLibrary bindings, bool clean) {
+  NativeCallable<_XFinal> toNative(bool clean) {
     return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx) {
-      final context = FfiContext(bindings, ctx);
+      final context = FfiContext(ctx);
       this(context);
       if (clean) context.freeContext();
     })
@@ -1437,7 +1357,7 @@ extension on RawXFinal {
 }
 
 extension on RawCollation {
-  NativeCallable<_XCompare> toNative(SqliteLibrary bindings) {
+  NativeCallable<_XCompare> toNative() {
     return NativeCallable.isolateLocal(
       (
         Pointer<Void> _,
