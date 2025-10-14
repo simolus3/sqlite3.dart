@@ -45,7 +45,7 @@ jobs:
         # We only really need this for Ubuntu, but we recommend users run the same
         # steps so we better make sure they work on all platforms.
         #os: [ubuntu-latest, macos-latest, windows-latest]
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest]
 
     runs-on: ${{ matrix.os }}
     name: Compile sqlite3
@@ -72,7 +72,6 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-arm-linux-gnueabihf gcc-i686-linux-gnu
-
 
       - name: Compile sqlite3
 #        if: steps.cache_build.outputs.cache-hit != 'true'

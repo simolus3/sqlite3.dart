@@ -16,6 +16,12 @@ void main() async {
         for (final sqlite3mc in [false, true])
           _compileLinux(compiler, abi, sqlite3mc)
     ], eagerError: true);
+  } else if (Platform.isMacOS) {
+    await Future.wait([
+      for (final (triple, name) in _appleAbis)
+        for (final sqlite3mc in [false, true])
+          _compileApple(triple, name, sqlite3mc)
+    ], eagerError: true);
   }
 }
 
@@ -48,12 +54,45 @@ Future<void> _compileLinux(
   }
 }
 
+Future<void> _compileApple(
+    String triple, String prefix, bool sqlite3Ciphers) async {
+  final args = [
+    '-target',
+    triple,
+    '-shared',
+    '-O3',
+    ...defines,
+    sqlite3Ciphers
+        ? 'sqlite3-src/sqlite3mc/sqlite3mc_amalgamation.c'
+        : 'sqlite3-src/sqlite3/sqlite3.c',
+    '-I',
+    sqlite3Ciphers ? 'sqlite3-src/sqlite3mc/' : 'sqlite3-src/sqlite3',
+    '-o',
+    'out/$prefix-sqlite3${sqlite3Ciphers ? 'mc' : ''}.dylib',
+  ];
+
+  print('Running clang ${args.join(' ')}');
+  final result = await Process.run('clang', args);
+
+  if (result.exitCode != 0) {
+    throw 'Compiling for $triple (ciphers: $sqlite3Ciphers) failed: ${result.stdout}\n ${result.stderr}';
+  }
+}
+
 const _linuxAbis = [
   ('x86_64-linux-gnu-gcc', 'x64'),
   ('i686-linux-gnu-gcc', 'x86'),
   ('aarch64-linux-gnu-gcc', 'aarch64'),
   ('arm-linux-gnueabihf-gcc', 'armv7'),
   ('riscv64-linux-gnu-gcc', 'riscv64gc'),
+];
+
+const _appleAbis = [
+  ('aarch64-apple-macos', 'macos-aarch64'),
+  ('x86_64-apple-macos', 'macos-x64'),
+  ('x86_64-apple-ios13.0-simulator', 'ios-sim-x64'),
+  ('arm64-apple-ios13.0-simulator', 'ios-sim-aarch64'),
+  ('arm64-apple-ios13.0', 'ios-aarch64'),
 ];
 
 // Keep in sync with sqlite3/lib/src/hook/description.dart

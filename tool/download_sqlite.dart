@@ -7,6 +7,8 @@ const sqliteMultipleCiphersSource =
 
 const tmpDir = 'tmp';
 
+/// This runs as part of a GitHub actions workflow in this repository. It's not
+/// really supposed to be used outside of that.
 void main(List<String> args) async {
   await Directory(tmpDir).create();
 
