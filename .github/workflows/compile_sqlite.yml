@@ -140,7 +140,6 @@ jobs:
 
       - uses: actions/download-artifact@v5
         with:
-          name: sqlite3-libs-${{ runner.os }}-${{ matrix.arch }}
           path: out/
           merge-multiple: true
           pattern: sqlite3-libs-*
