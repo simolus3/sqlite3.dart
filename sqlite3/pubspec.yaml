@@ -30,6 +30,9 @@ dependencies:
   path: ^1.8.0
   web: ^1.0.0
   typed_data: ^1.3.2
+  hooks: ^0.20.3
+  code_assets: ^0.19.8
+  native_toolchain_c: ^0.17.2
 
 dev_dependencies:
   analyzer: ^8.0.0
