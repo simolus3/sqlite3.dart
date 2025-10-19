@@ -85,9 +85,12 @@ jobs:
           dart-dependencies-${{ matrix.dart }}-
           dart-dependencies-
 
+    - name: Write asset hashes
+      run: dart run tool/write_asset_hashes.dart
+      if: matrix.sqlite == 'compiled'
+
     - name: Prepare for tests
       run: |
-        dart run tool/write_asset_hashes.dart
         dart run tool/hook_overrides.dart ${{ matrix.sqlite }}
 
     - name: Test sqlite3 package
