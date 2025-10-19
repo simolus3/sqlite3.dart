@@ -194,7 +194,7 @@ final class PrecompiledForTesting extends PrecompiledBinary {
     final uri = input.userDefines.path('directory')!.resolve(filename);
     output.dependencies.add(uri);
 
-    return File(uri.path).openRead().map(
+    return File(uri.toFilePath()).openRead().map(
       (event) => switch (event) {
         final Uint8List bytes => bytes,
         _ => Uint8List.fromList(event),
