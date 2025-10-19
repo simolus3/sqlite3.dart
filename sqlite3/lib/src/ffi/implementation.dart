@@ -54,7 +54,10 @@ final class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
 
     final result = libsqlite3.sqlite3_auto_extension(functionPtr);
     if (result != SqlError.SQLITE_OK) {
-      throw SqliteException(result, 'Could not load extension');
+      throw SqliteException(
+        extendedResultCode: result,
+        message: 'Could not load extension',
+      );
     }
   }
 

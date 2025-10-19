@@ -245,7 +245,10 @@ final class FfiBindings implements RawSqliteBindings {
     final result = libsqlite3.sqlite3_vfs_register(ptr._vfsPtr, makeDefault);
     if (result != SqlError.SQLITE_OK) {
       ptr.deallocate();
-      throw SqliteException(result, 'Could not register VFS.');
+      throw SqliteException(
+        extendedResultCode: result,
+        message: 'Could not register VFS',
+      );
     }
 
     _vfsPointers[vfs] = ptr;
@@ -260,7 +263,10 @@ final class FfiBindings implements RawSqliteBindings {
 
     final result = libsqlite3.sqlite3_vfs_unregister(ptr._vfsPtr);
     if (result != SqlError.SQLITE_OK) {
-      throw SqliteException(result, 'Could not unregister VFS.');
+      throw SqliteException(
+        extendedResultCode: result,
+        message: 'Could not unregister VFS',
+      );
     }
 
     ptr.deallocate();

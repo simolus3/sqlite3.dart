@@ -28,7 +28,10 @@ base class Sqlite3Implementation implements CommonSqlite3 {
   void initialize() {
     final rc = bindings.sqlite3_initialize();
     if (rc != 0) {
-      throw SqliteException(rc, 'Error returned by sqlite3_initialize');
+      throw SqliteException(
+        extendedResultCode: rc,
+        message: 'Error returned by sqlite3_initialize',
+      );
     }
   }
 
