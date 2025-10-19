@@ -17,7 +17,7 @@ jobs:
         id: cache_build
         with:
           path: out/
-          key: sqlite-src-${{ hashFiles('tool/sqlite/') }}
+          key: sqlite-src-${{ hashFiles('tool/sqlite3/') }}
 
       - uses: dart-lang/setup-dart@v1
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -25,7 +25,7 @@ jobs:
       - name: Download sqlite3
         if: steps.cache_build.outputs.cache-hit != 'true'
         run: |
-          dart run tool/sqlite/download_sqlite.dart
+          dart run tool/sqlite3/download_sqlite.dart
 
       - name: Upload sqlite3 sources
         uses: actions/upload-artifact@v4
@@ -96,7 +96,7 @@ jobs:
         id: cache_build
         with:
           path: out/
-          key: sqlite-prebuilt-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('tool/sqlite/') }}
+          key: sqlite-prebuilt-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('tool/sqlite3/') }}
 
       - name: Download sqlite3 sources
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -116,7 +116,7 @@ jobs:
       - name: Compile sqlite3
         if: steps.cache_build.outputs.cache-hit != 'true'
         run: |
-          dart run tool/sqlite/compile_sqlite.dart ${{ matrix.arch }}
+          dart run tool/sqlite3/compile_sqlite.dart ${{ matrix.arch }}
 
       - name: Upload sqlite3 binaries
         uses: actions/upload-artifact@v4
