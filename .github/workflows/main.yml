@@ -52,9 +52,7 @@ jobs:
     needs: [analyze, fetch_sqlite]
     strategy:
       matrix:
-        # TODO: Re-enable windows testing
-#        os: [ubuntu-latest, windows-latest, macos-latest]
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         dart: [beta, dev]
         sqlite: [system, compiled]
 
@@ -68,7 +66,7 @@ jobs:
         sdk: ${{ matrix.dart }}
 
     - name: Download compiled sqlite3
-      if: matrix.sqlite == 'compiled' && (runner.os == 'Linux' || runner.os == 'Windows' || runner.os == 'macOS')
+      if: matrix.sqlite == 'compiled'
       uses: actions/download-artifact@v5
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
@@ -85,7 +83,7 @@ jobs:
     - name: Prepare for tests
       run: |
         dart run tool/write_asset_hashes.dart
-        dart run tool/hook_overrides.dart
+        dart run tool/hook_overrides.dart ${{ matrix.sqlite }}
 
     - name: Test sqlite3 package
       run: |
