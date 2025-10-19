@@ -1,7 +1,7 @@
 #include "sqlite3.h"
 
 // Additional bindings we need for WASM interop.
-// These are implemented in helpers.c, this header is only used for ffigen.
+// These are implemented in sqlite3_wasm_build, this header is only used for ffigen.
 
 void *dart_sqlite3_malloc(int size);
 void dart_sqlite3_free(void *ptr);

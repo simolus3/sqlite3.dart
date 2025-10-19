@@ -31,8 +31,8 @@ file(DOWNLOAD https://raw.githubusercontent.com/sqlite/sqlite/master/src/test_vf
 add_custom_command(
     OUTPUT required_symbols.txt
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../../
-    COMMAND dart run tool/wasm_symbols.dart ${CMAKE_CURRENT_BINARY_DIR}/required_symbols.txt
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../../tool/wasm_symbols.dart
+    COMMAND dart run ${CMAKE_CURRENT_SOURCE_DIR}/../tool/wasm_symbols.dart ${CMAKE_CURRENT_BINARY_DIR}/required_symbols.txt
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../tool/wasm_symbols.dart
     VERBATIM
 )
 add_custom_target(required_symbols DEPENDS required_symbols.txt)
@@ -121,7 +121,7 @@ base_sqlite3_target(sqlite3_opt false false)
 base_sqlite3_target(sqlite3mc false true)
 
 add_custom_target(output)
-add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_opt.wasm ${PROJECT_SOURCE_DIR}/../../example/web/sqlite3.wasm)
-add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_debug.init.wasm ${PROJECT_SOURCE_DIR}/../../example/web/sqlite3.debug.wasm)
-add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3mc.wasm ${PROJECT_SOURCE_DIR}/../../example/web/sqlite3mc.wasm)
+add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_opt.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3.wasm)
+add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_debug.init.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3.debug.wasm)
+add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3mc.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3mc.wasm)
 add_dependencies(output sqlite3_debug sqlite3_opt sqlite3mc)
