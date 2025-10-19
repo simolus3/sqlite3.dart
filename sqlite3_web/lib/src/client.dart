@@ -35,14 +35,14 @@ final class RemoteDatabase implements Database {
   RemoteDatabase({required this.connection, required this.databaseId}) {
     _updates
       ..onListen = (() {
-        _updateNotificationSubscription ??=
-            connection.notifications.stream.listen((notification) {
-          if (notification case UpdateNotification()) {
-            if (notification.databaseId == databaseId) {
-              _updates.add(notification.update);
-            }
-          }
-        });
+        _updateNotificationSubscription ??= connection.notifications.stream
+            .listen((notification) {
+              if (notification case UpdateNotification()) {
+                if (notification.databaseId == databaseId) {
+                  _updates.add(notification.update);
+                }
+              }
+            });
         _requestStreamUpdates(MessageType.updateRequest, true);
       })
       ..onCancel = (() {
@@ -52,9 +52,15 @@ final class RemoteDatabase implements Database {
       });
 
     _setupCommitOrRollbackStream(
-        _commits, MessageType.commitRequest, MessageType.notifyCommit);
+      _commits,
+      MessageType.commitRequest,
+      MessageType.notifyCommit,
+    );
     _setupCommitOrRollbackStream(
-        _rollbacks, MessageType.rollbackRequest, MessageType.notifyRollback);
+      _rollbacks,
+      MessageType.rollbackRequest,
+      MessageType.notifyRollback,
+    );
   }
 
   void _setupCommitOrRollbackStream(
@@ -64,8 +70,9 @@ final class RemoteDatabase implements Database {
   ) {
     stream.controller
       ..onListen = (() {
-        stream.workerSubscription ??=
-            connection.notifications.stream.listen((notification) {
+        stream.workerSubscription ??= connection.notifications.stream.listen((
+          notification,
+        ) {
           if (notification case EmptyNotification(type: final type)) {
             if (notification.databaseId == databaseId &&
                 type == notificationType) {
@@ -109,8 +116,9 @@ final class RemoteDatabase implements Database {
       _rollbacks.controller.close(),
       _commits.controller.close(),
       connection.sendRequest(
-          CloseDatabase(requestId: 0, databaseId: databaseId),
-          MessageType.simpleSuccessResponse)
+        CloseDatabase(requestId: 0, databaseId: databaseId),
+        MessageType.simpleSuccessResponse,
+      ),
     ).wait;
   }
 
@@ -124,8 +132,10 @@ final class RemoteDatabase implements Database {
   }
 
   @override
-  Future<void> execute(String sql,
-      [List<Object?> parameters = const []]) async {
+  Future<void> execute(
+    String sql, [
+    List<Object?> parameters = const [],
+  ]) async {
     await connection.sendRequest(
       RunQuery(
         requestId: 0,
@@ -148,8 +158,10 @@ final class RemoteDatabase implements Database {
   }
 
   @override
-  Future<ResultSet> select(String sql,
-      [List<Object?> parameters = const []]) async {
+  Future<ResultSet> select(
+    String sql, [
+    List<Object?> parameters = const [],
+  ]) async {
     final response = await connection.sendRequest(
       RunQuery(
         requestId: 0,
@@ -297,12 +309,16 @@ final class DatabaseClient implements WebSqlite {
 
   final Set<MissingBrowserFeature> _missingFeatures = {};
 
-  DatabaseClient(this.workerUri, this.wasmUri, this._localController,
-      Future<JSAny?> Function(JSAny?)? handleCustomRequest)
-      : _handleCustomRequest = handleCustomRequest ??
-            ((_) async {
-              throw StateError('No custom request handler installed');
-            });
+  DatabaseClient(
+    this.workerUri,
+    this.wasmUri,
+    this._localController,
+    Future<JSAny?> Function(JSAny?)? handleCustomRequest,
+  ) : _handleCustomRequest =
+          handleCustomRequest ??
+          ((_) async {
+            throw StateError('No custom request handler installed');
+          });
 
   Future<void> startWorkers() {
     return _startWorkersLock.synchronized(() async {
@@ -371,8 +387,9 @@ final class DatabaseClient implements WebSqlite {
 
       final (endpoint, channel) = await createChannel();
       await _connectionToShared!.sendRequest(
-          ConnectRequest(requestId: 0, endpoint: endpoint),
-          MessageType.simpleSuccessResponse);
+        ConnectRequest(requestId: 0, endpoint: endpoint),
+        MessageType.simpleSuccessResponse,
+      );
 
       return _connectionToDedicatedInShared = _connection(channel);
     });
@@ -387,16 +404,19 @@ final class DatabaseClient implements WebSqlite {
       final local = Local();
       final (endpoint, channel) = await createChannel();
       WorkerRunner(_localController, environment: local).handleRequests();
-      local
-          .addTopLevelMessage(ConnectRequest(requestId: 0, endpoint: endpoint));
+      local.addTopLevelMessage(
+        ConnectRequest(requestId: 0, endpoint: endpoint),
+      );
 
       return _connectionToLocal = _connection(channel);
     });
   }
 
   @override
-  Future<void> deleteDatabase(
-      {required String name, required StorageMode storage}) async {
+  Future<void> deleteDatabase({
+    required String name,
+    required StorageMode storage,
+  }) async {
     switch (storage) {
       case StorageMode.opfs:
         await SimpleOpfsFileSystem.deleteFromStorage(pathForOpfs(name));
@@ -407,8 +427,9 @@ final class DatabaseClient implements WebSqlite {
   }
 
   @override
-  Future<FeatureDetectionResult> runFeatureDetection(
-      {String? databaseName}) async {
+  Future<FeatureDetectionResult> runFeatureDetection({
+    String? databaseName,
+  }) async {
     await startWorkers();
 
     final existing = <ExistingDatabase>{};
@@ -416,7 +437,8 @@ final class DatabaseClient implements WebSqlite {
     var workersReportedIndexedDbSupport = false;
 
     Future<void> dedicatedCompatibilityCheck(
-        WorkerConnection connection) async {
+      WorkerConnection connection,
+    ) async {
       SimpleSuccessResponse response;
       try {
         response = await connection
@@ -438,8 +460,10 @@ final class DatabaseClient implements WebSqlite {
       available.add((StorageMode.inMemory, AccessMode.throughDedicatedWorker));
 
       if (result.canUseIndexedDb) {
-        available
-            .add((StorageMode.indexedDb, AccessMode.throughDedicatedWorker));
+        available.add((
+          StorageMode.indexedDb,
+          AccessMode.throughDedicatedWorker,
+        ));
 
         workersReportedIndexedDbSupport = true;
       } else {
@@ -502,8 +526,9 @@ final class DatabaseClient implements WebSqlite {
 
       available.add((StorageMode.inMemory, AccessMode.throughSharedWorker));
       if (!result.sharedCanSpawnDedicated) {
-        _missingFeatures
-            .add(MissingBrowserFeature.dedicatedWorkersInSharedWorkers);
+        _missingFeatures.add(
+          MissingBrowserFeature.dedicatedWorkersInSharedWorkers,
+        );
       }
     }
 
@@ -529,7 +554,8 @@ final class DatabaseClient implements WebSqlite {
 
   Future<Database> connectToExisting(SqliteWebEndpoint endpoint) async {
     final channel = _connection(
-        WebEndpoint(port: endpoint.$1, lockName: endpoint.$2).connect());
+      WebEndpoint(port: endpoint.$1, lockName: endpoint.$2).connect(),
+    );
 
     return RemoteDatabase(
       connection: channel,
@@ -541,8 +567,13 @@ final class DatabaseClient implements WebSqlite {
   }
 
   @override
-  Future<Database> connect(String name, StorageMode type, AccessMode access,
-      {bool onlyOpenVfs = false, JSAny? additionalOptions}) async {
+  Future<Database> connect(
+    String name,
+    StorageMode type,
+    AccessMode access, {
+    bool onlyOpenVfs = false,
+    JSAny? additionalOptions,
+  }) async {
     await startWorkers();
 
     WorkerConnection connection;
@@ -584,8 +615,11 @@ final class DatabaseClient implements WebSqlite {
   }
 
   @override
-  Future<ConnectToRecommendedResult> connectToRecommended(String name,
-      {bool onlyOpenVfs = false, JSAny? additionalOptions}) async {
+  Future<ConnectToRecommendedResult> connectToRecommended(
+    String name, {
+    bool onlyOpenVfs = false,
+    JSAny? additionalOptions,
+  }) async {
     final probed = await runFeatureDetection(databaseName: name);
 
     // If we have an existing database in storage, we want to keep using that
@@ -599,8 +633,9 @@ final class DatabaseClient implements WebSqlite {
       if (name == name) {
         // If any of the implementations for this location is still availalable,
         // we want to use it instead of another location.
-        final locationIsAccessible =
-            availableImplementations.any((e) => e.$1 == location);
+        final locationIsAccessible = availableImplementations.any(
+          (e) => e.$1 == location,
+        );
         if (locationIsAccessible) {
           availableImplementations.removeWhere((e) => e.$1 != location);
           break checkExisting;
@@ -612,10 +647,16 @@ final class DatabaseClient implements WebSqlite {
     // left.
     availableImplementations.sort(preferrableMode);
 
-    final (storage, access) = availableImplementations.firstOrNull ??
+    final (storage, access) =
+        availableImplementations.firstOrNull ??
         (StorageMode.inMemory, AccessMode.inCurrentContext);
-    final database = await connect(name, storage, access,
-        onlyOpenVfs: onlyOpenVfs, additionalOptions: additionalOptions);
+    final database = await connect(
+      name,
+      storage,
+      access,
+      onlyOpenVfs: onlyOpenVfs,
+      additionalOptions: additionalOptions,
+    );
 
     return ConnectToRecommendedResult(
       database: database,
@@ -631,7 +672,9 @@ final class DatabaseClient implements WebSqlite {
   /// Returns negative values if `a` is more preferrable than `b` and positive
   /// values if `b` is more preferrable than `a`.
   static int preferrableMode(
-      (StorageMode, AccessMode) a, (StorageMode, AccessMode) b) {
+    (StorageMode, AccessMode) a,
+    (StorageMode, AccessMode) b,
+  ) {
     // First, prefer OPFS (an actual file system API) over IndexedDB, a custom
     // file system implementation.
     if (a.$1 != b.$1) {
@@ -649,9 +692,10 @@ final class DatabaseClient implements WebSqlite {
 extension on StorageMode {
   FileSystemImplementation resolveToVfs(bool shared) {
     return switch (this) {
-      StorageMode.opfs => shared
-          ? FileSystemImplementation.opfsShared
-          : FileSystemImplementation.opfsLocks,
+      StorageMode.opfs =>
+        shared
+            ? FileSystemImplementation.opfsShared
+            : FileSystemImplementation.opfsLocks,
       StorageMode.indexedDb => FileSystemImplementation.indexedDb,
       StorageMode.inMemory => FileSystemImplementation.inMemory,
     };

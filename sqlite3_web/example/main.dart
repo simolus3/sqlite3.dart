@@ -14,19 +14,20 @@ void main() async {
 
   globalContext['open'] =
       (JSString name, JSString storage, JSString accessMode) {
-    return Future(() async {
-      final database = await sqlite.connect(
-          name.toDart,
-          StorageMode.values.byName(storage.toDart),
-          AccessMode.values.byName(accessMode.toDart));
+        return Future(() async {
+          final database = await sqlite.connect(
+            name.toDart,
+            StorageMode.values.byName(storage.toDart),
+            AccessMode.values.byName(accessMode.toDart),
+          );
 
-      database.updates.listen((update) {
-        print('Update on $name: $update');
-      });
+          database.updates.listen((update) {
+            print('Update on $name: $update');
+          });
 
-      return database.toJSBox;
-    }).toJS;
-  }.toJS;
+          return database.toJSBox;
+        }).toJS;
+      }.toJS;
 
   globalContext['execute'] = (JSBoxedDartObject database, JSString sql) {
     return Future(() async {

@@ -34,11 +34,7 @@ void main() {
   });
   _addCallbackForWebDriver('get_updates', (arg) async {
     listenForUpdates();
-    return [
-      updates.toJS,
-      commits.toJS,
-      rollbacks.toJS,
-    ].toJS;
+    return [updates.toJS, commits.toJS, rollbacks.toJS].toJS;
   });
   _addCallbackForWebDriver('open', (arg) => _open(arg, false));
   _addCallbackForWebDriver('open_only_vfs', (arg) => _open(arg, true));
@@ -47,13 +43,20 @@ void main() {
     final sqlite = initializeSqlite();
     // Open one database to occupy the database id of zero in the worker
     final unused = await sqlite.connect(
-        'a', StorageMode.inMemory, AccessMode.throughSharedWorker);
+      'a',
+      StorageMode.inMemory,
+      AccessMode.throughSharedWorker,
+    );
     await unused.execute('CREATE TABLE unused (bar TEXT);');
 
     // Then open another one
-    final first = await sqlite.connect(
-            'b', StorageMode.inMemory, AccessMode.throughSharedWorker)
-        as RemoteDatabase;
+    final first =
+        await sqlite.connect(
+              'b',
+              StorageMode.inMemory,
+              AccessMode.throughSharedWorker,
+            )
+            as RemoteDatabase;
     await first.execute('CREATE TABLE foo (bar TEXT);');
 
     final endpoint = await first.additionalConnection();
@@ -106,8 +109,10 @@ void main() {
   });
   _addCallbackForWebDriver('delete_db', (arg) async {
     final storage = StorageMode.values.byName(arg!);
-    await initializeSqlite()
-        .deleteDatabase(name: databaseName, storage: storage);
+    await initializeSqlite().deleteDatabase(
+      name: databaseName,
+      storage: storage,
+    );
     return true.toJS;
   });
   _addCallbackForWebDriver('check_read_write', (arg) async {
@@ -150,7 +155,9 @@ void main() {
 }
 
 void _addCallbackForWebDriver(
-    String name, Future<JSAny?> Function(String?) impl) {
+  String name,
+  Future<JSAny?> Function(String?) impl,
+) {
   globalContext.setProperty(
     name.toJS,
     (JSString? arg, JSFunction callback) {
@@ -162,7 +169,10 @@ void _addCallbackForWebDriver(
         } catch (e, s) {
           final console = globalContext['console']! as JSObject;
           console.callMethod(
-              'error'.toJS, e.toString().toJS, s.toString().toJS);
+            'error'.toJS,
+            e.toString().toJS,
+            s.toString().toJS,
+          );
         }
 
         callback.callAsFunction(null, result);
@@ -224,8 +234,9 @@ Future<JSAny?> _open(String? implementationName, bool onlyOpenVfs) async {
 
   // Make sure it works!
   if (!onlyOpenVfs) {
-    final rows = await db
-        .select('SELECT database_host() as host, additional_data() as data;');
+    final rows = await db.select(
+      'SELECT database_host() as host, additional_data() as data;',
+    );
     if (rows.length != 1) {
       throw 'unexpected row count';
     }

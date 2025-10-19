@@ -27,8 +27,8 @@ class WebLocks {
 
   static WebLocks? instance =
       (_navigator as JSObject).hasProperty('locks'.toJS).toDart
-          ? WebLocks._(_navigator.locks)
-          : null;
+      ? WebLocks._(_navigator.locks)
+      : null;
 }
 
 class HeldLock {

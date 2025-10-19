@@ -61,7 +61,10 @@ String _randomLockName() {
 }
 
 StreamChannel<Message> _channel(
-    MessagePort port, String? lockName, HeldLock? lock) {
+  MessagePort port,
+  String? lockName,
+  HeldLock? lock,
+) {
   final controller = StreamChannelController<Message>();
   port.start();
   EventStreamProviders.messageEvent.forTarget(port).listen((event) {
@@ -75,15 +78,18 @@ StreamChannel<Message> _channel(
     }
   });
 
-  controller.local.stream.listen((msg) {
-    msg.sendToPort(port);
-  }, onDone: () {
-    // Closed locally, inform the other end.
-    port
-      ..postMessage(_disconnectMessage.toJS)
-      ..close();
-    lock?.release();
-  });
+  controller.local.stream.listen(
+    (msg) {
+      msg.sendToPort(port);
+    },
+    onDone: () {
+      // Closed locally, inform the other end.
+      port
+        ..postMessage(_disconnectMessage.toJS)
+        ..close();
+      lock?.release();
+    },
+  );
 
   if (lock == null && lockName != null) {
     // Once this side is able to acquire the lock, the connection is closed.
@@ -103,9 +109,12 @@ abstract class ProtocolChannel {
   final Map<int, Completer<Response>> _responses = {};
 
   ProtocolChannel(this._channel) {
-    _channel.stream.listen(_handleIncoming, onError: (e) {
-      close(e);
-    });
+    _channel.stream.listen(
+      _handleIncoming,
+      onError: (e) {
+        close(e);
+      },
+    );
   }
 
   Future<void> get closed => _channel.sink.done;
@@ -148,7 +157,9 @@ abstract class ProtocolChannel {
   /// It also completes with an error if the channel gets closed in the
   /// meantime.
   Future<Res> sendRequest<Res extends Response>(
-      Request request, MessageType<Res> expectedType) async {
+    Request request,
+    MessageType<Res> expectedType,
+  ) async {
     final id = _nextRequestId++;
     final completer = _responses[id] = Completer.sync();
 
@@ -175,7 +186,8 @@ abstract class ProtocolChannel {
 
     for (final response in _responses.values) {
       response.completeError(
-          StateError('Channel closed before receiving response: $error'));
+        StateError('Channel closed before receiving response: $error'),
+      );
     }
     _responses.clear();
   }

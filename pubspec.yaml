@@ -7,7 +7,9 @@ environment:
 dependencies:
   path: ^1.9.1
   crypto: ^3.0.6
+  pool: ^1.5.2
 
 workspace:
   - sqlite3
   - sqlite3/example/custom_extension
+  - sqlite3_web

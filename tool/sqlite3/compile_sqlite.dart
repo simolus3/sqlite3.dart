@@ -1,6 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:pool/pool.dart';
+
+final _compileTasks = Pool(Platform.numberOfProcessors);
+
 final defines = const LineSplitter()
     .convert(_defaultDefines)
     .map((line) => line.trim())
@@ -10,21 +14,27 @@ final defines = const LineSplitter()
 void main(List<String> args) async {
   await Directory('out').create();
 
+  Future<void> compileAll(List<Future<void> Function()> compile) {
+    return Future.wait([
+      for (final task in compile) _compileTasks.withResource(() => task()),
+    ], eagerError: true);
+  }
+
   if (Platform.isLinux) {
-    await Future.wait([
+    await compileAll([
       for (final (compiler, abi) in _linuxAbis)
         for (final sqlite3mc in [false, true])
-          _compileLinux(compiler, abi, sqlite3mc)
-    ], eagerError: true);
+          () => _compileLinux(compiler, abi, sqlite3mc)
+    ]);
   } else if (Platform.isMacOS) {
-    await Future.wait([
+    await compileAll([
       for (final sqlite3mc in [false, true]) ...[
         for (final (triple, name) in _appleAbis)
-          _compileApple(triple, name, sqlite3mc),
+          () => _compileApple(triple, name, sqlite3mc),
         for (final (triple, name) in _androidAbis)
-          _compileAndroid(triple, name, sqlite3mc)
+          () => _compileAndroid(triple, name, sqlite3mc)
       ]
-    ], eagerError: true);
+    ]);
   } else if (Platform.isWindows) {
     final abiName = args.single;
     final defines = const LineSplitter()

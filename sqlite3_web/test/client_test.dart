@@ -9,7 +9,7 @@ void main() {
   test('finds preferrable implementations', () {
     final all = [
       for (final storage in StorageMode.values)
-        for (final access in AccessMode.values) (storage, access)
+        for (final access in AccessMode.values) (storage, access),
     ];
 
     all.shuffle();

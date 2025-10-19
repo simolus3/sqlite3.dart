@@ -15,12 +15,12 @@ enum Browser {
     driverUriString: 'http://localhost:4444/wd/hub/',
     isChromium: true,
     unsupportedImplementations: {
-      (StorageMode.opfs, AccessMode.throughSharedWorker)
+      (StorageMode.opfs, AccessMode.throughSharedWorker),
     },
     missingFeatures: {MissingBrowserFeature.dedicatedWorkersInSharedWorkers},
     defaultImplementation: (
       StorageMode.opfs,
-      AccessMode.throughDedicatedWorker
+      AccessMode.throughDedicatedWorker,
     ),
   ),
   firefox(
@@ -69,12 +69,14 @@ enum Browser {
   Future<Process> spawnDriver() async {
     return switch (this) {
       firefox => Process.start('geckodriver', []).then((result) async {
-          // geckodriver seems to take a while to initialize
-          await Future.delayed(const Duration(seconds: 1));
-          return result;
-        }),
-      chrome =>
-        Process.start('chromedriver', ['--port=4444', '--url-base=/wd/hub']),
+        // geckodriver seems to take a while to initialize
+        await Future.delayed(const Duration(seconds: 1));
+        return result;
+      }),
+      chrome => Process.start('chromedriver', [
+        '--port=4444',
+        '--url-base=/wd/hub',
+      ]),
     };
   }
 }
@@ -151,7 +153,7 @@ final class _TestConfiguration {
               ],
             },
             'moz:firefoxOptions': {
-              'args': ['-headless']
+              'args': ['-headless'],
             },
           },
         );
@@ -174,9 +176,9 @@ final class _TestConfiguration {
     }
 
     driver = TestWebDriver(server, rawDriver);
-    await driver.driver.get(isDart2Wasm
-        ? 'http://localhost:8080/?wasm=1'
-        : 'http://localhost:8080/');
+    await driver.driver.get(
+      isDart2Wasm ? 'http://localhost:8080/?wasm=1' : 'http://localhost:8080/',
+    );
     await driver.waitReady();
   }
 
