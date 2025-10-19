@@ -40,9 +40,14 @@ jobs:
       working-directory: ${{ matrix.package }}
 
     - name: Format native
-      run: clang-format --Werror --dry-run --style=google assets/sqlite3.h assets/wasm/*.{c,h} test/**/*.c
+      run: clang-format --Werror --dry-run --style=google assets/*.h test/**/*.c
       if: ${{ matrix.package == 'sqlite3' }}
       working-directory: sqlite3
+
+    - name: Format native
+      run: clang-format --Werror --dry-run --style=google src/*{.h,.c}
+      if: ${{ matrix.package == 'sqlite3' }}
+      working-directory: sqlite3_wasm_build
 
     - name: Analyze
       run: dart analyze --fatal-infos lib/ test/
