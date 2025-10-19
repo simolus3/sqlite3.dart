@@ -138,7 +138,7 @@ final class PatchsetImplementation
     };
 
     final conflict = switch (options.onConflict) {
-      null => (int _, RawChangesetIterator __) {
+      null => (int _, RawChangesetIterator _) {
         return ApplyChangesetConflict.abort.flag;
       },
       final conflict => (int conflictKind, RawChangesetIterator it) {

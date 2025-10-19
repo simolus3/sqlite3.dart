@@ -75,7 +75,7 @@ void testVfs(FutureOr<CommonSqlite3> Function() loadSqlite) {
 final class TestVfs extends VirtualFileSystem {
   TestVfs(super.name);
 
-  int Function(String, int) xAccessDelegate = (_, __) => 0;
+  int Function(String, int) xAccessDelegate = (_, _) => 0;
   DateTime Function() xCurrentTimeDelegate = DateTime.now;
   void Function(String, int)? xDeleteDelegate;
   String Function(String) xFullPathNameDelegate = (_) =>

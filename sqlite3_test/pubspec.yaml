@@ -1,6 +1,6 @@
 name: sqlite3_test
 description: Integration of fake clocks and other test utilities for SQLite databases.
-version: 0.1.1
+version: 0.2.0-dev
 homepage: https://github.com/simolus3/sqlite3.dart/tree/main/sqlite3_test
 repository: https://github.com/simolus3/sqlite3.dart
 topics:
@@ -8,7 +8,7 @@ topics:
   - sqlite
 
 environment:
-  sdk: ^3.5.4
+  sdk: '>=3.10.0-0 <4.0.0'
 
 dependencies:
   clock: ^1.1.2
