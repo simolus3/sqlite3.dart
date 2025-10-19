@@ -34,6 +34,7 @@ void main(List<String> args) {
 
   if (process.exitCode != 0) {
     print(
-        'Could not link: ${process.exitCode}, ${process.stderr}, ${process.stdout}');
+      'Could not link: ${process.exitCode}, ${process.stderr}, ${process.stdout}',
+    );
   }
 }

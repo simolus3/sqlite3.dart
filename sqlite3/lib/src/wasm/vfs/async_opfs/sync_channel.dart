@@ -31,7 +31,8 @@ class RequestResponseSynchronizer {
     }
 
     return RequestResponseSynchronizer._(
-        buffer ?? SharedArrayBuffer(_byteLength));
+      buffer ?? SharedArrayBuffer(_byteLength),
+    );
   }
 
   /// Creates a shared buffer and fills it with the initial state suitable for
@@ -64,7 +65,11 @@ class RequestResponseSynchronizer {
 
   String waitForRequest() {
     return Atomics.waitWithTimeout(
-        int32View, _requestIndex, -1, asyncIdleWaitTimeMs);
+      int32View,
+      _requestIndex,
+      -1,
+      asyncIdleWaitTimeMs,
+    );
   }
 
   int takeOpcode() {
@@ -91,8 +96,8 @@ class MessageSerializer {
   final Uint8List byteView;
 
   MessageSerializer(this.buffer)
-      : dataView = buffer.asByteData(metaOffset, metaSize),
-        byteView = buffer.asUint8List();
+    : dataView = buffer.asByteData(metaOffset, metaSize),
+      byteView = buffer.asUint8List();
 
   void write(Message message) {
     if (message is EmptyMessage) {
@@ -160,10 +165,7 @@ enum WorkerOperation<Req extends Message, Res extends Message> {
     MessageSerializer.readNameAndFlags,
     MessageSerializer.readFlags,
   ),
-  xRead<Flags, Flags>(
-    MessageSerializer.readFlags,
-    MessageSerializer.readFlags,
-  ),
+  xRead<Flags, Flags>(MessageSerializer.readFlags, MessageSerializer.readFlags),
   xWrite<Flags, EmptyMessage>(
     MessageSerializer.readFlags,
     MessageSerializer.readEmpty,
@@ -199,8 +201,7 @@ enum WorkerOperation<Req extends Message, Res extends Message> {
   stopServer<EmptyMessage, EmptyMessage>(
     MessageSerializer.readEmpty,
     MessageSerializer.readEmpty,
-  ),
-  ;
+  );
 
   final Req Function(MessageSerializer) readRequest;
   final Res Function(MessageSerializer) readResponse;

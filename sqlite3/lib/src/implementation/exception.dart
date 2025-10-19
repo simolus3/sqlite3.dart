@@ -3,8 +3,10 @@ import 'bindings.dart';
 import 'database.dart';
 
 SqliteException createExceptionOutsideOfDatabase(
-    RawSqliteBindings bindings, int resultCode,
-    {String? operation}) {
+  RawSqliteBindings bindings,
+  int resultCode, {
+  String? operation,
+}) {
   final errStr = bindings.sqlite3_errstr(resultCode);
 
   return SqliteException(resultCode, errStr, null, null, null, operation, null);

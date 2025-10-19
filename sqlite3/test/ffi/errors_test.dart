@@ -117,16 +117,28 @@ void main() {
 
     test('in execute()', () {
       expect(
-          () => db.execute('this is no valid sql'),
-          throwsA(isA<SqliteException>().having((e) => e.causingStatement,
-              'causingStatement', 'this is no valid sql')));
+        () => db.execute('this is no valid sql'),
+        throwsA(
+          isA<SqliteException>().having(
+            (e) => e.causingStatement,
+            'causingStatement',
+            'this is no valid sql',
+          ),
+        ),
+      );
     });
 
     test('for prepared statements (syntax)', () {
       expect(
-          () => db.prepare('this is no valid sql'),
-          throwsA(isA<SqliteException>().having((e) => e.causingStatement,
-              'causingStatement', 'this is no valid sql')));
+        () => db.prepare('this is no valid sql'),
+        throwsA(
+          isA<SqliteException>().having(
+            (e) => e.causingStatement,
+            'causingStatement',
+            'this is no valid sql',
+          ),
+        ),
+      );
     });
 
     test('for prepared statements (selecting)', () {
@@ -136,9 +148,15 @@ void main() {
       );
 
       expect(
-          () => db.prepare('SELECT fail()').select(),
-          throwsA(isA<SqliteException>().having(
-              (e) => e.causingStatement, 'causingStatement', 'SELECT fail()')));
+        () => db.prepare('SELECT fail()').select(),
+        throwsA(
+          isA<SqliteException>().having(
+            (e) => e.causingStatement,
+            'causingStatement',
+            'SELECT fail()',
+          ),
+        ),
+      );
     });
 
     test('reports previous statement in toString()', () {
@@ -149,12 +167,9 @@ SqliteException(1): message, explanation
   Causing statement: SELECT foo;''',
       );
 
-      expect(
-        SqliteException(1, 'message', null, 'SELECT foo;').toString(),
-        '''
+      expect(SqliteException(1, 'message', null, 'SELECT foo;').toString(), '''
 SqliteException(1): message
-  Causing statement: SELECT foo;''',
-      );
+  Causing statement: SELECT foo;''');
     });
 
     test(
@@ -165,15 +180,20 @@ SqliteException(1): message
 
         expect(
           () => db.select('SELECT totally invalid syntax;'),
-          throwsA(isA<SqliteException>()
-              .having(
-                (e) => e.causingStatement,
-                'causingStatement',
-                'SELECT totally invalid syntax;',
-              )
-              .having((e) => e.offset, 'offset', 23)
-              .having((e) => e.toString(), 'toString()',
-                  contains('Causing statement (at position 23): SELECT'))),
+          throwsA(
+            isA<SqliteException>()
+                .having(
+                  (e) => e.causingStatement,
+                  'causingStatement',
+                  'SELECT totally invalid syntax;',
+                )
+                .having((e) => e.offset, 'offset', 23)
+                .having(
+                  (e) => e.toString(),
+                  'toString()',
+                  contains('Causing statement (at position 23): SELECT'),
+                ),
+          ),
         );
       },
       skip: hasErrorOffset ? null : 'Missing sqlite3_error_offset',

@@ -45,9 +45,8 @@ final class SqliteException implements Exception {
 
   SqliteException(
     this.extendedResultCode,
-    this.message,
+    this.message, [
     // todo: migrate to named parameters in next breaking release
-    [
     this.explanation,
     this.causingStatement,
     this.parametersToStatement,
@@ -77,13 +76,15 @@ final class SqliteException implements Exception {
         ..write(causingStatement);
 
       if (parametersToStatement != null) {
-        final params = parametersToStatement!.map((e) {
-          if (e is Uint8List) {
-            return 'blob (${e.length} bytes)';
-          } else {
-            return e.toString();
-          }
-        }).join(', ');
+        final params = parametersToStatement!
+            .map((e) {
+              if (e is Uint8List) {
+                return 'blob (${e.length} bytes)';
+              } else {
+                return e.toString();
+              }
+            })
+            .join(', ');
         buffer.write(', parameters: $params');
       }
     }

@@ -55,18 +55,18 @@ class _CursorReader<T extends IDBCursor> implements StreamIterator<T> {
     _onSuccess = EventStreamProviders.successEvent
         .forTarget(_cursorRequest)
         .listen((event) {
-      cancel();
+          cancel();
 
-      _cursor = _cursorRequest.result as T?;
-      completer.complete(_cursor != null);
-    });
+          _cursor = _cursorRequest.result as T?;
+          completer.complete(_cursor != null);
+        });
 
-    _onError = EventStreamProviders.errorEvent
-        .forTarget(_cursorRequest)
-        .listen((event) {
-      cancel();
-      completer.completeError(_cursorRequest.error ?? event);
-    });
+    _onError = EventStreamProviders.errorEvent.forTarget(_cursorRequest).listen(
+      (event) {
+        cancel();
+        completer.completeError(_cursorRequest.error ?? event);
+      },
+    );
 
     return completer.future;
   }

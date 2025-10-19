@@ -45,7 +45,11 @@ extension type _Atomics._(JSObject _) implements JSObject {
 
   @JS('wait')
   external static JSString waitWithTimeout(
-      JSInt32Array typedArray, int index, int value, int timeOutInMillis);
+    JSInt32Array typedArray,
+    int index,
+    int value,
+    int timeOutInMillis,
+  );
 
   @JS()
   external static void notify(JSInt32Array typedArray, int index, [num count]);
@@ -71,14 +75,24 @@ class Atomics {
   }
 
   static String waitWithTimeout(
-      Int32List typedArray, int index, int value, int timeOutInMillis) {
+    Int32List typedArray,
+    int index,
+    int value,
+    int timeOutInMillis,
+  ) {
     return _Atomics.waitWithTimeout(
-            typedArray.toJS, index, value, timeOutInMillis)
-        .toDart;
+      typedArray.toJS,
+      index,
+      value,
+      timeOutInMillis,
+    ).toDart;
   }
 
-  static void notify(Int32List typedArray, int index,
-      [num count = double.infinity]) {
+  static void notify(
+    Int32List typedArray,
+    int index, [
+    num count = double.infinity,
+  ]) {
     _Atomics.notify(typedArray.toJS, index, count);
   }
 

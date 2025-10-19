@@ -20,7 +20,9 @@ final class SessionImplementation implements Session {
   }
 
   static SessionImplementation createSession(
-      DatabaseImplementation db, String name) {
+    DatabaseImplementation db,
+    String name,
+  ) {
     final bindings = db.bindings;
     final result = bindings.sqlite3session_create(db.database, name);
     return SessionImplementation(bindings, result, db.finalizable);
@@ -122,32 +124,29 @@ final class PatchsetImplementation
   PatchsetImplementation(this.bytes, this.bindings);
 
   @override
-  void applyTo(CommonDatabase database,
-      [ApplyChangesetOptions options = const ApplyChangesetOptions()]) {
+  void applyTo(
+    CommonDatabase database, [
+    ApplyChangesetOptions options = const ApplyChangesetOptions(),
+  ]) {
     final db = database as DatabaseImplementation;
 
     final filter = switch (options.filter) {
       null => null,
       final filter => (String table) {
-          return filter(table) ? 1 : 0;
-        }
+        return filter(table) ? 1 : 0;
+      },
     };
 
     final conflict = switch (options.onConflict) {
       null => (int _, RawChangesetIterator __) {
-          return ApplyChangesetConflict.abort.flag;
-        },
+        return ApplyChangesetConflict.abort.flag;
+      },
       final conflict => (int conflictKind, RawChangesetIterator it) {
-          return conflict.flag;
-        }
+        return conflict.flag;
+      },
     };
 
-    db.bindings.sqlite3changeset_apply(
-      db.database,
-      bytes,
-      filter,
-      conflict,
-    );
+    db.bindings.sqlite3changeset_apply(db.database, bytes, filter, conflict);
   }
 
   @override

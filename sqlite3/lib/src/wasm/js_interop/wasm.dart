@@ -44,7 +44,9 @@ extension type _ResultObject._(JSObject _) implements JSObject {
 
 @JS('WebAssembly.instantiateStreaming')
 external JSPromise<_ResultObject> _instantiateStreaming(
-    JSAny? source, JSObject imports);
+  JSAny? source,
+  JSObject imports,
+);
 
 @JS()
 extension type MemoryDescriptor._(JSObject _) implements JSObject {

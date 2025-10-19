@@ -6,7 +6,7 @@ issue_tracker: https://github.com/simolus3/sqlite3.dart/issues
 resolution: workspace
 
 environment:
-  sdk: '>=3.5.0 <4.0.0'
+  sdk: '>=3.10.0-0 <4.0.0'
 
 # This package supports all platforms listed below.
 platforms:
@@ -33,6 +33,7 @@ dependencies:
   hooks: ^0.20.3
   code_assets: ^0.19.8
   native_toolchain_c: ^0.17.2
+  crypto: ^3.0.6
 
 dev_dependencies:
   analyzer: ^8.0.0

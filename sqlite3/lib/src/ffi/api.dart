@@ -105,12 +105,19 @@ abstract class Database extends CommonDatabase {
 
   // override for more specific subtype
   @override
-  PreparedStatement prepare(String sql,
-      {bool persistent = false, bool vtab = true, bool checkNoTail = false});
+  PreparedStatement prepare(
+    String sql, {
+    bool persistent = false,
+    bool vtab = true,
+    bool checkNoTail = false,
+  });
 
   @override
-  List<PreparedStatement> prepareMultiple(String sql,
-      {bool persistent = false, bool vtab = true});
+  List<PreparedStatement> prepareMultiple(
+    String sql, {
+    bool persistent = false,
+    bool vtab = true,
+  });
 
   /// Create a backup of the current database (this) into another database
   /// ([toDatabase]) on memory or disk.

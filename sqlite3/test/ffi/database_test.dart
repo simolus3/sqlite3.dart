@@ -25,7 +25,7 @@ void main() {
     final stmt = database.prepare('SELECT ?');
     final result = stmt.select(<int>[value]);
     expect(result, [
-      {'?': value}
+      {'?': value},
     ]);
   });
 
@@ -62,8 +62,10 @@ void main() {
   test('throws meaningful exception for open failure', () {
     final path = d.path('nested/does/not/exist.db');
 
-    expect(() => sqlite3.open(path),
-        throwsSqlError(SqlError.SQLITE_CANTOPEN, SqlError.SQLITE_CANTOPEN));
+    expect(
+      () => sqlite3.open(path),
+      throwsSqlError(SqlError.SQLITE_CANTOPEN, SqlError.SQLITE_CANTOPEN),
+    );
   });
 
   group('backup', () {
@@ -166,8 +168,10 @@ void main() {
           final db2 = sqlite3.open(path);
 
           final progressStream = db1.backup(db2, nPage: nPage);
-          await expectLater(progressStream,
-              emitsInOrder(<Matcher>[emitsThrough(1), emitsDone]));
+          await expectLater(
+            progressStream,
+            emitsInOrder(<Matcher>[emitsThrough(1), emitsDone]),
+          );
 
           //Should not be included in backup
           db1.execute('INSERT INTO a VALUES (2);');

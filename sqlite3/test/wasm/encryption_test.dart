@@ -20,8 +20,13 @@ void main() {
     final database = sqlite3.open('/test');
     expect(
       () => database.select('SELECT * FROM foo'),
-      throwsA(isA<SqliteException>()
-          .having((e) => e.message, 'message', contains('not a database'))),
+      throwsA(
+        isA<SqliteException>().having(
+          (e) => e.message,
+          'message',
+          contains('not a database'),
+        ),
+      ),
     );
 
     database.execute('pragma key = "key"');

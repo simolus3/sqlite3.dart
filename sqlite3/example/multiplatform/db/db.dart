@@ -6,8 +6,9 @@ late CommonDatabase sqliteDb;
 Future<void> openDb() async {
   sqliteDb = await openSqliteDb();
 
-  final dbVersion =
-      sqliteDb.select('PRAGMA user_version').first['user_version'];
+  final dbVersion = sqliteDb
+      .select('PRAGMA user_version')
+      .first['user_version'];
 
   print('DB version: $dbVersion');
 

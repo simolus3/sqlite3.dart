@@ -26,9 +26,9 @@ class WasmBindings {
   final SqliteExports sqlite3;
 
   WasmBindings._(this.instance, _InjectedValues values)
-      : memory = values.memory,
-        callbacks = values.callbacks,
-        sqlite3 = SqliteExports(instance.exports) {
+    : memory = values.memory,
+      callbacks = values.callbacks,
+      sqlite3 = SqliteExports(instance.exports) {
     values.bindings = this;
   }
 
@@ -42,8 +42,9 @@ class WasmBindings {
   JSFunction _checkForPresence(JSFunction? function, String name) {
     if (function == null) {
       throw UnsupportedError(
-          '$name is not supported by WASM sqlite3, try upgrading to '
-          'a more recent sqlite3.wasm');
+        '$name is not supported by WASM sqlite3, try upgrading to '
+        'a more recent sqlite3.wasm',
+      );
     }
 
     return function;
@@ -80,30 +81,68 @@ class WasmBindings {
   }
 
   int create_scalar_function(
-      Pointer db, Pointer functionName, int nArg, int eTextRep, int id) {
+    Pointer db,
+    Pointer functionName,
+    int nArg,
+    int eTextRep,
+    int id,
+  ) {
     return sqlite3.dart_sqlite3_create_scalar_function(
-        db, functionName, nArg, eTextRep, id);
+      db,
+      functionName,
+      nArg,
+      eTextRep,
+      id,
+    );
   }
 
   int create_aggregate_function(
-      Pointer db, Pointer functionName, int nArg, int eTextRep, int id) {
+    Pointer db,
+    Pointer functionName,
+    int nArg,
+    int eTextRep,
+    int id,
+  ) {
     return sqlite3.dart_sqlite3_create_aggregate_function(
-        db, functionName, nArg, eTextRep, id);
+      db,
+      functionName,
+      nArg,
+      eTextRep,
+      id,
+    );
   }
 
   int create_window_function(
-      Pointer db, Pointer functionName, int nArg, int eTextRep, int id) {
+    Pointer db,
+    Pointer functionName,
+    int nArg,
+    int eTextRep,
+    int id,
+  ) {
     final function = _checkForPresence(
-        sqlite3.dart_sqlite3_create_window_function, 'createWindow');
+      sqlite3.dart_sqlite3_create_window_function,
+      'createWindow',
+    );
     return function.callReturningInt5(
-        db.toJS, functionName.toJS, nArg.toJS, eTextRep.toJS, id.toJS);
+      db.toJS,
+      functionName.toJS,
+      nArg.toJS,
+      eTextRep.toJS,
+      id.toJS,
+    );
   }
 
   int create_collation(Pointer db, Pointer name, int eTextRep, int id) {
     final function = _checkForPresence(
-        sqlite3.dart_sqlite3_create_collation, 'createCollation');
+      sqlite3.dart_sqlite3_create_collation,
+      'createCollation',
+    );
     return function.callReturningInt4(
-        db.toJS, name.toJS, eTextRep.toJS, id.toJS);
+      db.toJS,
+      name.toJS,
+      eTextRep.toJS,
+      id.toJS,
+    );
   }
 
   Pointer dart_sqlite3_register_vfs(Pointer name, int dartId, int makeDefault) {
@@ -155,15 +194,32 @@ class WasmBindings {
     return sqlite3.dart_sqlite3_rollbacks?.callReturningVoid2(db.toJS, id.toJS);
   }
 
-  int sqlite3_exec(Pointer db, Pointer sql, Pointer callback,
-      Pointer callbackArg, Pointer errorOut) {
+  int sqlite3_exec(
+    Pointer db,
+    Pointer sql,
+    Pointer callback,
+    Pointer callbackArg,
+    Pointer errorOut,
+  ) {
     return sqlite3.sqlite3_exec(db, sql, callback, callbackArg, errorOut);
   }
 
-  int sqlite3_prepare_v3(Pointer db, Pointer sql, int length, int prepFlags,
-      Pointer ppStmt, Pointer pzTail) {
+  int sqlite3_prepare_v3(
+    Pointer db,
+    Pointer sql,
+    int length,
+    int prepFlags,
+    Pointer ppStmt,
+    Pointer pzTail,
+  ) {
     return sqlite3.sqlite3_prepare_v3(
-        db, sql, length, prepFlags, ppStmt, pzTail);
+      db,
+      sql,
+      length,
+      prepFlags,
+      ppStmt,
+      pzTail,
+    );
   }
 
   int sqlite3_bind_parameter_count(Pointer stmt) {
@@ -176,12 +232,18 @@ class WasmBindings {
 
   int sqlite3_bind_int64(Pointer stmt, int index, BigInt value) {
     return sqlite3.sqlite3_bind_int64(
-        stmt, index, JsBigInt.fromBigInt(value).jsObject);
+      stmt,
+      index,
+      JsBigInt.fromBigInt(value).jsObject,
+    );
   }
 
   int sqlite3_bind_int(Pointer stmt, int index, int value) {
     return sqlite3.sqlite3_bind_int64(
-        stmt, index, JsBigInt.fromInt(value).jsObject);
+      stmt,
+      index,
+      JsBigInt.fromInt(value).jsObject,
+    );
   }
 
   int sqlite3_bind_double(Pointer stmt, int index, double value) {
@@ -189,14 +251,29 @@ class WasmBindings {
   }
 
   int sqlite3_bind_text(
-      Pointer stmt, int index, Pointer text, int length, Pointer a) {
+    Pointer stmt,
+    int index,
+    Pointer text,
+    int length,
+    Pointer a,
+  ) {
     return sqlite3.sqlite3_bind_text(stmt, index, text, length, a);
   }
 
   int sqlite3_bind_blob64(
-      Pointer stmt, int index, Pointer test, int length, Pointer a) {
+    Pointer stmt,
+    int index,
+    Pointer test,
+    int length,
+    Pointer a,
+  ) {
     return sqlite3.sqlite3_bind_blob64(
-        stmt, index, test, JsBigInt.fromInt(length), a);
+      stmt,
+      index,
+      test,
+      JsBigInt.fromInt(length),
+      a,
+    );
   }
 
   int sqlite3_bind_parameter_index(Pointer statement, Pointer key) {
@@ -276,12 +353,20 @@ class WasmBindings {
   }
 
   void sqlite3_result_text(
-      Pointer context, Pointer text, int length, Pointer a) {
+    Pointer context,
+    Pointer text,
+    int length,
+    Pointer a,
+  ) {
     sqlite3.sqlite3_result_text(context, text, length, a);
   }
 
   void sqlite3_result_blob64(
-      Pointer context, Pointer blob, int length, Pointer a) {
+    Pointer context,
+    Pointer blob,
+    int length,
+    Pointer a,
+  ) {
     sqlite3.sqlite3_result_blob64(context, blob, JsBigInt.fromInt(length), a);
   }
 
@@ -290,8 +375,10 @@ class WasmBindings {
   }
 
   void sqlite3_result_subtype(Pointer context, int subtype) {
-    sqlite3.sqlite3_result_subtype
-        ?.callReturningVoid2(context.toJS, subtype.toJS);
+    sqlite3.sqlite3_result_subtype?.callReturningVoid2(
+      context.toJS,
+      subtype.toJS,
+    );
   }
 
   int sqlite3_user_data(Pointer context) {
@@ -331,8 +418,11 @@ class WasmBindings {
   }
 
   int sqlite3session_create(Pointer db, Pointer zDb, Pointer sessionOut) {
-    return sqlite3.sqlite3session_create!
-        .callReturningInt3(db.toJS, zDb.toJS, sessionOut.toJS);
+    return sqlite3.sqlite3session_create!.callReturningInt3(
+      db.toJS,
+      zDb.toJS,
+      sessionOut.toJS,
+    );
   }
 
   void sqlite3session_delete(Pointer session) {
@@ -340,13 +430,17 @@ class WasmBindings {
   }
 
   int sqlite3session_enable(Pointer session, int enable) {
-    return sqlite3.sqlite3session_enable!
-        .callReturningInt2(session.toJS, enable.toJS);
+    return sqlite3.sqlite3session_enable!.callReturningInt2(
+      session.toJS,
+      enable.toJS,
+    );
   }
 
   int sqlite3session_indirect(Pointer session, int enable) {
-    return sqlite3.sqlite3session_indirect!
-        .callReturningInt2(session.toJS, enable.toJS);
+    return sqlite3.sqlite3session_indirect!.callReturningInt2(
+      session.toJS,
+      enable.toJS,
+    );
   }
 
   int sqlite3session_isempty(Pointer session) {
@@ -354,37 +448,70 @@ class WasmBindings {
   }
 
   int sqlite3session_attach(Pointer session, Pointer zTab) {
-    return sqlite3.sqlite3session_attach!
-        .callReturningInt2(session.toJS, zTab.toJS);
+    return sqlite3.sqlite3session_attach!.callReturningInt2(
+      session.toJS,
+      zTab.toJS,
+    );
   }
 
   int sqlite3session_diff(
-      Pointer session, Pointer zFromDb, Pointer zTbl, Pointer pzErrMsg) {
+    Pointer session,
+    Pointer zFromDb,
+    Pointer zTbl,
+    Pointer pzErrMsg,
+  ) {
     return sqlite3.sqlite3session_diff!.callReturningInt4(
-        session.toJS, zFromDb.toJS, zTbl.toJS, pzErrMsg.toJS);
+      session.toJS,
+      zFromDb.toJS,
+      zTbl.toJS,
+      pzErrMsg.toJS,
+    );
   }
 
   int sqlite3session_patchset(
-      Pointer session, Pointer pnPatchset, Pointer ppPatchset) {
-    return sqlite3.sqlite3session_patchset!
-        .callReturningInt3(session.toJS, pnPatchset.toJS, ppPatchset.toJS);
+    Pointer session,
+    Pointer pnPatchset,
+    Pointer ppPatchset,
+  ) {
+    return sqlite3.sqlite3session_patchset!.callReturningInt3(
+      session.toJS,
+      pnPatchset.toJS,
+      ppPatchset.toJS,
+    );
   }
 
   int sqlite3session_changeset(
-      Pointer session, Pointer pnPatchset, Pointer ppPatchset) {
-    return sqlite3.sqlite3session_changeset!
-        .callReturningInt3(session.toJS, pnPatchset.toJS, ppPatchset.toJS);
+    Pointer session,
+    Pointer pnPatchset,
+    Pointer ppPatchset,
+  ) {
+    return sqlite3.sqlite3session_changeset!.callReturningInt3(
+      session.toJS,
+      pnPatchset.toJS,
+      ppPatchset.toJS,
+    );
   }
 
   int sqlite3changeset_invert(
-      int nIn, Pointer pIn, Pointer pnOut, Pointer ppOut) {
-    return sqlite3.sqlite3changeset_invert!
-        .callReturningInt4(nIn.toJS, pIn.toJS, pnOut.toJS, ppOut.toJS);
+    int nIn,
+    Pointer pIn,
+    Pointer pnOut,
+    Pointer ppOut,
+  ) {
+    return sqlite3.sqlite3changeset_invert!.callReturningInt4(
+      nIn.toJS,
+      pIn.toJS,
+      pnOut.toJS,
+      ppOut.toJS,
+    );
   }
 
   int sqlite3changeset_start(Pointer outPtr, int size, Pointer changeset) {
-    return sqlite3.sqlite3changeset_start!
-        .callReturningInt3(outPtr.toJS, size.toJS, changeset.toJS);
+    return sqlite3.sqlite3changeset_start!.callReturningInt3(
+      outPtr.toJS,
+      size.toJS,
+      changeset.toJS,
+    );
   }
 
   int sqlite3changeset_finalize(Pointer iterator) {
@@ -395,26 +522,52 @@ class WasmBindings {
     return sqlite3.sqlite3changeset_next!.callReturningInt(iterator.toJS);
   }
 
-  int sqlite3changeset_op(Pointer iterator, Pointer outTable,
-      Pointer outColCount, Pointer outOp, Pointer outIndirect) {
-    return sqlite3.sqlite3changeset_op!.callReturningInt5(iterator.toJS,
-        outTable.toJS, outColCount.toJS, outOp.toJS, outIndirect.toJS);
+  int sqlite3changeset_op(
+    Pointer iterator,
+    Pointer outTable,
+    Pointer outColCount,
+    Pointer outOp,
+    Pointer outIndirect,
+  ) {
+    return sqlite3.sqlite3changeset_op!.callReturningInt5(
+      iterator.toJS,
+      outTable.toJS,
+      outColCount.toJS,
+      outOp.toJS,
+      outIndirect.toJS,
+    );
   }
 
   int sqlite3changeset_old(Pointer iterator, int iVal, Pointer outValue) {
-    return sqlite3.sqlite3changeset_old!
-        .callReturningInt3(iterator.toJS, iVal.toJS, outValue.toJS);
+    return sqlite3.sqlite3changeset_old!.callReturningInt3(
+      iterator.toJS,
+      iVal.toJS,
+      outValue.toJS,
+    );
   }
 
   int sqlite3changeset_new(Pointer iterator, int iVal, Pointer outValue) {
-    return sqlite3.sqlite3changeset_new!
-        .callReturningInt3(iterator.toJS, iVal.toJS, outValue.toJS);
+    return sqlite3.sqlite3changeset_new!.callReturningInt3(
+      iterator.toJS,
+      iVal.toJS,
+      outValue.toJS,
+    );
   }
 
   int dart_sqlite3changeset_apply(
-      Pointer db, int length, Pointer changeset, Pointer context, int filter) {
+    Pointer db,
+    int length,
+    Pointer changeset,
+    Pointer context,
+    int filter,
+  ) {
     return sqlite3.dart_sqlite3changeset_apply!.callReturningInt5(
-        db.toJS, length.toJS, changeset.toJS, context.toJS, filter.toJS);
+      db.toJS,
+      length.toJS,
+      changeset.toJS,
+      context.toJS,
+      filter.toJS,
+    );
   }
 
   Pointer get sqlite3_temp_directory {
@@ -472,15 +625,17 @@ extension WrappedMemory on Memory {
 
   String readString(int address, [int? length]) {
     assert(address != 0, 'Null pointer dereference');
-    return utf8
-        .decode(dartBuffer.asUint8List(address, length ?? strlen(address)));
+    return utf8.decode(
+      dartBuffer.asUint8List(address, length ?? strlen(address)),
+    );
   }
 
   String? readNullableString(int address, [int? length]) {
     if (address == 0) return null;
 
-    return utf8
-        .decode(dartBuffer.asUint8List(address, length ?? strlen(address)));
+    return utf8.decode(
+      dartBuffer.asUint8List(address, length ?? strlen(address)),
+    );
   }
 
   Uint8List copyRange(Pointer pointer, int length) {
@@ -508,21 +663,30 @@ class _InjectedValues {
         'error_log': ((Pointer ptr) {
           print('[sqlite3] ${memory.readString(ptr)}');
         }).toJS,
-        'xOpen': ((int vfsId, Pointer zName, Pointer dartFdPtr, int flags,
-            Pointer pOutFlags) {
-          final vfs = callbacks.registeredVfs[vfsId]!;
-          final path = Sqlite3Filename(memory.readNullableString(zName));
+        'xOpen':
+            ((
+                  int vfsId,
+                  Pointer zName,
+                  Pointer dartFdPtr,
+                  int flags,
+                  Pointer pOutFlags,
+                ) {
+                  final vfs = callbacks.registeredVfs[vfsId]!;
+                  final path = Sqlite3Filename(
+                    memory.readNullableString(zName),
+                  );
 
-          return _runVfs(() {
-            final result = vfs.xOpen(path, flags);
-            final fd = callbacks.registerFile(result.file);
+                  return _runVfs(() {
+                    final result = vfs.xOpen(path, flags);
+                    final fd = callbacks.registerFile(result.file);
 
-            memory.setInt32Value(dartFdPtr, fd);
-            if (pOutFlags != 0) {
-              memory.setInt32Value(pOutFlags, result.outFlags);
-            }
-          });
-        }).toJS,
+                    memory.setInt32Value(dartFdPtr, fd);
+                    if (pOutFlags != 0) {
+                      memory.setInt32Value(pOutFlags, result.outFlags);
+                    }
+                  });
+                })
+                .toJS,
         'xDelete': ((int vfsId, Pointer zName, int syncDir) {
           final vfs = callbacks.registeredVfs[vfsId]!;
           final path = memory.readString(zName);
@@ -584,7 +748,9 @@ class _InjectedValues {
           // dartvfs_currentTimeInt64 will turn this into the right value, it's
           // annoying to do in JS due to the lack of proper ints.
           memory.setInt64Value(
-              target, JsBigInt.fromInt(time.millisecondsSinceEpoch));
+            target,
+            JsBigInt.fromInt(time.millisecondsSinceEpoch),
+          );
         }).toJS,
         'xDeviceCharacteristics': ((int fd) {
           final file = callbacks.openedFiles[fd]!;
@@ -600,15 +766,19 @@ class _InjectedValues {
         'xRead': ((int fd, Pointer target, int amount, JSBigInt offset) {
           final file = callbacks.openedFiles[fd]!;
           return _runVfs(() {
-            file.xRead(memory.buffer.toDart.asUint8List(target, amount),
-                JsBigInt(offset).asDartInt);
+            file.xRead(
+              memory.buffer.toDart.asUint8List(target, amount),
+              JsBigInt(offset).asDartInt,
+            );
           });
         }).toJS,
         'xWrite': ((int fd, Pointer source, int amount, JSBigInt offset) {
           final file = callbacks.openedFiles[fd]!;
           return _runVfs(() {
-            file.xWrite(memory.buffer.toDart.asUint8List(source, amount),
-                JsBigInt(offset).asDartInt);
+            file.xWrite(
+              memory.buffer.toDart.asUint8List(source, amount),
+              JsBigInt(offset).asDartInt,
+            );
           });
         }).toJS,
         'xTruncate': ((int fd, JSBigInt size) {
@@ -664,31 +834,36 @@ class _InjectedValues {
         }).toJS,
         'function_xFinal': ((Pointer ctx) {
           final id = bindings.sqlite3_user_data(ctx);
-          callbacks
-              .functions[id]!.xFinal!(WasmContext(bindings, ctx, callbacks));
+          callbacks.functions[id]!.xFinal!(
+            WasmContext(bindings, ctx, callbacks),
+          );
         }).toJS,
         'function_xValue': ((Pointer ctx) {
           final id = bindings.sqlite3_user_data(ctx);
-          callbacks
-              .functions[id]!.xValue!(WasmContext(bindings, ctx, callbacks));
+          callbacks.functions[id]!.xValue!(
+            WasmContext(bindings, ctx, callbacks),
+          );
         }).toJS,
         'function_forget': ((Pointer ctx) {
           callbacks.forget(ctx);
         }).toJS,
         'function_compare':
             ((Pointer ctx, int lengthA, Pointer a, int lengthB, int b) {
-          final aStr = memory.readNullableString(a, lengthA);
-          final bStr = memory.readNullableString(b, lengthB);
+              final aStr = memory.readNullableString(a, lengthA);
+              final bStr = memory.readNullableString(b, lengthB);
 
-          return callbacks.functions[ctx]!.collation!(aStr, bStr);
-        }).toJS,
+              return callbacks.functions[ctx]!.collation!(aStr, bStr);
+            }).toJS,
         'function_hook':
             ((int id, int kind, Pointer _, Pointer table, JSBigInt rowId) {
-          final tableName = memory.readString(table);
+              final tableName = memory.readString(table);
 
-          callbacks.installedUpdateHook
-              ?.call(kind, tableName, JsBigInt(rowId).asDartInt);
-        }).toJS,
+              callbacks.installedUpdateHook?.call(
+                kind,
+                tableName,
+                JsBigInt(rowId).asDartInt,
+              );
+            }).toJS,
         'function_commit_hook': ((int id) {
           return callbacks.installedCommitHook?.call();
         }).toJS,
@@ -733,10 +908,10 @@ class _InjectedValues {
         }.toJS,
         'changeset_apply_conflict':
             (Pointer context, int eConflict, Pointer iter) {
-          final cb = callbacks.sessionApply[context]!;
-          return cb.conflict!(eConflict, iter);
-        }.toJS,
-      }
+              final cb = callbacks.sessionApply[context]!;
+              return cb.conflict!(eConflict, iter);
+            }.toJS,
+      },
     };
   }
 }
@@ -819,7 +994,13 @@ final class SessionApplyCallbacks {
 extension on JSFunction {
   @JS('call')
   external JSNumber _call5(
-      JSAny? r, JSAny? a0, JSAny? a1, JSAny? a2, JSAny? a3, JSAny? a4);
+    JSAny? r,
+    JSAny? a0,
+    JSAny? a1,
+    JSAny? a2,
+    JSAny? a3,
+    JSAny? a4,
+  );
 
   int callReturningInt0() {
     return (callAsFunction(null) as JSNumber).toDartInt;
@@ -842,7 +1023,12 @@ extension on JSFunction {
   }
 
   int callReturningInt5(
-      JSAny? arg0, JSAny? arg1, JSAny? arg2, JSAny? arg3, JSAny? arg4) {
+    JSAny? arg0,
+    JSAny? arg1,
+    JSAny? arg2,
+    JSAny? arg3,
+    JSAny? arg4,
+  ) {
     return _call5(null, arg0, arg1, arg2, arg3, arg4).toDartInt;
   }
 

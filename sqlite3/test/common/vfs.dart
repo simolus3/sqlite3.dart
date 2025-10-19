@@ -50,7 +50,7 @@ void testVfs(FutureOr<CommonSqlite3> Function() loadSqlite) {
     addTearDown(database.dispose);
 
     expect(database.select('SELECT CURRENT_TIMESTAMP AS r'), [
-      {'r': '2024-11-19 00:00:00'}
+      {'r': '2024-11-19 00:00:00'},
     ]);
   });
 
@@ -78,8 +78,8 @@ final class TestVfs extends VirtualFileSystem {
   int Function(String, int) xAccessDelegate = (_, __) => 0;
   DateTime Function() xCurrentTimeDelegate = DateTime.now;
   void Function(String, int)? xDeleteDelegate;
-  String Function(String) xFullPathNameDelegate =
-      (_) => throw UnimplementedError();
+  String Function(String) xFullPathNameDelegate = (_) =>
+      throw UnimplementedError();
   XOpenResult Function(Sqlite3Filename path, int flags) xOpenDelegate =
       (path, flags) => throw UnimplementedError();
   void Function(Uint8List)? xRandomnessDelegate;

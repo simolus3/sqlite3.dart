@@ -13,8 +13,9 @@ void main() {
   group('encode', () {
     void expectEncoded(Object? object, String expectedHex) {
       final encoded = jsonb.encode(object);
-      final hex =
-          encoded.map((e) => e.toRadixString(16).padLeft(2, '0')).join();
+      final hex = encoded
+          .map((e) => e.toRadixString(16).padLeft(2, '0'))
+          .join();
       expect(hex, expectedHex);
     }
 
@@ -53,15 +54,21 @@ void main() {
       final selfContainingMap = {};
       selfContainingMap['.'] = selfContainingMap;
 
-      expect(() => jsonb.encode(selfContainingList),
-          throwsA(isA<JsonCyclicError>()));
-      expect(() => jsonb.encode(selfContainingMap),
-          throwsA(isA<JsonCyclicError>()));
+      expect(
+        () => jsonb.encode(selfContainingList),
+        throwsA(isA<JsonCyclicError>()),
+      );
+      expect(
+        () => jsonb.encode(selfContainingMap),
+        throwsA(isA<JsonCyclicError>()),
+      );
     });
 
     test('does not encode invalid elements', () {
-      expect(() => jsonb.encode(jsonb),
-          throwsA(isA<JsonUnsupportedObjectError>()));
+      expect(
+        () => jsonb.encode(jsonb),
+        throwsA(isA<JsonUnsupportedObjectError>()),
+      );
     });
 
     test('can call toJson', () {
@@ -160,11 +167,9 @@ void main() {
 
       if (supportsJsonb) {
         // Check our encoder -> sqlite3 decoder rountrip
-        final sqliteDecoded = jsonb2json
-            .select([jsonb.encode(value)])
-            .single
-            .values
-            .single as String;
+        final sqliteDecoded =
+            jsonb2json.select([jsonb.encode(value)]).single.values.single
+                as String;
         if (expectDecodesAs != null) {
           expect(sqliteDecoded, expectDecodesAs);
         } else {
@@ -172,11 +177,9 @@ void main() {
         }
 
         // Check sqlite3 encoder -> our decoder roundtrip
-        final sqliteEncoded = json2jsonb
-            .select([jsonb.encode(value)])
-            .single
-            .values
-            .single as Uint8List;
+        final sqliteEncoded =
+            json2jsonb.select([jsonb.encode(value)]).single.values.single
+                as Uint8List;
         expect(jsonb.decode(sqliteEncoded), valueMatcher);
       }
     }
@@ -208,8 +211,10 @@ void main() {
     });
 
     test('throws on nan', () {
-      expect(() => jsonb.encode(double.nan),
-          throwsA(isA<JsonUnsupportedObjectError>()));
+      expect(
+        () => jsonb.encode(double.nan),
+        throwsA(isA<JsonUnsupportedObjectError>()),
+      );
     });
 
     test(
@@ -218,7 +223,7 @@ void main() {
       skip: supportsJsonb
           ? null
           : 'Roundtrip tests with SQLite were skipped because the available '
-              'SQLite version does not support JSONB.',
+                'SQLite version does not support JSONB.',
     );
   });
 }
@@ -227,5 +232,8 @@ final class _CustomJsonRepresentation {
   Object? toJson() => true;
 }
 
-final _isMalformedJsonException =
-    isA<ArgumentError>().having((e) => e.message, 'message', 'Malformed JSONB');
+final _isMalformedJsonException = isA<ArgumentError>().having(
+  (e) => e.message,
+  'message',
+  'Malformed JSONB',
+);

@@ -11,8 +11,9 @@ Future<void> main() async {
 
   startIndexedDb.onClick.listen((_) async {
     startIndexedDb.remove();
-    final sqlite3 =
-        await WasmSqlite3.loadFromUrl(Uri.parse('sqlite3.debug.wasm'));
+    final sqlite3 = await WasmSqlite3.loadFromUrl(
+      Uri.parse('sqlite3.debug.wasm'),
+    );
 
     print(sqlite3.version);
 

@@ -15,8 +15,9 @@ Future<void> hybridMain(StreamChannel<Object?> channel) async {
       .resolveSymbolicLinksSync();
 
   // Copy sqlite3.wasm file expected by the worker
-  await File('example/web/sqlite3.wasm')
-      .copy(p.join(directory, 'sqlite3.wasm'));
+  await File(
+    'example/web/sqlite3.wasm',
+  ).copy(p.join(directory, 'sqlite3.wasm'));
 
   // And compile worker code
   final process = await Process.run(Platform.executable, [

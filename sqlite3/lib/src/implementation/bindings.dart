@@ -77,10 +77,7 @@ abstract interface class RawSqliteBindings {
   //   const char *zDb,                /* Name of db (e.g. "main") */
   //   sqlite3_session **ppSession     /* OUT: New session object */
   // );
-  RawSqliteSession sqlite3session_create(
-    RawSqliteDatabase db,
-    String name,
-  );
+  RawSqliteSession sqlite3session_create(RawSqliteDatabase db, String name);
 
   // int sqlite3changeset_apply(
   //   sqlite3 *db,                    /* Apply change to "main" db of this handle */
@@ -100,13 +97,8 @@ abstract interface class RawSqliteBindings {
   int sqlite3changeset_apply(
     RawSqliteDatabase database,
     Uint8List changeset,
-    int Function(
-      String tableName,
-    )? filter,
-    int Function(
-      int eConflict,
-      RawChangesetIterator iter,
-    ) conflict,
+    int Function(String tableName)? filter,
+    int Function(int eConflict, RawChangesetIterator iter) conflict,
   );
 
   // int sqlite3changeset_start(
@@ -125,7 +117,10 @@ abstract interface class RawSqliteBindings {
   String? sqlite3_temp_directory;
 
   SqliteResult<RawSqliteDatabase> sqlite3_open_v2(
-      String name, int flags, String? zVfs);
+    String name,
+    int flags,
+    String? zVfs,
+  );
 
   String sqlite3_errstr(int extendedErrorCode);
 
@@ -263,7 +258,10 @@ abstract interface class RawStatementCompiler {
   /// Compile a statement from the substring at [byteOffset] with a maximum
   /// length of [length].
   SqliteResult<RawSqliteStatement?> sqlite3_prepare(
-      int byteOffset, int length, int prepFlag);
+    int byteOffset,
+    int length,
+    int prepFlag,
+  );
 
   /// Releases resources used by this compiler interface.
   void close();

@@ -23,8 +23,9 @@ void main() {
       final stmt = database.prepare('SELECT ?;');
       stmt.execute(['this needs to be allocated and copied into ffi buffer']);
       expect(
-          (stmt as FfiStatementImplementation).ffiStatement.allocatedArguments,
-          isNotEmpty);
+        (stmt as FfiStatementImplementation).ffiStatement.allocatedArguments,
+        isNotEmpty,
+      );
 
       stmt.execute([3]);
       expect(stmt.ffiStatement.allocatedArguments, isEmpty);
@@ -34,8 +35,9 @@ void main() {
       final stmt = database.prepare('SELECT ?;');
       stmt.execute(['this needs to be allocated and copied into ffi buffer']);
       expect(
-          (stmt as FfiStatementImplementation).ffiStatement.allocatedArguments,
-          isNotEmpty);
+        (stmt as FfiStatementImplementation).ffiStatement.allocatedArguments,
+        isNotEmpty,
+      );
 
       stmt.dispose();
       expect(stmt.ffiStatement.allocatedArguments, isEmpty);

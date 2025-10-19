@@ -139,46 +139,53 @@ void testPreparedStatements(
 
     expect(
       stmt.execute,
-      throwsA(isA<SqliteException>()
-          .having((e) => e.message, 'message', contains('constraint failed'))),
+      throwsA(
+        isA<SqliteException>().having(
+          (e) => e.message,
+          'message',
+          contains('constraint failed'),
+        ),
+      ),
     );
 
     db.dispose();
   });
 
-  test(
-    'throws an exception when iterating over result rows',
-    () {
-      final db = sqlite3.openInMemory()
-        ..createFunction(
-          functionName: 'raise_if_two',
-          function: (args) {
-            if (args.first == 2) {
-              // ignore: only_throw_errors
-              throw 'parameter was two';
-            } else {
-              return null;
-            }
-          },
-        );
-
-      db.execute(
-          'CREATE TABLE tbl (a INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT)');
-      // insert with a = 1..3
-      for (var i = 0; i < 3; i++) {
-        db.execute('INSERT INTO tbl DEFAULT VALUES');
-      }
-
-      final statement =
-          db.prepare('SELECT raise_if_two(a) FROM tbl ORDER BY a');
-
-      expect(
-        statement.select,
-        throwsA(isA<SqliteException>()
-            .having((e) => e.message, 'message', contains('was two'))),
+  test('throws an exception when iterating over result rows', () {
+    final db = sqlite3.openInMemory()
+      ..createFunction(
+        functionName: 'raise_if_two',
+        function: (args) {
+          if (args.first == 2) {
+            // ignore: only_throw_errors
+            throw 'parameter was two';
+          } else {
+            return null;
+          }
+        },
       );
-    },
-  );
+
+    db.execute(
+      'CREATE TABLE tbl (a INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT)',
+    );
+    // insert with a = 1..3
+    for (var i = 0; i < 3; i++) {
+      db.execute('INSERT INTO tbl DEFAULT VALUES');
+    }
+
+    final statement = db.prepare('SELECT raise_if_two(a) FROM tbl ORDER BY a');
+
+    expect(
+      statement.select,
+      throwsA(
+        isA<SqliteException>().having(
+          (e) => e.message,
+          'message',
+          contains('was two'),
+        ),
+      ),
+    );
+  });
 
   test('can bind booleans', () {
     final db = sqlite3.openInMemory();
@@ -193,11 +200,13 @@ void testPreparedStatements(
     final db = sqlite3.openInMemory();
     final stmt = db.prepare('SELECT ?1, :a, @b');
     final result = stmt
-        .selectWith(StatementParameters.named({
-          '?1': 'first',
-          ':a': 'second',
-          '@b': 'third',
-        }))
+        .selectWith(
+          StatementParameters.named({
+            '?1': 'first',
+            ':a': 'second',
+            '@b': 'third',
+          }),
+        )
         .single;
 
     expect(result.values, ['first', 'second', 'third']);
@@ -208,11 +217,15 @@ void testPreparedStatements(
     addTearDown(db.dispose);
 
     final stmt = db.prepare('SELECT :a AS a, :b AS b');
-    final result = stmt.selectWith(StatementParameters.named(
-        {':a': 'normal parameter', ':b': _CustomValue()}));
+    final result = stmt.selectWith(
+      StatementParameters.named({
+        ':a': 'normal parameter',
+        ':b': _CustomValue(),
+      }),
+    );
 
     expect(result, [
-      {'a': 'normal parameter', 'b': 42}
+      {'a': 'normal parameter', 'b': 42},
     ]);
   });
 
@@ -234,22 +247,28 @@ void testPreparedStatements(
 
     test('when not all names are covered', () {
       final stmt = db.prepare('SELECT :a, @b');
-      expect(() => stmt.executeWith(StatementParameters.named({':a': 'a'})),
-          throwsArgumentError);
+      expect(
+        () => stmt.executeWith(StatementParameters.named({':a': 'a'})),
+        throwsArgumentError,
+      );
     });
 
     test('when an invalid name is passed', () {
       final stmt = db.prepare('SELECT :a, @b');
       expect(
-          () => stmt.executeWith(
-              StatementParameters.named({':a': 'a', '@b': 'b', ':c': 'c'})),
-          throwsArgumentError);
+        () => stmt.executeWith(
+          StatementParameters.named({':a': 'a', '@b': 'b', ':c': 'c'}),
+        ),
+        throwsArgumentError,
+      );
     });
 
     test('when named parameters are empty', () {
       final stmt = db.prepare('SELECT :a, @b');
-      expect(() => stmt.executeWith(const StatementParameters.named({})),
-          throwsArgumentError);
+      expect(
+        () => stmt.executeWith(const StatementParameters.named({})),
+        throwsArgumentError,
+      );
     });
   });
 
@@ -279,7 +298,7 @@ void testPreparedStatements(
 
     final stmt = opened.prepare('SELECT ? AS r');
     expect(stmt.selectWith(StatementParameters.bindCustom((stmt) {})), [
-      {'r': null}
+      {'r': null},
     ]);
   });
 
@@ -291,37 +310,40 @@ void testPreparedStatements(
 
     final stmt = opened.prepare('select * from t');
     expect(stmt.select(), [
-      {'c1': 1}
+      {'c1': 1},
     ]);
 
     opened.execute('alter table t add column c2 default 2');
 
     expect(stmt.select(), [
-      {'c1': 1, 'c2': 2}
+      {'c1': 1, 'c2': 2},
     ]);
   });
 
-  test('reset', () {
-    final opened = sqlite3.openInMemory()
-      ..execute('create table t (c1)')
-      ..execute('begin;');
+  test(
+    'reset',
+    () {
+      final opened = sqlite3.openInMemory()
+        ..execute('create table t (c1)')
+        ..execute('begin;');
 
-    final stmt = opened.prepare('insert into t values (1), (2) returning c1');
-    final cursor = stmt.selectCursor();
-    expect(cursor.moveNext(), isTrue);
+      final stmt = opened.prepare('insert into t values (1), (2) returning c1');
+      final cursor = stmt.selectCursor();
+      expect(cursor.moveNext(), isTrue);
 
-    // This fails due to the pending write of the active statement
-    expect(() => opened.execute('commit'), throwsSqlError(5, 5));
+      // This fails due to the pending write of the active statement
+      expect(() => opened.execute('commit'), throwsSqlError(5, 5));
 
-    stmt.reset();
-    expect(cursor.moveNext(), isFalse);
+      stmt.reset();
+      expect(cursor.moveNext(), isFalse);
 
-    opened.execute('commit');
-    opened.dispose();
-  },
-      skip: supportsReturning
-          ? null
-          : 'RETURNING not supported by current sqlite3 version');
+      opened.execute('commit');
+      opened.dispose();
+    },
+    skip: supportsReturning
+        ? null
+        : 'RETURNING not supported by current sqlite3 version',
+  );
 
   group('cursors', () {
     late CommonDatabase database;
@@ -333,27 +355,21 @@ void testPreparedStatements(
     test('report correct values', () {
       final stmt = database.prepare('VALUES (1), (2), (3);');
 
-      expect(
-        _TestIterable(stmt.selectCursor()).toList(),
-        [
-          {'column1': 1},
-          {'column1': 2},
-          {'column1': 3}
-        ],
-      );
+      expect(_TestIterable(stmt.selectCursor()).toList(), [
+        {'column1': 1},
+        {'column1': 2},
+        {'column1': 3},
+      ]);
     });
 
     test('bind variables', () {
       final stmt = database.prepare('VALUES (?), (?), (?);');
 
-      expect(
-        _TestIterable(stmt.selectCursor([2, 3, 5])).toList(),
-        [
-          {'column1': 2},
-          {'column1': 3},
-          {'column1': 5}
-        ],
-      );
+      expect(_TestIterable(stmt.selectCursor([2, 3, 5])).toList(), [
+        {'column1': 2},
+        {'column1': 3},
+        {'column1': 5},
+      ]);
     });
 
     test('throw exceptions', () {
@@ -371,7 +387,8 @@ void testPreparedStatements(
         );
 
       final stmt = database.prepare(
-          'WITH seq(a) AS (VALUES (1), (2), (3)) SELECT throw_if(a, 3) AS r FROM seq;');
+        'WITH seq(a) AS (VALUES (1), (2), (3)) SELECT throw_if(a, 3) AS r FROM seq;',
+      );
       final cursor = stmt.selectCursor();
 
       expect(cursor.columnNames, ['r']);
@@ -479,37 +496,41 @@ void testPreparedStatements(
     });
   });
 
-  group('returning', () {
-    late CommonDatabase database;
-    late CommonPreparedStatement statement;
+  group(
+    'returning',
+    () {
+      late CommonDatabase database;
+      late CommonPreparedStatement statement;
 
-    setUp(() {
-      database = sqlite3.openInMemory()
-        ..execute('CREATE TABLE tbl (foo TEXT);');
-      statement =
-          database.prepare('INSERT INTO tbl DEFAULT VALUES RETURNING *');
-    });
+      setUp(() {
+        database = sqlite3.openInMemory()
+          ..execute('CREATE TABLE tbl (foo TEXT);');
+        statement = database.prepare(
+          'INSERT INTO tbl DEFAULT VALUES RETURNING *',
+        );
+      });
 
-    tearDown(() {
-      statement.dispose();
-      database.dispose();
-    });
+      tearDown(() {
+        statement.dispose();
+        database.dispose();
+      });
 
-    test('can be used with execute', () {
-      statement.execute();
-    });
+      test('can be used with execute', () {
+        statement.execute();
+      });
 
-    test('can get returned rows', () {
-      final result = statement.select();
-      expect(result, hasLength(1));
+      test('can get returned rows', () {
+        final result = statement.select();
+        expect(result, hasLength(1));
 
-      final row = result.single;
-      expect(row, {'foo': null});
-    });
-  },
-      skip: supportsReturning
-          ? null
-          : 'RETURNING not supported by current sqlite3 version');
+        final row = result.single;
+        expect(row, {'foo': null});
+      });
+    },
+    skip: supportsReturning
+        ? null
+        : 'RETURNING not supported by current sqlite3 version',
+  );
 
   group('errors', () {
     late CommonDatabase db;
@@ -525,8 +546,10 @@ void testPreparedStatements(
     });
 
     test('for missing table', () {
-      expect(() => db.execute('SELECT * FROM missing_table'),
-          throwsSqlError(1, 1));
+      expect(
+        () => db.execute('SELECT * FROM missing_table'),
+        throwsSqlError(1, 1),
+      );
     });
 
     test('for violated primary key constraint', () {

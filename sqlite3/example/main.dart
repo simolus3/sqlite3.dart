@@ -30,8 +30,10 @@ void main() {
 
   // You can run select statements with PreparedStatement.select, or directly
   // on the database:
-  final ResultSet resultSet =
-      db.select('SELECT * FROM artists WHERE name LIKE ?', ['The %']);
+  final ResultSet resultSet = db.select(
+    'SELECT * FROM artists WHERE name LIKE ?',
+    ['The %'],
+  );
 
   // You can iterate on the result set in multiple ways to retrieve Row objects
   // one by one.

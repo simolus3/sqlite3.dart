@@ -19,11 +19,13 @@ final class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
   const FfiSqlite3() : super(ffiBindings);
 
   @override
-  Database open(String filename,
-      {String? vfs,
-      OpenMode mode = OpenMode.readWriteCreate,
-      bool uri = false,
-      bool? mutex}) {
+  Database open(
+    String filename, {
+    String? vfs,
+    OpenMode mode = OpenMode.readWriteCreate,
+    bool uri = false,
+    bool? mutex,
+  }) {
     return super.open(filename, vfs: vfs, mode: mode, uri: uri, mutex: mutex)
         as Database;
   }
@@ -96,7 +98,9 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
 
   @override
   FfiStatementImplementation wrapStatement(
-      String sql, RawSqliteStatement stmt) {
+    String sql,
+    RawSqliteStatement stmt,
+  ) {
     return FfiStatementImplementation(sql, this, stmt as FfiStatement);
   }
 
@@ -114,17 +118,27 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
   Pointer<void> get handle => ffiDatabase.db;
 
   @override
-  PreparedStatement prepare(String sql,
-      {bool persistent = false, bool vtab = true, bool checkNoTail = false}) {
-    return super.prepare(sql,
-        persistent: persistent,
-        vtab: vtab,
-        checkNoTail: checkNoTail) as PreparedStatement;
+  PreparedStatement prepare(
+    String sql, {
+    bool persistent = false,
+    bool vtab = true,
+    bool checkNoTail = false,
+  }) {
+    return super.prepare(
+          sql,
+          persistent: persistent,
+          vtab: vtab,
+          checkNoTail: checkNoTail,
+        )
+        as PreparedStatement;
   }
 
   @override
-  List<PreparedStatement> prepareMultiple(String sql,
-      {bool persistent = false, bool vtab = true}) {
+  List<PreparedStatement> prepareMultiple(
+    String sql, {
+    bool persistent = false,
+    bool vtab = true,
+  }) {
     return super
         .prepareMultiple(sql, persistent: persistent, vtab: vtab)
         .cast<PreparedStatement>();
@@ -150,15 +164,20 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
     final zSrcDb = Utf8Utils.allocateZeroTerminated('main');
 
     final pBackup = libsqlite3.sqlite3_backup_init(
-        toDatabase.handle.cast(), zDestDb, fromDatabase.handle.cast(), zSrcDb);
+      toDatabase.handle.cast(),
+      zDestDb,
+      fromDatabase.handle.cast(),
+      zSrcDb,
+    );
 
     if (!pBackup.isNullPointer) {
       libsqlite3.sqlite3_backup_step(pBackup, -1);
       libsqlite3.sqlite3_backup_finish(pBackup);
     }
 
-    final extendedErrorCode =
-        libsqlite3.sqlite3_extended_errcode(toDatabase.handle.cast());
+    final extendedErrorCode = libsqlite3.sqlite3_extended_errcode(
+      toDatabase.handle.cast(),
+    );
     final errorCode = extendedErrorCode & 0xFF;
 
     zDestDb.free();
@@ -167,7 +186,11 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
     if (errorCode != SqlError.SQLITE_OK) {
       if (errorCode != SqlError.SQLITE_OK) {
         throw createExceptionFromExtendedCode(
-            bindings, database, errorCode, extendedErrorCode);
+          bindings,
+          database,
+          errorCode,
+          extendedErrorCode,
+        );
       }
     }
   }
@@ -178,7 +201,11 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
     final zSrcDb = Utf8Utils.allocateZeroTerminated('main');
 
     final pBackup = libsqlite3.sqlite3_backup_init(
-        toDatabase.handle.cast(), zDestDb, ffiDatabase.db, zSrcDb);
+      toDatabase.handle.cast(),
+      zDestDb,
+      ffiDatabase.db,
+      zSrcDb,
+    );
 
     int returnCode;
     if (!pBackup.isNullPointer) {
@@ -203,8 +230,9 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
       libsqlite3.sqlite3_backup_finish(pBackup);
     }
 
-    final extendedErrorCode =
-        libsqlite3.sqlite3_extended_errcode(toDatabase.handle.cast());
+    final extendedErrorCode = libsqlite3.sqlite3_extended_errcode(
+      toDatabase.handle.cast(),
+    );
     final errorCode = extendedErrorCode & 0xFF;
 
     zDestDb.free();
@@ -212,7 +240,11 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
 
     if (errorCode != SqlError.SQLITE_OK) {
       throw createExceptionFromExtendedCode(
-          bindings, database, errorCode, extendedErrorCode);
+        bindings,
+        database,
+        errorCode,
+        extendedErrorCode,
+      );
     }
   }
 
@@ -220,7 +252,8 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
   void restore(Database fromDatabase) {
     if (!isInMemory) {
       throw ArgumentError(
-          'Restoring is only available for in-memory databases');
+        'Restoring is only available for in-memory databases',
+      );
     }
 
     _loadOrSaveInMemoryDatabase(fromDatabase, false);
@@ -232,8 +265,10 @@ final class FfiStatementImplementation extends StatementImplementation
   final FfiStatement ffiStatement;
 
   FfiStatementImplementation(
-      String sql, FfiDatabaseImplementation db, this.ffiStatement)
-      : super(sql, db, ffiStatement);
+    String sql,
+    FfiDatabaseImplementation db,
+    this.ffiStatement,
+  ) : super(sql, db, ffiStatement);
 
   @override
   Pointer<void> get handle => ffiStatement.stmt;

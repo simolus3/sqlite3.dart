@@ -52,21 +52,27 @@ extension FileSystemDirectoryHandleApi on FileSystemDirectoryHandle {
     return getFileHandle(name, FileSystemGetFileOptions(create: create)).toDart;
   }
 
-  Future<FileSystemDirectoryHandle> getDirectory(String name,
-      {bool create = false}) {
+  Future<FileSystemDirectoryHandle> getDirectory(
+    String name, {
+    bool create = false,
+  }) {
     return getDirectoryHandle(
-            name, FileSystemGetDirectoryOptions(create: create))
-        .toDart;
+      name,
+      FileSystemGetDirectoryOptions(create: create),
+    ).toDart;
   }
 
   Future<void> remove(String name, {bool recursive = false}) {
-    return removeEntry(name, FileSystemRemoveOptions(recursive: recursive))
-        .toDart;
+    return removeEntry(
+      name,
+      FileSystemRemoveOptions(recursive: recursive),
+    ).toDart;
   }
 
   Stream<FileSystemHandle> list() {
-    return AsyncJavaScriptIteratable<JSArray>(this)
-        .map((data) => data.toDart[1] as FileSystemHandle);
+    return AsyncJavaScriptIteratable<JSArray>(
+      this,
+    ).map((data) => data.toDart[1] as FileSystemHandle);
   }
 
   Stream<FileSystemHandle> getFilesRecursively() async* {

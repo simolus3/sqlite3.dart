@@ -44,8 +44,12 @@ final class FinalizableDatabase extends FinalizablePart {
     final code = database.sqlite3_close_v2();
     SqliteException? exception;
     if (code != SqlError.SQLITE_OK) {
-      exception = createExceptionRaw(bindings, database, code,
-          operation: 'closing database');
+      exception = createExceptionRaw(
+        bindings,
+        database,
+        code,
+        operation: 'closing database',
+      );
     }
 
     database.deallocateAdditionalMemory();
@@ -90,7 +94,7 @@ base class DatabaseImplementation implements CommonDatabase {
   }
 
   DatabaseImplementation(this.bindings, this.database)
-      : finalizable = FinalizableDatabase(bindings, database) {
+    : finalizable = FinalizableDatabase(bindings, database) {
     disposeFinalizer.attach(this, finalizable, detach: this);
   }
 
@@ -165,8 +169,11 @@ base class DatabaseImplementation implements CommonDatabase {
     final functionNameBytes = utf8.encode(functionName);
 
     if (functionNameBytes.length > 255) {
-      throw ArgumentError.value(functionName, 'functionName',
-          'Must not exceed 255 bytes when utf-8 encoded');
+      throw ArgumentError.value(
+        functionName,
+        'functionName',
+        'Must not exceed 255 bytes when utf-8 encoded',
+      );
     }
 
     return Uint8List.fromList(functionNameBytes);
@@ -187,14 +194,16 @@ base class DatabaseImplementation implements CommonDatabase {
 
     AggregateContext<V> readOrCreateContext(RawSqliteContext raw) {
       var dartContext = raw.dartAggregateContext as AggregateContext<V>?;
-      return dartContext ??=
-          raw.dartAggregateContext = function.createContext();
+      return dartContext ??= raw.dartAggregateContext = function
+          .createContext();
     }
 
     void step(RawSqliteContext context, List<RawSqliteValue> args) {
       final dartContext = readOrCreateContext(context);
       context.runWithArgsAndSetResult(
-          (args) => function.step(args, dartContext), args);
+        (args) => function.step(args, dartContext),
+        args,
+      );
     }
 
     void finalize(RawSqliteContext context) {
@@ -221,7 +230,9 @@ base class DatabaseImplementation implements CommonDatabase {
         xInverse: (context, args) {
           final dartContext = readOrCreateContext(context);
           context.runWithArgsAndSetResult(
-              (args) => function.inverse(args, dartContext), args);
+            (args) => function.inverse(args, dartContext),
+            args,
+          );
         },
       );
     } else {
@@ -263,8 +274,10 @@ base class DatabaseImplementation implements CommonDatabase {
   }
 
   @override
-  void createCollation(
-      {required String name, required CollatingFunction function}) {
+  void createCollation({
+    required String name,
+    required CollatingFunction function,
+  }) {
     final result = database.sqlite3_create_collation_v2(
       collationName: _validateAndEncodeFunctionName(name),
       eTextRep: eTextRep(false, false, false),
@@ -335,11 +348,13 @@ base class DatabaseImplementation implements CommonDatabase {
     return database.sqlite3_get_autocommit() != 0;
   }
 
-  List<StatementImplementation> _prepareInternal(String sql,
-      {bool persistent = false,
-      bool vtab = true,
-      int? maxStatements,
-      bool checkNoTail = false}) {
+  List<StatementImplementation> _prepareInternal(
+    String sql, {
+    bool persistent = false,
+    bool vtab = true,
+    int? maxStatements,
+    bool checkNoTail = false,
+  }) {
     _ensureOpen();
 
     final bytes = utf8.encode(sql);
@@ -365,13 +380,20 @@ base class DatabaseImplementation implements CommonDatabase {
     }
 
     while (offset < bytes.length) {
-      final result =
-          compiler.sqlite3_prepare(offset, bytes.length - offset, prepFlags);
+      final result = compiler.sqlite3_prepare(
+        offset,
+        bytes.length - offset,
+        prepFlags,
+      );
 
       if (result.resultCode != SqlError.SQLITE_OK) {
         freeIntermediateResults();
-        throwException(this, result.resultCode,
-            operation: 'preparing statement', previousStatement: sql);
+        throwException(
+          this,
+          result.resultCode,
+          operation: 'preparing statement',
+          previousStatement: sql,
+        );
       }
 
       final endOffset = compiler.endOffset;
@@ -396,8 +418,11 @@ base class DatabaseImplementation implements CommonDatabase {
       // Issue another prepare call at the current offset to account for
       // potential whitespace.
       while (offset < bytes.length) {
-        final result =
-            compiler.sqlite3_prepare(offset, bytes.length - offset, prepFlags);
+        final result = compiler.sqlite3_prepare(
+          offset,
+          bytes.length - offset,
+          prepFlags,
+        );
         offset = compiler.endOffset;
 
         final stmt = result.result;
@@ -407,12 +432,18 @@ base class DatabaseImplementation implements CommonDatabase {
           createdStatements.add(wrapStatement('', stmt));
           freeIntermediateResults();
           throw ArgumentError.value(
-              sql, 'sql', 'Had an unexpected trailing statement.');
+            sql,
+            'sql',
+            'Had an unexpected trailing statement.',
+          );
         } else if (result.resultCode != SqlError.SQLITE_OK) {
           // Invalid content that's not just a whitespace or a comment.
           freeIntermediateResults();
           throw ArgumentError.value(
-              sql, 'sql', 'Has trailing data after the first sql statement:');
+            sql,
+            'sql',
+            'Has trailing data after the first sql statement:',
+          );
         }
       }
     }
@@ -427,8 +458,12 @@ base class DatabaseImplementation implements CommonDatabase {
   }
 
   @override
-  CommonPreparedStatement prepare(String sql,
-      {bool persistent = false, bool vtab = true, bool checkNoTail = false}) {
+  CommonPreparedStatement prepare(
+    String sql, {
+    bool persistent = false,
+    bool vtab = true,
+    bool checkNoTail = false,
+  }) {
     final stmts = _prepareInternal(
       sql,
       persistent: persistent,
@@ -447,8 +482,11 @@ base class DatabaseImplementation implements CommonDatabase {
   }
 
   @override
-  List<CommonPreparedStatement> prepareMultiple(String sql,
-      {bool persistent = false, bool vtab = true}) {
+  List<CommonPreparedStatement> prepareMultiple(
+    String sql, {
+    bool persistent = false,
+    bool vtab = true,
+  }) {
     return _prepareInternal(sql, persistent: persistent, vtab: vtab);
   }
 
@@ -485,7 +523,9 @@ base class DatabaseImplementation implements CommonDatabase {
 
 extension on RawSqliteContext {
   void runWithArgsAndSetResult(
-      Object? Function(SqliteArguments) function, List<RawSqliteValue> args) {
+    Object? Function(SqliteArguments) function,
+    List<RawSqliteValue> args,
+  ) {
     final dartArgs = ValueList(args);
     try {
       setResult(function(dartArgs));
@@ -505,16 +545,16 @@ extension on RawSqliteContext {
   }
 
   void setResult(Object? result) => switch (result) {
-        null => sqlite3_result_null(),
-        int() => sqlite3_result_int64(result),
-        BigInt() => sqlite3_result_int64BigInt(result.checkRange),
-        double() => sqlite3_result_double(result),
-        bool() => sqlite3_result_int64(result ? 1 : 0),
-        String() => sqlite3_result_text(result),
-        List<int>() => sqlite3_result_blob64(result),
-        SubtypedValue() => setSubtypedResult(result),
-        _ => throw ArgumentError.value(result, 'result', 'Unsupported type')
-      };
+    null => sqlite3_result_null(),
+    int() => sqlite3_result_int64(result),
+    BigInt() => sqlite3_result_int64BigInt(result.checkRange),
+    double() => sqlite3_result_double(result),
+    bool() => sqlite3_result_int64(result ? 1 : 0),
+    String() => sqlite3_result_text(result),
+    List<int>() => sqlite3_result_blob64(result),
+    SubtypedValue() => setSubtypedResult(result),
+    _ => throw ArgumentError.value(result, 'result', 'Unsupported type'),
+  };
 
   void setSubtypedResult(SubtypedValue result) {
     setResult(result.originalValue);
@@ -530,7 +570,7 @@ class ValueList extends ListBase<Object?> implements SqliteArguments {
   bool isValid = true;
 
   ValueList(this.rawValues)
-      : _cachedCopies = List.filled(rawValues.length, null);
+    : _cachedCopies = List.filled(rawValues.length, null);
 
   @override
   int get length => rawValues.length;
@@ -561,8 +601,13 @@ class ValueList extends ListBase<Object?> implements SqliteArguments {
 
   @override
   int subtypeOf(int argumentIndex) {
-    final value = rawValues[RangeError.checkValidIndex(
-        argumentIndex, this, 'argumentIndex', length)];
+    final value =
+        rawValues[RangeError.checkValidIndex(
+          argumentIndex,
+          this,
+          'argumentIndex',
+          length,
+        )];
     return value.sqlite3_value_subtype();
   }
 }
@@ -593,7 +638,7 @@ final class DatabaseConfigImplementation extends DatabaseConfig {
 final class _StreamHandlers<T, SyncCallback> {
   final DatabaseImplementation _database;
   final List<({MultiStreamController<T> controller, bool sync})>
-      _asyncListeners = [];
+  _asyncListeners = [];
   SyncCallback? _syncCallback;
 
   /// Registers a native callback on the database.
@@ -612,35 +657,32 @@ final class _StreamHandlers<T, SyncCallback> {
     required DatabaseImplementation database,
     required void Function() register,
     required void Function() unregister,
-  })  : _database = database,
-        _register = register,
-        _unregister = unregister;
+  }) : _database = database,
+       _register = register,
+       _unregister = unregister;
 
   Stream<T> _generateStream(bool dispatchSynchronously) {
-    return Stream.multi(
-      (newListener) {
-        if (_database._isClosed) {
-          newListener.close();
-          return;
-        }
+    return Stream.multi((newListener) {
+      if (_database._isClosed) {
+        newListener.close();
+        return;
+      }
 
-        void addListener() {
-          _addAsyncListener(newListener, dispatchSynchronously);
-        }
+      void addListener() {
+        _addAsyncListener(newListener, dispatchSynchronously);
+      }
 
-        void removeListener() {
-          _removeAsyncListener(newListener, dispatchSynchronously);
-        }
+      void removeListener() {
+        _removeAsyncListener(newListener, dispatchSynchronously);
+      }
 
-        newListener
-          ..onPause = removeListener
-          ..onCancel = removeListener
-          ..onResume = addListener;
-        // Since this is a onListen callback, add listener now
-        addListener();
-      },
-      isBroadcast: true,
-    );
+      newListener
+        ..onPause = removeListener
+        ..onCancel = removeListener
+        ..onResume = addListener;
+      // Since this is a onListen callback, add listener now
+      addListener();
+    }, isBroadcast: true);
   }
 
   bool get hasListener => _asyncListeners.isNotEmpty || _syncCallback != null;

@@ -17,8 +17,10 @@ import '../../../vfs.dart';
 import '../../js_interop.dart';
 import 'sync_channel.dart';
 
-const _workerDebugLog =
-    bool.fromEnvironment('sqlite3.wasm.worker.debug', defaultValue: false);
+const _workerDebugLog = bool.fromEnvironment(
+  'sqlite3.wasm.worker.debug',
+  defaultValue: false,
+);
 
 void _log(String message) {
   if (_workerDebugLog) print(message);
@@ -94,9 +96,8 @@ class VfsWorker {
   final Set<_OpenedFileHandle> _implicitlyHeldLocks = {};
 
   VfsWorker._(WorkerOptions options, this.root)
-      : synchronizer =
-            RequestResponseSynchronizer(options.synchronizationBuffer),
-        messages = MessageSerializer(options.communicationBuffer);
+    : synchronizer = RequestResponseSynchronizer(options.synchronizationBuffer),
+      messages = MessageSerializer(options.communicationBuffer);
 
   static Future<VfsWorker> create(WorkerOptions options) async {
     var root = await storageManager!.directory;
@@ -109,15 +110,19 @@ class VfsWorker {
     return VfsWorker._(options, root);
   }
 
-  Future<_ResolvedPath> _resolvePath(String absolutePath,
-      {bool createDirectories = false}) async {
+  Future<_ResolvedPath> _resolvePath(
+    String absolutePath, {
+    bool createDirectories = false,
+  }) async {
     final fullPath = p.url.relative(absolutePath, from: '/');
     final [...directories, file] = p.url.split(fullPath);
 
     var dirHandle = root;
     for (final entry in directories) {
-      dirHandle =
-          await dirHandle.getDirectory(entry, create: createDirectories);
+      dirHandle = await dirHandle.getDirectory(
+        entry,
+        create: createDirectories,
+      );
     }
 
     return _ResolvedPath(fullPath, dirHandle, file);
@@ -189,8 +194,9 @@ class VfsWorker {
 
     final syncHandle = await _openForSynchronousAccess(file);
     final bytesRead = syncHandle.readDart(
-        messages.viewByteRange(0, bufferLength),
-        FileSystemReadWriteOptions(at: offset));
+      messages.viewByteRange(0, bufferLength),
+      FileSystemReadWriteOptions(at: offset),
+    );
 
     return Flags(bytesRead, 0, 0);
   }
@@ -203,8 +209,9 @@ class VfsWorker {
 
     final syncHandle = await _openForSynchronousAccess(file);
     final bytesWritten = syncHandle.writeDart(
-        messages.viewByteRange(0, bufferLength),
-        FileSystemReadWriteOptions(at: offset));
+      messages.viewByteRange(0, bufferLength),
+      FileSystemReadWriteOptions(at: offset),
+    );
 
     if (bytesWritten != bufferLength) {
       throw const VfsException(SqlExtendedError.SQLITE_IOERR_WRITE);
@@ -321,7 +328,8 @@ class VfsWorker {
           case WorkerOperation.xSleep:
             _releaseImplicitLocks();
             await Future<void>.delayed(
-                Duration(milliseconds: (request as Flags).flag0));
+              Duration(milliseconds: (request as Flags).flag0),
+            );
             response = const EmptyMessage();
             break;
           case WorkerOperation.xAccess:
@@ -391,7 +399,8 @@ class VfsWorker {
   }
 
   Future<FileSystemSyncAccessHandle> _openForSynchronousAccess(
-      _OpenedFileHandle file) async {
+    _OpenedFileHandle file,
+  ) async {
     final existing = file.syncHandle;
     if (existing != null) {
       return existing;
@@ -402,8 +411,9 @@ class VfsWorker {
 
     while (true) {
       try {
-        final handle =
-            file.syncHandle = await file.file.createSyncAccessHandle().toDart;
+        final handle = file.syncHandle = await file.file
+            .createSyncAccessHandle()
+            .toDart;
 
         // We've locked the file simply because we've created an (exclusive)
         // synchronous access handle. If there was no explicit lock on this

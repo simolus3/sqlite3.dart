@@ -25,9 +25,7 @@ enum FileType {
 
   const FileType(this.filePath);
 
-  static final byName = {
-    for (final entry in values) entry.filePath: entry,
-  };
+  static final byName = {for (final entry in values) entry.filePath: entry};
 }
 
 /// A [VirtualFileSystem] for the `sqlite3` wasm library based on the [file system access API].
@@ -68,12 +66,14 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
   final Map<FileType, FileSystemSyncAccessHandle> _files;
   final InMemoryFileSystem _memory = InMemoryFileSystem();
 
-  SimpleOpfsFileSystem._(this._metaHandle, this._files,
-      {String vfsName = 'simple-opfs'})
-      : super(name: vfsName);
+  SimpleOpfsFileSystem._(
+    this._metaHandle,
+    this._files, {
+    String vfsName = 'simple-opfs',
+  }) : super(name: vfsName);
 
   static Future<(FileSystemDirectoryHandle?, FileSystemDirectoryHandle)>
-      _resolveDir(String path, {bool create = true}) async {
+  _resolveDir(String path, {bool create = true}) async {
     final storage = storageManager;
     if (storage == null) {
       throw VfsException(SqlError.SQLITE_ERROR);
@@ -96,8 +96,10 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
   /// Throws a [VfsException] if OPFS is not available - please note that
   /// this file system implementation requires a recent browser and only works
   /// in dedicated web workers.
-  static Future<SimpleOpfsFileSystem> loadFromStorage(String path,
-      {String vfsName = 'simple-opfs'}) async {
+  static Future<SimpleOpfsFileSystem> loadFromStorage(
+    String path, {
+    String vfsName = 'simple-opfs',
+  }) async {
     final storage = storageManager;
     if (storage == null) {
       throw VfsException(SqlError.SQLITE_ERROR);
@@ -147,7 +149,7 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
     final meta = await open('meta');
     meta.truncate(2);
     final files = {
-      for (final type in FileType.values) type: await open(type.name)
+      for (final type in FileType.values) type: await open(type.name),
     };
 
     return SimpleOpfsFileSystem._(meta, files, vfsName: vfsName);
@@ -289,7 +291,9 @@ class _SimpleOpfsFile extends BaseVfsFile {
   @override
   void xWrite(Uint8List buffer, int fileOffset) {
     final bytesWritten = syncHandle.writeDart(
-        buffer, FileSystemReadWriteOptions(at: fileOffset));
+      buffer,
+      FileSystemReadWriteOptions(at: fileOffset),
+    );
 
     if (bytesWritten < buffer.length) {
       throw const VfsException(SqlExtendedError.SQLITE_IOERR_WRITE);

@@ -166,7 +166,8 @@ sealed class StatementParameters {
   /// indicate that you are fully responsible for binding parameters and don't
   /// need any validation checks.
   const factory StatementParameters.bindCustom(
-      void Function(CommonPreparedStatement stmt) bind) = CustomParameters;
+    void Function(CommonPreparedStatement stmt) bind,
+  ) = CustomParameters;
 }
 
 @internal

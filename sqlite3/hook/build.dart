@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
+import 'package:path/path.dart' as p;
 
 import 'package:sqlite3/src/hook/description.dart';
 
@@ -10,17 +13,35 @@ void main(List<String> args) async {
     }
 
     final sqlite = SqliteBinary.forBuild(input);
-    if (sqlite case final CompileSqlite compile) {
-      throw 'todo: $compile';
-    }
-
     switch (sqlite) {
-      case PrecompiledFromGithubAssets():
-        // TODO: Handle this case.
-        throw UnimplementedError();
-      case PrecompiledForTesting():
-        // TODO: Handle this case.
-        throw UnimplementedError();
+      case PrecompiledBinary():
+        final library = sqlite.resolveLibrary(input.config.code);
+        library.checkSupported();
+
+        final dir = Directory(
+          input.outputDirectoryShared.resolve(library.dirname).toFilePath(),
+        );
+        if (!dir.existsSync()) {
+          dir.createSync();
+        }
+
+        final target = File(p.join(dir.path, library.filename));
+        final tmp = File('${target.path}.tmp');
+
+        await sqlite
+            .fetch(input, output, library)
+            .cast<List<int>>()
+            .pipe(tmp.openWrite());
+        tmp.renameSync(target.path);
+
+        output.assets.code.add(
+          CodeAsset(
+            package: package,
+            name: name,
+            linkMode: DynamicLoadingBundled(),
+            file: target.uri,
+          ),
+        );
       case CompileSqlite():
         // TODO: Handle this case.
         throw UnimplementedError();

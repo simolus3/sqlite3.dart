@@ -34,10 +34,12 @@ final supportsPrepareV3 = sqlite3_libversion_number() >= _firstVersionForV3;
 final supportsErrorOffset =
     sqlite3_libversion_number() >= _firstVersionForErrorOffset;
 
-final sessionDeleteFinalizer =
-    NativeFinalizer(addresses.sqlite3session_delete.cast());
-final changesetFinalizeFinalizer =
-    NativeFinalizer(addresses.sqlite3changeset_finalize.cast());
+final sessionDeleteFinalizer = NativeFinalizer(
+  addresses.sqlite3session_delete.cast(),
+);
+final changesetFinalizeFinalizer = NativeFinalizer(
+  addresses.sqlite3changeset_finalize.cast(),
+);
 final hasColumnMetadata =
     ffiBindings.sqlite3_compileoption_used('ENABLE_COLUMN_METADATA') != 0;
 
@@ -47,10 +49,7 @@ final class FfiBindings implements RawSqliteBindings {
   const FfiBindings._();
 
   @override
-  RawSqliteSession sqlite3session_create(
-    RawSqliteDatabase db,
-    String name,
-  ) {
+  RawSqliteSession sqlite3session_create(RawSqliteDatabase db, String name) {
     final dbImpl = db as FfiDatabase;
     final namePtr = Utf8Utils.allocateZeroTerminated(name);
     final sessionPtr = allocate<Pointer<sqlite3_session>>();
@@ -74,38 +73,32 @@ final class FfiBindings implements RawSqliteBindings {
   int sqlite3changeset_apply(
     RawSqliteDatabase database,
     Uint8List changeset,
-    int Function(
-      String tableName,
-    )? filter,
-    int Function(
-      int eConflict,
-      RawChangesetIterator iter,
-    ) conflict,
+    int Function(String tableName)? filter,
+    int Function(int eConflict, RawChangesetIterator iter) conflict,
   ) {
     final dbImpl = database as FfiDatabase;
     final changesetPtr = allocateBytes(changeset);
     final ctxPtr = dbImpl.db.cast<Void>();
 
     final NativeCallable<Int Function(Pointer<Void>, Pointer<Char>)>?
-        filterImpl = filter == null
-            ? null
-            : (NativeCallable.isolateLocal(
-                (Pointer<Void> ctx, Pointer<Char> zTab) {
-                  final tbl = zTab.cast<sqlite3_char>().readString();
-                  return filter(tbl);
-                },
-                exceptionalReturn: 1,
-              )..keepIsolateAlive = true);
+    filterImpl = filter == null
+        ? null
+        : (NativeCallable.isolateLocal((Pointer<Void> ctx, Pointer<Char> zTab) {
+            final tbl = zTab.cast<sqlite3_char>().readString();
+            return filter(tbl);
+          }, exceptionalReturn: 1)..keepIsolateAlive = true);
 
     final NativeCallable<
-            Int Function(Pointer<Void>, Int, Pointer<sqlite3_changeset_iter>)>
-        conflictImpl = (NativeCallable.isolateLocal(
-      (Pointer<Void> ctx, int eConflict, Pointer<sqlite3_changeset_iter> p) {
-        final iter = FfiChangesetIterator(p, ownsIterator: false);
-        return conflict(eConflict, iter);
-      },
-      exceptionalReturn: 1,
-    )..keepIsolateAlive = true);
+      Int Function(Pointer<Void>, Int, Pointer<sqlite3_changeset_iter>)
+    >
+    conflictImpl = (NativeCallable.isolateLocal((
+      Pointer<Void> ctx,
+      int eConflict,
+      Pointer<sqlite3_changeset_iter> p,
+    ) {
+      final iter = FfiChangesetIterator(p, ownsIterator: false);
+      return conflict(eConflict, iter);
+    }, exceptionalReturn: 1)..keepIsolateAlive = true);
 
     final result = libsqlite3.sqlite3changeset_apply(
       dbImpl.db,
@@ -128,7 +121,10 @@ final class FfiBindings implements RawSqliteBindings {
     final iteratorOut = allocate<Pointer<sqlite3_changeset_iter>>();
 
     final result = libsqlite3.sqlite3changeset_start(
-        iteratorOut, changeset.length, asPtr.cast());
+      iteratorOut,
+      changeset.length,
+      asPtr.cast(),
+    );
     final iterator = iteratorOut.value;
     iteratorOut.free();
 
@@ -137,8 +133,11 @@ final class FfiBindings implements RawSqliteBindings {
       throw createExceptionOutsideOfDatabase(this, result);
     }
 
-    return FfiChangesetIterator(iterator,
-        ownsIterator: true, ownedChangesetBytes: region);
+    return FfiChangesetIterator(
+      iterator,
+      ownsIterator: true,
+      ownedChangesetBytes: region,
+    );
   }
 
   @override
@@ -160,8 +159,10 @@ final class FfiBindings implements RawSqliteBindings {
       }
 
       final size = outSize.value;
-      final inverted = outChangeset.value.cast<Uint8>().asTypedList(size,
-          finalizer: libsqlite3.addresses.sqlite3_free.cast());
+      final inverted = outChangeset.value.cast<Uint8>().asTypedList(
+        size,
+        finalizer: libsqlite3.addresses.sqlite3_free.cast(),
+      );
       return inverted;
     } finally {
       sessionPtr.free();
@@ -180,8 +181,9 @@ final class FfiBindings implements RawSqliteBindings {
     if (value == null) {
       libsqlite3.sqlite3_temp_directory = nullPtr();
     } else {
-      libsqlite3.sqlite3_temp_directory =
-          Utf8Utils.allocateZeroTerminated(value);
+      libsqlite3.sqlite3_temp_directory = Utf8Utils.allocateZeroTerminated(
+        value,
+      );
     }
   }
 
@@ -207,15 +209,22 @@ final class FfiBindings implements RawSqliteBindings {
 
   @override
   SqliteResult<RawSqliteDatabase> sqlite3_open_v2(
-      String name, int flags, String? zVfs) {
+    String name,
+    int flags,
+    String? zVfs,
+  ) {
     final namePtr = Utf8Utils.allocateZeroTerminated(name);
     final outDb = allocate<Pointer<sqlite3>>();
     final vfsPtr = zVfs == null
         ? nullPtr<sqlite3_char>()
         : Utf8Utils.allocateZeroTerminated(zVfs);
 
-    final resultCode =
-        libsqlite3.sqlite3_open_v2(namePtr, outDb, flags, vfsPtr);
+    final resultCode = libsqlite3.sqlite3_open_v2(
+      namePtr,
+      outDb,
+      flags,
+      vfsPtr,
+    );
     final result = SqliteResult(resultCode, FfiDatabase(outDb.value));
 
     namePtr.free();
@@ -289,7 +298,8 @@ final class _RegisteredVfs {
 
     final vfs = ffi.calloc<sqlite3_vfs>();
     vfs.ref
-      ..iVersion = 2 // We don't support syscalls yet
+      ..iVersion =
+          2 // We don't support syscalls yet
       ..szOsFile = sizeOf<_DartFile>()
       ..mxPathname = 1024
       ..zName = name
@@ -297,8 +307,10 @@ final class _RegisteredVfs {
       ..xOpen = Pointer.fromFunction(_xOpen, SqlError.SQLITE_ERROR)
       ..xDelete = Pointer.fromFunction(_xDelete, SqlError.SQLITE_ERROR)
       ..xAccess = Pointer.fromFunction(_xAccess, SqlError.SQLITE_ERROR)
-      ..xFullPathname =
-          Pointer.fromFunction(_xFullPathname, SqlError.SQLITE_ERROR)
+      ..xFullPathname = Pointer.fromFunction(
+        _xFullPathname,
+        SqlError.SQLITE_ERROR,
+      )
       ..xDlOpen = nullPtr()
       ..xDlError = nullPtr()
       ..xDlSym = nullPtr()
@@ -307,8 +319,10 @@ final class _RegisteredVfs {
       ..xSleep = Pointer.fromFunction(_xSleep, SqlError.SQLITE_ERROR)
       ..xCurrentTime = nullPtr()
       ..xGetLastError = nullPtr()
-      ..xCurrentTimeInt64 =
-          Pointer.fromFunction(_xCurrentTime64, SqlError.SQLITE_ERROR);
+      ..xCurrentTimeInt64 = Pointer.fromFunction(
+        _xCurrentTime64,
+        SqlError.SQLITE_ERROR,
+      );
 
     _vfs[id] = dartVfs;
     return _RegisteredVfs(vfs, name);
@@ -321,7 +335,9 @@ final class _RegisteredVfs {
   }
 
   static int _runVfs(
-      Pointer<sqlite3_vfs> vfs, void Function(VirtualFileSystem) body) {
+    Pointer<sqlite3_vfs> vfs,
+    void Function(VirtualFileSystem) body,
+  ) {
     final dartVfs = _vfs[vfs.ref.pAppData.address]!;
     try {
       body(dartVfs);
@@ -333,11 +349,17 @@ final class _RegisteredVfs {
     }
   }
 
-  static int _xOpen(Pointer<sqlite3_vfs> vfsPtr, Pointer<Char> zName,
-      Pointer<sqlite3_file> file, int flags, Pointer<Int> pOutFlags) {
+  static int _xOpen(
+    Pointer<sqlite3_vfs> vfsPtr,
+    Pointer<Char> zName,
+    Pointer<sqlite3_file> file,
+    int flags,
+    Pointer<Int> pOutFlags,
+  ) {
     return _runVfs(vfsPtr, (vfs) {
       final fileName = Sqlite3Filename(
-          zName.isNullPointer ? null : zName.cast<sqlite3_char>().readString());
+        zName.isNullPointer ? null : zName.cast<sqlite3_char>().readString(),
+      );
       final dartFilePtr = file.cast<_DartFile>();
 
       final (file: dartFile, :outFlags) = vfs.xOpen(fileName, flags);
@@ -355,13 +377,19 @@ final class _RegisteredVfs {
         ..xFileSize = Pointer.fromFunction(_xFileSize, SqlError.SQLITE_ERROR)
         ..xLock = Pointer.fromFunction(_xLock, SqlError.SQLITE_ERROR)
         ..xUnlock = Pointer.fromFunction(_xUnlock, SqlError.SQLITE_ERROR)
-        ..xCheckReservedLock =
-            Pointer.fromFunction(_xCheckReservedLock, SqlError.SQLITE_ERROR)
-        ..xFileControl =
-            Pointer.fromFunction(_xFileControl, SqlError.SQLITE_NOTFOUND)
+        ..xCheckReservedLock = Pointer.fromFunction(
+          _xCheckReservedLock,
+          SqlError.SQLITE_ERROR,
+        )
+        ..xFileControl = Pointer.fromFunction(
+          _xFileControl,
+          SqlError.SQLITE_NOTFOUND,
+        )
         ..xSectorSize = Pointer.fromFunction(_xSectorSize, 4096)
-        ..xDeviceCharacteristics =
-            Pointer.fromFunction(_xDeviveCharacteristics, 0);
+        ..xDeviceCharacteristics = Pointer.fromFunction(
+          _xDeviveCharacteristics,
+          0,
+        );
 
       if (!pOutFlags.isNullPointer) {
         pOutFlags.value = outFlags;
@@ -374,26 +402,42 @@ final class _RegisteredVfs {
   }
 
   static int _xDelete(
-      Pointer<sqlite3_vfs> vfsPtr, Pointer<Char> zName, int syncDir) {
-    return _runVfs(vfsPtr,
-        (vfs) => vfs.xDelete(zName.cast<sqlite3_char>().readString(), syncDir));
+    Pointer<sqlite3_vfs> vfsPtr,
+    Pointer<Char> zName,
+    int syncDir,
+  ) {
+    return _runVfs(
+      vfsPtr,
+      (vfs) => vfs.xDelete(zName.cast<sqlite3_char>().readString(), syncDir),
+    );
   }
 
-  static int _xAccess(Pointer<sqlite3_vfs> vfsPtr, Pointer<Char> zName,
-      int flags, Pointer<Int> pResOut) {
+  static int _xAccess(
+    Pointer<sqlite3_vfs> vfsPtr,
+    Pointer<Char> zName,
+    int flags,
+    Pointer<Int> pResOut,
+  ) {
     return _runVfs(vfsPtr, (vfs) {
       if (!pResOut.isNullPointer) {
-        pResOut.value =
-            vfs.xAccess(zName.cast<sqlite3_char>().readString(), flags);
+        pResOut.value = vfs.xAccess(
+          zName.cast<sqlite3_char>().readString(),
+          flags,
+        );
       }
     });
   }
 
-  static int _xFullPathname(Pointer<sqlite3_vfs> vfsPtr, Pointer<Char> zName,
-      int nOut, Pointer<Char> zOut) {
+  static int _xFullPathname(
+    Pointer<sqlite3_vfs> vfsPtr,
+    Pointer<Char> zName,
+    int nOut,
+    Pointer<Char> zOut,
+  ) {
     return _runVfs(vfsPtr, (vfs) {
-      final bytes = utf8
-          .encode(vfs.xFullPathName(zName.cast<sqlite3_char>().readString()));
+      final bytes = utf8.encode(
+        vfs.xFullPathName(zName.cast<sqlite3_char>().readString()),
+      );
       if (bytes.length >= nOut) {
         throw VfsException(SqlError.SQLITE_TOOBIG);
       }
@@ -405,7 +449,10 @@ final class _RegisteredVfs {
   }
 
   static int _xRandomness(
-      Pointer<sqlite3_vfs> vfsPtr, int nByte, Pointer<Char> zOut) {
+    Pointer<sqlite3_vfs> vfsPtr,
+    int nByte,
+    Pointer<Char> zOut,
+  ) {
     return _runVfs(vfsPtr, (vfs) {
       vfs.xRandomness(zOut.cast<Uint8>().asTypedList(nByte));
     });
@@ -413,7 +460,9 @@ final class _RegisteredVfs {
 
   static int _xSleep(Pointer<sqlite3_vfs> vfsPtr, int microseconds) {
     return _runVfs(
-        vfsPtr, (vfs) => vfs.xSleep(Duration(microseconds: microseconds)));
+      vfsPtr,
+      (vfs) => vfs.xSleep(Duration(microseconds: microseconds)),
+    );
   }
 
   static int _xCurrentTime64(Pointer<sqlite3_vfs> vfsPtr, Pointer<Int64> out) {
@@ -428,7 +477,9 @@ final class _RegisteredVfs {
   }
 
   static int _runFile(
-      Pointer<sqlite3_file> file, void Function(VirtualFileSystemFile) body) {
+    Pointer<sqlite3_file> file,
+    void Function(VirtualFileSystemFile) body,
+  ) {
     final id = file.cast<_DartFile>().ref.dartFileId;
     final dartFile = _files[id]!;
     try {
@@ -452,7 +503,11 @@ final class _RegisteredVfs {
   }
 
   static int _xRead(
-      Pointer<sqlite3_file> ptr, Pointer<Void> target, int amount, int offset) {
+    Pointer<sqlite3_file> ptr,
+    Pointer<Void> target,
+    int amount,
+    int offset,
+  ) {
     return _runFile(ptr, (file) {
       final buffer = target.cast<Uint8>().asTypedList(amount);
       file.xRead(buffer, offset);
@@ -460,7 +515,11 @@ final class _RegisteredVfs {
   }
 
   static int _xWrite(
-      Pointer<sqlite3_file> ptr, Pointer<Void> target, int amount, int offset) {
+    Pointer<sqlite3_file> ptr,
+    Pointer<Void> target,
+    int amount,
+    int offset,
+  ) {
     return _runFile(ptr, (file) {
       final buffer = target.cast<Uint8>().asTypedList(amount);
       file.xWrite(buffer, offset);
@@ -492,7 +551,9 @@ final class _RegisteredVfs {
   }
 
   static int _xCheckReservedLock(
-      Pointer<sqlite3_file> ptr, Pointer<Int> pResOut) {
+    Pointer<sqlite3_file> ptr,
+    Pointer<Int> pResOut,
+  ) {
     return _runFile(ptr, (file) {
       if (!pResOut.isNullPointer) {
         pResOut.value = file.xCheckReservedLock();
@@ -501,7 +562,10 @@ final class _RegisteredVfs {
   }
 
   static int _xFileControl(
-      Pointer<sqlite3_file> ptr, int op, Pointer<Void> pArg) {
+    Pointer<sqlite3_file> ptr,
+    int op,
+    Pointer<Void> pArg,
+  ) {
     // We don't currently support filecontrol operations in the VFS.
     return SqlError.SQLITE_NOTFOUND;
   }
@@ -537,10 +601,7 @@ final class FfiSession implements RawSqliteSession, Finalizable {
     final namePtr = name == null
         ? nullPtr<sqlite3_char>()
         : Utf8Utils.allocateZeroTerminated(name);
-    final result = libsqlite3.sqlite3session_attach(
-      session,
-      namePtr,
-    );
+    final result = libsqlite3.sqlite3session_attach(session, namePtr);
     if (name != null) {
       namePtr.free();
     }
@@ -552,9 +613,10 @@ final class FfiSession implements RawSqliteSession, Finalizable {
       throw createExceptionOutsideOfDatabase(ffiBindings, result);
     }
 
-    return buffer
-        .cast<Uint8>()
-        .asTypedList(size, finalizer: libsqlite3.addresses.sqlite3_free);
+    return buffer.cast<Uint8>().asTypedList(
+      size,
+      finalizer: libsqlite3.addresses.sqlite3_free,
+    );
   }
 
   @override
@@ -640,11 +702,17 @@ final class FfiChangesetIterator implements RawChangesetIterator, Finalizable {
   /// This ensures that, as the iterator is GCed, so is the changeset.
   final Uint8List? ownedChangesetBytes;
 
-  FfiChangesetIterator(this.iterator,
-      {bool ownsIterator = true, this.ownedChangesetBytes}) {
+  FfiChangesetIterator(
+    this.iterator, {
+    bool ownsIterator = true,
+    this.ownedChangesetBytes,
+  }) {
     if (ownsIterator) {
-      changesetFinalizeFinalizer.attach(this, iterator.cast(),
-          detach: detachToken);
+      changesetFinalizeFinalizer.attach(
+        this,
+        iterator.cast(),
+        detach: detachToken,
+      );
     }
   }
 
@@ -771,8 +839,13 @@ final class FfiDatabase implements RawSqliteDatabase {
   int sqlite3_exec(String sql) {
     final sqlPtr = Utf8Utils.allocateZeroTerminated(sql);
 
-    final result =
-        libsqlite3.sqlite3_exec(db, sqlPtr, nullPtr(), nullPtr(), nullPtr());
+    final result = libsqlite3.sqlite3_exec(
+      db,
+      sqlPtr,
+      nullPtr(),
+      nullPtr(),
+      nullPtr(),
+    );
     sqlPtr.free();
     return result;
   }
@@ -920,12 +993,7 @@ final class FfiDatabase implements RawSqliteDatabase {
 
   @override
   int sqlite3_db_config(int op, int value) {
-    final result = libsqlite3.sqlite3_db_config(
-      db,
-      op,
-      value,
-      nullPtr(),
-    );
+    final result = libsqlite3.sqlite3_db_config(db, op, value, nullPtr());
     return result;
   }
 
@@ -940,16 +1008,17 @@ final class FfiDatabase implements RawSqliteDatabase {
   }
 
   static Pointer<NativeFunction<Void Function(Pointer<Void>)>> _xDestroy(
-      List<NativeCallable> callables) {
+    List<NativeCallable> callables,
+  ) {
     void destroy(Pointer<Void> _) {
       for (final callable in callables) {
         callable.close();
       }
     }
 
-    final callable =
-        NativeCallable<Void Function(Pointer<Void>)>.isolateLocal(destroy)
-          ..keepIsolateAlive = false;
+    final callable = NativeCallable<Void Function(Pointer<Void>)>.isolateLocal(
+      destroy,
+    )..keepIsolateAlive = false;
     callables.add(callable);
 
     return callable.nativeFunction;
@@ -976,7 +1045,10 @@ final class FfiStatementCompiler implements RawStatementCompiler {
 
   @override
   SqliteResult<RawSqliteStatement?> sqlite3_prepare(
-      int byteOffset, int length, int prepFlag) {
+    int byteOffset,
+    int length,
+    int prepFlag,
+  ) {
     final int result;
 
     if (supportsPrepareV3) {
@@ -1035,7 +1107,12 @@ final class FfiStatement implements RawSqliteStatement {
     _allocatedArguments.add(ptr);
 
     return libsqlite3.sqlite3_bind_blob64(
-        stmt, index, ptr.cast(), value.length, nullPtr());
+      stmt,
+      index,
+      ptr.cast(),
+      value.length,
+      nullPtr(),
+    );
   }
 
   @override
@@ -1090,7 +1167,12 @@ final class FfiStatement implements RawSqliteStatement {
     _allocatedArguments.add(ptr);
 
     return libsqlite3.sqlite3_bind_text(
-        stmt, index, ptr.cast(), bytes.length, nullPtr());
+      stmt,
+      index,
+      ptr.cast(),
+      bytes.length,
+      nullPtr(),
+    );
   }
 
   @override
@@ -1191,8 +1273,9 @@ final class FfiValue implements RawSqliteValue {
   @override
   String sqlite3_value_text() {
     final byteLength = libsqlite3.sqlite3_value_bytes(value);
-    return utf8
-        .decode(libsqlite3.sqlite3_value_text(value).copyRange(byteLength));
+    return utf8.decode(
+      libsqlite3.sqlite3_value_text(value).copyRange(byteLength),
+    );
   }
 
   @override
@@ -1222,7 +1305,8 @@ final class FfiContext implements RawSqliteContext {
     if (agCtxPtr.isNullPointer) {
       // We can't run without our 8 bytes! This indicates an out-of-memory error
       throw StateError(
-          'Internal error while allocating sqlite3 aggregate context (OOM?)');
+        'Internal error while allocating sqlite3 aggregate context (OOM?)',
+      );
     }
 
     return agCtxPtr;
@@ -1255,8 +1339,12 @@ final class FfiContext implements RawSqliteContext {
   void sqlite3_result_blob64(List<int> blob) {
     final ptr = allocateBytes(blob);
 
-    libsqlite3.sqlite3_result_blob64(context, ptr.cast(), blob.length,
-        Pointer.fromAddress(SqlSpecialDestructor.SQLITE_TRANSIENT));
+    libsqlite3.sqlite3_result_blob64(
+      context,
+      ptr.cast(),
+      blob.length,
+      Pointer.fromAddress(SqlSpecialDestructor.SQLITE_TRANSIENT),
+    );
     ptr.free();
   }
 
@@ -1293,8 +1381,12 @@ final class FfiContext implements RawSqliteContext {
     final bytes = utf8.encode(text);
     final ptr = allocateBytes(bytes);
 
-    libsqlite3.sqlite3_result_text(context, ptr.cast(), bytes.length,
-        Pointer.fromAddress(SqlSpecialDestructor.SQLITE_TRANSIENT));
+    libsqlite3.sqlite3_result_text(
+      context,
+      ptr.cast(),
+      bytes.length,
+      Pointer.fromAddress(SqlSpecialDestructor.SQLITE_TRANSIENT),
+    );
     ptr.free();
   }
 
@@ -1325,23 +1417,35 @@ class _ValueList extends ListBase<FfiValue> {
   void operator []=(int index, FfiValue value) {}
 }
 
-typedef _XFunc = Void Function(
-    Pointer<sqlite3_context>, Int, Pointer<Pointer<sqlite3_value>>);
+typedef _XFunc =
+    Void Function(
+      Pointer<sqlite3_context>,
+      Int,
+      Pointer<Pointer<sqlite3_value>>,
+    );
 typedef _XFinal = Void Function(Pointer<sqlite3_context>);
-typedef _XCompare = Int Function(
-    Pointer<Void>, Int, Pointer<Void>, Int, Pointer<Void>);
-typedef _UpdateHook = Void Function(
-    Pointer<Void>, Int, Pointer<sqlite3_char>, Pointer<sqlite3_char>, Int64);
+typedef _XCompare =
+    Int Function(Pointer<Void>, Int, Pointer<Void>, Int, Pointer<Void>);
+typedef _UpdateHook =
+    Void Function(
+      Pointer<Void>,
+      Int,
+      Pointer<sqlite3_char>,
+      Pointer<sqlite3_char>,
+      Int64,
+    );
 typedef _CommitHook = Int Function(Pointer<Void>);
 typedef _RollbackHook = Void Function(Pointer<Void>);
 
 extension on RawXFunc {
   NativeCallable<_XFunc> toNative() {
-    return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx, int nArgs,
-        Pointer<Pointer<sqlite3_value>> args) {
+    return NativeCallable.isolateLocal((
+      Pointer<sqlite3_context> ctx,
+      int nArgs,
+      Pointer<Pointer<sqlite3_value>> args,
+    ) {
       this(FfiContext(ctx), _ValueList(nArgs, args));
-    })
-      ..keepIsolateAlive = false;
+    })..keepIsolateAlive = false;
   }
 }
 
@@ -1351,60 +1455,54 @@ extension on RawXFinal {
       final context = FfiContext(ctx);
       this(context);
       if (clean) context.freeContext();
-    })
-      ..keepIsolateAlive = false;
+    })..keepIsolateAlive = false;
   }
 }
 
 extension on RawCollation {
   NativeCallable<_XCompare> toNative() {
-    return NativeCallable.isolateLocal(
-      (
-        Pointer<Void> _,
-        int lengthA,
-        Pointer<Void> a,
-        int lengthB,
-        Pointer<Void> b,
-      ) {
-        final dartA = a.cast<sqlite3_char>().readNullableString(lengthA);
-        final dartB = b.cast<sqlite3_char>().readNullableString(lengthB);
+    return NativeCallable.isolateLocal((
+      Pointer<Void> _,
+      int lengthA,
+      Pointer<Void> a,
+      int lengthB,
+      Pointer<Void> b,
+    ) {
+      final dartA = a.cast<sqlite3_char>().readNullableString(lengthA);
+      final dartB = b.cast<sqlite3_char>().readNullableString(lengthB);
 
-        return this(dartA, dartB);
-      },
-      exceptionalReturn: 0,
-    )..keepIsolateAlive = false;
+      return this(dartA, dartB);
+    }, exceptionalReturn: 0)..keepIsolateAlive = false;
   }
 }
 
 extension on RawUpdateHook {
   NativeCallable<_UpdateHook> toNative() {
-    return NativeCallable.isolateLocal(
-      (Pointer<Void> _, int kind, Pointer<sqlite3_char> db,
-          Pointer<sqlite3_char> table, int rowid) {
-        final tableName = table.readString();
-        this(kind, tableName, rowid);
-      },
-    )..keepIsolateAlive = false;
+    return NativeCallable.isolateLocal((
+      Pointer<Void> _,
+      int kind,
+      Pointer<sqlite3_char> db,
+      Pointer<sqlite3_char> table,
+      int rowid,
+    ) {
+      final tableName = table.readString();
+      this(kind, tableName, rowid);
+    })..keepIsolateAlive = false;
   }
 }
 
 extension on RawCommitHook {
   NativeCallable<_CommitHook> toNative() {
-    return NativeCallable.isolateLocal(
-      (Pointer<Void> _) {
-        return this();
-      },
-      exceptionalReturn: 1,
-    )..keepIsolateAlive = false;
+    return NativeCallable.isolateLocal((Pointer<Void> _) {
+      return this();
+    }, exceptionalReturn: 1)..keepIsolateAlive = false;
   }
 }
 
 extension on RawRollbackHook {
   NativeCallable<_RollbackHook> toNative() {
-    return NativeCallable.isolateLocal(
-      (Pointer<Void> _) {
-        this();
-      },
-    )..keepIsolateAlive = false;
+    return NativeCallable.isolateLocal((Pointer<Void> _) {
+      this();
+    })..keepIsolateAlive = false;
   }
 }

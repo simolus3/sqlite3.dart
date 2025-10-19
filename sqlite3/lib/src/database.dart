@@ -149,8 +149,12 @@ abstract class CommonDatabase {
   /// If [checkNoTail] is enabled (it defaults to `false`) and the [sql] string
   /// contains trailing data, an exception will be thrown and the statement will
   /// not be executed.
-  CommonPreparedStatement prepare(String sql,
-      {bool persistent = false, bool vtab = true, bool checkNoTail = false});
+  CommonPreparedStatement prepare(
+    String sql, {
+    bool persistent = false,
+    bool vtab = true,
+    bool checkNoTail = false,
+  });
 
   /// Compiles multiple statements from [sql] to be executed later.
   ///
@@ -161,8 +165,11 @@ abstract class CommonDatabase {
   /// return `2` prepared statements.
   ///
   /// For the [persistent] and [vtab] parameters, see [prepare].
-  List<CommonPreparedStatement> prepareMultiple(String sql,
-      {bool persistent = false, bool vtab = true});
+  List<CommonPreparedStatement> prepareMultiple(
+    String sql, {
+    bool persistent = false,
+    bool vtab = true,
+  });
 
   /// Creates a collation that can be used from sql queries sent against
   /// this database.

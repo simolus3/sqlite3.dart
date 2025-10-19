@@ -49,13 +49,13 @@ base class StatementImplementation extends CommonPreparedStatement {
   _ActiveCursorIterator? _currentCursor;
 
   StatementImplementation(this.sql, this.database, this.statement)
-      : finalizable = FinalizableStatement(statement);
+    : finalizable = FinalizableStatement(statement);
 
   List<String> get _columnNames {
     final columnCount = statement.sqlite3_column_count();
 
     return [
-      for (var i = 0; i < columnCount; i++) statement.sqlite3_column_name(i)
+      for (var i = 0; i < columnCount; i++) statement.sqlite3_column_name(i),
     ];
   }
 
@@ -80,7 +80,10 @@ base class StatementImplementation extends CommonPreparedStatement {
 
     if (length != count) {
       throw ArgumentError.value(
-          parameters, 'parameters', 'Expected $count parameters, got $length');
+        parameters,
+        'parameters',
+        'Expected $count parameters, got $length',
+      );
     }
   }
 
@@ -197,8 +200,11 @@ base class StatementImplementation extends CommonPreparedStatement {
 
     if (params.isEmpty) {
       if (expectedLength != 0) {
-        throw ArgumentError.value(params, 'params',
-            'Expected $expectedLength parameters, but none were set.');
+        throw ArgumentError.value(
+          params,
+          'params',
+          'Expected $expectedLength parameters, but none were set.',
+        );
       }
       return;
     }
@@ -210,8 +216,11 @@ base class StatementImplementation extends CommonPreparedStatement {
       // SQL parameters are 1-indexed, so 0 indicates that no parameter with
       // that name was found.
       if (i == 0) {
-        throw ArgumentError.value(params, 'params',
-            'This statement contains no parameter named `$key`');
+        throw ArgumentError.value(
+          params,
+          'params',
+          'This statement contains no parameter named `$key`',
+        );
       }
       _bindParam(param, i);
       paramsAsList[i - 1] = param;
@@ -221,7 +230,10 @@ base class StatementImplementation extends CommonPreparedStatement {
     // if the statement contains no additional parameters.
     if (expectedLength != params.length) {
       throw ArgumentError.value(
-          params, 'params', 'Expected $expectedLength parameters');
+        params,
+        'params',
+        'Expected $expectedLength parameters',
+      );
     }
 
     _latestArguments = paramsAsList;
@@ -236,7 +248,7 @@ base class StatementImplementation extends CommonPreparedStatement {
       double() => statement.sqlite3_bind_double(i, param),
       String() => statement.sqlite3_bind_text(i, param),
       List<int>() => statement.sqlite3_bind_blob64(i, param),
-      _ => _bindCustomParam(param, i)
+      _ => _bindCustomParam(param, i),
     };
 
     if (rc != SqlError.SQLITE_OK) {
@@ -355,9 +367,8 @@ class _ActiveCursorIterator extends IteratingCursor {
   /// This design issue is documented on [IteratingCursor].
   bool _hasReliableColumnNames = false;
 
-  _ActiveCursorIterator(
-    this.statement,
-  ) : super(statement._columnNames, statement._tableNames) {
+  _ActiveCursorIterator(this.statement)
+    : super(statement._columnNames, statement._tableNames) {
     statement.finalizable._inResetState = false;
   }
 
@@ -378,7 +389,7 @@ class _ActiveCursorIterator extends IteratingCursor {
 
       assert(columnCount >= 0);
       final rowData = <Object?>[
-        for (var i = 0; i < columnCount; i++) statement._readValue(i)
+        for (var i = 0; i < columnCount; i++) statement._readValue(i),
       ];
 
       current = Row(this, rowData);

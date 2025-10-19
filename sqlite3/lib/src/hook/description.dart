@@ -1,14 +1,44 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:code_assets/code_assets.dart';
+import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
+
+import 'assets.dart';
+import 'asset_hashes.dart';
+import 'utils.dart';
 
 /// Possible sources to obtain a `libsqlite3.so` (or the equivalent for other
 /// platforms).
 sealed class SqliteBinary {
   static SqliteBinary forBuild(BuildInput input) {
-    // TODO: Parse user defines
-    return SimpleBinary.fromSystem;
+    final userDefines = input.userDefines;
+    switch (userDefines['source']) {
+      case null:
+      case 'sqlite3':
+        return PrecompiledFromGithubAssets(LibraryType.sqlite3);
+      case 'sqlite3mc':
+        return PrecompiledFromGithubAssets(LibraryType.sqlite3mc);
+      case 'test-sqlite3':
+        return PrecompiledForTesting(LibraryType.sqlite3);
+      case 'test-sqlite3mc':
+        return PrecompiledForTesting(LibraryType.sqlite3mc);
+      case 'system':
+        return SimpleBinary.fromSystem;
+      case 'process':
+        return SimpleBinary.fromProcess;
+      case 'executable':
+        return SimpleBinary.fromExecutable;
+      default:
+        throw ArgumentError.value(
+          userDefines['source'],
+          'source',
+          'Unknown source. Must be sqlite3, sqlite3mc, system, process or '
+              'executable',
+        );
+    }
   }
 }
 
@@ -28,13 +58,18 @@ enum SimpleBinary implements SqliteBinary {
       case SimpleBinary.fromSystem:
         final targetOS = input.config.code.targetOS;
 
-        return DynamicLoadingSystem(Uri.parse(switch (targetOS) {
-          OS.windows => 'sqlite3.dll',
-          OS.macOS || OS.iOS => 'libsqlite3.dylib',
-          OS.linux => 'libsqlite3.so',
-          _ => throw ArgumentError.value(targetOS, 'targetOS',
-              'Does not have sqlite3 in its system libraries'),
-        }));
+        return DynamicLoadingSystem(
+          Uri.parse(switch (targetOS) {
+            OS.windows => 'sqlite3.dll',
+            OS.macOS || OS.iOS => 'libsqlite3.dylib',
+            OS.linux => 'libsqlite3.so',
+            _ => throw ArgumentError.value(
+              targetOS,
+              'targetOS',
+              'Does not have sqlite3 in its system libraries',
+            ),
+          }),
+        );
       case SimpleBinary.fromProcess:
         return LookupInProcess();
       case SimpleBinary.fromExecutable:
@@ -43,12 +78,102 @@ enum SimpleBinary implements SqliteBinary {
   }
 }
 
+sealed class PrecompiledBinary implements SqliteBinary {
+  final LibraryType type;
+
+  const PrecompiledBinary._(this.type);
+
+  PrebuiltSqliteLibrary resolveLibrary(CodeConfig config) {
+    return PrebuiltSqliteLibrary.resolve(config, type);
+  }
+
+  Stream<Uint8List> _fetchFromSource(
+    BuildInput input,
+    BuildOutputBuilder output,
+    String filename,
+  );
+
+  Stream<Uint8List> fetch(
+    BuildInput input,
+    BuildOutputBuilder output,
+    PrebuiltSqliteLibrary library,
+  ) {
+    return Stream.multi((listener) {
+      final (filename, hash) = _filenameAndHash(library);
+      final source = _fetchFromSource(input, output, filename);
+
+      final digestSink = OnceSink<Digest>();
+      final hasher = sha256.startChunkedConversion(digestSink);
+
+      source.listen(
+        (data) {
+          listener.addSync(data);
+          hasher.add(data);
+        },
+        onError: listener.addErrorSync,
+        onDone: () {
+          hasher.close();
+          final digest = digestSink.value!;
+
+          if (digest.toString() != hash) {
+            listener.addError(
+              StateError(
+                'Hash of downloaded file $filename is $digest, expected $hash.',
+              ),
+            );
+          }
+
+          listener.close();
+        },
+      );
+    });
+  }
+
+  (String, String) _filenameAndHash(PrebuiltSqliteLibrary library) {
+    final filename = library.filename;
+    final expectedHash = assetNameToSha256Hash[filename];
+    if (expectedHash == null) {
+      throw UnsupportedError(
+        'No known file hash for $filename. '
+        'Please file an issue on https://github.com/simolus3/sqlite3.dart with '
+        'the version of the sqlite3 package in use.',
+      );
+    }
+
+    return (filename, expectedHash);
+  }
+}
+
 /// Download pre-compiled binaries from the GH release for the `sqlite3`
 /// package.
-final class PrecompiledFromGithubAssets implements SqliteBinary {
-  final String releaseTag;
+final class PrecompiledFromGithubAssets extends PrecompiledBinary {
+  const PrecompiledFromGithubAssets(super.type) : super._();
 
-  PrecompiledFromGithubAssets(this.releaseTag);
+  @override
+  Stream<Uint8List> _fetchFromSource(
+    BuildInput input,
+    BuildOutputBuilder output,
+    String filename,
+  ) async* {
+    final client = HttpClient();
+    final request = await client.getUrl(
+      Uri.https(
+        'github.com',
+        'simolus3/sqlite3.dart/releases/download/${releaseTag!}/$filename',
+      ),
+    );
+    final response = await request.close();
+
+    await for (final chunk in response) {
+      if (chunk is Uint8List) {
+        yield chunk;
+      } else {
+        yield Uint8List.fromList(chunk);
+      }
+    }
+
+    client.close();
+  }
 }
 
 /// A variant of [PrecompiledFromGithubAssets] that doesn't require a github
@@ -57,8 +182,25 @@ final class PrecompiledFromGithubAssets implements SqliteBinary {
 /// This is only used to test the package: We download the assets we would
 /// upload for a release build into a folder, and then have the hook look them
 /// up there.
-final class PrecompiledForTesting implements SqliteBinary {
-  PrecompiledForTesting();
+final class PrecompiledForTesting extends PrecompiledBinary {
+  const PrecompiledForTesting(super.type) : super._();
+
+  @override
+  Stream<Uint8List> _fetchFromSource(
+    BuildInput input,
+    BuildOutputBuilder output,
+    String filename,
+  ) {
+    final uri = input.userDefines.path('directory')!.resolve(filename);
+    output.dependencies.add(uri);
+
+    return File(uri.path).openRead().map(
+      (event) => switch (event) {
+        final Uint8List bytes => bytes,
+        _ => Uint8List.fromList(event),
+      },
+    );
+  }
 }
 
 final class CompileSqlite implements SqliteBinary {

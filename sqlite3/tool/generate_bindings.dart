@@ -21,7 +21,9 @@ void _ffigen() {
   final config = Config(
     preamble: '// ignore_for_file: type=lint',
     ffiNativeConfig: FfiNativeConfig(
-        enabled: true, assetId: 'package:sqlite3/src/ffi/libsqlite3.g.dart'),
+      enabled: true,
+      assetId: 'package:sqlite3/src/ffi/libsqlite3.g.dart',
+    ),
     output: Uri.parse('lib/src/ffi/libsqlite3.g.dart'),
     entryPoints: [Uri.parse('assets/sqlite3.h')],
     symbolFile: null,
@@ -30,7 +32,7 @@ void _ffigen() {
     globals: _includeSqlite3Only,
     varArgFunctions: makeVarArgFunctionsMapping({
       'sqlite3_db_config': [
-        RawVarArgFunction('', ['int', 'int*'])
+        RawVarArgFunction('', ['int', 'int*']),
       ],
     }, libraryImports),
     libraryImports: libraryImports.values.toList(),
@@ -40,15 +42,16 @@ void _ffigen() {
 }
 
 DeclarationFilters _includeSqlite3Only = DeclarationFilters(
-    shouldInclude: (d) => d.isSqlite3Symbol,
-    shouldIncludeSymbolAddress: (decl) {
-      return switch (decl.originalName) {
-        'sqlite3changeset_finalize' => true,
-        'sqlite3session_delete' => true,
-        'sqlite3_free' => true,
-        _ => false,
-      };
-    });
+  shouldInclude: (d) => d.isSqlite3Symbol,
+  shouldIncludeSymbolAddress: (decl) {
+    return switch (decl.originalName) {
+      'sqlite3changeset_finalize' => true,
+      'sqlite3session_delete' => true,
+      'sqlite3_free' => true,
+      _ => false,
+    };
+  },
+);
 
 extension on Declaration {
   bool get isSqlite3Symbol => originalName.startsWith('sqlite3');
@@ -56,19 +59,22 @@ extension on Declaration {
 
 void writeWasmDefinitions() {
   final filter = DeclarationFilters(
-      shouldInclude: (d) =>
-          stableFunctions.contains(d.originalName) ||
-          unstable.contains(d.originalName));
+    shouldInclude: (d) =>
+        stableFunctions.contains(d.originalName) ||
+        unstable.contains(d.originalName),
+  );
 
-  final library = ffigen.parse(Config(
-    output: Uri.parse('unused'),
-    entryPoints: [
-      Uri.parse('assets/sqlite3.h'),
-      Uri.parse('assets/sqlite3_dart_wasm.h'),
-    ],
-    functionDecl: filter,
-    globals: filter,
-  ));
+  final library = ffigen.parse(
+    Config(
+      output: Uri.parse('unused'),
+      entryPoints: [
+        Uri.parse('assets/sqlite3.h'),
+        Uri.parse('assets/sqlite3_dart_wasm.h'),
+      ],
+      functionDecl: filter,
+      globals: filter,
+    ),
+  );
   final buffer = StringBuffer('''
 import 'dart:js_interop';
 
@@ -146,6 +152,7 @@ extension type SqliteExports(JSObject raw) implements JSObject {
   buffer.writeln('}');
 
   final formatter = DartFormatter(languageVersion: Version(3, 6, 0));
-  File('lib/src/wasm/sqlite3_wasm.g.dart')
-      .writeAsStringSync(formatter.format(buffer.toString()));
+  File(
+    'lib/src/wasm/sqlite3_wasm.g.dart',
+  ).writeAsStringSync(formatter.format(buffer.toString()));
 }

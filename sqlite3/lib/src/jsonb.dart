@@ -169,8 +169,10 @@ final class _JsonbDecodingState {
     final endIndex = offset + payloadLength;
 
     Uint8List payloadBytes() {
-      return input.buffer
-          .asUint8List(input.offsetInBytes + payloadStartOffset, payloadLength);
+      return input.buffer.asUint8List(
+        input.offsetInBytes + payloadStartOffset,
+        payloadLength,
+      );
     }
 
     String payloadString() {
@@ -183,12 +185,10 @@ final class _JsonbDecodingState {
       _ElementType._false => false,
       _ElementType._int || _ElementType._int5 => int.parse(payloadString()),
       _ElementType._float ||
-      _ElementType._float5 =>
-        double.parse(payloadString()),
+      _ElementType._float5 => double.parse(payloadString()),
       _ElementType._text || _ElementType._textraw => payloadString(),
       _ElementType._textJ ||
-      _ElementType._text5 =>
-        json.decode('"${payloadString()}"'),
+      _ElementType._text5 => json.decode('"${payloadString()}"'),
       _ElementType._array => readArray(payloadLength),
       _ElementType._object => readObject(payloadLength),
       _ => _malformedJson(),
@@ -206,8 +206,10 @@ final class _JsonbEncoder extends Converter<Object?, Uint8List> {
   @override
   Uint8List convert(Object? input) {
     final operation = _JsonbEncodingOperation()..write(input);
-    return operation._buffer.buffer
-        .asUint8List(operation._buffer.offsetInBytes, operation._buffer.length);
+    return operation._buffer.buffer.asUint8List(
+      operation._buffer.offsetInBytes,
+      operation._buffer.length,
+    );
   }
 }
 
@@ -317,8 +319,10 @@ final class _JsonbEncodingOperation {
 
     final encoded = utf8.encode(value.toString());
     // RFC 8259 does not support infinity or NaN.
-    writeHeader(encoded.length,
-        value.isFinite ? _ElementType._float : _ElementType._float5);
+    writeHeader(
+      encoded.length,
+      value.isFinite ? _ElementType._float : _ElementType._float5,
+    );
     _buffer.addAll(encoded);
   }
 

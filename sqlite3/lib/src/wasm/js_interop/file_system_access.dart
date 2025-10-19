@@ -40,8 +40,9 @@ extension type LegacyDirectoryHandle(web.FileSystemDirectoryHandle inner) {
   }
 
   Future<void> removeEntry(String name, {bool recursive = false}) async {
-    await fixed.FileSystemDirectoryHandleApi(inner)
-        .remove(name, recursive: recursive);
+    await fixed.FileSystemDirectoryHandleApi(
+      inner,
+    ).remove(name, recursive: recursive);
   }
 
   Future<LegacyDirectoryHandle> getDirectory(String name) async {
@@ -49,8 +50,9 @@ extension type LegacyDirectoryHandle(web.FileSystemDirectoryHandle inner) {
   }
 
   Stream<LegacyHandle> list() {
-    return AsyncJavaScriptIteratable<JSArray>(inner)
-        .map((data) => LegacyHandle(data.toDart[1] as web.FileSystemHandle));
+    return AsyncJavaScriptIteratable<JSArray>(
+      inner,
+    ).map((data) => LegacyHandle(data.toDart[1] as web.FileSystemHandle));
   }
 }
 

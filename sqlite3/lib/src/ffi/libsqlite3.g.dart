@@ -15,16 +15,16 @@ external ffi.Pointer<sqlite3_char> sqlite3_temp_directory;
 external int sqlite3_initialize();
 
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>)>()
-external void sqlite3_free(
-  ffi.Pointer<ffi.Void> arg0,
-);
+external void sqlite3_free(ffi.Pointer<ffi.Void> arg0);
 
 @ffi.Native<
-    ffi.Int Function(
-        ffi.Pointer<sqlite3_char>,
-        ffi.Pointer<ffi.Pointer<sqlite3>>,
-        ffi.Int,
-        ffi.Pointer<sqlite3_char>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3_char>,
+    ffi.Pointer<ffi.Pointer<sqlite3>>,
+    ffi.Int,
+    ffi.Pointer<sqlite3_char>,
+  )
+>()
 external int sqlite3_open_v2(
   ffi.Pointer<sqlite3_char> filename,
   ffi.Pointer<ffi.Pointer<sqlite3>> ppDb,
@@ -33,53 +33,39 @@ external int sqlite3_open_v2(
 );
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3>)>()
-external int sqlite3_close_v2(
-  ffi.Pointer<sqlite3> db,
-);
+external int sqlite3_close_v2(ffi.Pointer<sqlite3> db);
 
 @ffi.Native<
-    ffi.Pointer<sqlite3_char> Function(
-        ffi.Pointer<sqlite3>, ffi.Pointer<sqlite3_char>)>()
+  ffi.Pointer<sqlite3_char> Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Pointer<sqlite3_char>,
+  )
+>()
 external ffi.Pointer<sqlite3_char> sqlite3_db_filename(
   ffi.Pointer<sqlite3> db,
   ffi.Pointer<sqlite3_char> zDbName,
 );
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_char>)>()
-external int sqlite3_compileoption_used(
-  ffi.Pointer<sqlite3_char> zOptName,
-);
+external int sqlite3_compileoption_used(ffi.Pointer<sqlite3_char> zOptName);
 
 @ffi.Native<ffi.Pointer<sqlite3_char> Function(ffi.Int)>()
-external ffi.Pointer<sqlite3_char> sqlite3_compileoption_get(
-  int N,
-);
+external ffi.Pointer<sqlite3_char> sqlite3_compileoption_get(int N);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3>, ffi.Int)>()
-external int sqlite3_extended_result_codes(
-  ffi.Pointer<sqlite3> db,
-  int onoff,
-);
+external int sqlite3_extended_result_codes(ffi.Pointer<sqlite3> db, int onoff);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3>)>()
-external int sqlite3_extended_errcode(
-  ffi.Pointer<sqlite3> db,
-);
+external int sqlite3_extended_errcode(ffi.Pointer<sqlite3> db);
 
 @ffi.Native<ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3>)>()
-external ffi.Pointer<sqlite3_char> sqlite3_errmsg(
-  ffi.Pointer<sqlite3> db,
-);
+external ffi.Pointer<sqlite3_char> sqlite3_errmsg(ffi.Pointer<sqlite3> db);
 
 @ffi.Native<ffi.Pointer<sqlite3_char> Function(ffi.Int)>()
-external ffi.Pointer<sqlite3_char> sqlite3_errstr(
-  int code,
-);
+external ffi.Pointer<sqlite3_char> sqlite3_errstr(int code);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3>)>()
-external int sqlite3_error_offset(
-  ffi.Pointer<sqlite3> db,
-);
+external int sqlite3_error_offset(ffi.Pointer<sqlite3> db);
 
 @ffi.Native<ffi.Pointer<sqlite3_char> Function()>()
 external ffi.Pointer<sqlite3_char> sqlite3_libversion();
@@ -91,22 +77,20 @@ external ffi.Pointer<sqlite3_char> sqlite3_sourceid();
 external int sqlite3_libversion_number();
 
 @ffi.Native<ffi.Int64 Function(ffi.Pointer<sqlite3>)>()
-external int sqlite3_last_insert_rowid(
-  ffi.Pointer<sqlite3> db,
-);
+external int sqlite3_last_insert_rowid(ffi.Pointer<sqlite3> db);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3>)>()
-external int sqlite3_changes(
-  ffi.Pointer<sqlite3> db,
-);
+external int sqlite3_changes(ffi.Pointer<sqlite3> db);
 
 @ffi.Native<
-    ffi.Int Function(
-        ffi.Pointer<sqlite3>,
-        ffi.Pointer<sqlite3_char>,
-        ffi.Pointer<ffi.Void>,
-        ffi.Pointer<ffi.Void>,
-        ffi.Pointer<ffi.Pointer<sqlite3_char>>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Pointer<sqlite3_char>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Pointer<sqlite3_char>>,
+  )
+>()
 external int sqlite3_exec(
   ffi.Pointer<sqlite3> db,
   ffi.Pointer<sqlite3_char> sql,
@@ -116,37 +100,46 @@ external int sqlite3_exec(
 );
 
 @ffi.Native<
-    ffi.Pointer<ffi.Void> Function(
-        ffi.Pointer<sqlite3>,
-        ffi.Pointer<
-            ffi.NativeFunction<
-                ffi.Void Function(
-                    ffi.Pointer<ffi.Void>,
-                    ffi.Int,
-                    ffi.Pointer<sqlite3_char>,
-                    ffi.Pointer<sqlite3_char>,
-                    ffi.Int64)>>,
-        ffi.Pointer<ffi.Void>)>()
+  ffi.Pointer<ffi.Void> Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Pointer<
+      ffi.NativeFunction<
+        ffi.Void Function(
+          ffi.Pointer<ffi.Void>,
+          ffi.Int,
+          ffi.Pointer<sqlite3_char>,
+          ffi.Pointer<sqlite3_char>,
+          ffi.Int64,
+        )
+      >
+    >,
+    ffi.Pointer<ffi.Void>,
+  )
+>()
 external ffi.Pointer<ffi.Void> sqlite3_update_hook(
   ffi.Pointer<sqlite3> arg0,
   ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Void Function(
-                  ffi.Pointer<ffi.Void>,
-                  ffi.Int,
-                  ffi.Pointer<sqlite3_char>,
-                  ffi.Pointer<sqlite3_char>,
-                  ffi.Int64)>>
-      arg1,
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Pointer<ffi.Void>,
+        ffi.Int,
+        ffi.Pointer<sqlite3_char>,
+        ffi.Pointer<sqlite3_char>,
+        ffi.Int64,
+      )
+    >
+  >
+  arg1,
   ffi.Pointer<ffi.Void> arg2,
 );
 
 @ffi.Native<
-    ffi.Pointer<ffi.Void> Function(
-        ffi.Pointer<sqlite3>,
-        ffi.Pointer<
-            ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>>,
-        ffi.Pointer<ffi.Void>)>()
+  ffi.Pointer<ffi.Void> Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>>,
+    ffi.Pointer<ffi.Void>,
+  )
+>()
 external ffi.Pointer<ffi.Void> sqlite3_commit_hook(
   ffi.Pointer<sqlite3> arg0,
   ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>> arg1,
@@ -154,30 +147,31 @@ external ffi.Pointer<ffi.Void> sqlite3_commit_hook(
 );
 
 @ffi.Native<
-    ffi.Pointer<ffi.Void> Function(
-        ffi.Pointer<sqlite3>,
-        ffi.Pointer<
-            ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>,
-        ffi.Pointer<ffi.Void>)>()
+  ffi.Pointer<ffi.Void> Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>,
+    ffi.Pointer<ffi.Void>,
+  )
+>()
 external ffi.Pointer<ffi.Void> sqlite3_rollback_hook(
   ffi.Pointer<sqlite3> arg0,
   ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
-      arg1,
+  arg1,
   ffi.Pointer<ffi.Void> arg2,
 );
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3>)>()
-external int sqlite3_get_autocommit(
-  ffi.Pointer<sqlite3> db,
-);
+external int sqlite3_get_autocommit(ffi.Pointer<sqlite3> db);
 
 @ffi.Native<
-    ffi.Int Function(
-        ffi.Pointer<sqlite3>,
-        ffi.Pointer<sqlite3_char>,
-        ffi.Int,
-        ffi.Pointer<ffi.Pointer<sqlite3_stmt>>,
-        ffi.Pointer<ffi.Pointer<sqlite3_char>>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Pointer<sqlite3_char>,
+    ffi.Int,
+    ffi.Pointer<ffi.Pointer<sqlite3_stmt>>,
+    ffi.Pointer<ffi.Pointer<sqlite3_char>>,
+  )
+>()
 external int sqlite3_prepare_v2(
   ffi.Pointer<sqlite3> db,
   ffi.Pointer<sqlite3_char> zSql,
@@ -187,13 +181,15 @@ external int sqlite3_prepare_v2(
 );
 
 @ffi.Native<
-    ffi.Int Function(
-        ffi.Pointer<sqlite3>,
-        ffi.Pointer<sqlite3_char>,
-        ffi.Int,
-        ffi.UnsignedInt,
-        ffi.Pointer<ffi.Pointer<sqlite3_stmt>>,
-        ffi.Pointer<ffi.Pointer<sqlite3_char>>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Pointer<sqlite3_char>,
+    ffi.Int,
+    ffi.UnsignedInt,
+    ffi.Pointer<ffi.Pointer<sqlite3_stmt>>,
+    ffi.Pointer<ffi.Pointer<sqlite3_char>>,
+  )
+>()
 external int sqlite3_prepare_v3(
   ffi.Pointer<sqlite3> db,
   ffi.Pointer<sqlite3_char> zSql,
@@ -204,64 +200,59 @@ external int sqlite3_prepare_v3(
 );
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>()
-external int sqlite3_finalize(
-  ffi.Pointer<sqlite3_stmt> pStmt,
-);
+external int sqlite3_finalize(ffi.Pointer<sqlite3_stmt> pStmt);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>()
-external int sqlite3_step(
-  ffi.Pointer<sqlite3_stmt> pStmt,
-);
+external int sqlite3_step(ffi.Pointer<sqlite3_stmt> pStmt);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>()
-external int sqlite3_reset(
-  ffi.Pointer<sqlite3_stmt> pStmt,
-);
+external int sqlite3_reset(ffi.Pointer<sqlite3_stmt> pStmt);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>()
-external int sqlite3_stmt_isexplain(
-  ffi.Pointer<sqlite3_stmt> pStmt,
-);
+external int sqlite3_stmt_isexplain(ffi.Pointer<sqlite3_stmt> pStmt);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>()
-external int sqlite3_stmt_readonly(
-  ffi.Pointer<sqlite3_stmt> pStmt,
-);
+external int sqlite3_stmt_readonly(ffi.Pointer<sqlite3_stmt> pStmt);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>()
-external int sqlite3_column_count(
-  ffi.Pointer<sqlite3_stmt> pStmt,
-);
+external int sqlite3_column_count(ffi.Pointer<sqlite3_stmt> pStmt);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>()
-external int sqlite3_bind_parameter_count(
-  ffi.Pointer<sqlite3_stmt> pStmt,
-);
+external int sqlite3_bind_parameter_count(ffi.Pointer<sqlite3_stmt> pStmt);
 
 @ffi.Native<
-    ffi.Int Function(ffi.Pointer<sqlite3_stmt>, ffi.Pointer<sqlite3_char>)>()
+  ffi.Int Function(ffi.Pointer<sqlite3_stmt>, ffi.Pointer<sqlite3_char>)
+>()
 external int sqlite3_bind_parameter_index(
   ffi.Pointer<sqlite3_stmt> arg0,
   ffi.Pointer<sqlite3_char> zName,
 );
 
 @ffi.Native<
-    ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)>()
+  ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)
+>()
 external ffi.Pointer<sqlite3_char> sqlite3_column_name(
   ffi.Pointer<sqlite3_stmt> pStmt,
   int N,
 );
 
 @ffi.Native<
-    ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)>()
+  ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)
+>()
 external ffi.Pointer<sqlite3_char> sqlite3_column_table_name(
   ffi.Pointer<sqlite3_stmt> pStmt,
   int N,
 );
 
 @ffi.Native<
-    ffi.Int Function(ffi.Pointer<sqlite3_stmt>, ffi.Int, ffi.Pointer<ffi.Void>,
-        ffi.Uint64, ffi.Pointer<ffi.Void>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3_stmt>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Uint64,
+    ffi.Pointer<ffi.Void>,
+  )
+>()
 external int sqlite3_bind_blob64(
   ffi.Pointer<sqlite3_stmt> pStmt,
   int index,
@@ -285,14 +276,17 @@ external int sqlite3_bind_int64(
 );
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)>()
-external int sqlite3_bind_null(
-  ffi.Pointer<sqlite3_stmt> pStmt,
-  int index,
-);
+external int sqlite3_bind_null(ffi.Pointer<sqlite3_stmt> pStmt, int index);
 
 @ffi.Native<
-    ffi.Int Function(ffi.Pointer<sqlite3_stmt>, ffi.Int,
-        ffi.Pointer<sqlite3_char>, ffi.Int, ffi.Pointer<ffi.Void>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3_stmt>,
+    ffi.Int,
+    ffi.Pointer<sqlite3_char>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+  )
+>()
 external int sqlite3_bind_text(
   ffi.Pointer<sqlite3_stmt> pStmt,
   int index,
@@ -302,7 +296,8 @@ external int sqlite3_bind_text(
 );
 
 @ffi.Native<
-    ffi.Pointer<ffi.Void> Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)>()
+  ffi.Pointer<ffi.Void> Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)
+>()
 external ffi.Pointer<ffi.Void> sqlite3_column_blob(
   ffi.Pointer<sqlite3_stmt> pStmt,
   int iCol,
@@ -315,29 +310,21 @@ external double sqlite3_column_double(
 );
 
 @ffi.Native<ffi.Int64 Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)>()
-external int sqlite3_column_int64(
-  ffi.Pointer<sqlite3_stmt> pStmt,
-  int iCol,
-);
+external int sqlite3_column_int64(ffi.Pointer<sqlite3_stmt> pStmt, int iCol);
 
 @ffi.Native<
-    ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)>()
+  ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)
+>()
 external ffi.Pointer<sqlite3_char> sqlite3_column_text(
   ffi.Pointer<sqlite3_stmt> pStmt,
   int iCol,
 );
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)>()
-external int sqlite3_column_bytes(
-  ffi.Pointer<sqlite3_stmt> pStmt,
-  int iCol,
-);
+external int sqlite3_column_bytes(ffi.Pointer<sqlite3_stmt> pStmt, int iCol);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)>()
-external int sqlite3_column_type(
-  ffi.Pointer<sqlite3_stmt> pStmt,
-  int iCol,
-);
+external int sqlite3_column_type(ffi.Pointer<sqlite3_stmt> pStmt, int iCol);
 
 @ffi.Native<ffi.Pointer<ffi.Void> Function(ffi.Pointer<sqlite3_value>)>()
 external ffi.Pointer<ffi.Void> sqlite3_value_blob(
@@ -345,19 +332,13 @@ external ffi.Pointer<ffi.Void> sqlite3_value_blob(
 );
 
 @ffi.Native<ffi.Double Function(ffi.Pointer<sqlite3_value>)>()
-external double sqlite3_value_double(
-  ffi.Pointer<sqlite3_value> value,
-);
+external double sqlite3_value_double(ffi.Pointer<sqlite3_value> value);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_value>)>()
-external int sqlite3_value_type(
-  ffi.Pointer<sqlite3_value> value,
-);
+external int sqlite3_value_type(ffi.Pointer<sqlite3_value> value);
 
 @ffi.Native<ffi.Int64 Function(ffi.Pointer<sqlite3_value>)>()
-external int sqlite3_value_int64(
-  ffi.Pointer<sqlite3_value> value,
-);
+external int sqlite3_value_int64(ffi.Pointer<sqlite3_value> value);
 
 @ffi.Native<ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3_value>)>()
 external ffi.Pointer<sqlite3_char> sqlite3_value_text(
@@ -365,35 +346,42 @@ external ffi.Pointer<sqlite3_char> sqlite3_value_text(
 );
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_value>)>()
-external int sqlite3_value_bytes(
-  ffi.Pointer<sqlite3_value> value,
-);
+external int sqlite3_value_bytes(ffi.Pointer<sqlite3_value> value);
 
 @ffi.Native<ffi.UnsignedInt Function(ffi.Pointer<sqlite3_value>)>()
-external int sqlite3_value_subtype(
-  ffi.Pointer<sqlite3_value> value,
-);
+external int sqlite3_value_subtype(ffi.Pointer<sqlite3_value> value);
 
 @ffi.Native<
-    ffi.Int Function(
-        ffi.Pointer<sqlite3>,
-        ffi.Pointer<sqlite3_char>,
-        ffi.Int,
-        ffi.Int,
-        ffi.Pointer<ffi.Void>,
-        ffi.Pointer<
-            ffi.NativeFunction<
-                ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
-                    ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>,
-        ffi.Pointer<
-            ffi.NativeFunction<
-                ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
-                    ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>,
-        ffi.Pointer<
-            ffi
-            .NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>>,
-        ffi.Pointer<
-            ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Pointer<sqlite3_char>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<
+      ffi.NativeFunction<
+        ffi.Void Function(
+          ffi.Pointer<sqlite3_context>,
+          ffi.Int,
+          ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+        )
+      >
+    >,
+    ffi.Pointer<
+      ffi.NativeFunction<
+        ffi.Void Function(
+          ffi.Pointer<sqlite3_context>,
+          ffi.Int,
+          ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+        )
+      >
+    >,
+    ffi.Pointer<
+      ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>
+    >,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>,
+  )
+>()
 external int sqlite3_create_function_v2(
   ffi.Pointer<sqlite3> db,
   ffi.Pointer<sqlite3_char> zFunctionName,
@@ -401,45 +389,67 @@ external int sqlite3_create_function_v2(
   int eTextRep,
   ffi.Pointer<ffi.Void> pApp,
   ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
-                  ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>
-      xFunc,
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Pointer<sqlite3_context>,
+        ffi.Int,
+        ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+      )
+    >
+  >
+  xFunc,
   ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
-                  ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>
-      xStep,
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Pointer<sqlite3_context>,
+        ffi.Int,
+        ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+      )
+    >
+  >
+  xStep,
   ffi.Pointer<
-          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>>
-      xFinal,
+    ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>
+  >
+  xFinal,
   ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
-      xDestroy,
+  xDestroy,
 );
 
 @ffi.Native<
-    ffi.Int Function(
-        ffi.Pointer<sqlite3>,
-        ffi.Pointer<sqlite3_char>,
-        ffi.Int,
-        ffi.Int,
-        ffi.Pointer<ffi.Void>,
-        ffi.Pointer<
-            ffi.NativeFunction<
-                ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
-                    ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>,
-        ffi.Pointer<
-            ffi
-            .NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>>,
-        ffi.Pointer<
-            ffi
-            .NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>>,
-        ffi.Pointer<
-            ffi.NativeFunction<
-                ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
-                    ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>,
-        ffi.Pointer<
-            ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Pointer<sqlite3_char>,
+    ffi.Int,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<
+      ffi.NativeFunction<
+        ffi.Void Function(
+          ffi.Pointer<sqlite3_context>,
+          ffi.Int,
+          ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+        )
+      >
+    >,
+    ffi.Pointer<
+      ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>
+    >,
+    ffi.Pointer<
+      ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>
+    >,
+    ffi.Pointer<
+      ffi.NativeFunction<
+        ffi.Void Function(
+          ffi.Pointer<sqlite3_context>,
+          ffi.Int,
+          ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+        )
+      >
+    >,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>,
+  )
+>()
 external int sqlite3_create_window_function(
   ffi.Pointer<sqlite3> db,
   ffi.Pointer<sqlite3_char> zFunctionName,
@@ -447,27 +457,40 @@ external int sqlite3_create_window_function(
   int eTextRep,
   ffi.Pointer<ffi.Void> pApp,
   ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
-                  ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>
-      xStep,
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Pointer<sqlite3_context>,
+        ffi.Int,
+        ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+      )
+    >
+  >
+  xStep,
   ffi.Pointer<
-          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>>
-      xFinal,
+    ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>
+  >
+  xFinal,
   ffi.Pointer<
-          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>>
-      xValue,
+    ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>
+  >
+  xValue,
   ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int,
-                  ffi.Pointer<ffi.Pointer<sqlite3_value>>)>>
-      xInverse,
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Pointer<sqlite3_context>,
+        ffi.Int,
+        ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+      )
+    >
+  >
+  xInverse,
   ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
-      xDestroy,
+  xDestroy,
 );
 
 @ffi.Native<
-    ffi.Pointer<ffi.Void> Function(ffi.Pointer<sqlite3_context>, ffi.Int)>()
+  ffi.Pointer<ffi.Void> Function(ffi.Pointer<sqlite3_context>, ffi.Int)
+>()
 external ffi.Pointer<ffi.Void> sqlite3_aggregate_context(
   ffi.Pointer<sqlite3_context> ctx,
   int nBytes,
@@ -479,8 +502,13 @@ external ffi.Pointer<ffi.Void> sqlite3_user_data(
 );
 
 @ffi.Native<
-    ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Pointer<ffi.Void>,
-        ffi.Uint64, ffi.Pointer<ffi.Void>)>()
+  ffi.Void Function(
+    ffi.Pointer<sqlite3_context>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Uint64,
+    ffi.Pointer<ffi.Void>,
+  )
+>()
 external void sqlite3_result_blob64(
   ffi.Pointer<sqlite3_context> ctx,
   ffi.Pointer<ffi.Void> data,
@@ -495,8 +523,12 @@ external void sqlite3_result_double(
 );
 
 @ffi.Native<
-    ffi.Void Function(
-        ffi.Pointer<sqlite3_context>, ffi.Pointer<sqlite3_char>, ffi.Int)>()
+  ffi.Void Function(
+    ffi.Pointer<sqlite3_context>,
+    ffi.Pointer<sqlite3_char>,
+    ffi.Int,
+  )
+>()
 external void sqlite3_result_error(
   ffi.Pointer<sqlite3_context> ctx,
   ffi.Pointer<sqlite3_char> msg,
@@ -510,13 +542,16 @@ external void sqlite3_result_int64(
 );
 
 @ffi.Native<ffi.Void Function(ffi.Pointer<sqlite3_context>)>()
-external void sqlite3_result_null(
-  ffi.Pointer<sqlite3_context> ctx,
-);
+external void sqlite3_result_null(ffi.Pointer<sqlite3_context> ctx);
 
 @ffi.Native<
-    ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Pointer<sqlite3_char>,
-        ffi.Int, ffi.Pointer<ffi.Void>)>()
+  ffi.Void Function(
+    ffi.Pointer<sqlite3_context>,
+    ffi.Pointer<sqlite3_char>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+  )
+>()
 external void sqlite3_result_text(
   ffi.Pointer<sqlite3_context> ctx,
   ffi.Pointer<sqlite3_char> data,
@@ -531,37 +566,54 @@ external void sqlite3_result_subtype(
 );
 
 @ffi.Native<
-    ffi.Int Function(
-        ffi.Pointer<sqlite3>,
-        ffi.Pointer<sqlite3_char>,
-        ffi.Int,
-        ffi.Pointer<ffi.Void>,
-        ffi.Pointer<
-            ffi.NativeFunction<
-                ffi.Int Function(ffi.Pointer<ffi.Void>, ffi.Int,
-                    ffi.Pointer<ffi.Void>, ffi.Int, ffi.Pointer<ffi.Void>)>>,
-        ffi.Pointer<
-            ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Pointer<sqlite3_char>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<
+      ffi.NativeFunction<
+        ffi.Int Function(
+          ffi.Pointer<ffi.Void>,
+          ffi.Int,
+          ffi.Pointer<ffi.Void>,
+          ffi.Int,
+          ffi.Pointer<ffi.Void>,
+        )
+      >
+    >,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>,
+  )
+>()
 external int sqlite3_create_collation_v2(
   ffi.Pointer<sqlite3> arg0,
   ffi.Pointer<sqlite3_char> zName,
   int eTextRep,
   ffi.Pointer<ffi.Void> pArg,
   ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Int Function(ffi.Pointer<ffi.Void>, ffi.Int,
-                  ffi.Pointer<ffi.Void>, ffi.Int, ffi.Pointer<ffi.Void>)>>
-      xCompare,
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<ffi.Void>,
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  xCompare,
   ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
-      xDestroy,
+  xDestroy,
 );
 
 @ffi.Native<
-    ffi.Pointer<sqlite3_backup> Function(
-        ffi.Pointer<sqlite3>,
-        ffi.Pointer<sqlite3_char>,
-        ffi.Pointer<sqlite3>,
-        ffi.Pointer<sqlite3_char>)>()
+  ffi.Pointer<sqlite3_backup> Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Pointer<sqlite3_char>,
+    ffi.Pointer<sqlite3>,
+    ffi.Pointer<sqlite3_char>,
+  )
+>()
 external ffi.Pointer<sqlite3_backup> sqlite3_backup_init(
   ffi.Pointer<sqlite3> pDestDb,
   ffi.Pointer<sqlite3_char> zDestDb,
@@ -570,40 +622,27 @@ external ffi.Pointer<sqlite3_backup> sqlite3_backup_init(
 );
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_backup>, ffi.Int)>()
-external int sqlite3_backup_step(
-  ffi.Pointer<sqlite3_backup> p,
-  int nPage,
-);
+external int sqlite3_backup_step(ffi.Pointer<sqlite3_backup> p, int nPage);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_backup>)>()
-external int sqlite3_backup_finish(
-  ffi.Pointer<sqlite3_backup> p,
-);
+external int sqlite3_backup_finish(ffi.Pointer<sqlite3_backup> p);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_backup>)>()
-external int sqlite3_backup_remaining(
-  ffi.Pointer<sqlite3_backup> p,
-);
+external int sqlite3_backup_remaining(ffi.Pointer<sqlite3_backup> p);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_backup>)>()
-external int sqlite3_backup_pagecount(
-  ffi.Pointer<sqlite3_backup> p,
-);
+external int sqlite3_backup_pagecount(ffi.Pointer<sqlite3_backup> p);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<ffi.Void>)>()
-external int sqlite3_auto_extension(
-  ffi.Pointer<ffi.Void> xEntryPoint,
-);
+external int sqlite3_auto_extension(ffi.Pointer<ffi.Void> xEntryPoint);
 
 @ffi.Native<
-    ffi.Int Function(
-        ffi.Pointer<sqlite3>,
-        ffi.Int,
-        ffi.VarArgs<
-            (
-              ffi.Int,
-              ffi.Pointer<ffi.Int>,
-            )>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Int,
+    ffi.VarArgs<(ffi.Int, ffi.Pointer<ffi.Int>)>,
+  )
+>()
 external int sqlite3_db_config(
   ffi.Pointer<sqlite3> db,
   int op,
@@ -612,19 +651,18 @@ external int sqlite3_db_config(
 );
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_vfs>, ffi.Int)>()
-external int sqlite3_vfs_register(
-  ffi.Pointer<sqlite3_vfs> arg0,
-  int makeDflt,
-);
+external int sqlite3_vfs_register(ffi.Pointer<sqlite3_vfs> arg0, int makeDflt);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_vfs>)>()
-external int sqlite3_vfs_unregister(
-  ffi.Pointer<sqlite3_vfs> arg0,
-);
+external int sqlite3_vfs_unregister(ffi.Pointer<sqlite3_vfs> arg0);
 
 @ffi.Native<
-    ffi.Int Function(ffi.Pointer<sqlite3>, ffi.Pointer<sqlite3_char>,
-        ffi.Pointer<ffi.Pointer<sqlite3_session>>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Pointer<sqlite3_char>,
+    ffi.Pointer<ffi.Pointer<sqlite3_session>>,
+  )
+>()
 external int sqlite3session_create(
   ffi.Pointer<sqlite3> db,
   ffi.Pointer<sqlite3_char> zDb,
@@ -632,9 +670,7 @@ external int sqlite3session_create(
 );
 
 @ffi.Native<ffi.Void Function(ffi.Pointer<sqlite3_session>)>()
-external void sqlite3session_delete(
-  ffi.Pointer<sqlite3_session> pSession,
-);
+external void sqlite3session_delete(ffi.Pointer<sqlite3_session> pSession);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_session>, ffi.Int)>()
 external int sqlite3session_enable(
@@ -649,8 +685,12 @@ external int sqlite3session_indirect(
 );
 
 @ffi.Native<
-    ffi.Int Function(ffi.Pointer<ffi.Pointer<sqlite3_changeset_iter>>, ffi.Int,
-        ffi.Pointer<ffi.Void>)>()
+  ffi.Int Function(
+    ffi.Pointer<ffi.Pointer<sqlite3_changeset_iter>>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+  )
+>()
 external int sqlite3changeset_start(
   ffi.Pointer<ffi.Pointer<sqlite3_changeset_iter>> pp,
   int nChangeset,
@@ -663,17 +703,17 @@ external int sqlite3changeset_finalize(
 );
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_changeset_iter>)>()
-external int sqlite3changeset_next(
-  ffi.Pointer<sqlite3_changeset_iter> pIter,
-);
+external int sqlite3changeset_next(ffi.Pointer<sqlite3_changeset_iter> pIter);
 
 @ffi.Native<
-    ffi.Int Function(
-        ffi.Pointer<sqlite3_changeset_iter>,
-        ffi.Pointer<ffi.Pointer<sqlite3_char>>,
-        ffi.Pointer<ffi.Int>,
-        ffi.Pointer<ffi.Int>,
-        ffi.Pointer<ffi.Int>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3_changeset_iter>,
+    ffi.Pointer<ffi.Pointer<sqlite3_char>>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int>,
+  )
+>()
 external int sqlite3changeset_op(
   ffi.Pointer<sqlite3_changeset_iter> pIter,
   ffi.Pointer<ffi.Pointer<sqlite3_char>> pzTab,
@@ -683,8 +723,12 @@ external int sqlite3changeset_op(
 );
 
 @ffi.Native<
-    ffi.Int Function(ffi.Pointer<sqlite3_changeset_iter>, ffi.Int,
-        ffi.Pointer<ffi.Pointer<sqlite3_value>>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3_changeset_iter>,
+    ffi.Int,
+    ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+  )
+>()
 external int sqlite3changeset_old(
   ffi.Pointer<sqlite3_changeset_iter> pIter,
   int iVal,
@@ -692,8 +736,12 @@ external int sqlite3changeset_old(
 );
 
 @ffi.Native<
-    ffi.Int Function(ffi.Pointer<sqlite3_changeset_iter>, ffi.Int,
-        ffi.Pointer<ffi.Pointer<sqlite3_value>>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3_changeset_iter>,
+    ffi.Int,
+    ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+  )
+>()
 external int sqlite3changeset_new(
   ffi.Pointer<sqlite3_changeset_iter> pIter,
   int iVal,
@@ -701,39 +749,58 @@ external int sqlite3changeset_new(
 );
 
 @ffi.Native<
-    ffi.Int Function(
-        ffi.Pointer<sqlite3>,
-        ffi.Int,
-        ffi.Pointer<ffi.Void>,
-        ffi.Pointer<
-            ffi.NativeFunction<
-                ffi.Int Function(
-                    ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)>>,
-        ffi.Pointer<
-            ffi.NativeFunction<
-                ffi.Int Function(ffi.Pointer<ffi.Void> pCtx, ffi.Int eConflict,
-                    ffi.Pointer<sqlite3_changeset_iter> p)>>,
-        ffi.Pointer<ffi.Void>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<
+      ffi.NativeFunction<
+        ffi.Int Function(ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)
+      >
+    >,
+    ffi.Pointer<
+      ffi.NativeFunction<
+        ffi.Int Function(
+          ffi.Pointer<ffi.Void> pCtx,
+          ffi.Int eConflict,
+          ffi.Pointer<sqlite3_changeset_iter> p,
+        )
+      >
+    >,
+    ffi.Pointer<ffi.Void>,
+  )
+>()
 external int sqlite3changeset_apply(
   ffi.Pointer<sqlite3> db,
   int nChangeset,
   ffi.Pointer<ffi.Void> pChangeset,
   ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Int Function(
-                  ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)>>
-      xFilter,
+    ffi.NativeFunction<
+      ffi.Int Function(ffi.Pointer<ffi.Void> pCtx, ffi.Pointer<ffi.Char> zTab)
+    >
+  >
+  xFilter,
   ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Int Function(ffi.Pointer<ffi.Void> pCtx, ffi.Int eConflict,
-                  ffi.Pointer<sqlite3_changeset_iter> p)>>
-      xConflict,
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<ffi.Void> pCtx,
+        ffi.Int eConflict,
+        ffi.Pointer<sqlite3_changeset_iter> p,
+      )
+    >
+  >
+  xConflict,
   ffi.Pointer<ffi.Void> pCtx,
 );
 
 @ffi.Native<
-    ffi.Int Function(ffi.Int, ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Int>,
-        ffi.Pointer<ffi.Pointer<ffi.Void>>)>()
+  ffi.Int Function(
+    ffi.Int,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Pointer<ffi.Void>>,
+  )
+>()
 external int sqlite3changeset_invert(
   int nIn,
   ffi.Pointer<ffi.Void> pIn,
@@ -742,8 +809,12 @@ external int sqlite3changeset_invert(
 );
 
 @ffi.Native<
-    ffi.Int Function(ffi.Pointer<sqlite3_session>, ffi.Pointer<ffi.Int>,
-        ffi.Pointer<ffi.Pointer<ffi.Void>>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3_session>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Pointer<ffi.Void>>,
+  )
+>()
 external int sqlite3session_patchset(
   ffi.Pointer<sqlite3_session> pSession,
   ffi.Pointer<ffi.Int> pnPatchset,
@@ -751,8 +822,12 @@ external int sqlite3session_patchset(
 );
 
 @ffi.Native<
-    ffi.Int Function(ffi.Pointer<sqlite3_session>, ffi.Pointer<ffi.Int>,
-        ffi.Pointer<ffi.Pointer<ffi.Void>>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3_session>,
+    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Pointer<ffi.Void>>,
+  )
+>()
 external int sqlite3session_changeset(
   ffi.Pointer<sqlite3_session> pSession,
   ffi.Pointer<ffi.Int> pnChangeset,
@@ -760,20 +835,24 @@ external int sqlite3session_changeset(
 );
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_session>)>()
-external int sqlite3session_isempty(
-  ffi.Pointer<sqlite3_session> pSession,
-);
+external int sqlite3session_isempty(ffi.Pointer<sqlite3_session> pSession);
 
 @ffi.Native<
-    ffi.Int Function(ffi.Pointer<sqlite3_session>, ffi.Pointer<sqlite3_char>)>()
+  ffi.Int Function(ffi.Pointer<sqlite3_session>, ffi.Pointer<sqlite3_char>)
+>()
 external int sqlite3session_attach(
   ffi.Pointer<sqlite3_session> pSession,
   ffi.Pointer<sqlite3_char> zTab,
 );
 
 @ffi.Native<
-    ffi.Int Function(ffi.Pointer<sqlite3_session>, ffi.Pointer<sqlite3_char>,
-        ffi.Pointer<sqlite3_char>, ffi.Pointer<ffi.Pointer<sqlite3_char>>)>()
+  ffi.Int Function(
+    ffi.Pointer<sqlite3_session>,
+    ffi.Pointer<sqlite3_char>,
+    ffi.Pointer<sqlite3_char>,
+    ffi.Pointer<ffi.Pointer<sqlite3_char>>,
+  )
+>()
 external int sqlite3session_diff(
   ffi.Pointer<sqlite3_session> pSession,
   ffi.Pointer<sqlite3_char> zFromDb,
@@ -786,16 +865,16 @@ const addresses = _SymbolAddresses();
 class _SymbolAddresses {
   const _SymbolAddresses();
   ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
-      get sqlite3_free => ffi.Native.addressOf(self.sqlite3_free);
+  get sqlite3_free => ffi.Native.addressOf(self.sqlite3_free);
   ffi.Pointer<
-          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_session>)>>
-      get sqlite3session_delete =>
-          ffi.Native.addressOf(self.sqlite3session_delete);
+    ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_session>)>
+  >
+  get sqlite3session_delete => ffi.Native.addressOf(self.sqlite3session_delete);
   ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Int Function(ffi.Pointer<sqlite3_changeset_iter>)>>
-      get sqlite3changeset_finalize =>
-          ffi.Native.addressOf(self.sqlite3changeset_finalize);
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_changeset_iter>)>
+  >
+  get sqlite3changeset_finalize =>
+      ffi.Native.addressOf(self.sqlite3changeset_finalize);
 }
 
 final class sqlite3_char extends ffi.Opaque {}
@@ -820,93 +899,142 @@ final class sqlite3_io_methods extends ffi.Struct {
   @ffi.Int()
   external int iVersion;
 
-  external ffi
-      .Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_file>)>>
-      xClose;
+  external ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_file>)>
+  >
+  xClose;
 
   external ffi.Pointer<
-      ffi.NativeFunction<
-          ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Pointer<ffi.Void>,
-              ffi.Int, ffi.Int64)>> xRead;
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_file>,
+        ffi.Pointer<ffi.Void>,
+        ffi.Int,
+        ffi.Int64,
+      )
+    >
+  >
+  xRead;
 
   external ffi.Pointer<
-      ffi.NativeFunction<
-          ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Pointer<ffi.Void>,
-              ffi.Int, ffi.Int64)>> xWrite;
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_file>,
+        ffi.Pointer<ffi.Void>,
+        ffi.Int,
+        ffi.Int64,
+      )
+    >
+  >
+  xWrite;
 
   external ffi.Pointer<
-      ffi.NativeFunction<
-          ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Int64)>> xTruncate;
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Int64)>
+  >
+  xTruncate;
 
   external ffi.Pointer<
-          ffi
-          .NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Int)>>
-      xSync;
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Int)>
+  >
+  xSync;
 
   external ffi.Pointer<
-      ffi.NativeFunction<
-          ffi.Int Function(
-              ffi.Pointer<sqlite3_file>, ffi.Pointer<ffi.Int64>)>> xFileSize;
+    ffi.NativeFunction<
+      ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Pointer<ffi.Int64>)
+    >
+  >
+  xFileSize;
 
   external ffi.Pointer<
-          ffi
-          .NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Int)>>
-      xLock;
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Int)>
+  >
+  xLock;
 
   external ffi.Pointer<
-          ffi
-          .NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Int)>>
-      xUnlock;
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Int)>
+  >
+  xUnlock;
 
   external ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Int Function(
-                  ffi.Pointer<sqlite3_file>, ffi.Pointer<ffi.Int>)>>
-      xCheckReservedLock;
+    ffi.NativeFunction<
+      ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Pointer<ffi.Int>)
+    >
+  >
+  xCheckReservedLock;
 
   external ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Int Function(
-                  ffi.Pointer<sqlite3_file>, ffi.Int, ffi.Pointer<ffi.Void>)>>
-      xFileControl;
-
-  external ffi
-      .Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_file>)>>
-      xSectorSize;
-
-  external ffi
-      .Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_file>)>>
-      xDeviceCharacteristics;
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_file>,
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  xFileControl;
 
   external ffi.Pointer<
-      ffi.NativeFunction<
-          ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Int, ffi.Int, ffi.Int,
-              ffi.Pointer<ffi.Pointer<ffi.Void>>)>> xShmMap;
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_file>)>
+  >
+  xSectorSize;
 
   external ffi.Pointer<
-      ffi.NativeFunction<
-          ffi.Int Function(
-              ffi.Pointer<sqlite3_file>, ffi.Int, ffi.Int, ffi.Int)>> xShmLock;
-
-  external ffi
-      .Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_file>)>>
-      xShmBarrier;
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_file>)>
+  >
+  xDeviceCharacteristics;
 
   external ffi.Pointer<
-          ffi
-          .NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Int)>>
-      xShmUnmap;
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_file>,
+        ffi.Int,
+        ffi.Int,
+        ffi.Int,
+        ffi.Pointer<ffi.Pointer<ffi.Void>>,
+      )
+    >
+  >
+  xShmMap;
 
   external ffi.Pointer<
-      ffi.NativeFunction<
-          ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Int64, ffi.Int,
-              ffi.Pointer<ffi.Pointer<ffi.Void>>)>> xFetch;
+    ffi.NativeFunction<
+      ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Int, ffi.Int, ffi.Int)
+    >
+  >
+  xShmLock;
 
   external ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Int Function(
-                  ffi.Pointer<sqlite3_file>, ffi.Int64, ffi.Pointer<ffi.Void>)>>
-      xUnfetch;
+    ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_file>)>
+  >
+  xShmBarrier;
+
+  external ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_file>, ffi.Int)>
+  >
+  xShmUnmap;
+
+  external ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_file>,
+        ffi.Int64,
+        ffi.Int,
+        ffi.Pointer<ffi.Pointer<ffi.Void>>,
+      )
+    >
+  >
+  xFetch;
+
+  external ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_file>,
+        ffi.Int64,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  xUnfetch;
 }
 
 final class sqlite3_file extends ffi.Struct {
@@ -930,91 +1058,149 @@ final class sqlite3_vfs extends ffi.Struct {
   external ffi.Pointer<ffi.Void> pAppData;
 
   external ffi.Pointer<
-      ffi.NativeFunction<
-          ffi.Int Function(ffi.Pointer<sqlite3_vfs>, ffi.Pointer<ffi.Char>,
-              ffi.Pointer<sqlite3_file>, ffi.Int, ffi.Pointer<ffi.Int>)>> xOpen;
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_vfs>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<sqlite3_file>,
+        ffi.Int,
+        ffi.Pointer<ffi.Int>,
+      )
+    >
+  >
+  xOpen;
 
   external ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Int Function(
-                  ffi.Pointer<sqlite3_vfs>, ffi.Pointer<ffi.Char>, ffi.Int)>>
-      xDelete;
+    ffi.NativeFunction<
+      ffi.Int Function(ffi.Pointer<sqlite3_vfs>, ffi.Pointer<ffi.Char>, ffi.Int)
+    >
+  >
+  xDelete;
 
   external ffi.Pointer<
-      ffi.NativeFunction<
-          ffi.Int Function(ffi.Pointer<sqlite3_vfs>, ffi.Pointer<ffi.Char>,
-              ffi.Int, ffi.Pointer<ffi.Int>)>> xAccess;
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_vfs>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Int,
+        ffi.Pointer<ffi.Int>,
+      )
+    >
+  >
+  xAccess;
 
   external ffi.Pointer<
-      ffi.NativeFunction<
-          ffi.Int Function(ffi.Pointer<sqlite3_vfs>, ffi.Pointer<ffi.Char>,
-              ffi.Int, ffi.Pointer<ffi.Char>)>> xFullPathname;
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_vfs>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Int,
+        ffi.Pointer<ffi.Char>,
+      )
+    >
+  >
+  xFullPathname;
 
   external ffi.Pointer<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.Void> Function(
-              ffi.Pointer<sqlite3_vfs>, ffi.Pointer<ffi.Char>)>> xDlOpen;
+    ffi.NativeFunction<
+      ffi.Pointer<ffi.Void> Function(
+        ffi.Pointer<sqlite3_vfs>,
+        ffi.Pointer<ffi.Char>,
+      )
+    >
+  >
+  xDlOpen;
 
   external ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Void Function(
-                  ffi.Pointer<sqlite3_vfs>, ffi.Int, ffi.Pointer<ffi.Char>)>>
-      xDlError;
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Pointer<sqlite3_vfs>,
+        ffi.Int,
+        ffi.Pointer<ffi.Char>,
+      )
+    >
+  >
+  xDlError;
 
   external ffi.Pointer<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.NativeFunction<ffi.Void Function()>> Function(
-              ffi.Pointer<sqlite3_vfs>,
-              ffi.Pointer<ffi.Void>,
-              ffi.Pointer<ffi.Char>)>> xDlSym;
+    ffi.NativeFunction<
+      ffi.Pointer<ffi.NativeFunction<ffi.Void Function()>> Function(
+        ffi.Pointer<sqlite3_vfs>,
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Char>,
+      )
+    >
+  >
+  xDlSym;
 
   external ffi.Pointer<
-      ffi.NativeFunction<
-          ffi.Void Function(
-              ffi.Pointer<sqlite3_vfs>, ffi.Pointer<ffi.Void>)>> xDlClose;
+    ffi.NativeFunction<
+      ffi.Void Function(ffi.Pointer<sqlite3_vfs>, ffi.Pointer<ffi.Void>)
+    >
+  >
+  xDlClose;
 
   external ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Int Function(
-                  ffi.Pointer<sqlite3_vfs>, ffi.Int, ffi.Pointer<ffi.Char>)>>
-      xRandomness;
+    ffi.NativeFunction<
+      ffi.Int Function(ffi.Pointer<sqlite3_vfs>, ffi.Int, ffi.Pointer<ffi.Char>)
+    >
+  >
+  xRandomness;
 
   external ffi.Pointer<
-          ffi
-          .NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_vfs>, ffi.Int)>>
-      xSleep;
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_vfs>, ffi.Int)>
+  >
+  xSleep;
 
   external ffi.Pointer<
-      ffi.NativeFunction<
-          ffi.Int Function(
-              ffi.Pointer<sqlite3_vfs>, ffi.Pointer<ffi.Double>)>> xCurrentTime;
+    ffi.NativeFunction<
+      ffi.Int Function(ffi.Pointer<sqlite3_vfs>, ffi.Pointer<ffi.Double>)
+    >
+  >
+  xCurrentTime;
 
   external ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Int Function(
-                  ffi.Pointer<sqlite3_vfs>, ffi.Int, ffi.Pointer<ffi.Char>)>>
-      xGetLastError;
+    ffi.NativeFunction<
+      ffi.Int Function(ffi.Pointer<sqlite3_vfs>, ffi.Int, ffi.Pointer<ffi.Char>)
+    >
+  >
+  xGetLastError;
 
   external ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Int Function(
-                  ffi.Pointer<sqlite3_vfs>, ffi.Pointer<ffi.Int64>)>>
-      xCurrentTimeInt64;
+    ffi.NativeFunction<
+      ffi.Int Function(ffi.Pointer<sqlite3_vfs>, ffi.Pointer<ffi.Int64>)
+    >
+  >
+  xCurrentTimeInt64;
 
   external ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Int Function(ffi.Pointer<sqlite3_vfs>, ffi.Pointer<ffi.Char>,
-                  ffi.Pointer<ffi.NativeFunction<ffi.Void Function()>>)>>
-      xSetSystemCall;
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_vfs>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.NativeFunction<ffi.Void Function()>>,
+      )
+    >
+  >
+  xSetSystemCall;
 
   external ffi.Pointer<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.NativeFunction<ffi.Void Function()>> Function(
-              ffi.Pointer<sqlite3_vfs>, ffi.Pointer<ffi.Char>)>> xGetSystemCall;
+    ffi.NativeFunction<
+      ffi.Pointer<ffi.NativeFunction<ffi.Void Function()>> Function(
+        ffi.Pointer<sqlite3_vfs>,
+        ffi.Pointer<ffi.Char>,
+      )
+    >
+  >
+  xGetSystemCall;
 
   external ffi.Pointer<
-          ffi.NativeFunction<
-              ffi.Pointer<ffi.Char> Function(
-                  ffi.Pointer<sqlite3_vfs>, ffi.Pointer<ffi.Char>)>>
-      xNextSystemCall;
+    ffi.NativeFunction<
+      ffi.Pointer<ffi.Char> Function(
+        ffi.Pointer<sqlite3_vfs>,
+        ffi.Pointer<ffi.Char>,
+      )
+    >
+  >
+  xNextSystemCall;
 }

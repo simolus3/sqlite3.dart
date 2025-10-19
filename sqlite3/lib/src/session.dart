@@ -71,7 +71,9 @@ abstract interface class Patchset implements Iterable<ChangesetOperation> {
   /// Creates a patch set from the underlying serialized byte representation.
   factory Patchset.fromBytes(Uint8List bytes, CommonSqlite3 bindings) {
     return PatchsetImplementation(
-        bytes, (bindings as Sqlite3Implementation).bindings);
+      bytes,
+      (bindings as Sqlite3Implementation).bindings,
+    );
   }
 
   /// Applies this changeset or patchset to the [database].
@@ -88,7 +90,9 @@ abstract interface class Changeset implements Patchset {
   /// Creates a changeset from the underlying serialized byte representation.
   factory Changeset.fromBytes(Uint8List bytes, CommonSqlite3 bindings) {
     return ChangesetImplementation(
-        bytes, (bindings as Sqlite3Implementation).bindings);
+      bytes,
+      (bindings as Sqlite3Implementation).bindings,
+    );
   }
 
   /// Inverts this changeset.

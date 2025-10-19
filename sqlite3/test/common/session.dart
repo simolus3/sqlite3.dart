@@ -5,9 +5,7 @@ import 'package:convert/convert.dart';
 import 'package:sqlite3/common.dart';
 import 'package:test/test.dart';
 
-void testSession(
-  FutureOr<CommonSqlite3> Function() loadSqlite,
-) {
+void testSession(FutureOr<CommonSqlite3> Function() loadSqlite) {
   late CommonSqlite3 sqlite3;
   late CommonDatabase database;
 
@@ -18,7 +16,8 @@ void testSession(
     database
       ..execute('CREATE TABLE entries (id INTEGER PRIMARY KEY, content TEXT);')
       ..execute(
-          'CREATE TABLE other (id INTEGER PRIMARY KEY, content INTEGER);');
+        'CREATE TABLE other (id INTEGER PRIMARY KEY, content INTEGER);',
+      );
   });
   tearDown(() => database.dispose());
 
@@ -37,8 +36,9 @@ void testSession(
     expect(session.isEmpty, isTrue);
 
     session.attach();
-    database.execute(
-        'INSERT INTO entries (content) VALUES (?);', ['my first entry']);
+    database.execute('INSERT INTO entries (content) VALUES (?);', [
+      'my first entry',
+    ]);
 
     expect(session.isEmpty, isFalse);
     expect(session.isNotEmpty, isTrue);
@@ -48,8 +48,9 @@ void testSession(
     final session = Session(database);
     expect(session.isEmpty, isTrue);
     session.attach('entries');
-    database
-        .execute('INSERT INTO other (content) VALUES (?);', ['ignored table']);
+    database.execute('INSERT INTO other (content) VALUES (?);', [
+      'ignored table',
+    ]);
 
     expect(session.isEmpty, isTrue);
   });
@@ -61,14 +62,16 @@ void testSession(
       ..execute('UPDATE entries SET content = ?', ['b']);
 
     final changeset = session.changeset();
-    expect(hex.encode(changeset.bytes),
-        '54020100656e7472696573001200010000000000000001030162');
+    expect(
+      hex.encode(changeset.bytes),
+      '54020100656e7472696573001200010000000000000001030162',
+    );
     expect(changeset, [
       isOp(
         operation: SqliteUpdateKind.insert,
         oldValues: isNull,
         newValues: [1, 'b'],
-      )
+      ),
     ]);
   });
 
@@ -79,8 +82,10 @@ void testSession(
       sqlite3,
     );
 
-    expect(hex.encode((-changeset).bytes),
-        '54020100656e7472696573000900010000000000000001030162');
+    expect(
+      hex.encode((-changeset).bytes),
+      '54020100656e7472696573000900010000000000000001030162',
+    );
   });
 
   test('changeset invert', () {
@@ -91,9 +96,10 @@ void testSession(
     final inverted = -changeset;
     expect(inverted, [
       isOp(
-          operation: SqliteUpdateKind.delete,
-          oldValues: [1, 'a'],
-          newValues: null)
+        operation: SqliteUpdateKind.delete,
+        oldValues: [1, 'a'],
+        newValues: null,
+      ),
     ]);
 
     expect(database.select('SELECT * FROM entries'), isNotEmpty);
@@ -115,7 +121,7 @@ void testSession(
     changeset.applyTo(database);
 
     expect(database.select('SELECT * FROM entries'), [
-      {'id': 1, 'content': 'a'}
+      {'id': 1, 'content': 'a'},
     ]);
   });
 
@@ -129,7 +135,7 @@ void testSession(
     patchset.applyTo(database);
 
     expect(database.select('SELECT * FROM entries'), [
-      {'id': 1, 'content': 'a'}
+      {'id': 1, 'content': 'a'},
     ]);
   });
 
@@ -140,16 +146,18 @@ void testSession(
     database
       ..execute("ATTACH ':memory:' AS another;")
       ..execute(
-          'CREATE TABLE another.entries (id INTEGER PRIMARY KEY, content TEXT);')
+        'CREATE TABLE another.entries (id INTEGER PRIMARY KEY, content TEXT);',
+      )
       ..execute('INSERT INTO another.entries (content) VALUES (?);', ['b']);
 
     session = Session(database)..diff('another', 'entries');
     final changeset = session.changeset();
     expect(changeset, [
       isOp(
-          operation: SqliteUpdateKind.update,
-          oldValues: [1, 'b'],
-          newValues: [null, 'a'])
+        operation: SqliteUpdateKind.update,
+        oldValues: [1, 'b'],
+        newValues: [null, 'a'],
+      ),
     ]);
   }, onPlatform: {'vm': Skip('diff seems to be unreliable in CI')});
 }
