@@ -36,7 +36,12 @@ void main(List<String> args) async {
       ]
     ]);
   } else if (Platform.isWindows) {
-    final abiName = args.single;
+    final abiName = switch (args.single) {
+      'amd64' => 'x64',
+      'amd64_x86' => 'x86',
+      'amd64_arm64' => 'aarch64',
+      _ => throw ArgumentError('Unknown abi: ${args.single}'),
+    };
     final defines = const LineSplitter()
         .convert(_defaultDefines)
         .map((line) => line.trim())
