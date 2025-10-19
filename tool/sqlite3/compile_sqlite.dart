@@ -53,7 +53,7 @@ void main(List<String> args) async {
         sqlite3Ciphers
             ? r'sqlite3-src\sqlite3mc\sqlite3mc_amalgamation.c'
             : r'sqlite3-src\sqlite3\sqlite3.c',
-        '/DSQLITE_EXPORT=__declspec(dllexport)',
+        '/DSQLITE_API=__declspec(dllexport)',
         '/O2',
         ...defines,
         '/I',
