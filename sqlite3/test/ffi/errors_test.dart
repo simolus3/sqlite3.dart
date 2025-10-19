@@ -161,15 +161,28 @@ void main() {
 
     test('reports previous statement in toString()', () {
       expect(
-        SqliteException(1, 'message', 'explanation', 'SELECT foo;').toString(),
+        SqliteException(
+          extendedResultCode: 1,
+          message: 'message',
+          explanation: 'explanation',
+          causingStatement: 'SELECT foo;',
+        ).toString(),
         '''
 SqliteException(1): message, explanation
   Causing statement: SELECT foo;''',
       );
 
-      expect(SqliteException(1, 'message', null, 'SELECT foo;').toString(), '''
+      expect(
+        SqliteException(
+          extendedResultCode: 1,
+          message: 'message',
+          explanation: null,
+          causingStatement: 'SELECT foo;',
+        ).toString(),
+        '''
 SqliteException(1): message
-  Causing statement: SELECT foo;''');
+  Causing statement: SELECT foo;''',
+      );
     });
 
     test(
