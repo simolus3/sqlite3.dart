@@ -96,8 +96,13 @@ Future<void> _compileLinux(
 
 Future<void> _compileApple(
     String triple, String prefix, bool sqlite3Ciphers) async {
-  await _clangCompile('clang', triple, sqlite3Ciphers,
-      '$prefix-sqlite3${sqlite3Ciphers ? 'mc' : ''}.dylib');
+  await _clangCompile(
+    'clang',
+    triple,
+    sqlite3Ciphers,
+    '$prefix-sqlite3${sqlite3Ciphers ? 'mc' : ''}.dylib',
+    additionalArgs: ['-Wl,-headerpad_max_install_names'],
+  );
 }
 
 Future<void> _compileAndroid(
@@ -114,8 +119,9 @@ Future<void> _compileAndroid(
   );
 }
 
-Future<void> _clangCompile(String executable, String triple,
-    bool sqlite3Ciphers, String filename) async {
+Future<void> _clangCompile(
+    String executable, String triple, bool sqlite3Ciphers, String filename,
+    {List<String> additionalArgs = const []}) async {
   final args = [
     '-target',
     triple,
@@ -123,6 +129,7 @@ Future<void> _clangCompile(String executable, String triple,
     '-shared',
     '-O3',
     ...defines,
+    ...additionalArgs,
     sqlite3Ciphers
         ? 'sqlite3-src/sqlite3mc/sqlite3mc_amalgamation.c'
         : 'sqlite3-src/sqlite3/sqlite3.c',
