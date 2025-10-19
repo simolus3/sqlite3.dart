@@ -36,6 +36,7 @@ const Map<String, String> assetNameToSha256Hash = {
 
   buffer.writeln('};');
 
-  File('sqlite3/lib/src/hook/asset_hashes.dart')
+  File(p.join('sqlite3', 'lib', 'src', 'hook', 'asset_hashes.dart'))
       .writeAsStringSync(buffer.toString());
+  print(buffer);
 }
