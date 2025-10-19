@@ -13,3 +13,4 @@ workspace:
   - sqlite3
   - sqlite3/example/custom_extension
   - sqlite3_web
+  - sqlite3_test
