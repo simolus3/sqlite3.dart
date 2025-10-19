@@ -1,3 +1,6 @@
+@Tags(['ffi'])
+library;
+
 import 'package:sqlite3/src/hook/assets.dart';
 import 'package:test/test.dart';
 
