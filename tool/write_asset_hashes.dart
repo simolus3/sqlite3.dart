@@ -12,7 +12,8 @@ void main(List<String> args) {
   final releaseTag = switch (args) {
     [] => null,
     [final arg] => arg,
-    _ => throw ArgumentError.value(args, 'args', 'Must be empty or the tag'),
+    _ => throw ArgumentError.value(
+        args.join(' '), 'args', 'Must be empty or the tag'),
   };
 
   final buffer = StringBuffer('''

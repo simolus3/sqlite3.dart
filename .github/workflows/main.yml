@@ -71,7 +71,7 @@ jobs:
       if: matrix.sqlite == 'compiled' && (runner.os == 'Linux' || runner.os == 'Windows' || runner.os == 'macOS')
       uses: actions/download-artifact@v5
       with:
-        id: ${{ needs.fetch_sqlite.outputs.artifact_id }}
+        artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
         path: sqlite/out
 
     - uses: actions/cache@v4
@@ -83,7 +83,7 @@ jobs:
           dart-dependencies-
 
     - name: Prepare for tests
-      run:
+      run: |
         dart run tool/write_asset_hashes.dart
         dart run tool/hook_overrides.dart
 
