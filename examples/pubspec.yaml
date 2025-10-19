@@ -1,0 +1,12 @@
+name: pkg_sqlite3_examples_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.10.0-0
+
+workspace:
+  - flutter_integration_tests
+
+dependency_overrides:
+  sqlite3:
+    path: ../sqlite3
