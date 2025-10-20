@@ -153,6 +153,7 @@ jobs:
         if: steps.cache_build.outputs.cache-hit != 'true'
         run: |
           curl https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-27/wasi-sdk-27.0-x86_64-linux.deb -o wasi-sdk.deb
+          ls -al *
           dpkg-deb -c wasi-sdk.deb
           dpkg -i wasi-sdk.deb
 
