@@ -152,12 +152,11 @@ jobs:
       - name: Download WASI SDK
         if: steps.cache_build.outputs.cache-hit != 'true'
         run: |
-          curl https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-27/wasi-sdk-27.0-x86_64-linux.deb -o wasi-sdk.deb
-          ls -al *
+          curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-27/wasi-sdk-27.0-x86_64-linux.deb -o wasi-sdk.deb
           dpkg-deb -c wasi-sdk.deb
           dpkg -i wasi-sdk.deb
 
-          curl https://github.com/WebAssembly/binaryen/releases/download/version_124/binaryen-version_124-x86_64-linux.tar.gz -o binaryen.tar.gz
+          curl -L https://github.com/WebAssembly/binaryen/releases/download/version_124/binaryen-version_124-x86_64-linux.tar.gz -o binaryen.tar.gz
           tar --extract --gzip --file binaryen.tar.gz
           mv binaryen-version_124/bin/* /usr/local/bin
 
