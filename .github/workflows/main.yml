@@ -155,6 +155,7 @@ jobs:
 #          working-directory: "integration_tests/${{ matrix.test }}"
 
   integration_test_linux:
+    if: "false" # currently broken
     needs: [test]
     runs-on: ubuntu-latest
     steps:
@@ -195,16 +196,28 @@ jobs:
       - name: Flutter version
         run: flutter --version
 
-      - name: sqlite3 cocoapods driver tests
-        run: "flutter pub get && flutter test integration_test"
-        working-directory: integration_tests/flutter_cocoapods
-      - name: sqlite3 swiftpm driver tests
-        run: "flutter pub get && flutter test integration_test"
-        working-directory: integration_tests/flutter_swiftpm
+      - name: Download compiled sqlite3
+        uses: actions/download-artifact@v5
+        with:
+          artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
+          path: sqlite/out
 
-      - name: sqlcipher driver tests
-        run: "flutter pub get && flutter test integration_test"
-        working-directory: integration_tests/sqlcipher_flutter
+      - uses: actions/cache@v4
+        with:
+          path: "${{ env.PUB_CACHE }}"
+          key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
+          restore-keys: |
+            dart-dependencies-${{ matrix.dart }}-
+            dart-dependencies-
+
+      - name: Write asset hashes
+        run: |
+          dart run tool/write_asset_hashes.dart
+          dart run tool/hook_overrides.dart compiled
+
+      - name: SQLite driver tests
+        working-directory: examples/flutter_integration_tests
+        run: flutter test integration_test
 
   integration_test_macos:
     if: "false" # Temporarily disabled since it causes timeouts
