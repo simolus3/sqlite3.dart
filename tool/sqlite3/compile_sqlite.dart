@@ -121,6 +121,7 @@ Future<void> _compileAndroid(
     triple,
     sqlite3Ciphers,
     'android-$abiName-sqlite3${sqlite3Ciphers ? 'mc' : ''}.so',
+    additionalArgs: ['-lm'],
   );
 }
 
