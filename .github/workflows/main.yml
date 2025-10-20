@@ -212,6 +212,7 @@ jobs:
 
       - name: Write asset hashes
         run: |
+          dart pub get
           dart run tool/write_asset_hashes.dart
           dart run tool/hook_overrides.dart compiled
 
