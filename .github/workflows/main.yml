@@ -69,14 +69,12 @@ jobs:
     - uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{ matrix.dart }}
-
     - name: Download compiled sqlite3
       if: matrix.sqlite == 'compiled'
       uses: actions/download-artifact@v5
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
         path: sqlite/out
-
     - uses: actions/cache@v4
       with:
         path: "${{ env.PUB_CACHE }}"
@@ -84,18 +82,18 @@ jobs:
         restore-keys: |
           dart-dependencies-${{ matrix.dart }}-
           dart-dependencies-
-
+    - name: Get Dart dependencies
+      run: |
+        dart pub get
     - name: Write asset hashes
       run: dart run tool/write_asset_hashes.dart
       if: matrix.sqlite == 'compiled'
-
     - name: Prepare for tests
       run: |
         dart run tool/hook_overrides.dart ${{ matrix.sqlite }}
 
     - name: Test sqlite3 package
       run: |
-        dart pub get
         dart test --test-randomize-ordering-seed "random" -P ci
       working-directory: sqlite3/
 
@@ -112,7 +110,6 @@ jobs:
     - name: Test sqlite3_test package
       if: matrix.sqlite != 'system' || runner.os != 'Windows'
       run: |
-        dart pub get
         dart test
       working-directory: sqlite3_test/
 
@@ -124,6 +121,41 @@ jobs:
       # So, only run browser tests on Linux to be faster.
       if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
       working-directory: sqlite3/
+
+  upload_asset_hashes:
+    needs: [test, fetch_sqlite]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - uses: dart-lang/setup-dart@v1
+      with:
+        sdk: ${{ matrix.dart }}
+    - name: Download compiled sqlite3
+      uses: actions/download-artifact@v5
+      with:
+        artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
+        path: sqlite/out
+    - uses: actions/cache@v4
+      with:
+        path: "${{ env.PUB_CACHE }}"
+        key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
+        restore-keys: |
+          dart-dependencies-${{ matrix.dart }}-
+          dart-dependencies-
+    - name: Get Dart dependencies
+      run: |
+        dart pub get
+    - name: Write asset hashes
+      run: dart run tool/write_asset_hashes.dart
+    - name: Upload asset hashes
+      uses: actions/upload-artifact@v4
+      id: upload
+      with:
+        name: asset-hashes
+        path: sqlite3/lib/src/hook/asset_hashes.dart
+        if-no-files-found: error
+        retention-days: 1
+
 
 # The integration tests for android are currently broken (the emulator doesn't want to
 # start up...)
