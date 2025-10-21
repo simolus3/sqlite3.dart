@@ -118,11 +118,10 @@ jobs:
 
     - name: Web tests
       run: |
-        cp sqlite/out/*.wasm example/web
+        cp ../sqlite/out/*.wasm example/web
         dart test -P web -r expanded
       # If browsers behave differently on different platforms, surely that's not our fault...
       # So, only run browser tests on Linux to be faster.
-      # todo: Something broke Dart web tests in Dart 2.18, it looks like this is related to finalizers
       if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
       working-directory: sqlite3/
 
