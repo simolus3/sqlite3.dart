@@ -8,6 +8,7 @@ dependencies:
   path: ^1.9.1
   crypto: ^3.0.6
   pool: ^1.5.2
+  collection: ^1.19.1
 
 workspace:
   - sqlite3

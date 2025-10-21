@@ -1,0 +1,58 @@
+name: Publish to pub.dev
+
+on:
+  push:
+    tags:
+      - 'sqlite3-[0-9]+.[0-9]+.[0-9]+*'
+
+jobs:
+  fetch_sqlite:
+    uses: ./.github/workflows/compile_sqlite.yml
+
+  prepare_release:
+    needs: [fetch_sqlite]
+    permissions:
+      packages: write
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - uses: dart-lang/setup-dart@v1
+      with:
+        sdk: beta
+    - name: Pub get
+      run: dart pub get
+    - name: Download compiled sqlite3
+      uses: actions/download-artifact@v5
+      with:
+        artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
+        path: sqlite/out
+    - name: Verify asset hashes
+      run: dart run tool/write_asset_hashes.dart "${{ steps.tag.outputs.tag }}"
+
+    - name: Set tag name
+      id: tag
+      run: |
+        tag=$(basename "${{ github.ref }}")
+        echo "tag=$tag" >> $GITHUB_OUTPUT
+    - name: List libraries
+      run: ls -al sqlite/out
+    - name: Create Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        tag="${{ steps.tag.outputs.tag }}"
+        body="Pending release for $tag"
+        gh release create --draft "$tag" --title "$tag" --notes "$body"
+
+        gh release upload "$tag" sqlite/out/*
+
+  publish:
+    needs: [prepare_release]
+    permissions:
+      id-token: write
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      environment: 'pub.dev'
+      working-directory: sqlite3/
