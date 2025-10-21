@@ -16,7 +16,7 @@ jobs:
         package: [sqlite3, sqlite3_test]
         dart: [beta]
 
-    name: Analyze on Dart ${{ matrix.dart }}
+    name: Analyze ${{ matrix.package }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
