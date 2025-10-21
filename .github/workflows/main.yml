@@ -129,7 +129,7 @@ jobs:
     - uses: actions/checkout@v5
     - uses: dart-lang/setup-dart@v1
       with:
-        sdk: ${{ matrix.dart }}
+        sdk: beta
     - name: Download compiled sqlite3
       uses: actions/download-artifact@v5
       with:
@@ -138,9 +138,9 @@ jobs:
     - uses: actions/cache@v4
       with:
         path: "${{ env.PUB_CACHE }}"
-        key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
+        key: dart-dependencies-beta-${{ runner.os }}
         restore-keys: |
-          dart-dependencies-${{ matrix.dart }}-
+          dart-dependencies-beta-
           dart-dependencies-
     - name: Get Dart dependencies
       run: |
