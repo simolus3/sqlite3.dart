@@ -148,11 +148,11 @@ jobs:
         if: steps.cache_build.outputs.cache-hit != 'true'
         run: |
           curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-27/wasi-sdk-27.0-x86_64-linux.deb -o wasi-sdk.deb
-          dpkg -i wasi-sdk.deb
+          sudo dpkg -i wasi-sdk.deb
 
           curl -L https://github.com/WebAssembly/binaryen/releases/download/version_124/binaryen-version_124-x86_64-linux.tar.gz -o binaryen.tar.gz
           tar --extract --gzip --file binaryen.tar.gz
-          mv binaryen-version_124/bin/* /usr/local/bin
+          sudo mv binaryen-version_124/bin/* /usr/local/bin
 
       - uses: dart-lang/setup-dart@v1
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -177,7 +177,7 @@ jobs:
 
   merge_assets:
     runs-on: ubuntu-latest
-    needs: [build_sqlite, build_sqlite_windows]
+    needs: [build_sqlite, build_sqlite_windows, compile_wasm]
     name: Merge prebuilt libraries into single directory
     outputs:
       artifact: ${{ steps.upload.outputs.artifact-id }}
