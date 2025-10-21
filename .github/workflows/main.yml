@@ -179,7 +179,7 @@ jobs:
   # Shamelessly stolen from https://medium.com/flutter-community/run-flutter-driver-tests-on-github-actions-13c639c7e4ab
 
   integration_test_ios:
-    needs: [test]
+    needs: [test, fetch_sqlite]
     runs-on: macos-latest
     steps:
       - name: List simulators
