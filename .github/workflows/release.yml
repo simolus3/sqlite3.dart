@@ -27,16 +27,17 @@ jobs:
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
         path: sqlite/out
-    - name: Verify asset hashes
-      run: dart run tool/write_asset_hashes.dart "${{ steps.tag.outputs.tag }}"
-
     - name: Set tag name
       id: tag
       run: |
         tag=$(basename "${{ github.ref }}")
         echo "tag=$tag" >> $GITHUB_OUTPUT
+
+    - name: Verify asset hashes
+      run: dart run tool/write_asset_hashes.dart "${{ steps.tag.outputs.tag }}"
     - name: List libraries
       run: ls -al sqlite/out
+
     - name: Create Release
       env:
         GH_TOKEN: ${{ github.token }}
