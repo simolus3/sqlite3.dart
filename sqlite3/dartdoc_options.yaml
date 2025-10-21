@@ -2,10 +2,13 @@ dartdoc:
   categories:
     "common":
       markdown: doc/common.md
-      name: Cross-platform definitions
+      displayName: Cross-platform definitions
     "native":
       markdown: doc/native.md
-      name: Native only
+      displayName: Native only
     "wasm":
       markdown: doc/wasm.md
-      name: Web only
+      displayName: Web only
+    "hook":
+      markdown: doc/hook.md
+      displayName: Build hook options

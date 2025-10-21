@@ -4,90 +4,46 @@ Provides Dart bindings to [SQLite](https://www.sqlite.org/index.html) via `dart:
 
 ## Using this library
 
-1. Make sure sqlite3 is available as a shared library in your environment (see
-   [supported platforms](#supported-platforms) below).
-2. Import `package:sqlite3/sqlite3.dart`.
-3. Use `sqlite3.open()` to open a database file, or `sqlite3.openInMemory()` to
+Because this library uses [hooks](https://dart.dev/tools/hooks), it bundles SQLite with
+your application and doesn't require any external dependencies or build configuration.
+To use it, depend on it:
+
+```shell
+dart pub add sqlite3
+```
+
+For native platforms, the basic sketch for using this library is to:
+
+1. Import `package:sqlite3/sqlite3.dart`.
+2. Use `sqlite3.open()` to open a database file, or `sqlite3.openInMemory()` to
    open a temporary in-memory database.
-4. Use `Database.execute` or `Database.prepare` to execute statements directly
+3. Use `Database.execute` or `Database.prepare` to execute statements directly
    or by preparing them first.
-5. Don't forget to close prepared statements or the database with `dispose()`
-   if you no longer need it.
+4. Don't forget to close prepared statements or the database with `dispose()`
+   once you no longer need them.
 
 For a more complete example on how to use this library, see the [example](https://pub.dev/packages/sqlite3/example).
 
 ## Supported platforms
 
-You can use this library on any platform where you can obtain a `DynamicLibrary` with symbols
-from `sqlite3`.
-In addition, this package supports running on the web by accessing a sqlite3
+This library provides prebuilt versions of SQLite for the following platforms:
+
+- __Android__: `armv7a`, `aarch64`, `x86`, `x64`.
+- __iOS__: `arm64` (devices), `arm64` (simulator), `x64` (simulator).
+- __macOS__: `arm64`, `x64`.
+- __Linux__: `armv7`, `aarch64`, `x64`, `x86`, `riscv64gc`.
+- __Windows__: `aarch64`, `x64`, `x86`.
+
+For more information, see [hook options](./doc/hook.md).
+
+In addition to native platforms, this package supports running on the web by accessing a sqlite3
 build compiled to WebAssembly.
-Web support is only official supported for `dartdevc` and `dart2js`. Support
+Web support is only officially supported for `dartdevc` and `dart2js`. Support
 for `dart2wasm` [is experimental and incomplete](https://github.com/simolus3/sqlite3.dart/issues/230).
+For more information, see [web support](#wasm-web-support) below.
 
-Here's how to use this library on the most popular platforms:
-
-- __Android__: Flutter users can depend on the `sqlite3_flutter_libs` package to ship the latest sqlite3
-  version with their app.
-- __iOS__: Contains a built-in version of sqlite that this package will use by default.
-  When using Flutter, you can also depend on `sqlite3_flutter_libs` to ship the latest
-  sqlite3 version with your app.
-- __Linux__: Flutter users can depend on `sqlite3_flutter_libs` to ship the latest sqlite3
-  version with their app.
-  Alternatively, or when not using Flutter, you can install sqlite3 as a package from your
-  distributions package manager (like `libsqlite3-dev` on Debian), or you can manually ship
-  sqlite3 with your app (see below).
-- __macOS__: Contains a built-in version of sqlite that this package will use by default.
-  Also, you can depend on `sqlite3_flutter_libs` if you want to include the latest
-  sqlite3 version with your app.
-- __Windows__: Contains a built-in version of sqlite (winsqlite3.dll) that this package will use by default.
-  winsqlite is used by Windows OS components and as the backend of .NET database APIs,
-  but is [otherwise undocumented](https://github.com/microsoft/win32metadata/issues/824#issuecomment-1067220882);
-  so you may still want to provide a sqlite3 binary you control.
-  Flutter users can depend on `sqlite3_flutter_libs` to ship the latest sqlite3
-  version with their app.
-  When not using Flutter, you can manually include sqlite3 (see below).
-- __Web__: See [web support](#wasm-web-support) below.
-
-On Android, iOS and macOS, you can depend on the `sqlcipher_flutter_libs` package to use
-[SQLCipher](https://www.zetetic.net/sqlcipher/) instead of SQLite.
-Just be sure to never depend on both `sqlcipher_flutter_libs` and `sqlite3_flutter_libs`!
-
-When opting into the native assets SDK feature, you can also use the [`sqlite3_native_assets`](https://pub.dev/packages/sqlite3_native_assets)
-package to replace `sqlite3_flutter_libs` and platform-specific build scripts with
-a unified build that works on all Dart platforms!
-
-### Manually providing sqlite3 libraries
-
-Instead of using the sqlite3 library from the OS, you can also ship a custom sqlite3 library along
-with your app. You can override the way this package looks for sqlite3 to instead use your custom
-library.
-For instance, if you release your own `sqlite3.so` next to your application, you could use:
-
-```dart
-import 'dart:ffi';
-import 'dart:io';
-
-import 'package:path/path.dart';
-import 'package:sqlite3/open.dart';
-import 'package:sqlite3/sqlite3.dart';
-
-void main() {
-  open.overrideFor(OperatingSystem.linux, _openOnLinux);
-
-  final db = sqlite3.openInMemory();
-  // Use the database
-  db.dispose();
-}
-
-DynamicLibrary _openOnLinux() {
-  final scriptDir = File(Platform.script.toFilePath()).parent;
-  final libraryNextToScript = File(join(scriptDir.path, 'sqlite3.so'));
-  return DynamicLibrary.open(libraryNextToScript.path);
-}
-```
-
-Just be sure to first override the behavior and then use `sqlite3`.
+On all supported platforms, you can also use SQLite3MultipleCiphers instead of SQLite to encrypt
+databases. The [hook options page](./doc/hook.md) describe this setup.
 
 ## Supported datatypes
 
@@ -174,7 +130,7 @@ final database = sqlite3.open('/database')
 ### Testing
 
 To run the tests of this package with wasm, either download the `sqlite3.wasm` file from the
-GitHub releases to `example/web` or compile it yourself (see [compiling](#compiling) below).
+GitHub releases to `example/web` or compile it yourself (see [build setup](../sqlite3_wasm_build/)).
 
 To run tests on the Dart VM, Firefox and Chrome, use:
 

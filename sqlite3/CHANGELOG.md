@@ -5,7 +5,7 @@
   - The SQLite library can only be customized with user defines.
   - You should drop your dependencies on `sqlite3_flutter_libs` and
     `sqlcipher_flutter_libs` when upgrading.
-- __Breaking change__: Parameters to `SqliteException`s are named.
+- __Breaking change__: Parameters to `SqliteException`s are now named.
 
 ## 2.9.2
 
