@@ -6,7 +6,7 @@
 
 // dart format off
 // ignore: unnecessary_nullable_for_final_variable_declarations
-const String? releaseTag = 'sqlite3-3.0.0-beta.0';
+const String? releaseTag = '3.0.0-beta.0';
 
 const Map<String, String> assetNameToSha256Hash = {
   'android-aarch64-sqlite3.so': '3c7cb99727c6719a4a74fccb9da9b424f4facb135256af0b4c4a60ecb7fd0312',
@@ -40,21 +40,9 @@ const Map<String, String> assetNameToSha256Hash = {
   'sqlite3.wasm': '2f15c824a63503525e957c34454db27fc8122de374d71a6b0a743dc16d675cba',
   'sqlite3mc.wasm': 'a36530f62b28fa5f8abb2f569d575330e0a7735f7e8eec1bfebaeb0e27aa0016',
   'win-aarch64-sqlite3.dll': 'fbc381fc6a9f6135aa815c8522b4b81a2f47a4ac25f654ef6fac0b118be70592',
-  'win-aarch64-sqlite3.exp': '8e7454fd1eb46789f402d001d664f2f4afc93e250daf3c3e465dc84ceebad6df',
-  'win-aarch64-sqlite3.lib': '3acc324ef239e0719d962ba12b135e5ef5264630d2075c3e73c88edddbb9ea8a',
   'win-aarch64-sqlite3mc.dll': 'f8d57aa58befc0b3300d222977fccc036a251b2951bd87ffa3f879a71c05a84a',
-  'win-aarch64-sqlite3mc.exp': '76ef578c98ede2102cae8b0cc15376563b1f4664f470070a1abd69a2b1f36fb6',
-  'win-aarch64-sqlite3mc.lib': '838690c3dee378e455b6f8f8d6fd592f026478266a325dce9b73ceb70bee00b2',
   'win-x64-sqlite3.dll': '24ea06bc7fd08df2ade1e420b1bde0965016676904aca47963a2367f89f4fed7',
-  'win-x64-sqlite3.exp': '3fb2e0223d6a7f69d9b2a8df7ef46092acec6152b6d0e5c7a961bd6f62d5a935',
-  'win-x64-sqlite3.lib': '7001984b72cb2ad5cde657c712da38da1b6582b9a02ea92588ad172db11ac2d3',
   'win-x64-sqlite3mc.dll': '0dbc5d412d0b14f320482a664e4c160a896ef9d294d9429d30ed3f43321684aa',
-  'win-x64-sqlite3mc.exp': 'cd42df6f2b952a2660176b4d4ca98d35d2a172b3d0ad025a3d075c75df3b13ea',
-  'win-x64-sqlite3mc.lib': 'cff9ec6b4d170c397acc92c91338811a2396bf304de54bafa952065f6398a9cc',
   'win-x86-sqlite3.dll': '87155b39393a576a13c2e9b655a8e9a874e3f0a0cd165dd88d4ea6e42418745a',
-  'win-x86-sqlite3.exp': 'ffa19c2be3d60af8ba078149013d60a617156b29669bb4385481b78a59e801e1',
-  'win-x86-sqlite3.lib': '92c0cfb78b1ec84949716013b8bc5583fbaa8ba0bf89f0105334fe17f4bb02bf',
   'win-x86-sqlite3mc.dll': 'e99f8e735606cfc6110e9ba053f7387d6c66a88c81a742dbb88bf6f08607ca9d',
-  'win-x86-sqlite3mc.exp': '1c30c0dd9f3d6c4270f162efe84895662c81cc85f2d37304c05074ecc53cffa1',
-  'win-x86-sqlite3mc.lib': '820d8efc82e8b3496de8049153bbeeee143428349f22906ef003407c582b6fc9',
 };

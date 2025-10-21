@@ -25,7 +25,13 @@ jobs:
     - name: Download compiled sqlite3
       uses: actions/download-artifact@v5
       with:
-        artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
+        #artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
+        # TODO: Ideally we'd use the artifacts compiled in this run. That should work once this has been merged to
+        # the default branch, but it's unstable at the moment. fetch_sqlite will always re-compile on this branch
+        # because caches from non-default branches aren't visible to runs on tags.
+        # On windows, the sqlite3 build is not reproducible. So to avoid a hash mismatch, we temporarily use artifacts
+        # built for a test run for releases as well.
+        artifact-ids: "4333315590"
         path: sqlite/out
     - name: Set tag name
       id: tag
