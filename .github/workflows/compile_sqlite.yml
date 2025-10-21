@@ -150,8 +150,8 @@ jobs:
           curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-27/wasi-sdk-27.0-x86_64-linux.deb -o wasi-sdk.deb
           sudo dpkg -i wasi-sdk.deb
           sudo apt install lld
-          mkdir /usr/lib/llvm-18/lib/clang/18/lib/wasi
-          cp /opt/wasi-sdk/lib/clang/20/lib/wasm32-unknown-wasi/libclang_rt.builtins.a /usr/lib/llvm-18/lib/clang/18/lib/wasi/libclang_rt.builtins-wasm32.a
+          sudo mkdir /usr/lib/llvm-18/lib/clang/18/lib/wasi
+          sudo cp /opt/wasi-sdk/lib/clang/20/lib/wasm32-unknown-wasi/libclang_rt.builtins.a /usr/lib/llvm-18/lib/clang/18/lib/wasi/libclang_rt.builtins-wasm32.a
 
           curl -L https://github.com/WebAssembly/binaryen/releases/download/version_124/binaryen-version_124-x86_64-linux.tar.gz -o binaryen.tar.gz
           tar --extract --gzip --file binaryen.tar.gz
