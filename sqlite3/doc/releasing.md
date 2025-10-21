@@ -10,3 +10,7 @@ adding a new release requires some setup.
 4. In `sqlite3/pubspec.yaml`, set `version` to `$newVersion`.
 5. Commit and create a git tag `sqlite3-<$newVersion>`.
 6. Push that tag and approve the pub.dev publishing workflow.
+
+Until the `v3` changes are merged to the default branch, a separate step is to
+add the run and artifact id of `sqlite3-precompiled` in `.github/workflows/release.yml`
+before step 5.
