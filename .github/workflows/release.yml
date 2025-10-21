@@ -6,11 +6,11 @@ on:
       - 'sqlite3-[0-9]+.[0-9]+.[0-9]+*'
 
 jobs:
-  fetch_sqlite:
-    uses: ./.github/workflows/compile_sqlite.yml
+  #fetch_sqlite:
+  #  uses: ./.github/workflows/compile_sqlite.yml
 
   prepare_release:
-    needs: [fetch_sqlite]
+    #needs: [fetch_sqlite]
     permissions:
       packages: write
       contents: write
@@ -32,6 +32,7 @@ jobs:
         # On windows, the sqlite3 build is not reproducible. So to avoid a hash mismatch, we temporarily use artifacts
         # built for a test run for releases as well.
         artifact-ids: "4333315590"
+        github-token: ${{ github.token }}
         path: sqlite/out
     - name: Set tag name
       id: tag
