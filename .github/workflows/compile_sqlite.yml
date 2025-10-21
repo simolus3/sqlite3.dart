@@ -141,7 +141,7 @@ jobs:
       - uses: actions/cache@v4
         id: cache_build
         with:
-          path: out/
+          path: sqlite3_wasm_build/out/
           key: sqlite-prebuilt-wasm2-${{ hashFiles('sqlite3_wasm_build') }}
 
       - name: Download WASI SDK
@@ -176,7 +176,6 @@ jobs:
           path: sqlite3_wasm_build/out/
           if-no-files-found: error
           retention-days: 1
-
 
   merge_assets:
     runs-on: ubuntu-latest
