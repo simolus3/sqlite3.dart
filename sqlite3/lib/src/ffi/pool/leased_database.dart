@@ -76,7 +76,7 @@ final class LeasedDatabase {
 
   /// Returns the [Database.autocommit] status for the wrapped database.
   Future<bool> get autocommit {
-    // the autocommit call is too cheap to require a background isolate.
+    // the autocommit call is too cheap to justify a background isolate.
     return unsafeAccess((db) => db.autocommit);
   }
 

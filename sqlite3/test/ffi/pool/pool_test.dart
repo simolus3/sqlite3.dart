@@ -34,7 +34,6 @@ void main() {
 
   test('does not allow concurrent writers', () async {
     final pool = createPool();
-    await pool.execute('CREATE TABLE foo (a INTEGER PRIMARY KEY) STRICT;');
 
     final futures = <Future<void>>[];
     var writers = 0;
@@ -42,7 +41,7 @@ void main() {
       futures.add(
         pool.withWriter((db) async {
           expect(writers += 1, 1);
-          await db.execute('INSERT INTO foo DEFAULT VALUES');
+          await pumpEventQueue(times: 5);
           expect(writers -= 1, 0);
         }),
       );
