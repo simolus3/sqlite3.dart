@@ -1,4 +1,4 @@
-## 3.0.0-beta.0
+## 3.0.0-beta.x
 
 - __Breaking change__: Use [build hooks](https://dart.dev/tools/hooks) to load
   SQLite instead of `DynamicLibrary`.
@@ -6,6 +6,8 @@
   - You should drop your dependencies on `sqlite3_flutter_libs` and
     `sqlcipher_flutter_libs` when upgrading.
 - __Breaking change__: Parameters to `SqliteException`s are now named.
+- On native platforms, add the `ConnectionPool` API implementing an efficient
+  asynchronous connection pool of SQLite connections.
 
 ## 2.9.2
 
