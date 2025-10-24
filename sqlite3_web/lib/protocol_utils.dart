@@ -28,11 +28,11 @@ List<Object?> deserializeParameters(JSArray values, JSArrayBuffer? types) {
 /// Serializes a [ResultSet] into a serializable [JSObject].
 JSObject serializeResultSet(ResultSet resultSet) {
   final msg = JSObject();
-  RowsResponse(resultSet: resultSet, requestId: 0).serialize(msg, []);
+  RowsResponse.serializeResultSet(msg, [], resultSet);
   return msg;
 }
 
 /// Deserializes a result set from the format in [serializeResultSet].
 ResultSet deserializeResultSet(JSObject object) {
-  return RowsResponse.deserialize(object).resultSet;
+  return RowsResponse.deserializeResultSet(object);
 }

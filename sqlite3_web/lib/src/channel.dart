@@ -7,6 +7,7 @@ import 'package:web/web.dart' hide Request, Response, Notification;
 
 import 'locks.dart';
 import 'protocol.dart';
+import 'types.dart';
 
 const _disconnectMessage = '_disconnect';
 final Random _random = Random();
@@ -96,11 +97,15 @@ StreamChannel<Message> _channel(
   return controller.foreign;
 }
 
-abstract class ProtocolChannel {
+abstract base class ProtocolChannel extends RequestHandler {
   final StreamChannel<Message> _channel;
 
   var _nextRequestId = 0;
   final Map<int, Completer<Response>> _responses = {};
+
+  /// Requests that are currently being handled, identified by their id. This
+  /// allows aborting them.
+  final Map<int, AbortController> _handlingRequests = {};
 
   ProtocolChannel(this._channel) {
     _channel.stream.listen(_handleIncoming, onError: (e) {
@@ -119,22 +124,33 @@ abstract class ProtocolChannel {
       case Request():
         Response response;
 
+        final abortController =
+            _handlingRequests[message.requestId] = AbortController();
+
         try {
-          response = await handleRequest(message);
+          response = await message.dispatchTo(this, abortController.signal);
         } catch (e, s) {
-          console.error('Error in worker: ${e.toString()}'.toJS);
-          console.error('Original trace: $s'.toJS);
+          if (e is! AbortException) {
+            console.error('Error in worker: ${e.toString()}'.toJS);
+            console.error('Original trace: $s'.toJS);
+          }
 
           response = ErrorResponse(
             message: e.toString(),
             requestId: message.requestId,
             serializedException: e,
           );
+        } finally {
+          _handlingRequests.remove(message.requestId);
         }
 
         _channel.sink.add(response);
       case Notification():
         handleNotification(message);
+      case AbortRequest(:final requestId):
+        if (_handlingRequests.remove(requestId) case final token?) {
+          token.abort();
+        }
       case StartFileSystemServer():
         throw StateError('Should only be a top-level message');
     }
@@ -147,22 +163,35 @@ abstract class ProtocolChannel {
   /// what's expected (for instance because an [ErrorResponse]) is sent instead.
   /// It also completes with an error if the channel gets closed in the
   /// meantime.
+  ///
+  /// If [abortTrigger] is given and completes before this request is completed,
+  /// a request to cancel the request is sent to the remote.
   Future<Res> sendRequest<Res extends Response>(
-      Request request, MessageType<Res> expectedType) async {
+      Request request, MessageType<Res> expectedType,
+      {Future<void>? abortTrigger}) async {
     final id = _nextRequestId++;
     final completer = _responses[id] = Completer.sync();
 
     _channel.sink.add(request..requestId = id);
+    var hasResponse = false;
+
+    if (abortTrigger != null) {
+      abortTrigger.whenComplete(() {
+        if (!hasResponse) {
+          _channel.sink.add(AbortRequest(requestId: id));
+        }
+      });
+    }
 
     final response = await completer.future;
+    hasResponse = true;
+    hasResponse = true;
     if (response.type == expectedType) {
       return response as Res;
     } else {
       throw response.interpretAsError();
     }
   }
-
-  Future<Response> handleRequest(Request request);
 
   void sendNotification(Notification notification) {
     _channel.sink.add(notification);

@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="scaffolded-by" content="https://github.com/dart-lang/sdk">
     <title>sqlite on the web</title>
-    <script defer src="main.dart.js"></script>
+    <script defer src="main.js"></script>
 </head>
 
 <body>
@@ -17,20 +17,18 @@
 This demo can be used to open databases in different storage implementations and
 access modes (e.g. through shared or dedicated workers).
 
-To open a database, open the consule and run <code>await open('name', 'storage', 'access')</code>.
-Supported values for <code>storage</code> are:
+To open a database, open the consule and run <code>await open('name', 'implementation')</code>.
+Supported values for <code>implementation</code> are:
 <ul>
-    <li><code>opfs</code>: Uses the <a href="https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system">Origin private file system</a></li>
-    <li><code>indexedDb</code>: Uses a virtualized file system implemented by storing chunks in IndexedDB</li>
-    <li><code>inMemory</code>: Only stores files in memory without persistence.</li>
-</ul>
+    <li><code>inMemoryLocal</code>: Only stores files in memory without persistence.</li>
+    <li><code>inMemoryShared</code>: In-memory database, but shared across tabs with a shared worker.</li>
+    <li><code>indexedDbUnsafeLocal</code>: Store data in IndexedDB, using each tab unisolated access to the database. Because data is just read once on startup, this is not a good file system implementation and prone to data corruption when used across multiple tabs.</li>
+    <li><code>indexedDbUnsafeWorker</code>: Like local, but in a shared worker.</li>
+    <li><code>indexedDbShared</code>: Safely store data in IndexedDB with a shared worker. Limited durability guarantees compared to OPFS.</li>
 
-Supported values for <code>access</code> are:
-
-<ul>
-    <li><code>throughSharedWorker</code>: Open the database in a shared worker. Different tabs will use the same sqlite3 connection</li>
-    <li><code>throughDedicatedWorker</code>: Open the database in a dedicated worker. Requires shared array buffers when used with OPFS, and there is no synchronization for IndexedDB in dedicated workers.</li>
-    <li><code>inCurrentContext</code>: Open the database in the current context, without a worker</li>
+    <li><code>opfsWithExternalLocks</code>: Uses the <a href="https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system">Origin private file system</a>. This uses the experimental <code>readwrite-unsafe</code> mode only available on Chrome.</li>
+    <li><code>opfsAtomics</code>: OPFS storage, but uses a pair of dedicated workers using shared memory and atomics to syncify requests. This requires COOP + COEP headers.</li>
+    <li><code>opfsShared</code>: OPFS storage, using a dedicated worker in a shared worker. This is only supported on Firefox.</li>
 </ul>
 
 After opening a database, you can use <code>execute</code> in the console to run
@@ -38,7 +36,7 @@ SQL on it, e.g:
 
 <code>
 <pre>
-let db = await open('test', 'inMemory', 'throughSharedWorker');
+let db = await open('test', 'opfsWithExternalLocks');
 await execute(db, 'create table foo (bar);');
 </pre>
 </code>

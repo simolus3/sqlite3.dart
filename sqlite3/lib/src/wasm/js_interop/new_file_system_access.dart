@@ -52,21 +52,27 @@ extension FileSystemDirectoryHandleApi on FileSystemDirectoryHandle {
     return getFileHandle(name, FileSystemGetFileOptions(create: create)).toDart;
   }
 
-  Future<FileSystemDirectoryHandle> getDirectory(String name,
-      {bool create = false}) {
+  Future<FileSystemDirectoryHandle> getDirectory(
+    String name, {
+    bool create = false,
+  }) {
     return getDirectoryHandle(
-            name, FileSystemGetDirectoryOptions(create: create))
-        .toDart;
+      name,
+      FileSystemGetDirectoryOptions(create: create),
+    ).toDart;
   }
 
   Future<void> remove(String name, {bool recursive = false}) {
-    return removeEntry(name, FileSystemRemoveOptions(recursive: recursive))
-        .toDart;
+    return removeEntry(
+      name,
+      FileSystemRemoveOptions(recursive: recursive),
+    ).toDart;
   }
 
   Stream<FileSystemHandle> list() {
-    return AsyncJavaScriptIteratable<JSArray>(this)
-        .map((data) => data.toDart[1] as FileSystemHandle);
+    return AsyncJavaScriptIteratable<JSArray>(
+      this,
+    ).map((data) => data.toDart[1] as FileSystemHandle);
   }
 
   Stream<FileSystemHandle> getFilesRecursively() async* {
@@ -77,5 +83,24 @@ extension FileSystemDirectoryHandleApi on FileSystemDirectoryHandle {
         yield* (entry as FileSystemDirectoryHandle).getFilesRecursively();
       }
     }
+  }
+}
+
+// https://github.com/whatwg/fs/blob/main/proposals/MultipleReadersWriters.md
+extension ProposedLockingSchemeApi on FileSystemFileHandle {
+  external JSPromise<FileSystemSyncAccessHandle> createSyncAccessHandle(
+    FileSystemCreateSyncAccessHandleOptions options,
+  );
+}
+
+// https://github.com/whatwg/fs/blob/main/proposals/MultipleReadersWriters.md#modes-of-creating-a-filesystemsyncaccesshandle
+@anonymous
+extension type FileSystemCreateSyncAccessHandleOptions._(JSObject _)
+    implements JSObject {
+  external factory FileSystemCreateSyncAccessHandleOptions({JSString? mode});
+
+  static FileSystemCreateSyncAccessHandleOptions unsafeReadWrite() {
+    return FileSystemCreateSyncAccessHandleOptions(
+        mode: 'readwrite-unsafe'.toJS);
   }
 }

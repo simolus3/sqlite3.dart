@@ -15,24 +15,27 @@ enum Browser {
     driverUriString: 'http://localhost:4444/wd/hub/',
     isChromium: true,
     unsupportedImplementations: {
-      (StorageMode.opfs, AccessMode.throughSharedWorker)
+      DatabaseImplementation.opfsShared,
     },
     missingFeatures: {MissingBrowserFeature.dedicatedWorkersInSharedWorkers},
-    defaultImplementation: (
-      StorageMode.opfs,
-      AccessMode.throughDedicatedWorker
-    ),
+    defaultImplementation: DatabaseImplementation.opfsWithExternalLocks,
   ),
   firefox(
     driverUriString: 'http://localhost:4444/',
-    defaultImplementation: (StorageMode.opfs, AccessMode.throughSharedWorker),
+    defaultImplementation: DatabaseImplementation.opfsShared,
+    unsupportedImplementations: {
+      DatabaseImplementation.opfsWithExternalLocks,
+    },
+    missingFeatures: {
+      MissingBrowserFeature.createSyncAccessHandleReadWriteUnsafe,
+    },
   );
 
   final bool isChromium;
   final String driverUriString;
-  final Set<(StorageMode, AccessMode)> unsupportedImplementations;
+  final Set<DatabaseImplementation> unsupportedImplementations;
   final Set<MissingBrowserFeature> missingFeatures;
-  final (StorageMode, AccessMode) defaultImplementation;
+  final DatabaseImplementation defaultImplementation;
 
   const Browser({
     required this.driverUriString,
@@ -44,26 +47,11 @@ enum Browser {
 
   Uri get driverUri => Uri.parse(driverUriString);
 
-  Set<(StorageMode, AccessMode)> get availableImplementations {
-    final available = <(StorageMode, AccessMode)>{};
-    for (final storage in StorageMode.values) {
-      for (final access in AccessMode.values) {
-        if (access == AccessMode.inCurrentContext &&
-            storage == StorageMode.opfs) {
-          // OPFS access is only available in workers.
-          continue;
-        }
-
-        if (!unsupportedImplementations.contains((storage, access))) {
-          available.add((storage, access));
-        }
-      }
-    }
-
-    return available;
+  Set<DatabaseImplementation> get availableImplementations {
+    return DatabaseImplementation.values.where(supports).toSet();
   }
 
-  bool supports((StorageMode, AccessMode) impl) =>
+  bool supports(DatabaseImplementation impl) =>
       !unsupportedImplementations.contains(impl);
 
   Future<Process> spawnDriver() async {
@@ -197,67 +185,69 @@ final class _TestConfiguration {
     });
 
     test('picks recommended option', () async {
-      final (storage, access) = await driver.openDatabase();
-      expect((storage, access), browser.defaultImplementation);
+      final implementation = await driver.openDatabase();
+      expect(implementation, browser.defaultImplementation);
     });
 
-    for (final (storage, access) in browser.availableImplementations) {
-      test('$storage through $access', () async {
-        await driver.openDatabase(
-          implementation: (storage, access),
-          onlyOpenVfs: true,
-        );
-        await driver.assertFile(false);
-
-        expect(await driver.customRequest(), 42);
-
-        await driver.execute('CREATE TABLE foo (bar TEXT);');
-        var events = await driver.countEvents();
-        expect(events.updates, 0);
-        expect(events.commits, 0);
-        expect(events.rollbacks, 0);
-        await driver.execute("INSERT INTO foo (bar) VALUES ('hello');");
-        events = await driver.countEvents();
-        expect(events.updates, 1);
-        expect(events.commits, 1);
-
-        expect(await driver.assertFile(true), isPositive);
-        await driver.flush();
-
-        await driver.execute('begin');
-        await driver.execute('rollback');
-        events = await driver.countEvents();
-        expect(events.rollbacks, 1);
-
-        if (storage != StorageMode.inMemory) {
-          await driver.driver.refresh();
-          await driver.waitReady();
-
+    for (final implementation in browser.availableImplementations) {
+      group(implementation.name, () {
+        test('basic tests', () async {
           await driver.openDatabase(
-            implementation: (storage, access),
-            onlyOpenVfs: true,
-          );
-          await driver.assertFile(true);
-
-          await driver.driver.refresh();
-          await driver.waitReady();
-          await driver.delete(storage);
-          await driver.openDatabase(
-            implementation: (storage, access),
+            implementation: implementation,
             onlyOpenVfs: true,
           );
           await driver.assertFile(false);
-        }
-      });
 
-      test('check large write and read', () async {
-        await driver.openDatabase(
-          implementation: (storage, access),
-          onlyOpenVfs: true,
-        );
-        await driver.assertFile(false);
+          expect(await driver.customRequest(), 42);
 
-        await driver.checkReadWrite();
+          await driver.execute('CREATE TABLE foo (bar TEXT);');
+          var events = await driver.countEvents();
+          expect(events.updates, 0);
+          expect(events.commits, 0);
+          expect(events.rollbacks, 0);
+          await driver.execute("INSERT INTO foo (bar) VALUES ('hello');");
+          events = await driver.countEvents();
+          expect(events.updates, 1);
+          expect(events.commits, 1);
+
+          expect(await driver.assertFile(true), isPositive);
+          await driver.flush();
+
+          await driver.execute('begin');
+          await driver.execute('rollback');
+          events = await driver.countEvents();
+          expect(events.rollbacks, 1);
+
+          if (implementation.storage != StorageMode.inMemory) {
+            await driver.driver.refresh();
+            await driver.waitReady();
+
+            await driver.openDatabase(
+              implementation: implementation,
+              onlyOpenVfs: true,
+            );
+            await driver.assertFile(true);
+
+            await driver.driver.refresh();
+            await driver.waitReady();
+            await driver.delete(implementation.storage);
+            await driver.openDatabase(
+              implementation: implementation,
+              onlyOpenVfs: true,
+            );
+            await driver.assertFile(false);
+          }
+        });
+
+        test('check large write and read', () async {
+          await driver.openDatabase(
+            implementation: implementation,
+            onlyOpenVfs: true,
+          );
+          await driver.assertFile(false);
+
+          await driver.checkReadWrite();
+        });
       });
     }
 

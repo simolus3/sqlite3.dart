@@ -7,24 +7,20 @@ import 'package:test/test.dart';
 
 void main() {
   test('finds preferrable implementations', () {
-    final all = [
-      for (final storage in StorageMode.values)
-        for (final access in AccessMode.values) (storage, access)
-    ];
+    final all = DatabaseImplementation.values.toList();
 
     all.shuffle();
     all.sort(DatabaseClient.preferrableMode);
 
     expect(all, [
-      (StorageMode.opfs, AccessMode.throughSharedWorker),
-      (StorageMode.opfs, AccessMode.throughDedicatedWorker),
-      (StorageMode.opfs, AccessMode.inCurrentContext),
-      (StorageMode.indexedDb, AccessMode.throughSharedWorker),
-      (StorageMode.indexedDb, AccessMode.throughDedicatedWorker),
-      (StorageMode.indexedDb, AccessMode.inCurrentContext),
-      (StorageMode.inMemory, AccessMode.throughSharedWorker),
-      (StorageMode.inMemory, AccessMode.throughDedicatedWorker),
-      (StorageMode.inMemory, AccessMode.inCurrentContext),
+      DatabaseImplementation.opfsShared,
+      DatabaseImplementation.opfsWithExternalLocks,
+      DatabaseImplementation.opfsAtomics,
+      DatabaseImplementation.indexedDbShared,
+      DatabaseImplementation.indexedDbUnsafeWorker,
+      DatabaseImplementation.indexedDbUnsafeLocal,
+      DatabaseImplementation.inMemoryShared,
+      DatabaseImplementation.inMemoryLocal
     ]);
   });
 }
