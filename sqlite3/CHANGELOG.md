@@ -1,3 +1,8 @@
+## 2.9.4
+
+- `SimpleOpfsFileSystem`: Allow opening with `readwrite-unsafe`, which can be used to implement
+  multi-tab OPFS databases on Chrome with an outer locking scheme.
+
 ## 2.9.3
 
 - Allow iterating over statements after `SQLITE_BUSY` errors.

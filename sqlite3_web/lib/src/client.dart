@@ -124,49 +124,75 @@ final class RemoteDatabase implements Database {
   }
 
   @override
-  Future<void> execute(String sql,
-      [List<Object?> parameters = const []]) async {
-    await connection.sendRequest(
+  Future<DatabaseResult<void>> execute(
+    String sql, {
+    List<Object?> parameters = const [],
+    bool checkInTransaction = false,
+    LockToken? token,
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await connection.sendRequest(
       RunQuery(
         requestId: 0,
         databaseId: databaseId,
+        lockId: token == null ? null : lockTokenToId(token),
         sql: sql,
         parameters: parameters,
         returnRows: false,
+        checkInTransaction: checkInTransaction,
       ),
-      MessageType.simpleSuccessResponse,
+      MessageType.rowsResponse,
+      abortTrigger: abortTrigger,
     );
+
+    return response.asResultWithResultSet();
+  }
+
+  @override
+  Future<T> requestLock<T>(Future<T> Function(LockToken token) body,
+      {Future<void>? abortTrigger}) async {
+    final response = await connection.sendRequest(
+      RequestExclusiveLock(requestId: 0, databaseId: databaseId),
+      MessageType.simpleSuccessResponse,
+      abortTrigger: abortTrigger,
+    );
+    final lockId = (response.response as JSNumber).toDartInt;
+
+    try {
+      return await body(lockTokenFromId(lockId));
+    } finally {
+      await connection.sendRequest(
+          ReleaseLock(requestId: 0, databaseId: databaseId, lockId: lockId),
+          MessageType.simpleSuccessResponse);
+    }
   }
 
   @override
   late final FileSystem fileSystem = RemoteFileSystem(this);
 
   @override
-  Future<int> get lastInsertRowId async {
-    final result = await select('select last_insert_rowid();');
-    return result.single.columnAt(0) as int;
-  }
-
-  @override
-  Future<ResultSet> select(String sql,
-      [List<Object?> parameters = const []]) async {
+  Future<DatabaseResult<ResultSet>> select(
+    String sql, {
+    List<Object?> parameters = const [],
+    bool checkInTransaction = false,
+    LockToken? token,
+    Future<void>? abortTrigger,
+  }) async {
     final response = await connection.sendRequest(
       RunQuery(
         requestId: 0,
         databaseId: databaseId,
+        lockId: token == null ? null : lockTokenToId(token),
         sql: sql,
         parameters: parameters,
         returnRows: true,
+        checkInTransaction: checkInTransaction,
       ),
       MessageType.rowsResponse,
+      abortTrigger: abortTrigger,
     );
 
-    return response.resultSet;
-  }
-
-  @override
-  Future<void> setUserVersion(int version) async {
-    await execute('pragma user_version = ?', [version]);
+    return response.asResultWithResultSet();
   }
 
   @override
@@ -177,12 +203,6 @@ final class RemoteDatabase implements Database {
 
   @override
   Stream<void> get commits => _commits.controller.stream;
-
-  @override
-  Future<int> get userVersion async {
-    final result = await select('pragma user_version;');
-    return result.single.columnAt(0) as int;
-  }
 
   @override
   Future<SqliteWebEndpoint> additionalConnection() async {
@@ -265,14 +285,36 @@ final class WorkerConnection extends ProtocolChannel {
   }
 
   @override
-  Future<Response> handleRequest(Request request) async {
-    switch (request) {
-      case CustomRequest(requestId: final id, :final payload):
-        final response = await handleCustomRequest(payload);
-        return SimpleSuccessResponse(response: response, requestId: id);
-      default:
-        throw UnimplementedError();
-    }
+  FutureOr<Response> handleCustom(
+      CustomRequest request, AbortSignal abortSignal) async {
+    final response = await handleCustomRequest(request.payload);
+    return SimpleSuccessResponse(
+        response: response, requestId: request.requestId);
+  }
+
+  Future<RemoteDatabase> requestDatabase({
+    required Uri wasmUri,
+    required String databaseName,
+    required DatabaseImplementation implementation,
+    required bool onlyOpenVfs,
+    required JSAny? additionalOptions,
+  }) async {
+    final response = await sendRequest(
+      OpenRequest(
+        requestId: 0,
+        wasmUri: wasmUri,
+        databaseName: databaseName,
+        storageMode: implementation.resolveToVfs(),
+        onlyOpenVfs: onlyOpenVfs,
+        additionalData: additionalOptions,
+      ),
+      MessageType.simpleSuccessResponse,
+    );
+
+    return RemoteDatabase(
+      connection: this,
+      databaseId: (response.response as JSNumber).toDartInt,
+    );
   }
 
   @override
@@ -412,7 +454,7 @@ final class DatabaseClient implements WebSqlite {
     await startWorkers();
 
     final existing = <ExistingDatabase>{};
-    final available = <(StorageMode, AccessMode)>[];
+    final available = <DatabaseImplementation>[];
     var workersReportedIndexedDbSupport = false;
 
     Future<void> dedicatedCompatibilityCheck(
@@ -435,15 +477,27 @@ final class DatabaseClient implements WebSqlite {
 
       final result = CompatibilityResult.fromJS(response.response as JSObject);
       existing.addAll(result.existingDatabases);
-      available.add((StorageMode.inMemory, AccessMode.throughDedicatedWorker));
 
       if (result.canUseIndexedDb) {
-        available
-            .add((StorageMode.indexedDb, AccessMode.throughDedicatedWorker));
+        available.add(DatabaseImplementation.indexedDbUnsafeWorker);
 
         workersReportedIndexedDbSupport = true;
       } else {
         _missingFeatures.add(MissingBrowserFeature.indexedDb);
+      }
+
+      if (!result.canUseOpfs) {
+        _missingFeatures.add(MissingBrowserFeature.fileSystemAccess);
+      }
+      if (!result.opfsSupportsReadWriteUnsafe) {
+        _missingFeatures
+            .add(MissingBrowserFeature.createSyncAccessHandleReadWriteUnsafe);
+      }
+      if (!result.supportsSharedArrayBuffers) {
+        _missingFeatures.add(MissingBrowserFeature.sharedArrayBuffers);
+      }
+      if (!result.dedicatedWorkersCanNest) {
+        _missingFeatures.add(MissingBrowserFeature.dedicatedWorkersCanNest);
       }
 
       // For the OPFS storage layer in dedicated workers, we're spawning two
@@ -452,17 +506,14 @@ final class DatabaseClient implements WebSqlite {
       if (result.canUseOpfs &&
           result.supportsSharedArrayBuffers &&
           result.dedicatedWorkersCanNest) {
-        available.add((StorageMode.opfs, AccessMode.throughDedicatedWorker));
-      } else {
-        if (!result.canUseOpfs) {
-          _missingFeatures.add(MissingBrowserFeature.fileSystemAccess);
-        }
-        if (!result.supportsSharedArrayBuffers) {
-          _missingFeatures.add(MissingBrowserFeature.sharedArrayBuffers);
-        }
-        if (!result.dedicatedWorkersCanNest) {
-          _missingFeatures.add(MissingBrowserFeature.dedicatedWorkersCanNest);
-        }
+        available.add(DatabaseImplementation.opfsAtomics);
+      }
+
+      // Another option is to use a single worker opening files with
+      // readwrite-unsafe. That allows opening the database in multiple tabs,
+      // but we'd then have to use weblocks to coordinate access.
+      if (result.canUseOpfs && result.opfsSupportsReadWriteUnsafe) {
+        available.add(DatabaseImplementation.opfsWithExternalLocks);
       }
     }
 
@@ -487,20 +538,20 @@ final class DatabaseClient implements WebSqlite {
 
       if (result.canUseIndexedDb) {
         workersReportedIndexedDbSupport = true;
-        available.add((StorageMode.indexedDb, AccessMode.throughSharedWorker));
+        available.add(DatabaseImplementation.indexedDbShared);
       } else {
         _missingFeatures.add(MissingBrowserFeature.indexedDb);
       }
 
       if (result.canUseOpfs) {
-        available.add((StorageMode.opfs, AccessMode.throughSharedWorker));
+        available.add(DatabaseImplementation.opfsShared);
       } else if (result.sharedCanSpawnDedicated) {
         // Only report OPFS as unavailable if we can spawn dedicated workers.
         // If we can't, it's known that we can't use OPFS.
         _missingFeatures.add(MissingBrowserFeature.fileSystemAccess);
       }
 
-      available.add((StorageMode.inMemory, AccessMode.throughSharedWorker));
+      available.add(DatabaseImplementation.inMemoryShared);
       if (!result.sharedCanSpawnDedicated) {
         _missingFeatures
             .add(MissingBrowserFeature.dedicatedWorkersInSharedWorkers);
@@ -514,10 +565,10 @@ final class DatabaseClient implements WebSqlite {
       await sharedCompatibilityCheck(shared);
     }
 
-    available.add((StorageMode.inMemory, AccessMode.inCurrentContext));
+    available.add(DatabaseImplementation.inMemoryLocal);
     if (workersReportedIndexedDbSupport || await checkIndexedDbSupport()) {
       // If the workers can use IndexedDb, so can we.
-      available.add((StorageMode.indexedDb, AccessMode.inCurrentContext));
+      available.add(DatabaseImplementation.indexedDbUnsafeLocal);
     }
 
     return FeatureDetectionResult(
@@ -541,45 +592,32 @@ final class DatabaseClient implements WebSqlite {
   }
 
   @override
-  Future<Database> connect(String name, StorageMode type, AccessMode access,
+  Future<Database> connect(String name, DatabaseImplementation implementation,
       {bool onlyOpenVfs = false, JSAny? additionalOptions}) async {
     await startWorkers();
 
     WorkerConnection connection;
-    bool shared;
-    switch (access) {
+    switch (implementation.access) {
       case AccessMode.throughSharedWorker:
-        if (type == StorageMode.opfs) {
+        if (implementation.storage == StorageMode.opfs) {
           // Shared workers don't support OPFS, but we can spawn a dedicated
           // worker inside of the shared worker and connect to that one.
           connection = await _connectToDedicatedInShared();
         } else {
           connection = _connectionToShared!;
         }
-
-        shared = true;
       case AccessMode.throughDedicatedWorker:
         connection = _connectionToDedicated!;
-        shared = false;
       case AccessMode.inCurrentContext:
         connection = await _connectToLocal();
-        shared = false;
     }
 
-    final response = await connection.sendRequest(
-      OpenRequest(
-        requestId: 0,
-        wasmUri: wasmUri,
-        databaseName: name,
-        storageMode: type.resolveToVfs(shared),
-        onlyOpenVfs: onlyOpenVfs,
-        additionalData: additionalOptions,
-      ),
-      MessageType.simpleSuccessResponse,
-    );
-    return RemoteDatabase(
-      connection: connection,
-      databaseId: (response.response as JSNumber).toDartInt,
+    return await connection.requestDatabase(
+      wasmUri: wasmUri,
+      databaseName: name,
+      implementation: implementation,
+      onlyOpenVfs: onlyOpenVfs,
+      additionalOptions: additionalOptions,
     );
   }
 
@@ -600,9 +638,9 @@ final class DatabaseClient implements WebSqlite {
         // If any of the implementations for this location is still availalable,
         // we want to use it instead of another location.
         final locationIsAccessible =
-            availableImplementations.any((e) => e.$1 == location);
+            availableImplementations.any((e) => e.storage == location);
         if (locationIsAccessible) {
-          availableImplementations.removeWhere((e) => e.$1 != location);
+          availableImplementations.removeWhere((e) => e.storage != location);
           break checkExisting;
         }
       }
@@ -612,16 +650,15 @@ final class DatabaseClient implements WebSqlite {
     // left.
     availableImplementations.sort(preferrableMode);
 
-    final (storage, access) = availableImplementations.firstOrNull ??
-        (StorageMode.inMemory, AccessMode.inCurrentContext);
-    final database = await connect(name, storage, access,
+    final implementation = availableImplementations.firstOrNull ??
+        DatabaseImplementation.inMemoryLocal;
+    final database = await connect(name, implementation,
         onlyOpenVfs: onlyOpenVfs, additionalOptions: additionalOptions);
 
     return ConnectToRecommendedResult(
       database: database,
       features: probed,
-      storage: storage,
-      access: access,
+      implementation: implementation,
     );
   }
 
@@ -631,27 +668,39 @@ final class DatabaseClient implements WebSqlite {
   /// Returns negative values if `a` is more preferrable than `b` and positive
   /// values if `b` is more preferrable than `a`.
   static int preferrableMode(
-      (StorageMode, AccessMode) a, (StorageMode, AccessMode) b) {
+      DatabaseImplementation a, DatabaseImplementation b) {
     // First, prefer OPFS (an actual file system API) over IndexedDB, a custom
     // file system implementation.
-    if (a.$1 != b.$1) {
-      return a.$1.index.compareTo(b.$1.index);
+    if (a.storage != b.storage) {
+      return a.storage.index.compareTo(b.storage.index);
     }
 
     // In a storage API, prefer shared workers which cause less contention
     // because we can actually share database resources between tabs.
-    return a.$2.index.compareTo(b.$2.index);
+    if (a.access != b.access) {
+      return a.access.index.compareTo(b.access.index);
+    }
+
+    // Storage and access are only equal between opfsAtomics and
+    // opfsWithExternalLocks. We prefer the later.
+    return a.index.compareTo(b.index);
   }
 
   static const _workerInitializationTimeout = Duration(seconds: 1);
 }
 
-extension on StorageMode {
-  FileSystemImplementation resolveToVfs(bool shared) {
-    return switch (this) {
-      StorageMode.opfs => shared
-          ? FileSystemImplementation.opfsShared
-          : FileSystemImplementation.opfsLocks,
+extension on DatabaseImplementation {
+  FileSystemImplementation resolveToVfs() {
+    return switch (storage) {
+      StorageMode.opfs => switch (this) {
+          DatabaseImplementation.opfsAtomics =>
+            FileSystemImplementation.opfsAtomics,
+          DatabaseImplementation.opfsShared =>
+            FileSystemImplementation.opfsShared,
+          DatabaseImplementation.opfsWithExternalLocks =>
+            FileSystemImplementation.opfsExternalLocks,
+          _ => throw AssertionError('Unknown OPFS implementation'),
+        },
       StorageMode.indexedDb => FileSystemImplementation.indexedDb,
       StorageMode.inMemory => FileSystemImplementation.inMemory,
     };

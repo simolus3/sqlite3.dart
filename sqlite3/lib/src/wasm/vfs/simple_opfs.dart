@@ -25,9 +25,7 @@ enum FileType {
 
   const FileType(this.filePath);
 
-  static final byName = {
-    for (final entry in values) entry.filePath: entry,
-  };
+  static final byName = {for (final entry in values) entry.filePath: entry};
 }
 
 /// A [VirtualFileSystem] for the `sqlite3` wasm library based on the [file system access API].
@@ -96,15 +94,24 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
   /// Throws a [VfsException] if OPFS is not available - please note that
   /// this file system implementation requires a recent browser and only works
   /// in dedicated web workers.
-  static Future<SimpleOpfsFileSystem> loadFromStorage(String path,
-      {String vfsName = 'simple-opfs'}) async {
+  ///
+  /// When [readWriteUnsafe] is passed, the synchronous file handles are opened
+  /// using the [proposed lock mode](https://github.com/whatwg/fs/blob/main/proposals/MultipleReadersWriters.md).
+  /// This mode is currently not supported across browsers, but can be used on
+  /// Chrome for faster database access across tabs.
+  static Future<SimpleOpfsFileSystem> loadFromStorage(
+    String path, {
+    String vfsName = 'simple-opfs',
+    bool readWriteUnsafe = false,
+  }) async {
     final storage = storageManager;
     if (storage == null) {
       throw VfsException(SqlError.SQLITE_ERROR);
     }
 
     final (_, directory) = await _resolveDir(path);
-    return inDirectory(directory, vfsName: vfsName);
+    return inDirectory(directory,
+        vfsName: vfsName, readWriteUnsafe: readWriteUnsafe);
   }
 
   /// Deletes the file system directory handle that would store sqlite3
@@ -134,14 +141,27 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
   /// Loads an [SimpleOpfsFileSystem] in the desired [root] directory, which must be
   /// a Dart wrapper around a [FileSystemDirectoryHandle].
   ///
+  /// When [readWriteUnsafe] is passed, the synchronous file handles are opened
+  /// using the [proposed lock mode](https://github.com/whatwg/fs/blob/main/proposals/MultipleReadersWriters.md).
+  /// This mode is currently not supported across browsers, but can be used on
+  /// Chrome for faster database access across tabs.
+  ///
   /// [FileSystemDirectoryHandle]: https://developer.mozilla.org/en-US/docs/Web/API/FileSystemDirectoryHandle
   static Future<SimpleOpfsFileSystem> inDirectory(
     FileSystemDirectoryHandle root, {
     String vfsName = 'simple-opfs',
+    bool readWriteUnsafe = false,
   }) async {
     Future<FileSystemSyncAccessHandle> open(String name) async {
       final handle = await root.openFile(name, create: true);
-      return await handle.createSyncAccessHandle().toDart;
+
+      final syncHandlePromise = readWriteUnsafe
+          ? ProposedLockingSchemeApi(handle).createSyncAccessHandle(
+              FileSystemCreateSyncAccessHandleOptions.unsafeReadWrite(),
+            )
+          : handle.createSyncAccessHandle();
+
+      return await syncHandlePromise.toDart;
     }
 
     final meta = await open('meta');

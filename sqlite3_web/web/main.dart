@@ -46,14 +46,13 @@ void main() {
   _addCallbackForWebDriver('test_second', (arg) async {
     final sqlite = initializeSqlite();
     // Open one database to occupy the database id of zero in the worker
-    final unused = await sqlite.connect(
-        'a', StorageMode.inMemory, AccessMode.throughSharedWorker);
+    final unused =
+        await sqlite.connect('a', DatabaseImplementation.inMemoryShared);
     await unused.execute('CREATE TABLE unused (bar TEXT);');
 
     // Then open another one
     final first = await sqlite.connect(
-            'b', StorageMode.inMemory, AccessMode.throughSharedWorker)
-        as RemoteDatabase;
+        'b', DatabaseImplementation.inMemoryShared) as RemoteDatabase;
     await first.execute('CREATE TABLE foo (bar TEXT);');
 
     final endpoint = await first.additionalConnection();
@@ -70,8 +69,8 @@ void main() {
     var receivedUpdates = 0;
     second.updates.listen((_) => receivedUpdates++);
 
-    await first.execute('INSERT INTO foo VALUES (?)', ['a']);
-    await unused.execute('INSERT INTO unused VALUES (?)', ['a']);
+    await first.execute('INSERT INTO foo VALUES (?)', parameters: ['a']);
+    await unused.execute('INSERT INTO unused VALUES (?)', parameters: ['a']);
 
     await Future.delayed(const Duration(milliseconds: 200));
 
@@ -142,7 +141,8 @@ void main() {
     final sqlite = initializeSqlite();
     final database = await sqlite.connectToRecommended(databaseName);
 
-    print('selected storage: ${database.storage} through ${database.access}');
+    print(
+        'selected storage: ${database.storage} through ${database.access} (${database.implementation})');
     print('missing features: ${database.features.missingFeatures}');
   });
 
@@ -187,9 +187,7 @@ Future<JSString> _detectImplementations(String? _) async {
   final result = await instance.runFeatureDetection(databaseName: 'database');
 
   return json.encode({
-    'impls': result.availableImplementations
-        .map((r) => [r.$1.name, r.$2.name])
-        .toList(),
+    'impls': result.availableImplementations.map((r) => r.name).toList(),
     'missing': result.missingFeatures.map((r) => r.name).toList(),
     'existing': result.existingDatabases.map((r) => [r.$1.name, r.$2]).toList(),
   }).toJS;
@@ -201,12 +199,9 @@ Future<JSAny?> _open(String? implementationName, bool onlyOpenVfs) async {
   var returnValue = implementationName;
 
   if (implementationName != null) {
-    final split = implementationName.split(':');
-
     db = await sqlite.connect(
       databaseName,
-      StorageMode.values.byName(split[0]),
-      AccessMode.values.byName(split[1]),
+      DatabaseImplementation.values.byName(implementationName),
       onlyOpenVfs: onlyOpenVfs,
       additionalOptions: additionalOptions.toJS,
     );
@@ -217,15 +212,16 @@ Future<JSAny?> _open(String? implementationName, bool onlyOpenVfs) async {
       additionalOptions: additionalOptions.toJS,
     );
     db = result.database;
-    returnValue = '${result.storage.name}:${result.access.name}';
+    returnValue = result.implementation.name;
   }
 
   database = db;
 
   // Make sure it works!
   if (!onlyOpenVfs) {
-    final rows = await db
+    final result = await db
         .select('SELECT database_host() as host, additional_data() as data;');
+    final rows = result.result;
     if (rows.length != 1) {
       throw 'unexpected row count';
     }

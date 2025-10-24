@@ -15,9 +15,15 @@ import 'package:webdriver/async_io.dart';
 import 'package:sqlite3_web/src/types.dart';
 import 'package:webdriver/support/async.dart';
 
-void main() async {
-  await TestAssetServer.start();
-  print('Serving on http://localhost:8080/');
+void main(List<String> args) async {
+  final target = switch (args) {
+    [] => 'web',
+    [final target] => target,
+    _ => throw ArgumentError('Expected no args or one (the folder to serve)'),
+  };
+
+  await TestAssetServer.start(target: target);
+  print('Serving $target/ on http://localhost:8080/');
 }
 
 class TestAssetServer {
@@ -31,7 +37,7 @@ class TestAssetServer {
     await buildRunner.close();
   }
 
-  static Future<TestAssetServer> start() async {
+  static Future<TestAssetServer> start({String target = 'web'}) async {
     final packageConfig =
         await loadPackageConfigUri((await Isolate.packageConfig)!);
     final ownPackage = packageConfig['sqlite3_web']!.root;
@@ -52,13 +58,13 @@ class TestAssetServer {
     );
 
     buildRunner
-      ..registerBuildTarget(DefaultBuildTarget((b) => b.target = 'web'))
+      ..registerBuildTarget(DefaultBuildTarget((b) => b.target = target))
       ..startBuild();
 
     // Wait for the build to complete, so that the server we return is ready to
     // go.
     await buildRunner.buildResults.firstWhere((b) {
-      final buildResult = b.results.firstWhereOrNull((r) => r.target == 'web');
+      final buildResult = b.results.firstWhereOrNull((r) => r.target == target);
       return buildResult != null && buildResult.status != BuildStatus.started;
     });
 
@@ -68,7 +74,7 @@ class TestAssetServer {
 
     final server = TestAssetServer(buildRunner);
 
-    final proxy = proxyHandler('http://localhost:$assetServerPort/web/');
+    final proxy = proxyHandler('http://localhost:$assetServerPort/$target/');
     server.server = await serve(
       (request) async {
         final pathSegments = request.url.pathSegments;
@@ -117,7 +123,7 @@ class TestWebDriver {
 
   Future<
       ({
-        Set<(StorageMode, AccessMode)> impls,
+        Set<DatabaseImplementation> impls,
         Set<MissingBrowserFeature> missingFeatures,
         List<ExistingDatabase> existing,
       })> probeImplementations() async {
@@ -128,10 +134,7 @@ class TestWebDriver {
     return (
       impls: {
         for (final entry in result['impls'])
-          (
-            StorageMode.values.byName(entry[0] as String),
-            AccessMode.values.byName(entry[1] as String),
-          )
+          DatabaseImplementation.values.byName(entry as String)
       },
       missingFeatures: {
         for (final entry in result['missing'])
@@ -147,26 +150,17 @@ class TestWebDriver {
     );
   }
 
-  Future<(StorageMode, AccessMode)> openDatabase({
-    (StorageMode, AccessMode)? implementation,
+  Future<DatabaseImplementation> openDatabase({
+    DatabaseImplementation? implementation,
     bool onlyOpenVfs = false,
   }) async {
-    final desc = switch (implementation) {
-      null => null,
-      (var storage, var access) => '${storage.name}:${access.name}'
-    };
-
+    final desc = implementation?.name;
     final method = onlyOpenVfs ? 'open_only_vfs' : 'open';
     final res = await driver
         .executeAsync('$method(arguments[0], arguments[1])', [desc]) as String?;
 
-    // This returns the storage/access mode actually chosen.
-    final split = res!.split(':');
-
-    return (
-      StorageMode.values.byName(split[0]),
-      AccessMode.values.byName(split[1])
-    );
+    // This returns the implementation actually chosen.
+    return DatabaseImplementation.values.byName(res!);
   }
 
   Future<void> closeDatabase() async {

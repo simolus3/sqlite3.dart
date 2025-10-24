@@ -1,5 +1,6 @@
 import 'dart:js_interop';
 
+import 'package:meta/meta.dart';
 import 'package:sqlite3/wasm.dart';
 import 'package:web/web.dart' hide FileSystem;
 
@@ -47,26 +48,36 @@ abstract base class DatabaseController {
 /// connect to the port already opened.
 typedef SqliteWebEndpoint = (MessagePort, String);
 
+typedef DatabaseResult<T> = ({
+  T result,
+  bool autocommit,
+  int lastInsertRowid,
+});
+
 /// Abstraction over a database either available locally or in a remote worker.
 abstract class Database {
   FileSystem get fileSystem;
 
   /// A relayed stream of [CommonDatabase.updates] from the remote worker.
   ///
+  /// {@template sqlite3_web_streams}
+  /// This stream only emits events emitted on the worker hosting the database.
+  /// In [DatabaseImplementation]s where each tab has its own worker, events
+  /// from different tabs would not be reflected in the returned stream.
+  ///
   /// Updates are only sent across worker channels while a subscription to this
   /// stream is active.
+  /// {@endtemplate}
   Stream<SqliteUpdate> get updates;
 
   /// A relayed stream of events triggered by rollbacks from the remote worker.
   ///
-  /// Updates are only sent across worker channels while a subscription to this
-  /// stream is active.
+  /// {@macro sqlite3_web_streams}
   Stream<void> get rollbacks;
 
   /// A relayed stream of events triggered by commits from the remote worker.
   ///
-  /// Updates are only sent across worker channels while a subscription to this
-  /// stream is active.
+  /// {@macro sqlite3_web_streams}
   Stream<void> get commits;
 
   /// A future that resolves when the database is closed.
@@ -84,22 +95,54 @@ abstract class Database {
   /// No methods may be called after a call to [dispose].
   Future<void> dispose();
 
-  /// The rowid for the last insert operation made on this database.
-  ///
-  /// This calls [CommonDatabase.lastInsertRowId] in the worker.
-  Future<int> get lastInsertRowId;
-
-  /// The application-specific user version, mirroring
-  /// [CommonDatabase.userVersion] being accessed in the remote worker.
-  Future<int> get userVersion;
-  Future<void> setUserVersion(int version);
-
   /// Prepares [sql] and executes it with the given [parameters].
-  Future<void> execute(String sql, [List<Object?> parameters = const []]);
+  ///
+  /// If [checkInTransaction] is enabled, the host will verify that the
+  /// autocommit mode is disabled before running the statement (and report an
+  /// exception otherwise).
+  ///
+  /// The [abortTrigger] can be used to abort the request. When that future
+  /// completes before the lock has been granted, the future may complete
+  /// with a [AbortException] without running the statement.
+  Future<DatabaseResult<void>> execute(
+    String sql, {
+    List<Object?> parameters = const [],
+    bool checkInTransaction = false,
+    LockToken? token,
+    Future<void>? abortTrigger,
+  });
 
   /// Prepares [sql], executes it with the given [parameters] and returns the
   /// [ResultSet].
-  Future<ResultSet> select(String sql, [List<Object?> parameters = const []]);
+  ///
+  /// If [checkInTransaction] is enabled, the host will verify that the
+  /// autocommit mode is disabled before running the statement (and report an
+  /// exception otherwise).
+  ///
+  /// The [abortTrigger] can be used to abort the request. When that future
+  /// completes before the lock has been granted, the future may complete
+  /// with a [AbortException] without running the statement.
+  Future<DatabaseResult<ResultSet>> select(
+    String sql, {
+    List<Object?> parameters = const [],
+    bool checkInTransaction = false,
+    LockToken? token,
+    Future<void>? abortTrigger,
+  });
+
+  /// Runs [body] with an exclusive lock on the database.
+  ///
+  /// This can be used to implement transactions on the database, where multiple
+  /// statements may have to run without interference from other tabs.
+  ///
+  /// The callback receives a [LockToken], which can be passed to [select] and
+  /// [execute] to run statements.
+  ///
+  /// The [abortTrigger] can be used to abort requesting the lock. When that
+  /// future completes before the lock has been granted, the future may complete
+  /// with a [AbortException] without ever invoking [body].
+  Future<T> requestLock<T>(Future<T> Function(LockToken lock) body,
+      {Future<void>? abortTrigger});
 
   /// Sends a custom request to the worker database.
   ///
@@ -112,6 +155,20 @@ abstract class Database {
   /// [WebSqlite.connectToPort] to open another instance of this database
   /// remotely.
   Future<SqliteWebEndpoint> additionalConnection();
+}
+
+// A token representing a held lock, available to callbacks in
+/// [Database.requestLock].
+extension type LockToken._(int _id) {}
+
+@internal
+LockToken lockTokenFromId(int id) {
+  return LockToken._(id);
+}
+
+@internal
+int lockTokenToId(LockToken token) {
+  return token._id;
 }
 
 /// A connection from a client from the perspective of a worker.
@@ -149,20 +206,19 @@ final class ConnectToRecommendedResult {
   final Database database;
 
   /// The missing or available browser features that lead to the current
-  /// [storage] and [access] modes being selected.
+  /// [DatabaseImplementation] being selected.
   final FeatureDetectionResult features;
 
-  /// The [StorageMode] storing contents for [database].
-  final StorageMode storage;
+  /// The [DatabaseImplementation] used.
+  final DatabaseImplementation implementation;
 
-  /// The [AccessMode] used to access teh [database] instance.
-  final AccessMode access;
+  StorageMode get storage => implementation.storage;
+  AccessMode get access => implementation.access;
 
   ConnectToRecommendedResult({
     required this.database,
     required this.features,
-    required this.storage,
-    required this.access,
+    required this.implementation,
   });
 }
 
@@ -184,8 +240,11 @@ abstract class WebSqlite {
   /// databases are not found otherwise.
   Future<FeatureDetectionResult> runFeatureDetection({String? databaseName});
 
-  /// Connects to a database identified by its [name] stored under [type] and
-  /// accessed via the given [access] mode.
+  /// Connects to a database identified by its [name] using the selected
+  /// [DatabaseImplementation].
+  ///
+  /// For a list of implementations supported by the current browser, use
+  /// [runFeatureDetection].
   ///
   /// When [onlyOpenVfs] is enabled, only the underlying file system for the
   /// database is initialized before [connect] returns. By default, the database
@@ -197,7 +256,7 @@ abstract class WebSqlite {
   /// The optional [additionalOptions] must be sendable over message ports and
   /// is passed to [DatabaseController.openDatabase] on the worker opening the
   /// database.
-  Future<Database> connect(String name, StorageMode type, AccessMode access,
+  Future<Database> connect(String name, DatabaseImplementation implementation,
       {bool onlyOpenVfs = false, JSAny? additionalOptions});
 
   /// Starts a feature detection via [runFeatureDetection] and then [connect]s
