@@ -705,6 +705,7 @@ final class WorkerRunner {
 
       var supportsOpfs = false;
       var opfsSupportsReadWriteUnsafe = false;
+      final databaseName = check.databaseName;
       if (check.shouldCheckOpfsCompatibility) {
         (
           basicSupport: supportsOpfs,
@@ -717,6 +718,7 @@ final class WorkerRunner {
           : false;
 
       var sharedCanSpawnDedicated = false;
+      final existingDatabases = <ExistingDatabase>{};
 
       if (check.type == MessageType.sharedCompatibilityCheck) {
         if (globalContext.has('Worker')) {
@@ -724,7 +726,7 @@ final class WorkerRunner {
 
           final worker = useOrSpawnInnerWorker();
           CompatibilityCheck(
-            databaseName: check.databaseName,
+            databaseName: databaseName,
             type: MessageType.dedicatedInSharedCompatibilityCheck,
             requestId: 0,
           ).sendToWorker(worker);
@@ -735,11 +737,23 @@ final class WorkerRunner {
 
           supportsOpfs = result.canUseOpfs;
           opfsSupportsReadWriteUnsafe = result.opfsSupportsReadWriteUnsafe;
+          existingDatabases.addAll(result.existingDatabases);
+        }
+      }
+
+      if (supportsOpfs) {
+        for (final database in await opfsDatabases()) {
+          existingDatabases.add((StorageMode.opfs, database));
+        }
+      }
+      if (supportsIndexedDb && databaseName != null) {
+        if (await checkIndexedDbExists(databaseName)) {
+          existingDatabases.add((StorageMode.indexedDb, databaseName));
         }
       }
 
       return CompatibilityResult(
-        existingDatabases: const [], // todo
+        existingDatabases: existingDatabases.toList(),
         sharedCanSpawnDedicated: sharedCanSpawnDedicated,
         canUseOpfs: supportsOpfs,
         opfsSupportsReadWriteUnsafe: opfsSupportsReadWriteUnsafe,
@@ -876,46 +890,5 @@ Future<(bool, FileSystemSyncAccessHandle)> _tryOpeningWithReadWriteUnsafe(
     // Fallback to opening without the special option.
     final sync = await handle.createSyncAccessHandle().toDart;
     return (false, sync);
-  }
-}
-
-/// Collects all drift OPFS databases.
-Future<List<String>> opfsDatabases() async {
-  final storage = storageManager;
-  if (storage == null) return const [];
-
-  var directory = await storage.directory;
-  try {
-    directory = await directory.getDirectory('drift_db');
-  } on Object {
-    // The drift_db folder doesn't exist, so there aren't any databases.
-    return const [];
-  }
-
-  return [
-    await for (final entry in directory.list())
-      if (entry.isDirectory) entry.name,
-  ];
-}
-
-/// Constructs the path used by drift to store a database in the origin-private
-/// section of the agent's file system.
-String pathForOpfs(String databaseName) {
-  return 'drift_db/$databaseName';
-}
-
-/// Deletes the OPFS folder storing a database with the given [databaseName] if
-/// such folder exists.
-Future<void> deleteDatabaseInOpfs(String databaseName) async {
-  final storage = storageManager;
-  if (storage == null) return;
-
-  var directory = await storage.directory;
-  try {
-    directory = await directory.getDirectory('drift_db');
-    await directory.remove(databaseName, recursive: true);
-  } on Object {
-    // fine, an error probably means that the database didn't exist in the first
-    // place.
   }
 }

@@ -6,6 +6,8 @@ import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
+// ignore: implementation_imports
+import 'package:sqlite3/src/wasm/js_interop/new_file_system_access.dart';
 import 'package:web/web.dart';
 
 /// Checks whether IndexedDB is working in the current browser.
@@ -84,6 +86,47 @@ class Lock {
     } else {
       return callBlockAndComplete();
     }
+  }
+}
+
+/// Collects all drift OPFS databases.
+Future<List<String>> opfsDatabases() async {
+  final storage = storageManager;
+  if (storage == null) return const [];
+
+  var directory = await storage.directory;
+  try {
+    directory = await directory.getDirectory('drift_db');
+  } on Object {
+    // The drift_db folder doesn't exist, so there aren't any databases.
+    return const [];
+  }
+
+  return [
+    await for (final entry in directory.list())
+      if (entry.isDirectory) entry.name,
+  ];
+}
+
+/// Constructs the path used by drift to store a database in the origin-private
+/// section of the agent's file system.
+String pathForOpfs(String databaseName) {
+  return 'drift_db/$databaseName';
+}
+
+/// Deletes the OPFS folder storing a database with the given [databaseName] if
+/// such folder exists.
+Future<void> deleteDatabaseInOpfs(String databaseName) async {
+  final storage = storageManager;
+  if (storage == null) return;
+
+  var directory = await storage.directory;
+  try {
+    directory = await directory.getDirectory('drift_db');
+    await directory.remove(databaseName, recursive: true);
+  } on Object {
+    // fine, an error probably means that the database didn't exist in the first
+    // place.
   }
 }
 

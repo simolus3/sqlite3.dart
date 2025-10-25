@@ -254,5 +254,24 @@ final class _TestConfiguration {
     test('can share databases', () async {
       await driver.testSecond();
     });
+
+    test('re-uses IndexedDB after OPFS becomes available', () async {
+      // In 0.4.0, we've added a new OPFS implementation that would be used by
+      // default on browsers that previously only supported IndexedDB.
+      await driver.openDatabase(
+          implementation: DatabaseImplementation.indexedDbShared);
+      await driver.execute('CREATE TABLE foo (bar TEXT);');
+      await driver.closeDatabase();
+
+      await driver.driver.refresh();
+      await driver.waitReady();
+
+      final features = await driver.probeImplementations();
+      expect(features.existing, [(StorageMode.indexedDb, 'database')]);
+
+      final actualImplementation = await driver.openDatabase();
+      expect(actualImplementation.storage, StorageMode.indexedDb);
+      await driver.execute('INSERT INTO foo DEFAULT VALUES');
+    });
   }
 }
