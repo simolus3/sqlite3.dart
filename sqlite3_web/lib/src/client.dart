@@ -535,6 +535,7 @@ final class DatabaseClient implements WebSqlite {
       }
 
       final result = CompatibilityResult.fromJS(response.response as JSObject);
+      existing.addAll(result.existingDatabases);
 
       if (result.canUseIndexedDb) {
         workersReportedIndexedDbSupport = true;
