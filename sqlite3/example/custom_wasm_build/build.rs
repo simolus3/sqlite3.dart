@@ -6,7 +6,7 @@ fn main() {
     let sysroot =
         env::var("WASI_SYSROOT").unwrap_or_else(|_| "/usr/share/wasi-sysroot".to_string());
 
-    let cmake_dir = Config::new("../../assets/wasm/")
+    let cmake_dir = Config::new("../../../sqlite3_wasm_build/src/")
         .define("wasi_sysroot", &sysroot)
         .define("CMAKE_C_COMPILER_WORKS", "1")
         .build_target("sqlite3_opt_lib")
@@ -18,13 +18,16 @@ fn main() {
     let objects = c_build
         .target("wasm32-unknown-wasi")
         .cargo_warnings(false)
+        .std("c23")
         .flag("--sysroot")
         .flag(&sysroot)
         .file(sqlite3_src.join("sqlite3.c"))
-        .file("../../assets/wasm/helpers.c")
+        .file("../../../sqlite3_wasm_build/src/helpers.c")
         .flag("-flto=thin")
         .include(&sqlite3_src)
-        .include("../../assets/wasm/")
+        .include("../../../sqlite3_wasm_build/src/")
+        .define("SQLITE_ENABLE_SESSION", None)
+        .define("SQLITE_ENABLE_PREUPDATE_HOOK", None)
         .define("_HAVE_SQLITE_CONFIG_H", None)
         .define("SQLITE_API", "__attribute__((visibility(\"default\")))")
         // Ideally we should be able to compile this into a static library and use that one, but
