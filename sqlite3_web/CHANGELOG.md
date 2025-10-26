@@ -1,3 +1,7 @@
+## 0.4.0-dev
+
+- Use version 3.x of `package:sqlite3`.
+
 ## 0.3.2
 
 - Allow workers to send requests to clients. Previously, only the other
