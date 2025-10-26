@@ -6,6 +6,7 @@ environment:
 
 workspace:
   - flutter_integration_tests
+  - multiplatform
 
 dependency_overrides:
   sqlite3:

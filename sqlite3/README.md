@@ -96,7 +96,7 @@ An example for such web folder is in `example/web/` of this repo.
 To view the example, copy a compiled `sqlite3.wasm` file to `web/sqlite3.wasm` in this directory.
 Then, run `dart run build_runner serve example:8080` and visit `http://localhost:8080/web/` in a browser.
 
-Another `example/multiplatform/` uses common interface to `sqlite3` on web and native platforms.
+Another `../examples/multiplatform/` uses common interface to `sqlite3` on web and native platforms.
 To run this example, merge its files into a Flutter app.
 
 ### Sharing code between web and a Dart VM
