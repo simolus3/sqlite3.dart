@@ -68,11 +68,16 @@ final class SqliteBuild {
   }
 
   Future<void> _compile(String source) async {
+    // Force-link libm on Android so C math symbols (e.g., trunc, log) resolve
+    // at load time.
+    final isAndroid = input.config.code.targetOS == OS.android;
+
     final builder = CBuilder.library(
       name: 'sqlite3',
       assetName: 'sqlite3_native_assets.dart',
       sources: [source],
       defines: defines,
+      libraries: [if (isAndroid) 'm'],
     );
 
     if (trackSourcesAsDependencyForCompilation) {
