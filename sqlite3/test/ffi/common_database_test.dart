@@ -10,8 +10,13 @@ import '../common/session.dart';
 void main() {
   final hasColumnMeta = sqlite3.usedCompileOption('ENABLE_COLUMN_METADATA');
   final hasSession = sqlite3.usedCompileOption('ENABLE_SESSION');
+  final hasSharedCache = !sqlite3.usedCompileOption('OMIT_SHARED_CACHE');
 
-  testDatabase(() => sqlite3, hasColumnMetadata: hasColumnMeta);
+  testDatabase(
+    () => sqlite3,
+    hasColumnMetadata: hasColumnMeta,
+    hasSharedCache: hasSharedCache,
+  );
 
   group('session', () {
     testSession(() => sqlite3);

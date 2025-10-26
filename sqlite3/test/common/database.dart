@@ -10,6 +10,7 @@ import 'utils.dart';
 void testDatabase(
   FutureOr<CommonSqlite3> Function() loadSqlite, {
   bool hasColumnMetadata = false,
+  bool hasSharedCache = false,
 }) {
   late CommonSqlite3 sqlite3;
   late CommonDatabase database;
@@ -327,7 +328,7 @@ void testDatabase(
       final result = db2.select('SELECT * FROM tbl');
       expect(result, hasLength(3));
     },
-    skip: 'Broken with native assets, to investigate',
+    skip: hasSharedCache ? null : 'Test requires shared cache',
   );
 
   test('locked exceptions', () {
@@ -343,7 +344,7 @@ void testDatabase(
       () => db2.execute('BEGIN EXCLUSIVE TRANSACTION'),
       throwsSqlError(SqlError.SQLITE_LOCKED, 262),
     );
-  }, skip: 'Broken with native assets, to investigate');
+  }, skip: hasSharedCache ? null : 'Test requires shared cache');
 
   test('result sets are lists', () {
     final result = database.select('SELECT 1, 2 UNION ALL SELECT 3, 4;');
