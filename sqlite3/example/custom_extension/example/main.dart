@@ -1,4 +1,4 @@
-import 'package:custom_extension/uuid.dart';
+import 'package:custom_extension/sqlite_vec.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 void main() {

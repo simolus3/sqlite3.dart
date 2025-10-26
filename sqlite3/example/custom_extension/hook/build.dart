@@ -46,8 +46,8 @@ void main(List<String> args) {
 
         output.assets.code.add(
           CodeAsset(
-            package: 'custom_extension_native_assets',
-            name: 'uuid.dart',
+            package: 'custom_extension',
+            name: 'sqlite_vec.dart',
             file: targetFilePath,
             linkMode: DynamicLoadingBundled(),
           ),
