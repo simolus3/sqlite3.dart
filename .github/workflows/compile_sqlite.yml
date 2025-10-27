@@ -60,9 +60,6 @@ jobs:
           name: sqlite-src
           path: sqlite-src
 
-      - name: View downloaded sources
-        run: find sqlite-src
-
       - uses: dart-lang/setup-dart@v1
         if: steps.cache_build.outputs.cache-hit != 'true'
         with:
