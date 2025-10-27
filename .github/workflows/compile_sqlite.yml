@@ -32,7 +32,7 @@ jobs:
       - name: Upload sqlite3 sources
         uses: actions/upload-artifact@v4
         with:
-          name: sqlite3-src
+          name: sqlite-src
           path: sqlite-src/
           if-no-files-found: error
           retention-days: 1
@@ -57,8 +57,11 @@ jobs:
         if: steps.cache_build.outputs.cache-hit != 'true'
         uses: actions/download-artifact@v4
         with:
-          name: sqlite3-src
-          path: sqlite3-src
+          name: sqlite-src
+          path: sqlite-src
+
+      - name: View downloaded sources
+        run: find sqlite-src
 
       - uses: dart-lang/setup-dart@v1
         if: steps.cache_build.outputs.cache-hit != 'true'

@@ -85,7 +85,7 @@ hooks:
         extensions: [
           CodeAssetExtension(
             targetArchitecture: Architecture.x64,
-            targetOS: OS.linux,
+            targetOS: os,
             linkModePreference: LinkModePreference.dynamic,
             iOS: iOS,
           )
