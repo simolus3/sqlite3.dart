@@ -17,7 +17,7 @@ jobs:
         id: cache_build
         with:
           path: sqlite-src/
-          key: sqlite-src-${{ hashFiles('tool/sqlite3_build_id') }}
+          key: sqlite-src-${{ hashFiles('tool/sqlite_build_id') }}
 
       - uses: dart-lang/setup-dart@v1
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -27,7 +27,7 @@ jobs:
       - name: Download sqlite3
         if: steps.cache_build.outputs.cache-hit != 'true'
         run: |
-          dart run tool/sqlite3/download_sqlite.dart
+          dart run tool/download_sqlite.dart
 
       - name: Upload sqlite3 sources
         uses: actions/upload-artifact@v4
@@ -51,7 +51,7 @@ jobs:
         id: cache_build
         with:
           path: out/
-          key: sqlite-prebuilt-${{ runner.os }}-${{ hashFiles('tool/sqlite3_build_id') }}
+          key: sqlite-prebuilt-${{ runner.os }}-${{ hashFiles('tool/sqlite_build_id') }}
 
       - name: Download sqlite3 sources
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -69,7 +69,7 @@ jobs:
         if: steps.cache_build.outputs.cache-hit != 'true'
         run: |
           dart pub get
-          dart run tool/sqlite3/compile_sqlite.dart
+          dart run tool/build_sqlite.dart
 
       - name: Upload sqlite3 binaries
         uses: actions/upload-artifact@v4
@@ -87,7 +87,7 @@ jobs:
         id: cache_build
         with:
           path: sqlite3_wasm_build/out/
-          key: sqlite-prebuilt-wasm2-${{ hashFiles('tool/sqlite3_build_id') }}
+          key: sqlite-prebuilt-wasm2-${{ hashFiles('tool/sqlite_build_id') }}
 
       - name: Download WASI SDK
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -111,8 +111,8 @@ jobs:
         if: steps.cache_build.outputs.cache-hit != 'true'
         working-directory: sqlite3_wasm_build/
         run: |
-          cmake -Dwasi_sysroot=/opt/wasi-sdk/share/wasi-sysroot/ -S src -B .dart_tool/sqlite3_build
-          cmake --build .dart_tool/sqlite3_build/ -t output -j
+          cmake -Dwasi_sysroot=/opt/wasi-sdk/share/wasi-sysroot/ -S src -B .dart_tool/sqlite_build
+          cmake --build .dart_tool/sqlite_build/ -t output -j
 
       - name: Upload sqlite3 binaries
         uses: actions/upload-artifact@v4

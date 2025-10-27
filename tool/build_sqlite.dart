@@ -6,9 +6,6 @@ import 'package:file/local.dart';
 import 'package:hooks_runner/hooks_runner.dart';
 import 'package:logging/logging.dart';
 import 'package:package_config/package_config.dart';
-import 'package:pool/pool.dart';
-
-final _compileTasks = Pool(Platform.numberOfProcessors);
 
 /// Invokes `package:sqlite3` build hooks for multiple operating systems and
 /// architectures, merging outputs into `sqlite3-compiled/`.
@@ -54,7 +51,6 @@ void main(List<String> args) async {
     includeDevDependencies: false,
   );
   final definesDir = await fs.systemTempDirectory.createTemp('sqlite3-build');
-  final compilationTasks = <Future<void>>[];
 
   for (final mode in ['sqlite3', 'sqlite3mc']) {
     final sourcePath = fs.currentDirectory
@@ -112,8 +108,7 @@ hooks:
 
     for (final os in operatingSystems) {
       for (final architecture in _osToAbis[os]!) {
-        compilationTasks.add(
-            _compileTasks.withResource(() => buildAndCopy(os, architecture)));
+        await buildAndCopy(os, architecture);
       }
 
       if (os == OS.iOS) {
@@ -121,17 +116,14 @@ hooks:
         final simulatorConfig =
             IOSCodeConfig(targetSdk: IOSSdk.iPhoneSimulator, targetVersion: 13);
 
-        compilationTasks.add(_compileTasks.withResource(() => buildAndCopy(
-            os, Architecture.arm64,
-            iOS: simulatorConfig, osNameOverride: 'ios_sim')));
-        compilationTasks.add(_compileTasks.withResource(() => buildAndCopy(
-            os, Architecture.x64,
-            iOS: simulatorConfig, osNameOverride: 'ios_sim')));
+        await buildAndCopy(os, Architecture.arm64,
+            iOS: simulatorConfig, osNameOverride: 'ios_sim');
+        await buildAndCopy(os, Architecture.x64,
+            iOS: simulatorConfig, osNameOverride: 'ios_sim');
       }
     }
   }
 
-  await Future.wait(compilationTasks, eagerError: true);
   print('Done building');
   await definesDir.delete(recursive: true);
 }
