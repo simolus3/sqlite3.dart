@@ -8,25 +8,28 @@ const sqliteMultipleCiphersSource =
 const tmpDir = 'tmp';
 
 /// This runs as part of a GitHub actions workflow in this repository. It's not
-/// really supposed to be used outside of that.
+/// really supposed to be used outside of that, but can be used to reproduce
+/// what hooks are doing in the CI.
 void main(List<String> args) async {
   await Directory(tmpDir).create();
 
   await _downloadAndExtract(sqliteSource, 'sqlite3');
   await _downloadAndExtract(sqliteMultipleCiphersSource, 'sqlite3mc');
 
-  await Directory('out').create();
-  await Directory('out/sqlite3mc').create();
+  await Directory('sqlite-src').create();
+  await Directory('sqlite-src/sqlite3mc').create();
   await File('$tmpDir/sqlite3mc_amalgamation.h')
-      .copy('out/sqlite3mc/sqlite3mc_amalgamation.h');
+      .copy('sqlite-src/sqlite3mc/sqlite3mc_amalgamation.h');
   await File('$tmpDir/sqlite3mc_amalgamation.c')
-      .copy('out/sqlite3mc/sqlite3mc_amalgamation.c');
+      .copy('sqlite-src/sqlite3mc/sqlite3mc_amalgamation.c');
 
-  await Directory('out/sqlite3').create();
-  await File('$tmpDir/$sqlitePath/sqlite3.h').copy('out/sqlite3/sqlite3.h');
-  await File('$tmpDir/$sqlitePath/sqlite3.c').copy('out/sqlite3/sqlite3.c');
+  await Directory('sqlite-src/sqlite3').create();
+  await File('$tmpDir/$sqlitePath/sqlite3.h')
+      .copy('sqlite-src/sqlite3/sqlite3.h');
+  await File('$tmpDir/$sqlitePath/sqlite3.c')
+      .copy('sqlite-src/sqlite3/sqlite3.c');
   await File('$tmpDir/$sqlitePath/sqlite3ext.h')
-      .copy('out/sqlite3/sqlite3ext.h');
+      .copy('sqlite-src/sqlite3/sqlite3ext.h');
 }
 
 Future<void> _downloadAndExtract(String url, String filename) async {

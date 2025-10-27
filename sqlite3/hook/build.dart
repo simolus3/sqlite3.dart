@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
+import 'package:native_toolchain_c/native_toolchain_c.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:sqlite3/src/hook/description.dart';
@@ -42,9 +43,22 @@ void main(List<String> args) async {
             file: target.uri,
           ),
         );
-      case CompileSqlite():
-        // TODO: Handle this case.
-        throw UnimplementedError();
+      case CompileSqlite(:final sourceFile, :final defines):
+        final library = CBuilder.library(
+          name: 'sqlite3',
+          packageName: 'sqlite3',
+          assetName: name,
+          sources: [sourceFile],
+          includes: [p.dirname(sourceFile)],
+          defines: defines,
+          libraries: [
+            if (input.config.code.targetOS == OS.android)
+              // We need to link the math library on Android.
+              'm',
+          ],
+        );
+
+        await library.run(input: input, output: output);
       case SimpleBinary():
         output.assets.code.add(
           CodeAsset(

@@ -31,6 +31,14 @@ sealed class SqliteBinary {
         return SimpleBinary.fromProcess;
       case 'executable':
         return SimpleBinary.fromExecutable;
+      case 'source':
+        return CompileSqlite(
+          sourceFile: userDefines.path('path')!.toFilePath(),
+          defines: CompilerDefines.parse(
+            userDefines,
+            input.config.code.targetOS,
+          ),
+        );
       default:
         throw ArgumentError.value(
           userDefines['source'],
@@ -204,13 +212,13 @@ final class PrecompiledForTesting extends PrecompiledBinary {
 }
 
 final class CompileSqlite implements SqliteBinary {
-  /// How to obtain the `sqlite3.c` source to compile.
-  final SqliteSources sources;
+  /// Path to the `sqlite3.c` source file to compile.
+  final String sourceFile;
 
   /// User-defines for the SQLite compilation.
   final CompilerDefines defines;
 
-  CompileSqlite({required this.sources, required this.defines});
+  CompileSqlite({required this.sourceFile, required this.defines});
 }
 
 /// If we're compiling SQLite from source, a way to obtain these sources.
@@ -246,15 +254,6 @@ final class DownloadAmalgamation implements SqliteSources {
       );
     }
   }
-}
-
-/// Compile SQLite from an existing `sqlite3.c` file that has been vendored into
-/// the project.
-final class ExistingAmalgamation implements SqliteSources {
-  /// Path to the `sqlite3.c` source file to compile.
-  final String sqliteSource;
-
-  const ExistingAmalgamation(this.sqliteSource);
 }
 
 /// Definition options to use when compiling SQLite.
