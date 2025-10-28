@@ -6,6 +6,11 @@ import 'package:file/local.dart';
 import 'package:hooks_runner/hooks_runner.dart';
 import 'package:logging/logging.dart';
 import 'package:package_config/package_config.dart';
+import 'package:pool/pool.dart';
+
+// TODO: Pool(Platform.numberOfProcessors). Unfortunately, the runner crashes
+// when running hooks in parallel.
+final _limitConcurrency = Pool(1);
 
 /// Invokes `package:sqlite3` build hooks for multiple operating systems and
 /// architectures, merging outputs into `sqlite3-compiled/`.
@@ -20,7 +25,7 @@ void main(List<String> args) async {
     if (Platform.isLinux) {
       operatingSystems = [OS.linux, OS.android];
     } else if (Platform.isMacOS) {
-      operatingSystems = [OS.macOS];
+      operatingSystems = [OS.macOS, OS.iOS];
     } else if (Platform.isWindows) {
       operatingSystems = [OS.windows];
     }
@@ -51,6 +56,7 @@ void main(List<String> args) async {
     includeDevDependencies: false,
   );
   final definesDir = await fs.systemTempDirectory.createTemp('sqlite3-build');
+  final buildTasks = <Future<void>>[];
 
   for (final mode in ['sqlite3', 'sqlite3mc']) {
     final sourcePath = fs.currentDirectory
@@ -84,10 +90,11 @@ hooks:
       final result = await runner.build(
         extensions: [
           CodeAssetExtension(
-            targetArchitecture: Architecture.x64,
+            targetArchitecture: architecture,
             targetOS: os,
             linkModePreference: LinkModePreference.dynamic,
             iOS: iOS,
+            macOS: os == OS.macOS ? MacOSCodeConfig(targetVersion: 13) : null,
           )
         ],
         linkingEnabled: false,
@@ -106,9 +113,14 @@ hooks:
       }
     }
 
+    void scheduleTask(Future<void> Function() task) {
+      buildTasks.add(_limitConcurrency.withResource(task));
+    }
+
     for (final os in operatingSystems) {
       for (final architecture in _osToAbis[os]!) {
-        await buildAndCopy(os, architecture);
+        scheduleTask(() => buildAndCopy(os, architecture,
+            iOS: IOSCodeConfig(targetSdk: IOSSdk.iPhoneOS, targetVersion: 13)));
       }
 
       if (os == OS.iOS) {
@@ -116,14 +128,15 @@ hooks:
         final simulatorConfig =
             IOSCodeConfig(targetSdk: IOSSdk.iPhoneSimulator, targetVersion: 13);
 
-        await buildAndCopy(os, Architecture.arm64,
-            iOS: simulatorConfig, osNameOverride: 'ios_sim');
-        await buildAndCopy(os, Architecture.x64,
-            iOS: simulatorConfig, osNameOverride: 'ios_sim');
+        scheduleTask(() => buildAndCopy(os, Architecture.arm64,
+            iOS: simulatorConfig, osNameOverride: 'ios_sim'));
+        scheduleTask(() => buildAndCopy(os, Architecture.x64,
+            iOS: simulatorConfig, osNameOverride: 'ios_sim'));
       }
     }
   }
 
+  await Future.wait(buildTasks, eagerError: true);
   print('Done building');
   await definesDir.delete(recursive: true);
 }
