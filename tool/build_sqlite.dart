@@ -1,24 +1,19 @@
+import 'dart:async';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:code_assets/code_assets.dart';
 import 'package:file/local.dart';
-import 'package:hooks_runner/hooks_runner.dart';
-import 'package:logging/logging.dart';
-import 'package:package_config/package_config.dart';
+import 'package:hooks/hooks.dart';
 import 'package:pool/pool.dart';
 
-// TODO: Pool(Platform.numberOfProcessors). Unfortunately, the runner crashes
-// when running hooks in parallel.
-final _limitConcurrency = Pool(1);
+import '../sqlite3/hook/build.dart' as hook;
+
+final _limitConcurrency = Pool(Platform.numberOfProcessors);
 
 /// Invokes `package:sqlite3` build hooks for multiple operating systems and
 /// architectures, merging outputs into `sqlite3-compiled/`.
 void main(List<String> args) async {
-  hierarchicalLoggingEnabled = true;
-  Logger('sqlite3').onRecord.listen((record) {
-    print('[${record.loggerName}]: ${record.message}');
-  });
+  Directory.current = Directory('sqlite3');
 
   var operatingSystems = args.map(OS.fromString).toList();
   if (operatingSystems.isEmpty) {
@@ -39,55 +34,29 @@ void main(List<String> args) async {
 
   const fs = LocalFileSystem();
 
-  final outputDirectory = fs.directory('sqlite-compiled');
+  final outputDirectory =
+      fs.currentDirectory.parent.childDirectory('sqlite-compiled');
   print('Compiling to ${outputDirectory.path}');
 
   if (await outputDirectory.exists()) {
     await outputDirectory.delete(recursive: true);
   }
-  await fs.directory('sqlite-compiled').create();
+  await outputDirectory.create();
 
-  final config = await Isolate.packageConfig;
-  final packageLayout = PackageLayout.fromPackageConfig(
-    fs,
-    await loadPackageConfigUri(config!),
-    config,
-    'sqlite3',
-    includeDevDependencies: false,
-  );
-  final definesDir = await fs.systemTempDirectory.createTemp('sqlite3-build');
   final buildTasks = <Future<void>>[];
 
   for (final mode in ['sqlite3', 'sqlite3mc']) {
-    final sourcePath = fs.currentDirectory
+    final sourcePath = fs.currentDirectory.parent
         .childDirectory('sqlite-src')
         .childDirectory(mode)
         .childFile(mode == 'sqlite3' ? 'sqlite3.c' : 'sqlite3mc_amalgamation.c')
-        .absolute
         .path;
-
-    final fakePubspec = definesDir.childFile('defines_$mode.pubspec.yaml');
-    await fakePubspec.writeAsString('''
-hooks:
-  user_defines:
-    sqlite3:
-      source: source
-      path: $sourcePath
-''');
 
     Future<void> buildAndCopy(OS os, Architecture architecture,
         {IOSCodeConfig? iOS, String? osNameOverride}) async {
       final osName = osNameOverride ?? os.name;
-      final runner = NativeAssetsBuildRunner(
-        logger: Logger('sqlite3.$mode.${osName}.${architecture.name}'),
-        dartExecutable: Uri.file(Platform.executable),
-        fileSystem: fs,
-        packageLayout: packageLayout,
-        userDefines: UserDefines(workspacePubspec: fakePubspec.uri),
-      );
 
-      final name = os.dylibFileName('${mode}.${architecture.name}.${osName}');
-      final result = await runner.build(
+      await testBuildHook(
         extensions: [
           CodeAssetExtension(
             targetArchitecture: architecture,
@@ -95,22 +64,29 @@ hooks:
             linkModePreference: LinkModePreference.dynamic,
             iOS: iOS,
             macOS: os == OS.macOS ? MacOSCodeConfig(targetVersion: 13) : null,
+            android:
+                os == OS.android ? AndroidCodeConfig(targetNdkApi: 24) : null,
           )
         ],
-        linkingEnabled: false,
+        mainMethod: hook.main,
+        check: (_, output) async {
+          final name =
+              os.dylibFileName('${mode}.${architecture.name}.${osName}');
+          for (final file in output.assets.code) {
+            await fs
+                .file(file.file!)
+                .copy(outputDirectory.childFile(name).path);
+          }
+        },
+        userDefines: PackageUserDefines(
+            workspacePubspec: PackageUserDefinesSource(
+          defines: {
+            'source': 'source',
+            'path': sourcePath,
+          },
+          basePath: fs.currentDirectory.uri,
+        )),
       );
-
-      if (result.isFailure) {
-        throw result.asFailure.value;
-      }
-
-      final output = result.asSuccess.value;
-      for (final file in output.encodedAssets) {
-        if (file.isCodeAsset) {
-          final code = file.asCodeAsset;
-          await fs.file(code.file!).copy(outputDirectory.childFile(name).path);
-        }
-      }
     }
 
     void scheduleTask(Future<void> Function() task) {
@@ -138,7 +114,6 @@ hooks:
 
   await Future.wait(buildTasks, eagerError: true);
   print('Done building');
-  await definesDir.delete(recursive: true);
 }
 
 const _osToAbis = {
