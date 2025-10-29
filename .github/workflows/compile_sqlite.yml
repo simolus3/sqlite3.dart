@@ -50,7 +50,7 @@ jobs:
       - uses: actions/cache@v4
         id: cache_build
         with:
-          path: sqlite-compiled/
+          path: sqlite-compiled
           key: sqlite-prebuilt-${{ runner.os }}-${{ hashFiles('tool/sqlite_build_id') }}
 
       - name: Download sqlite3 sources
