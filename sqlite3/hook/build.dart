@@ -45,20 +45,17 @@ void main(List<String> args) async {
           ),
         );
       case CompileSqlite(:final sourceFile, :final defines):
-        String? linkerScript;
-
         // With Flutter on Linux (which already dynamically links SQLite through
         // its libgtk dependency), we run into issues where loading our SQLite
         // build causes internal symbols to be resolved against the already
         // loaded library from the system.
         // This is terrible and not what we ever want. A proper solution may be
         // to use namespaces or RTLD_DEEPBIND, but hooks don't support that yet.
-        // An alternative that seems to work is to explicitly mark public
-        // entrypoints (list generated with FFIgen) and then use linker version
-        // scripts to mark other symbols as private. We get the public symbols
-        // through dlsym, and private symbols don't seem to clash with those
-        // that have already been loaded.
+        // An alternative that seems to work is to pass -Bsymbolic-functions to
+        // the linker.
         // For the full discussion, see https://github.com/dart-lang/native/issues/2724
+
+        String? linkerScript;
         if (input.config.code.targetOS == OS.linux) {
           linkerScript = input.outputDirectory.resolve('sqlite.map').path;
 
@@ -79,12 +76,16 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
           sources: [sourceFile],
           includes: [p.dirname(sourceFile)],
           defines: defines,
+          buildMode: BuildMode.debug,
+          optimizationLevel: OptimizationLevel.o1,
           flags: [
             if (input.config.code.targetOS == OS.linux) ...[
-              // This avoids issues with Flutter, see comment above.
-              '-Wl,--version-script=$linkerScript',
+              // This avoids loading issues on Linux, see comment above.
+              '-Wl,-Bsymbolic-functions',
               // And since we already have a designated list of symbols to
               // export, we might as well strip the rest.
+              // TODO: Port this to other targets too.
+              '-Wl,--version-script=$linkerScript',
               '-ffunction-sections',
               '-fdata-sections',
               '-Wl,--gc-sections',
