@@ -152,7 +152,7 @@ extension type SqliteExports(JSObject raw) implements JSObject {
 
   buffer.writeln('}');
 
-  final formatter = DartFormatter(languageVersion: Version(3, 6, 0));
+  final formatter = DartFormatter(languageVersion: Version(3, 10, 0));
   File(
     'lib/src/wasm/sqlite3_wasm.g.dart',
   ).writeAsStringSync(formatter.format(buffer.toString()));
