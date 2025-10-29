@@ -95,6 +95,13 @@ void main(List<String> args) async {
 
     for (final os in operatingSystems) {
       for (final architecture in _osToAbis[os]!) {
+        // Compiling sqlite3mc for x86 on Linxu does not work.
+        if (mode == 'sqlite3mc' &&
+            os == OS.linux &&
+            architecture == Architecture.ia32) {
+          continue;
+        }
+
         scheduleTask(() => buildAndCopy(os, architecture,
             iOS: IOSCodeConfig(targetSdk: IOSSdk.iPhoneOS, targetVersion: 13)));
       }
