@@ -189,9 +189,10 @@ jobs:
   integration_test:
     strategy:
       matrix:
-        runner: [ubuntu-latest, macos-latest]
-    #needs: [test, fetch_sqlite]
-    needs: [fetch_sqlite]
+        #runner: [ubuntu-latest, macos-latest]
+        # TODO: Ubuntu tests don't start in on GH actions, can't reproduce locally.
+        runner: [macos-latest]
+    needs: [test, fetch_sqlite]
     runs-on: ${{ matrix.runner }}
     steps:
       - name: List simulators
