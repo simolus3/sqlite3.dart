@@ -190,7 +190,8 @@ jobs:
     strategy:
       matrix:
         runner: [ubuntu-latest, macos-latest]
-    needs: [test, fetch_sqlite]
+    #needs: [test, fetch_sqlite]
+    needs: [fetch_sqlite]
     runs-on: ${{ matrix.runner }}
     steps:
       - name: List simulators
@@ -210,6 +211,12 @@ jobs:
 
       - name: Flutter version
         run: flutter --version
+
+      - name: Setup runner
+        if: runner.os == 'linux'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libstdc++-12-dev
 
       - name: Download compiled sqlite3
         uses: actions/download-artifact@v5
