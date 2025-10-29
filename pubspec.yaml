@@ -17,3 +17,11 @@ workspace:
   - sqlite3/example/custom_extension
   - sqlite3_web
   - sqlite3_test
+
+dependency_overrides:
+  # We need https://github.com/dart-lang/native/pull/2736 to build Android libraries in CI.
+  native_toolchain_c:
+    git:
+      url: https://github.com/simolus3/dart-native.git
+      ref: 3f2ef80ad7ebe911dce02f4f18440c34c1ccf7b7
+      path: pkgs/native_toolchain_c

@@ -6,6 +6,7 @@ import 'package:native_toolchain_c/native_toolchain_c.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:sqlite3/src/hook/description.dart';
+import 'package:sqlite3/src/hook/used_symbols.dart';
 
 void main(List<String> args) async {
   await build(args, (input, output) async {
@@ -44,6 +45,33 @@ void main(List<String> args) async {
           ),
         );
       case CompileSqlite(:final sourceFile, :final defines):
+        String? linkerScript;
+
+        // With Flutter on Linux (which already dynamically links SQLite through
+        // its libgtk dependency), we run into issues where loading our SQLite
+        // build causes internal symbols to be resolved against the already
+        // loaded library from the system.
+        // This is terrible and not what we ever want. A proper solution may be
+        // to use namespaces or RTLD_DEEPBIND, but hooks don't support that yet.
+        // An alternative that seems to work is to explicitly mark public
+        // entrypoints (list generated with FFIgen) and then use linker version
+        // scripts to mark other symbols as private. We get the public symbols
+        // through dlsym, and private symbols don't seem to clash with those
+        // that have already been loaded.
+        // For the full discussion, see https://github.com/dart-lang/native/issues/2724
+        if (input.config.code.targetOS == OS.linux) {
+          linkerScript = input.outputDirectory.resolve('sqlite.map').path;
+
+          await File(linkerScript).writeAsString('''
+{
+  global:
+${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
+  local:
+    *;
+};
+''');
+        }
+
         final library = CBuilder.library(
           name: 'sqlite3',
           packageName: 'sqlite3',
@@ -51,6 +79,17 @@ void main(List<String> args) async {
           sources: [sourceFile],
           includes: [p.dirname(sourceFile)],
           defines: defines,
+          flags: [
+            if (input.config.code.targetOS == OS.linux) ...[
+              // This avoids issues with Flutter, see comment above.
+              '-Wl,--version-script=$linkerScript',
+              // And since we already have a designated list of symbols to
+              // export, we might as well strip the rest.
+              '-ffunction-sections',
+              '-fdata-sections',
+              '-Wl,--gc-sections',
+            ],
+          ],
           libraries: [
             if (input.config.code.targetOS == OS.android)
               // We need to link the math library on Android.

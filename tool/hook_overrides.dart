@@ -17,7 +17,7 @@ hooks:
       source: system
 ''');
       case 'compiled':
-        final outPath = p.relative('sqlite/out', from: p.dirname(path));
+        final outPath = p.relative('sqlite-compiled', from: p.dirname(path));
 
         out.write('''
 hooks:

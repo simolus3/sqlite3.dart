@@ -34,7 +34,8 @@ const String? releaseTag = ${releaseTag == null ? 'null' : "'$releaseTag'"};
 const Map<String, String> assetNameToSha256Hash = {
 ''');
 
-  final files = Directory('sqlite/out').listSync().whereType<File>().toList();
+  final files =
+      Directory('sqlite-compiled').listSync().whereType<File>().toList();
   files.sortBy((f) => f.path);
 
   for (final file in files) {
