@@ -194,11 +194,11 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - name: List simulators
-        if: ${{ runner.os == "macos" }}
+        if: runner.os == 'macos'
         run: "xcrun xctrace list devices"
 
       - name: Start simulator
-        if: ${{ runner.os == "macos" }}
+        if: runner.os == 'macos'
         run: |
           IPHONE=$(xcrun xctrace list devices  2>&1 | grep -m 1 "iPhone" | awk -F'[()]' '{print $4}')
           xcrun simctl boot $IPHONE
@@ -232,7 +232,7 @@ jobs:
           dart run tool/hook_overrides.dart compiled
 
       - name: Driver tests on macOS
-        if: ${{ runner.os == "macos" }}
+        if: runner.os == 'macos'
         working-directory: examples/flutter_integration_tests
         run: |
           flutter config --enable-swift-package-manager
@@ -240,7 +240,7 @@ jobs:
           flutter test integration_test -d macos
 
       - name: Driver tests on Linux
-        if: ${{ runner.os == "linux" }}
+        if: runner.os == 'linux'
         working-directory: examples/flutter_integration_tests
         run: |
           flutter test integration_test -d linux
