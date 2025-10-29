@@ -35,7 +35,7 @@ jobs:
         repository: simolus3/sqlite3.dart
         run-id: "18697403389"
         github-token: ${{ github.token }}
-        path: sqlite/out
+        path: sqlite-compiled
     - name: Set tag name
       id: tag
       run: |
@@ -45,7 +45,7 @@ jobs:
     - name: Verify asset hashes
       run: dart run tool/write_asset_hashes.dart "${{ steps.tag.outputs.tag }}"
     - name: List libraries
-      run: ls -al sqlite/out
+      run: ls -al sqlite-compiled
 
     - name: Create Release
       env:
@@ -56,7 +56,7 @@ jobs:
         body="Pending release for $tag"
         gh release create --draft "$tag" --title "$tag" --notes "$body"
 
-        gh release upload "$tag" sqlite/out/*
+        gh release upload "$tag" sqlite-compiled/*
 
   publish:
     needs: [prepare_release]

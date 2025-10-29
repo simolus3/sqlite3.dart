@@ -74,7 +74,7 @@ jobs:
       uses: actions/download-artifact@v5
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
-        path: sqlite/out
+        path: sqlite-compiled
     - uses: actions/cache@v4
       with:
         path: "${{ env.PUB_CACHE }}"
@@ -115,7 +115,7 @@ jobs:
 
     - name: Web tests
       run: |
-        cp ../sqlite/out/*.wasm example/web
+        cp ../sqlite-compiled/*.wasm example/web
         dart test -P web -r expanded
       # If browsers behave differently on different platforms, surely that's not our fault...
       # So, only run browser tests on Linux to be faster.
@@ -134,7 +134,7 @@ jobs:
       uses: actions/download-artifact@v5
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
-        path: sqlite/out
+        path: sqlite-compiled
     - uses: actions/cache@v4
       with:
         path: "${{ env.PUB_CACHE }}"
@@ -232,7 +232,7 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
-          path: sqlite/out
+          path: sqlite-compiled
 
       - uses: actions/cache@v4
         with:
