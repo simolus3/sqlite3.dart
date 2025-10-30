@@ -1,4 +1,5 @@
 @TestOn('vm')
+@Tags(['webdriver'])
 library;
 
 import 'dart:async';
