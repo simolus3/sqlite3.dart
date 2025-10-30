@@ -355,6 +355,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: beta
+
       - uses: actions/cache@v4
         with:
           path: "${{ env.PUB_CACHE }}"
@@ -362,9 +366,6 @@ jobs:
           restore-keys: |
             dart-dependencies-${{ matrix.dart }}-
             dart-dependencies-
-      - uses: dart-lang/setup-dart@v1
-        with:
-          sdk: beta
 
       - name: Web tests
         run: |
