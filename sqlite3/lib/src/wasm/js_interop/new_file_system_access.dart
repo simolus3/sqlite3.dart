@@ -85,3 +85,23 @@ extension FileSystemDirectoryHandleApi on FileSystemDirectoryHandle {
     }
   }
 }
+
+// https://github.com/whatwg/fs/blob/main/proposals/MultipleReadersWriters.md
+extension ProposedLockingSchemeApi on FileSystemFileHandle {
+  external JSPromise<FileSystemSyncAccessHandle> createSyncAccessHandle(
+    FileSystemCreateSyncAccessHandleOptions options,
+  );
+}
+
+// https://github.com/whatwg/fs/blob/main/proposals/MultipleReadersWriters.md#modes-of-creating-a-filesystemsyncaccesshandle
+@anonymous
+extension type FileSystemCreateSyncAccessHandleOptions._(JSObject _)
+    implements JSObject {
+  external factory FileSystemCreateSyncAccessHandleOptions({JSString? mode});
+
+  static FileSystemCreateSyncAccessHandleOptions unsafeReadWrite() {
+    return FileSystemCreateSyncAccessHandleOptions(
+      mode: 'readwrite-unsafe'.toJS,
+    );
+  }
+}

@@ -587,6 +587,38 @@ void testPreparedStatements(
         throwsSqlError(19, 2067),
       );
     });
+
+    test('recovers from SQLITE_BUSY', () {
+      final vfs = _ErrorInjectingVfs(
+        InMemoryFileSystem(),
+        name: 'test-recover-sqlite-busy',
+      );
+      sqlite3.registerVirtualFileSystem(vfs);
+      addTearDown(() => sqlite3.unregisterVirtualFileSystem(vfs));
+
+      var db = sqlite3.open('/db', vfs: vfs.name);
+      addTearDown(() => db.dispose());
+
+      db
+        ..execute('CREATE TABLE foo (bar TEXT) STRICT')
+        ..execute('INSERT INTO foo (bar) VALUES (?)', ['testing'])
+        ..dispose();
+
+      db = db = sqlite3.open('/db', vfs: vfs.name);
+      final stmt = db.prepare('SELECT * FROM foo');
+      final cursor = stmt.selectCursor();
+      vfs.maybeError = () => throw VfsException(SqlError.SQLITE_BUSY);
+
+      expect(
+        () => cursor.moveNext(),
+        throwsSqlError(SqlError.SQLITE_BUSY, SqlError.SQLITE_BUSY),
+      );
+      vfs.maybeError = null;
+      expect(cursor.moveNext(), isTrue);
+      expect(cursor.current, {'bar': 'testing'});
+
+      stmt.dispose();
+    });
   });
 }
 
@@ -602,5 +634,113 @@ class _CustomValue implements CustomStatementParameter {
   void applyTo(CommonPreparedStatement statement, int index) {
     final stmt = statement as StatementImplementation;
     stmt.statement.sqlite3_bind_int64(index, 42);
+  }
+}
+
+final class _ErrorInjectingVfs extends BaseVirtualFileSystem {
+  final VirtualFileSystem _base;
+  void Function()? maybeError;
+
+  _ErrorInjectingVfs(this._base, {required super.name});
+
+  void _op() {
+    maybeError?.call();
+  }
+
+  @override
+  int xAccess(String path, int flags) {
+    _op();
+    return _base.xAccess(path, flags);
+  }
+
+  @override
+  void xDelete(String path, int syncDir) {
+    _op();
+    return _base.xDelete(path, syncDir);
+  }
+
+  @override
+  String xFullPathName(String path) {
+    _op();
+    return _base.xFullPathName(path);
+  }
+
+  @override
+  XOpenResult xOpen(Sqlite3Filename path, int flags) {
+    _op();
+    final inner = _base.xOpen(path, flags);
+    return (
+      outFlags: inner.outFlags,
+      file: _ErrorInjectingFile(this, inner.file),
+    );
+  }
+
+  @override
+  void xSleep(Duration duration) {
+    return _base.xSleep(duration);
+  }
+}
+
+final class _ErrorInjectingFile implements VirtualFileSystemFile {
+  final _ErrorInjectingVfs _vfs;
+  final VirtualFileSystemFile _base;
+
+  _ErrorInjectingFile(this._vfs, this._base);
+
+  @override
+  void xRead(Uint8List target, int fileOffset) {
+    _vfs._op();
+    return _base.xRead(target, fileOffset);
+  }
+
+  @override
+  int xCheckReservedLock() {
+    _vfs._op();
+    return _base.xCheckReservedLock();
+  }
+
+  @override
+  int get xDeviceCharacteristics => _base.xDeviceCharacteristics;
+
+  @override
+  void xClose() {
+    _vfs._op();
+    _base.xClose();
+  }
+
+  @override
+  int xFileSize() {
+    _vfs._op();
+    return _base.xFileSize();
+  }
+
+  @override
+  void xLock(int mode) {
+    _vfs._op();
+    _base.xLock(mode);
+  }
+
+  @override
+  void xSync(int flags) {
+    _vfs._op();
+    _base.xSync(flags);
+  }
+
+  @override
+  void xTruncate(int size) {
+    _vfs._op();
+    _base.xTruncate(size);
+  }
+
+  @override
+  void xUnlock(int mode) {
+    _vfs._op();
+    _base.xUnlock(mode);
+  }
+
+  @override
+  void xWrite(Uint8List buffer, int fileOffset) {
+    _vfs._op();
+    _base.xWrite(buffer, fileOffset);
   }
 }

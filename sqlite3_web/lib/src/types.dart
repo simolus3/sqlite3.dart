@@ -11,8 +11,76 @@ enum FileType {
   /// The main database file.
   database,
 
-  /// A journal file used to synchronize changes toe database file.
+  /// A journal file used to synchronize changes on the database file.
   journal,
+}
+
+/// An implemented mechanism to use SQLite on the web.
+///
+/// Due to the large variety of browsers and the web standards they support,
+/// a number of implementations are available. The most important are:
+///
+///  - [opfsShared]: Only available on Firefox, but very efficient.
+///  - [opfsWithExternalLocks]: Only available on recent Chrome versions, also
+///    quite efficient.
+///  - [opfsAtomics]: Only available when using COEP and COOP headers, but also
+///    reasonably efficient and supported across browsers.
+///  - [indexedDbShared]: A less efficient IndexedDB-based implementation used
+///    as a fallback on older Chrome versions.
+///
+/// All other options are not recommended, but may be selected if there's no
+/// better option (e.g. older Chrome versions on Android may use
+/// [indexedDbUnsafeWorker]).
+enum DatabaseImplementation {
+  /// Host an in-memory database in the current tab.
+  ///
+  /// This isn't really useful outside of tests.
+  inMemoryLocal(StorageMode.inMemory, AccessMode.inCurrentContext),
+
+  /// Host an in-memory database in a shared worker.
+  ///
+  /// This isn't really useful outside of tests.
+  inMemoryShared(StorageMode.inMemory, AccessMode.throughSharedWorker),
+
+  /// Open an IndexedDB database with a dedicated worker per tab.
+  ///
+  /// There is no concurrency control between these tabs, so this effectively
+  /// does not support multiple tabs. It's mostly included for legacy reasons.
+  indexedDbUnsafeLocal(StorageMode.indexedDb, AccessMode.inCurrentContext),
+
+  /// Open an IndexedDB database with a dedicated worker per tab.
+  ///
+  /// There is no concurrency control between these tabs, so this effectively
+  /// does not support multiple tabs. It's mostly included for legacy reasons.
+  indexedDbUnsafeWorker(
+      StorageMode.indexedDb, AccessMode.throughDedicatedWorker),
+
+  /// Open an IndexedDB database in a shared worker.
+  indexedDbShared(StorageMode.indexedDb, AccessMode.throughSharedWorker),
+
+  /// Open an synchronous database stored in OPFS.
+  ///
+  /// The database is opened with the non-standard `readwrite-unsafe` option,
+  /// and the web locks API is used to ensure two tabs don't access the same
+  /// database concurrently.
+  opfsWithExternalLocks(StorageMode.opfs, AccessMode.throughDedicatedWorker),
+
+  /// Open an asynchronous database stored in OPFS. It is "syncified" by using
+  /// a pair of two dedicated workers implementing an RPC channel over shared
+  /// memory and atomics.
+  opfsAtomics(StorageMode.opfs, AccessMode.throughDedicatedWorker),
+
+  /// Open a synchronous database stored in OPFS.
+  ///
+  /// This works by letting a shared worker spawn a dedicated worker. This is
+  /// supposed to work, but only implemented in Firefox.
+  opfsShared(StorageMode.opfs, AccessMode.throughSharedWorker),
+  ;
+
+  final StorageMode storage;
+  final AccessMode access;
+
+  const DatabaseImplementation(this.storage, this.access);
 }
 
 /// Available locations to store database content in browsers.
@@ -76,12 +144,18 @@ final class RemoteException implements Exception {
   final Object? exception;
 
   /// Creates a remote exception from the [message] thrown.
-  RemoteException({required this.message, this.exception});
+  const RemoteException({required this.message, this.exception});
 
   @override
   String toString() {
     return 'Remote error: $message';
   }
+}
+
+/// An exception thrown when the remote end accepts an abort requeset sent for a
+/// previous request.
+final class AbortException extends RemoteException {
+  const AbortException() : super(message: 'Operation was cancelled');
 }
 
 /// A virtual file system used by a worker to persist database files.
@@ -132,6 +206,10 @@ enum MissingBrowserFeature {
   /// [File System API]: https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API
   fileSystemAccess,
 
+  /// The browser does not support the (non-standard) `readwrite-unsafe` open
+  /// mode proposed in https://github.com/whatwg/fs/blob/main/proposals/MultipleReadersWriters.md#modes-of-creating-a-filesystemsyncaccesshandle.
+  createSyncAccessHandleReadWriteUnsafe,
+
   /// The browser does not support IndexedDB.
   indexedDb,
 
@@ -157,7 +235,7 @@ final class FeatureDetectionResult {
 
   /// All available [StorageMode], [AccessMode] pairs describing the databases
   /// supported by this browser.
-  final List<(StorageMode, AccessMode)> availableImplementations;
+  final List<DatabaseImplementation> availableImplementations;
 
   FeatureDetectionResult({
     required this.missingFeatures,

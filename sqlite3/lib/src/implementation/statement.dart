@@ -397,7 +397,11 @@ class _ActiveCursorIterator extends IteratingCursor {
     }
 
     // We're at the end of the result set or encountered an exception here.
-    statement._currentCursor = null;
+    if (result != SqlError.SQLITE_BUSY) {
+      // Statements failing with SQLITE_BUSY can be retried in some instances,
+      // so we don't want to detach the cursor.
+      statement._currentCursor = null;
+    }
 
     if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
       throwException(

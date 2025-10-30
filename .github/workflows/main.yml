@@ -156,6 +156,33 @@ jobs:
         if-no-files-found: error
         retention-days: 1
 
+  integration_test_web:
+    needs: [analyze, fetch_sqlite]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: beta
+      - name: Download compiled sqlite3
+        uses: actions/download-artifact@v5
+        with:
+          artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
+          path: sqlite-compiled
+      - uses: actions/cache@v4
+        with:
+          path: "${{ env.PUB_CACHE }}"
+          key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
+          restore-keys: |
+            dart-dependencies-${{ matrix.dart }}-
+            dart-dependencies-
+
+      - name: Web tests
+        run: |
+          cp ../sqlite-compiled/*.wasm web/
+          dart pub get
+          dart test -P gh_actions -r expanded
+        working-directory: sqlite3_web
 
 # The integration tests for android are currently broken (the emulator doesn't want to
 # start up...)

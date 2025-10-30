@@ -1,7 +1,15 @@
 platforms: [vm, chrome, firefox]
 compilers: [dart2wasm, dart2js]
 
+tags:
+  webdriver:
+    # Sometimes spawning the driver times out, it's just easier to retry.
+    retry: 2
+
 override_platforms:
   firefox:
     settings:
       arguments: "-headless"
+
+presets:
+  gh_actions:

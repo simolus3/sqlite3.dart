@@ -28,7 +28,7 @@ And that is what this package can do for you:
 ## Getting started
 
 Note: While this package can be used by end applications, it is meant as a
-building block for database packages like `sqlite3_async` or `drift`. Using
+building block for database packages like `sqlite_async` or `drift`. Using
 these packages helps avoid some setup work.
 
 Workers are responsible for opening databases and exposing them through message
@@ -75,6 +75,36 @@ Future<void> connectToDatabase() async {
 }
 ```
 
+## Lock and transaction management
+
+This package provides the `select` and `execute` method returning:
+
+1. The `autocommit` state of the database after running the statement.
+2. The last insert rowid value.
+3. For `select`, results.
+
+Because each database typically only uses a single connection (likely hosted in a shared worker),
+implementing transactions requires multiple statements to run without interference from others.
+
+The `requestLock` API is a helpful building block for this. In its callback, no other tab will
+have access to the database:
+
+```dart
+await db.requestLock((lock) async {
+  await db.execute('BEGIN', token: lock);
+  await db.execute(
+    '... other statements',
+    token: lock,
+    checkInTransaction: true,
+  );
+  await db.execute('COMMIT', token: lock, checkInTransaction: true);
+});
+```
+
+Inside a lock context, the `LockToken` must be passed to `select` and `execute`.
+Additionally, the `checkInTransaction` flag can be used to verify that the database
+is not in autocommit mode before running a statement.
+
 ## Custom requests
 
 In some cases, it may be useful to re-use the worker communication scheme
@@ -86,3 +116,10 @@ open transactions can be implemented in the worker by overriding
 `handleCustomRequest` in `WorkerDatabase`. You can encode requests and
 responses as arbitrary values exchanged as `JSAny?`.
 On the client side, requests can be issued with `Database.customRequest`.
+
+## Testing this package
+
+This package uses both regular `dart test` tests and integration tests.
+All tests need a compatible `sqlite3.wasm` file in `web/`.
+
+Integration tests also require `geckodriver` and `chromedriver` to be installed.

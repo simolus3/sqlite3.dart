@@ -1,6 +1,13 @@
-## 0.4.0-dev
+## 0.5.0-dev
 
-- Use version 3.x of `package:sqlite3`.
+- Use version 3 of `package:sqlite3`.
+
+## 0.4.0
+
+- Remove `userVersion` and `setUserVersion`. Users should run the pragma statements manually.
+- Add `requestLock`, which can be used to make multiple database calls in a locked context.
+- Allow aborting requests.
+- Add support for a new Web FS (OPFS) access mode based on `readwrite-unsafe`.
 
 ## 0.3.2
 

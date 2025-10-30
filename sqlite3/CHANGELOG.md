@@ -7,6 +7,15 @@
     `sqlcipher_flutter_libs` when upgrading.
 - __Breaking change__: Parameters to `SqliteException`s are now named.
 
+## 2.9.4
+
+- `SimpleOpfsFileSystem`: Allow opening with `readwrite-unsafe`, which can be used to implement
+  multi-tab OPFS databases on Chrome with an outer locking scheme.
+
+## 2.9.3
+
+- Allow iterating over statements after `SQLITE_BUSY` errors.
+
 ## 2.9.2
 
 - Fix a bug introduced in version `2.9.1` where the SQLite framework provided by
