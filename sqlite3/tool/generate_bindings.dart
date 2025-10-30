@@ -169,10 +169,7 @@ const usedSqliteSymbols = {
   final library = ffigen.parse(
     Config(
       output: Uri.parse('unused'),
-      entryPoints: [
-        Uri.parse('assets/sqlite3.h'),
-        Uri.parse('assets/sqlite3_dart_wasm.h'),
-      ],
+      entryPoints: [Uri.parse('assets/sqlite3.h')],
       functionDecl: _includeSqlite3Only,
       globals: _includeSqlite3Only,
     ),

@@ -76,12 +76,10 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
           sources: [sourceFile],
           includes: [p.dirname(sourceFile)],
           defines: defines,
-          buildMode: BuildMode.debug,
-          optimizationLevel: OptimizationLevel.o1,
           flags: [
             if (input.config.code.targetOS == OS.linux) ...[
               // This avoids loading issues on Linux, see comment above.
-              '-Wl,-Bsymbolic-functions',
+              '-Wl,-Bsymbolic',
               // And since we already have a designated list of symbols to
               // export, we might as well strip the rest.
               // TODO: Port this to other targets too.
