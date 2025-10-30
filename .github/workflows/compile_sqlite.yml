@@ -123,7 +123,7 @@ jobs:
       - name: Upload sqlite3 binaries
         uses: actions/upload-artifact@v4
         with:
-          name: sqlite3-libs-${{ runner.os }}-${{ matrix.arch }}
+          name: sqlite3-libs-wasm
           path: sqlite3_wasm_build/out/
           if-no-files-found: error
           retention-days: 1
