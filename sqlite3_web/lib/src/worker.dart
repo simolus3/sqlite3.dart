@@ -657,7 +657,7 @@ final class WorkerRunner {
   Future<WasmSqlite3>? _sqlite3;
   Uri? _wasmUri;
 
-  final Lock _compatibilityCheckLock = Lock();
+  final Mutex _compatibilityCheck = Mutex();
   CompatibilityResult? _compatibilityResult;
 
   /// For shared workers, a dedicated inner worker allowing tabs to connect to
@@ -696,7 +696,7 @@ final class WorkerRunner {
   }
 
   Future<CompatibilityResult> checkCompatibility(CompatibilityCheck check) {
-    return _compatibilityCheckLock.synchronized(() async {
+    return _compatibilityCheck.withCriticalSection(() async {
       if (_compatibilityResult != null) {
         // todo: We may have to update information about existing databases
         // as they come and go

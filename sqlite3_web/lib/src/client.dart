@@ -8,6 +8,7 @@ import 'package:stream_channel/stream_channel.dart';
 import 'package:web/web.dart'
     hide Response, Request, FileSystem, Notification, Lock;
 
+import 'locks.dart';
 import 'types.dart';
 import 'channel.dart';
 import 'database.dart';
@@ -329,7 +330,7 @@ final class DatabaseClient implements WebSqlite {
   final DatabaseController _localController;
   final Future<JSAny?> Function(JSAny?) _handleCustomRequest;
 
-  final Lock _startWorkersLock = Lock();
+  final Mutex _startWorkers = Mutex();
   bool _startedWorkers = false;
   WorkerConnection? _connectionToDedicated;
   WorkerConnection? _connectionToShared;
@@ -347,7 +348,7 @@ final class DatabaseClient implements WebSqlite {
             });
 
   Future<void> startWorkers() {
-    return _startWorkersLock.synchronized(() async {
+    return _startWorkers.withCriticalSection(() async {
       if (_startedWorkers) {
         return;
       }
@@ -406,7 +407,7 @@ final class DatabaseClient implements WebSqlite {
   }
 
   Future<WorkerConnection> _connectToDedicatedInShared() {
-    return _startWorkersLock.synchronized(() async {
+    return _startWorkers.withCriticalSection(() async {
       if (_connectionToDedicatedInShared case final conn?) {
         return conn;
       }
@@ -421,7 +422,7 @@ final class DatabaseClient implements WebSqlite {
   }
 
   Future<WorkerConnection> _connectToLocal() async {
-    return _startWorkersLock.synchronized(() async {
+    return _startWorkers.withCriticalSection(() async {
       if (_connectionToLocal case final conn?) {
         return conn;
       }
