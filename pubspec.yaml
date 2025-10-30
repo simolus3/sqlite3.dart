@@ -8,3 +8,5 @@ workspace:
   - sqlite3
   - sqlite3_native_assets
   - sqlite3/example/custom_extension_native_assets
+  - sqlite3_web
+  - sqlite3_test
