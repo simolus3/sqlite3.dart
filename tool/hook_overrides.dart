@@ -6,6 +6,8 @@ import 'package:path/path.dart' as p;
 /// running in to customize how `package:sqlite3` loads `libsqlite3`.
 void main(List<String> args) async {
   for (final path in ['pubspec.yaml', 'examples/pubspec.yaml']) {
+    Process.runSync('git', ['restore', '--', path]);
+
     final out = await File(path).openWrite(mode: FileMode.append);
     final [mode] = args;
     switch (mode) {
@@ -26,6 +28,18 @@ hooks:
       source: test-sqlite3
       directory: $outPath/
 ''');
+      case 'compiled-ciphers':
+        final outPath = p.relative('sqlite-compiled', from: p.dirname(path));
+
+        out.write('''
+hooks:
+  user_defines:
+    sqlite3:
+      source: test-sqlite3mc
+      directory: $outPath/
+''');
+      default:
+        throw 'Unsupported mode, can use system, compiled, compiled-ciphers';
     }
 
     await out.flush();

@@ -99,6 +99,14 @@ void main() {
       [],
     );
   });
+
+  const ciphers = bool.fromEnvironment('sqlite3.multipleciphers');
+  if (ciphers) {
+    test('contains sqlite3multipleciphers', () {
+      final db = sqlite3.openInMemory()..closeWhenDone();
+      print(db.select('select sqlite3mc_config(?)', ['cipher']));
+    });
+  }
 }
 
 extension on Database {

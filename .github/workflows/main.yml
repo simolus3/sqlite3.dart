@@ -239,7 +239,7 @@ jobs:
           dart run tool/write_asset_hashes.dart
           dart run tool/hook_overrides.dart compiled
 
-      - name: Driver tests on macOS
+      - name: Flutter sqlite3 tests on macOS
         if: runner.os == 'macos'
         working-directory: examples/flutter_integration_tests
         run: |
@@ -247,8 +247,20 @@ jobs:
           flutter test integration_test
           flutter test integration_test -d macos
 
-      - name: Driver tests on Linux
+      - name: Flutter sqlite3 tests on Linux
         if: runner.os == 'linux'
         working-directory: examples/flutter_integration_tests
         run: |
           flutter test integration_test -d linux
+
+      - name: Enable sqlite3mc
+        run: |
+          dart run tool/hook_overrides.dart compiled-ciphers
+
+      - name: Flutter sqlite3mc tests on macOS
+        if: runner.os == 'macos'
+        working-directory: examples/flutter_integration_tests
+        run: |
+          flutter config --enable-swift-package-manager
+          flutter test integration_test -Dsqlite3.multipleciphers=true
+          flutter test integration_test -Dsqlite3.multipleciphers=true -d macos
