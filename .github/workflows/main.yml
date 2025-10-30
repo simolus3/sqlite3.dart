@@ -371,5 +371,5 @@ jobs:
         run: |
           curl https://simon-public.fsn1.your-objectstorage.com/assets/sqlite3/2.8.0/sqlite3.wasm -o web/sqlite3.wasm
           dart pub get
-          dart test -P web -r expanded
+          dart test -P gh_actions -r expanded
         working-directory: sqlite3_web
