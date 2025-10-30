@@ -350,3 +350,26 @@ jobs:
       - name: sqlcipher driver tests
         run: "flutter pub get && flutter test integration_test"
         working-directory: integration_tests/sqlcipher_flutter
+
+  integration_test_web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: beta
+
+      - uses: actions/cache@v4
+        with:
+          path: "${{ env.PUB_CACHE }}"
+          key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
+          restore-keys: |
+            dart-dependencies-${{ matrix.dart }}-
+            dart-dependencies-
+
+      - name: Web tests
+        run: |
+          curl https://simon-public.fsn1.your-objectstorage.com/assets/sqlite3/2.8.0/sqlite3.wasm -o web/sqlite3.wasm
+          dart pub get
+          dart test -P gh_actions -r expanded
+        working-directory: sqlite3_web

@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:sqlite3_web/src/types.dart';
 import 'package:test/test.dart';
 import 'package:webdriver/async_io.dart';
+import 'package:webdriver/support/async.dart';
 
 import '../tool/server.dart';
 
@@ -206,17 +207,23 @@ final class _TestConfiguration {
           expect(events.commits, 0);
           expect(events.rollbacks, 0);
           await driver.execute("INSERT INTO foo (bar) VALUES ('hello');");
-          events = await driver.countEvents();
-          expect(events.updates, 1);
-          expect(events.commits, 1);
+
+          await waitFor(() async {
+            events = await driver.countEvents();
+            expect(events.updates, 1);
+            expect(events.commits, 1);
+          });
 
           expect(await driver.assertFile(true), isPositive);
           await driver.flush();
 
           await driver.execute('begin');
           await driver.execute('rollback');
-          events = await driver.countEvents();
-          expect(events.rollbacks, 1);
+
+          await waitFor(() async {
+            final events = await driver.countEvents();
+            return events.rollbacks;
+          }, matcher: 1);
 
           if (implementation.storage != StorageMode.inMemory) {
             await driver.driver.refresh();

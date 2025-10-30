@@ -1,3 +1,6 @@
+@TestOn('browser')
+library;
+
 import 'dart:async';
 import 'dart:js_interop';
 

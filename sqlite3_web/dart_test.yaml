@@ -5,3 +5,6 @@ override_platforms:
   firefox:
     settings:
       arguments: "-headless"
+
+presets:
+  gh_actions:
