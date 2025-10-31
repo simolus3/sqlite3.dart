@@ -109,6 +109,9 @@ jobs:
       working-directory: sqlite3_test/
 
     - name: Test extension example
+      # We can't load extension with the system SQLite on Apple platforms,
+      # the feature is disabled.
+      if: ${{ !(runner.os == 'macos' && matrix.sqlite == 'system') }}
       run: dart test
       working-directory: sqlite3/example/custom_extension
 
