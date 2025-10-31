@@ -1,6 +1,6 @@
 name: sqlite3_web
 description: Utilities to simplify accessing sqlite3 on the web, with automated feature detection.
-version: 0.4.0
+version: 0.4.1
 homepage: https://github.com/simolus3/sqlite3.dart/tree/main/sqlite3_web
 repository: https://github.com/simolus3/sqlite3.dart
 resolution: workspace
@@ -9,7 +9,7 @@ environment:
   sdk: ^3.5.0
 
 dependencies:
-  meta: ^1.17.0
+  meta: ^1.11.0
   sqlite3: ^2.9.4
   stream_channel: ^2.1.2
   web: ^1.0.0

@@ -1,3 +1,7 @@
+## 0.4.1
+
+- Support older versions of `package:meta`.
+
 ## 0.4.0
 
 - Remove `userVersion` and `setUserVersion`. Users should run the pragma statements manually.
