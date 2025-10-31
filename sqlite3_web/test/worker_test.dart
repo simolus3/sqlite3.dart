@@ -42,7 +42,9 @@ void main() {
   }
 
   Future<RemoteDatabase> requestDatabase(
-      String name, DatabaseImplementation implementation) async {
+    String name,
+    DatabaseImplementation implementation,
+  ) async {
     final conn = await connectTo(localEnv);
     return await conn.requestDatabase(
       wasmUri: sqlite3WasmUri,
@@ -54,20 +56,26 @@ void main() {
   }
 
   test('can open database', () async {
-    final db =
-        await requestDatabase('foo', DatabaseImplementation.inMemoryShared);
+    final db = await requestDatabase(
+      'foo',
+      DatabaseImplementation.inMemoryShared,
+    );
 
     final results = await db.select('SELECT 1 as r;');
     expect(results.result, [
-      {'r': 1}
+      {'r': 1},
     ]);
   });
 
   test('can share database between clients', () async {
-    final a =
-        await requestDatabase('foo', DatabaseImplementation.inMemoryShared);
-    final b =
-        await requestDatabase('foo', DatabaseImplementation.inMemoryShared);
+    final a = await requestDatabase(
+      'foo',
+      DatabaseImplementation.inMemoryShared,
+    );
+    final b = await requestDatabase(
+      'foo',
+      DatabaseImplementation.inMemoryShared,
+    );
     await a.execute('CREATE TABLE foo (bar TEXT);');
     await b.execute('INSERT INTO foo DEFAULT VALUES');
     final results = await a.select('SELECT * FROM foo');
@@ -75,20 +83,26 @@ void main() {
   });
 
   test('releases resources for closed databases', () async {
-    final a =
-        await requestDatabase('foo', DatabaseImplementation.inMemoryShared);
+    final a = await requestDatabase(
+      'foo',
+      DatabaseImplementation.inMemoryShared,
+    );
     await a.execute('CREATE TABLE foo (bar TEXT);');
     await a.dispose();
 
-    final b =
-        await requestDatabase('foo', DatabaseImplementation.inMemoryShared);
+    final b = await requestDatabase(
+      'foo',
+      DatabaseImplementation.inMemoryShared,
+    );
     // This would fail if the in-memory database were reused.
     await b.execute('CREATE TABLE foo (bar TEXT);');
   });
 
   test('returns autocommit state', () async {
-    final a =
-        await requestDatabase('foo', DatabaseImplementation.inMemoryShared);
+    final a = await requestDatabase(
+      'foo',
+      DatabaseImplementation.inMemoryShared,
+    );
     var res = await a.execute('BEGIN');
     expect(res.autocommit, isFalse);
 
@@ -97,18 +111,24 @@ void main() {
   });
 
   test('returns last insert rowid', () async {
-    final a =
-        await requestDatabase('foo', DatabaseImplementation.inMemoryShared);
+    final a = await requestDatabase(
+      'foo',
+      DatabaseImplementation.inMemoryShared,
+    );
     await a.execute('CREATE TABLE foo (bar TEXT);');
 
-    final insert = await a
-        .execute('INSERT INTO foo (bar) VALUES (?)', parameters: ['test']);
+    final insert = await a.execute(
+      'INSERT INTO foo (bar) VALUES (?)',
+      parameters: ['test'],
+    );
     expect(insert.lastInsertRowid, 1);
   });
 
   test('check in transaction', () async {
-    final a =
-        await requestDatabase('foo', DatabaseImplementation.inMemoryShared);
+    final a = await requestDatabase(
+      'foo',
+      DatabaseImplementation.inMemoryShared,
+    );
     await a.execute('CREATE TABLE foo (bar TEXT);');
 
     await a.execute('BEGIN');
@@ -119,8 +139,10 @@ void main() {
     );
     await a.execute('COMMIT');
 
-    await expectLater(a.execute('SELECT 1', checkInTransaction: true),
-        throwsA(isA<RemoteException>()));
+    await expectLater(
+      a.execute('SELECT 1', checkInTransaction: true),
+      throwsA(isA<RemoteException>()),
+    );
   });
 
   group('locks', () {
@@ -162,7 +184,8 @@ void main() {
       await a.requestLock((token) async {
         // The token needs to be passed for statements to work.
         queryResult.complete(
-            a.select('SELECT 1').whenComplete(() => hasResults = true));
+          a.select('SELECT 1').whenComplete(() => hasResults = true),
+        );
         expect(hasResults, isFalse);
         await pumpEventQueue();
         expect(hasResults, isFalse);
@@ -263,13 +286,19 @@ void main() {
 final class _TestController extends DatabaseController {
   @override
   Future<JSAny?> handleCustomRequest(
-      ClientConnection connection, JSAny? request) {
+    ClientConnection connection,
+    JSAny? request,
+  ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<WorkerDatabase> openDatabase(WasmSqlite3 sqlite3, String path,
-      String vfs, JSAny? additionalData) async {
+  Future<WorkerDatabase> openDatabase(
+    WasmSqlite3 sqlite3,
+    String path,
+    String vfs,
+    JSAny? additionalData,
+  ) async {
     return _TestDatabase(sqlite3.open(path, vfs: vfs));
   }
 }
@@ -282,7 +311,9 @@ final class _TestDatabase extends WorkerDatabase {
 
   @override
   Future<JSAny?> handleCustomRequest(
-      ClientConnection connection, JSAny? request) {
+    ClientConnection connection,
+    JSAny? request,
+  ) {
     throw UnimplementedError();
   }
 }

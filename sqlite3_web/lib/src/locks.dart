@@ -85,10 +85,14 @@ final class DatabaseLocks {
   }
 
   Future<T> lock<T>(
-      FutureOr<T> Function() criticalSection, AbortSignal? abortSignal) async {
+    FutureOr<T> Function() criticalSection,
+    AbortSignal? abortSignal,
+  ) async {
     if (needsInterContextLocks) {
-      final held =
-          await WebLocks.instance!.request(lockName, abortSignal: abortSignal);
+      final held = await WebLocks.instance!.request(
+        lockName,
+        abortSignal: abortSignal,
+      );
       return Future(criticalSection).whenComplete(held.release);
     }
 
@@ -134,19 +138,20 @@ final class Mutex {
       }
 
       late StreamSubscription<void> abortSubscription;
-      abortSubscription =
-          EventStreamProviders.abortEvent.forTarget(abort).listen((_) {
-        abortSubscription.cancel();
+      abortSubscription = EventStreamProviders.abortEvent
+          .forTarget(abort)
+          .listen((_) {
+            abortSubscription.cancel();
 
-        if (!completer.isCompleted) {
-          final didRemove = _waiting.remove(complete);
+            if (!completer.isCompleted) {
+              final didRemove = _waiting.remove(complete);
 
-          // The only way for waiters to get removed is for [complete] to get
-          // called, so we wouldn't enter this branch.
-          assert(didRemove);
-          completer.completeError(const AbortException());
-        }
-      });
+              // The only way for waiters to get removed is for [complete] to get
+              // called, so we wouldn't enter this branch.
+              assert(didRemove);
+              completer.completeError(const AbortException());
+            }
+          });
 
       _waiting.addLast(complete);
       return completer.future.whenComplete(markCompleted);

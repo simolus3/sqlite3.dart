@@ -22,7 +22,9 @@ Middleware cors() {
   }
 
   return createMiddleware(
-      requestHandler: handleOptionsRequest, responseHandler: addCorsHeaders);
+    requestHandler: handleOptionsRequest,
+    responseHandler: addCorsHeaders,
+  );
 }
 
 Future<void> hybridMain(StreamChannel<Object?> channel) async {
