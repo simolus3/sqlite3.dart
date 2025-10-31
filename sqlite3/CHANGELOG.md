@@ -6,8 +6,6 @@
   - You should drop your dependencies on `sqlite3_flutter_libs` and
     `sqlcipher_flutter_libs` when upgrading.
 - __Breaking change__: Parameters to `SqliteException`s are now named.
-- Use native finalizers to clear statements, parameters and sessions. This makes
-  closing databases after e.g. a reload much more efficient.
 
 ## 2.9.4
 

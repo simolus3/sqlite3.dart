@@ -70,28 +70,19 @@ base class Sqlite3Implementation implements CommonSqlite3 {
 
     final result = bindings.sqlite3_open_v2(filename, flags, vfs);
     if (result.resultCode != SqlError.SQLITE_OK) {
-      if (result.result case final db?) {
-        // Even with an opening error, we usually still get a database (the only
-        // exception is if SQLite can't allocate the db structure).
-        final exception = createExceptionRaw(
-          bindings,
-          db,
-          result.resultCode,
-          operation: 'opening the database',
-        );
-        // Close the database after creating the exception, which needs to read
-        // the extended error from the database.
-        db.sqlite3_close_v2();
-        throw exception;
-      } else {
-        throw SqliteException(
-          extendedResultCode: result.resultCode,
-          message: 'Could not open database',
-        );
-      }
+      final exception = createExceptionRaw(
+        bindings,
+        result.result,
+        result.resultCode,
+        operation: 'opening the database',
+      );
+      // Close the database after creating the exception, which needs to read
+      // the extended error from the database.
+      result.result.sqlite3_close_v2();
+      throw exception;
     }
 
-    return wrapDatabase(result.result!..sqlite3_extended_result_codes(1));
+    return wrapDatabase(result.result..sqlite3_extended_result_codes(1));
   }
 
   @override

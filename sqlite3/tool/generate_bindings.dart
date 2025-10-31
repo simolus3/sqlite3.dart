@@ -46,8 +46,6 @@ DeclarationFilters _includeSqlite3Only = DeclarationFilters(
   shouldInclude: (d) => d.isSqlite3Symbol,
   shouldIncludeSymbolAddress: (decl) {
     return switch (decl.originalName) {
-      'sqlite3_close_v2' => true,
-      'sqlite3_finalize' => true,
       'sqlite3changeset_finalize' => true,
       'sqlite3session_delete' => true,
       'sqlite3_free' => true,

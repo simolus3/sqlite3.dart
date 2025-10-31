@@ -19,6 +19,8 @@ For native platforms, the basic sketch for using this library is to:
    open a temporary in-memory database.
 3. Use `Database.execute` or `Database.prepare` to execute statements directly
    or by preparing them first.
+4. Don't forget to close prepared statements or the database with `dispose()`
+   once you no longer need them.
 
 For a more complete example on how to use this library, see the [example](https://pub.dev/packages/sqlite3/example).
 
