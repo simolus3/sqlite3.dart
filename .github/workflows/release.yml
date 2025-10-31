@@ -33,9 +33,9 @@ jobs:
         # because caches from non-default branches aren't visible to runs on tags.
         # On windows, the sqlite3 build is not reproducible. So to avoid a hash mismatch, we temporarily use artifacts
         # built for a test run for releases as well.
-        artifact-ids: "4333315590"
+        artifact-ids: "4427181234"
         repository: simolus3/sqlite3.dart
-        run-id: "18697403389"
+        run-id: "18966728824"
         github-token: ${{ github.token }}
         path: sqlite-compiled
     - name: Set tag name
