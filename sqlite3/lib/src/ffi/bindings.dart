@@ -34,6 +34,8 @@ final supportsPrepareV3 = sqlite3_libversion_number() >= _firstVersionForV3;
 final supportsErrorOffset =
     sqlite3_libversion_number() >= _firstVersionForErrorOffset;
 
+final databaseFinalizer = NativeFinalizer(addresses.sqlite3_close_v2.cast());
+final statementFinalizer = NativeFinalizer(addresses.sqlite3_finalize.cast());
 final sessionDeleteFinalizer = NativeFinalizer(
   addresses.sqlite3session_delete.cast(),
 );
@@ -208,7 +210,7 @@ final class FfiBindings implements RawSqliteBindings {
   }
 
   @override
-  SqliteResult<RawSqliteDatabase> sqlite3_open_v2(
+  SqliteResult<RawSqliteDatabase?> sqlite3_open_v2(
     String name,
     int flags,
     String? zVfs,
@@ -225,7 +227,10 @@ final class FfiBindings implements RawSqliteBindings {
       flags,
       vfsPtr,
     );
-    final result = SqliteResult(resultCode, FfiDatabase(outDb.value));
+    final result = (
+      resultCode: resultCode,
+      result: outDb.isNullPointer ? null : FfiDatabase(outDb.value),
+    );
 
     namePtr.free();
     outDb.free();
@@ -740,7 +745,10 @@ final class FfiChangesetIterator implements RawChangesetIterator, Finalizable {
     final value = outValue.value;
     outValue.free();
 
-    return SqliteResult(result, value.isNullPointer ? null : FfiValue(value));
+    return (
+      resultCode: result,
+      result: value.isNullPointer ? null : FfiValue(value),
+    );
   }
 
   @override
@@ -759,7 +767,10 @@ final class FfiChangesetIterator implements RawChangesetIterator, Finalizable {
     final value = outValue.value;
     outValue.free();
 
-    return SqliteResult(result, value.isNullPointer ? null : FfiValue(value));
+    return (
+      resultCode: result,
+      result: value.isNullPointer ? null : FfiValue(value),
+    );
   }
 
   @override
@@ -800,17 +811,21 @@ final class FfiChangesetIterator implements RawChangesetIterator, Finalizable {
   }
 }
 
-final class FfiDatabase implements RawSqliteDatabase {
+final class FfiDatabase implements RawSqliteDatabase, Finalizable {
   final Pointer<sqlite3> db;
+  final Object detachToken = Object();
 
   NativeCallable<_UpdateHook>? _installedUpdateHook;
   NativeCallable<_CommitHook>? _installedCommitHook;
   NativeCallable<_RollbackHook>? _installedRollbackHook;
 
-  FfiDatabase(this.db);
+  FfiDatabase(this.db) {
+    databaseFinalizer.attach(this, db.cast(), detach: detachToken);
+  }
 
   @override
   int sqlite3_close_v2() {
+    databaseFinalizer.detach(detachToken);
     return libsqlite3.sqlite3_close_v2(db);
   }
 
@@ -1085,16 +1100,19 @@ final class FfiStatementCompiler implements RawStatementCompiler {
     final stmt = stmtOut.value;
     final libraryStatement = stmt.isNullPointer ? null : FfiStatement(stmt);
 
-    return SqliteResult(result, libraryStatement);
+    return (resultCode: result, result: libraryStatement);
   }
 }
 
-final class FfiStatement implements RawSqliteStatement {
+final class FfiStatement implements RawSqliteStatement, Finalizable {
   final Pointer<sqlite3_stmt> stmt;
+  final Object detachToken = Object();
 
   final List<Pointer> _allocatedArguments = [];
 
-  FfiStatement(this.stmt);
+  FfiStatement(this.stmt) {
+    statementFinalizer.attach(this, stmt.cast(), detach: detachToken);
+  }
 
   @visibleForTesting
   List<Pointer> get allocatedArguments => _allocatedArguments;
@@ -1238,6 +1256,7 @@ final class FfiStatement implements RawSqliteStatement {
 
   @override
   void sqlite3_finalize() {
+    statementFinalizer.detach(detachToken);
     libsqlite3.sqlite3_finalize(stmt);
   }
 

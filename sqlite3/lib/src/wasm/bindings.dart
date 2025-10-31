@@ -56,7 +56,7 @@ final class WasmSqliteBindings implements RawSqliteBindings {
   }
 
   @override
-  SqliteResult<RawSqliteDatabase> sqlite3_open_v2(
+  SqliteResult<RawSqliteDatabase?> sqlite3_open_v2(
     String name,
     int flags,
     String? zVfs,
@@ -74,7 +74,10 @@ final class WasmSqliteBindings implements RawSqliteBindings {
       ..free(vfsPtr);
     if (zVfs != null) bindings.free(vfsPtr);
 
-    return SqliteResult(result, WasmDatabase(bindings, dbPtr));
+    return (
+      resultCode: result,
+      result: dbPtr != 0 ? WasmDatabase(bindings, dbPtr) : null,
+    );
   }
 
   @override
@@ -443,7 +446,7 @@ final class WasmStatementCompiler implements RawStatementCompiler {
     final stmt = database.bindings.memory.int32ValueOfPointer(stmtOut);
     final libraryStatement = stmt == 0 ? null : WasmStatement(database, stmt);
 
-    return SqliteResult(result, libraryStatement);
+    return (resultCode: result, result: libraryStatement);
   }
 }
 
@@ -921,9 +924,9 @@ final class WasmChangesetIterator implements RawChangesetIterator {
     final value = _bindings.memory.int32ValueOfPointer(outValue);
     _bindings.free(outValue);
 
-    return SqliteResult(
-      resultCode,
-      value != 0 ? WasmValue(_bindings, value) : null,
+    return (
+      resultCode: resultCode,
+      result: value != 0 ? WasmValue(_bindings, value) : null,
     );
   }
 

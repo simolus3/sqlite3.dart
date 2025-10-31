@@ -116,7 +116,7 @@ abstract interface class RawSqliteBindings {
 
   String? sqlite3_temp_directory;
 
-  SqliteResult<RawSqliteDatabase> sqlite3_open_v2(
+  SqliteResult<RawSqliteDatabase?> sqlite3_open_v2(
     String name,
     int flags,
     String? zVfs,
@@ -166,15 +166,9 @@ abstract interface class RawSqliteSession {
 }
 
 /// Combines a sqlite result code and the result object.
-final class SqliteResult<T> {
-  final int resultCode;
-
-  /// The result of the operation, which is assumed to be valid if [resultCode]
-  /// is zero.
-  final T result;
-
-  SqliteResult(this.resultCode, this.result);
-}
+///
+/// The result is only assumed to be valid if the result code is zero.
+typedef SqliteResult<T> = ({T result, int resultCode});
 
 typedef RawXFunc = void Function(RawSqliteContext, List<RawSqliteValue>);
 typedef RawXStep = void Function(RawSqliteContext, List<RawSqliteValue>);

@@ -866,6 +866,10 @@ class _SymbolAddresses {
   const _SymbolAddresses();
   ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
   get sqlite3_free => ffi.Native.addressOf(self.sqlite3_free);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3>)>>
+  get sqlite3_close_v2 => ffi.Native.addressOf(self.sqlite3_close_v2);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>>
+  get sqlite3_finalize => ffi.Native.addressOf(self.sqlite3_finalize);
   ffi.Pointer<
     ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_session>)>
   >
