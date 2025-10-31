@@ -12,3 +12,6 @@ dependencies:
   hooks: ^0.20.1
   http: ^1.5.0
   tar: ^2.0.0
+
+dev_dependencies:
+  test: ^1.26.0

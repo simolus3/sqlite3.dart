@@ -13,7 +13,6 @@ jobs:
   analyze:
     strategy:
       matrix:
-        package: [sqlite3, sqlite3_test]
         dart: [beta]
 
     name: Analyze ${{ matrix.package }}
@@ -33,25 +32,23 @@ jobs:
 
     - name: Pub get
       run: dart pub get
-      working-directory: ${{ matrix.package }}
 
     - name: Format dart
-      run: dart format --set-exit-if-changed .
-      working-directory: ${{ matrix.package }}
+      run: |
+        dart format --set-exit-if-changed sqlite3
+        dart format --set-exit-if-changed sqlite3_test
+        dart format --set-exit-if-changed sqlite3_web
 
     - name: Format native
       run: clang-format --Werror --dry-run --style=google assets/*.h test/**/*.c
-      if: ${{ matrix.package == 'sqlite3' }}
       working-directory: sqlite3
 
     - name: Format native
       run: clang-format --Werror --dry-run --style=google src/*{.h,.c}
-      if: ${{ matrix.package == 'sqlite3' }}
       working-directory: sqlite3_wasm_build
 
     - name: Analyze
-      run: dart analyze --fatal-infos lib/ test/
-      working-directory: ${{ matrix.package }}
+      run: dart analyze --fatal-infos sqlite3 sqlite3_web sqlite3_test
 
   test:
     needs: [analyze, fetch_sqlite]
@@ -108,10 +105,12 @@ jobs:
     #   working-directory: sqlite3/
 
     - name: Test sqlite3_test package
-      if: matrix.sqlite != 'system' || runner.os != 'Windows'
-      run: |
-        dart test
+      run: dart test
       working-directory: sqlite3_test/
+
+    - name: Test extension example
+      run: dart test
+      working-directory: sqlite3/example/custom_extension
 
     - name: Web tests
       run: |
