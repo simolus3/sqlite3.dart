@@ -1,4 +1,4 @@
-## 0.5.0-dev
+## 0.5.0-beta.0
 
 - Use version 3 of `package:sqlite3`.
 

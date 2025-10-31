@@ -1,4 +1,4 @@
-## 3.0.0-beta.0
+## 3.0.0-beta.1
 
 - __Breaking change__: Use [build hooks](https://dart.dev/tools/hooks) to load
   SQLite instead of `DynamicLibrary`.

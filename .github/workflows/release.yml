@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'sqlite3-[0-9]+.[0-9]+.[0-9]+*'
+      - 'sqlite3_test-[0-9]+.[0-9]+.[0-9]+*'
+      - 'sqlite3_web-[0-9]+.[0-9]+.[0-9]+*'
 
 jobs:
   #fetch_sqlite:
@@ -37,6 +39,7 @@ jobs:
         github-token: ${{ github.token }}
         path: sqlite-compiled
     - name: Set tag name
+      if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
       id: tag
       run: |
         tag=$(basename "${{ github.ref }}")
@@ -48,6 +51,7 @@ jobs:
       run: ls -al sqlite-compiled
 
     - name: Create Release
+      if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
@@ -58,11 +62,32 @@ jobs:
 
         gh release upload "$tag" sqlite-compiled/*
 
-  publish:
+  publish_sqlite3:
     needs: [prepare_release]
     permissions:
       id-token: write
+    if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
     uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
     with:
       environment: 'pub.dev'
       working-directory: sqlite3/
+
+  publish_sqlite3_test:
+    needs: [prepare_release]
+    permissions:
+      id-token: write
+    if: "${{ startsWith(github.ref_name, 'sqlite3_test-') }}"
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      environment: 'pub.dev'
+      working-directory: sqlite3_test/
+
+  publish_sqlite3_web:
+    needs: [prepare_release]
+    permissions:
+      id-token: write
+    if: "${{ startsWith(github.ref_name, 'sqlite3_web-') }}"
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      environment: 'pub.dev'
+      working-directory: sqlite3_web/
