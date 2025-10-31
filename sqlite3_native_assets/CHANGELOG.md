@@ -1,3 +1,7 @@
+## 0.0.11
+
+- Android: Link `-lm`.
+
 ## 0.0.10
 
 - Support latest versions of the `hooks` and `code_assets` packages.
