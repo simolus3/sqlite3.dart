@@ -41,7 +41,7 @@ void main(List<String> args) {
       final current = reader.current;
       if (current.name == fileName) {
         final targetFilePath = input.outputDirectory.resolve(fileName);
-        final targetFile = File(targetFilePath.path);
+        final targetFile = File(targetFilePath.toFilePath());
         await current.contents.pipe(targetFile.openWrite());
 
         output.assets.code.add(
