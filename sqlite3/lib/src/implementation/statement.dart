@@ -4,47 +4,22 @@ import '../statement.dart';
 import 'bindings.dart';
 import 'database.dart';
 import 'exception.dart';
-import 'finalizer.dart';
 import 'utils.dart';
 
-final class FinalizableStatement extends FinalizablePart {
-  final RawSqliteStatement statement;
-
-  bool _inResetState = true;
-  bool _closed = false;
-
-  FinalizableStatement(this.statement);
-
-  @override
-  void dispose() {
-    if (!_closed) {
-      _closed = true;
-      _reset();
-      statement.sqlite3_finalize();
-    }
-  }
-
-  void _reset() {
-    if (!_inResetState) {
-      statement.sqlite3_reset();
-      _inResetState = true;
-    }
-  }
-}
-
 base class StatementImplementation extends CommonPreparedStatement {
+  // Note: Implementations of this have platform-specific finalizers on them.
   final RawSqliteStatement statement;
   final DatabaseImplementation database;
-  final FinalizableStatement finalizable;
 
   @override
   final String sql;
   List<Object?>? _latestArguments;
+  bool _inResetState = true;
+  bool _closed = false;
 
   _ActiveCursorIterator? _currentCursor;
 
-  StatementImplementation(this.sql, this.database, this.statement)
-    : finalizable = FinalizableStatement(statement);
+  StatementImplementation(this.sql, this.database, this.statement);
 
   List<String> get _columnNames {
     final columnCount = statement.sqlite3_column_count();
@@ -64,7 +39,7 @@ base class StatementImplementation extends CommonPreparedStatement {
   }
 
   void _ensureNotFinalized() {
-    if (finalizable._closed) {
+    if (_closed || database.isClosed) {
       throw StateError('Tried to operate on a released prepared statement');
     }
   }
@@ -87,7 +62,7 @@ base class StatementImplementation extends CommonPreparedStatement {
   void _execute() {
     int result;
 
-    finalizable._inResetState = false;
+    _inResetState = false;
     // Users should be able to execute statements returning rows, so we should
     // call _step() to skip past rows.
     do {
@@ -107,7 +82,7 @@ base class StatementImplementation extends CommonPreparedStatement {
 
   ResultSet _selectResults() {
     final rows = <List<Object?>>[];
-    finalizable._inResetState = false;
+    _inResetState = false;
 
     int columnCount = -1;
 
@@ -275,17 +250,20 @@ base class StatementImplementation extends CommonPreparedStatement {
 
   @override
   void reset() {
-    finalizable._reset();
+    if (!_inResetState) {
+      statement.sqlite3_reset();
+      _inResetState = true;
+    }
+
     _currentCursor = null;
   }
 
   @override
   void dispose() {
-    if (!finalizable._closed) {
-      disposeFinalizer.detach(this);
-      finalizable.dispose();
-
-      database.handleFinalized(this);
+    if (!_closed) {
+      _closed = true;
+      reset();
+      statement.sqlite3_finalize();
     }
   }
 
@@ -356,12 +334,12 @@ class _ActiveCursorIterator extends IteratingCursor {
 
   _ActiveCursorIterator(this.statement)
     : super(statement._columnNames, statement._tableNames) {
-    statement.finalizable._inResetState = false;
+    statement._inResetState = false;
   }
 
   @override
   bool moveNext() {
-    if (statement.finalizable._closed || statement._currentCursor != this) {
+    if (statement._closed || statement._currentCursor != this) {
       return false;
     }
 

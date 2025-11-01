@@ -13,62 +13,20 @@ import '../result_set.dart';
 import '../statement.dart';
 import 'bindings.dart';
 import 'exception.dart';
-import 'finalizer.dart';
 import 'statement.dart';
 import 'utils.dart';
 
-/// Contains the state of a database needed for finalization.
-///
-/// This is extracted into separate object so that it can be used as a
-/// finalization token. It will get disposed when the main database is no longer
-/// reachable without being closed.
-final class FinalizableDatabase extends FinalizablePart {
-  final RawSqliteBindings bindings;
-  final RawSqliteDatabase database;
-
-  final List<FinalizableStatement> _statements = [];
-  final List<void Function()> dartCleanup = [];
-
-  FinalizableDatabase(this.bindings, this.database);
-
-  @override
-  void dispose() {
-    for (final stmt in _statements) {
-      stmt.dispose();
-    }
-
-    for (final cleanup in dartCleanup.toList()) {
-      cleanup();
-    }
-
-    final code = database.sqlite3_close_v2();
-    SqliteException? exception;
-    if (code != SqlError.SQLITE_OK) {
-      exception = createExceptionRaw(
-        bindings,
-        database,
-        code,
-        operation: 'closing database',
-      );
-    }
-
-    if (exception != null) {
-      throw exception;
-    }
-  }
-}
-
 base class DatabaseImplementation implements CommonDatabase {
   final RawSqliteBindings bindings;
+  // Note: Implementations of this have platform-specific finalizers on them.
   final RawSqliteDatabase database;
-
-  final FinalizableDatabase finalizable;
 
   _StreamHandlers<SqliteUpdate, void Function()>? _updates;
   _StreamHandlers<void, void Function()>? _rollbacks;
   _StreamHandlers<void, VoidPredicate>? _commits;
 
-  var _isClosed = false;
+  @internal
+  var isClosed = false;
 
   @override
   DatabaseConfig get config => DatabaseConfigImplementation(this);
@@ -91,24 +49,15 @@ base class DatabaseImplementation implements CommonDatabase {
     execute('PRAGMA user_version = $value;');
   }
 
-  DatabaseImplementation(this.bindings, this.database)
-    : finalizable = FinalizableDatabase(bindings, database) {
-    disposeFinalizer.attach(this, finalizable, detach: this);
-  }
+  DatabaseImplementation(this.bindings, this.database);
 
   @visibleForOverriding
   StatementImplementation wrapStatement(String sql, RawSqliteStatement stmt) {
     return StatementImplementation(sql, this, stmt);
   }
 
-  void handleFinalized(StatementImplementation stmt) {
-    if (!_isClosed) {
-      finalizable._statements.remove(stmt.finalizable);
-    }
-  }
-
   void _ensureOpen() {
-    if (_isClosed) {
+    if (isClosed) {
       throw StateError('This database has already been closed');
     }
   }
@@ -289,10 +238,9 @@ base class DatabaseImplementation implements CommonDatabase {
 
   @override
   void dispose() {
-    if (_isClosed) return;
+    if (isClosed) return;
 
-    disposeFinalizer.detach(this);
-    _isClosed = true;
+    isClosed = true;
 
     _updates?.close();
     _commits?.close();
@@ -302,7 +250,20 @@ base class DatabaseImplementation implements CommonDatabase {
     database.sqlite3_commit_hook(null);
     database.sqlite3_rollback_hook(null);
 
-    finalizable.dispose();
+    final code = database.sqlite3_close_v2();
+    SqliteException? exception;
+    if (code != SqlError.SQLITE_OK) {
+      exception = createExceptionRaw(
+        bindings,
+        database,
+        code,
+        operation: 'closing database',
+      );
+    }
+
+    if (exception != null) {
+      throw exception;
+    }
   }
 
   @override
@@ -447,11 +408,6 @@ base class DatabaseImplementation implements CommonDatabase {
     }
 
     compiler.close();
-
-    for (final created in createdStatements) {
-      finalizable._statements.add(created.finalizable);
-    }
-
     return createdStatements;
   }
 
@@ -661,7 +617,7 @@ final class _StreamHandlers<T, SyncCallback> {
 
   Stream<T> _generateStream(bool dispatchSynchronously) {
     return Stream.multi((newListener) {
-      if (_database._isClosed) {
+      if (_database.isClosed) {
         newListener.close();
         return;
       }
@@ -713,7 +669,7 @@ final class _StreamHandlers<T, SyncCallback> {
   void _removeAsyncListener(MultiStreamController<T> listener, bool sync) {
     _asyncListeners.remove((controller: listener, sync: sync));
 
-    if (!hasListener && !_database._isClosed) {
+    if (!hasListener && !_database.isClosed) {
       _unregister();
     }
   }

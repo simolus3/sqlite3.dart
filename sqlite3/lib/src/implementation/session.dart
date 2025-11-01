@@ -10,14 +10,12 @@ import 'utils.dart';
 
 final class SessionImplementation implements Session {
   final RawSqliteBindings bindings;
+  // Note: Implementations of this have platform-specific finalizers on them.
   final RawSqliteSession session;
-  final FinalizableDatabase database;
 
   bool _deleted = false;
 
-  SessionImplementation(this.bindings, this.session, this.database) {
-    database.dartCleanup.add(delete);
-  }
+  SessionImplementation(this.bindings, this.session);
 
   static SessionImplementation createSession(
     DatabaseImplementation db,
@@ -25,7 +23,7 @@ final class SessionImplementation implements Session {
   ) {
     final bindings = db.bindings;
     final result = bindings.sqlite3session_create(db.database, name);
-    return SessionImplementation(bindings, result, db.finalizable);
+    return SessionImplementation(bindings, result);
   }
 
   void _checkNotDeleted() {
@@ -53,7 +51,6 @@ final class SessionImplementation implements Session {
     if (!_deleted) {
       _deleted = true;
       session.sqlite3session_delete();
-      database.dartCleanup.remove(delete);
     }
   }
 
