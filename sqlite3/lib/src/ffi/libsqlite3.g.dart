@@ -250,7 +250,7 @@ external ffi.Pointer<sqlite3_char> sqlite3_column_table_name(
     ffi.Int,
     ffi.Pointer<ffi.Void>,
     ffi.Uint64,
-    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>,
   )
 >()
 external int sqlite3_bind_blob64(
@@ -258,7 +258,8 @@ external int sqlite3_bind_blob64(
   int index,
   ffi.Pointer<ffi.Void> data,
   int length,
-  ffi.Pointer<ffi.Void> destructor,
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
+  destructor,
 );
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_stmt>, ffi.Int, ffi.Double)>()
@@ -284,7 +285,7 @@ external int sqlite3_bind_null(ffi.Pointer<sqlite3_stmt> pStmt, int index);
     ffi.Int,
     ffi.Pointer<sqlite3_char>,
     ffi.Int,
-    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>,
   )
 >()
 external int sqlite3_bind_text(
@@ -292,7 +293,8 @@ external int sqlite3_bind_text(
   int index,
   ffi.Pointer<sqlite3_char> data,
   int length,
-  ffi.Pointer<ffi.Void> destructor,
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
+  destructor,
 );
 
 @ffi.Native<

@@ -83,7 +83,7 @@ extension type SqliteExports(JSObject raw) implements JSObject {
     int index,
     Pointer /*<void *>*/ data,
     JSBigInt length,
-    Pointer /*<void *>*/ destructor,
+    Pointer /*<void  (*)(void * )*>*/ destructor,
   );
   external int sqlite3_bind_double(
     Pointer /*<struct sqlite3_stmt *>*/ pStmt,
@@ -104,7 +104,7 @@ extension type SqliteExports(JSObject raw) implements JSObject {
     int index,
     Pointer /*<struct sqlite3_char *>*/ data,
     int length,
-    Pointer /*<void *>*/ destructor,
+    Pointer /*<void  (*)(void * )*>*/ destructor,
   );
   external Pointer /*<void *>*/ sqlite3_column_blob(
     Pointer /*<struct sqlite3_stmt *>*/ pStmt,

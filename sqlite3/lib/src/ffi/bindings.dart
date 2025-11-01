@@ -6,7 +6,6 @@ import 'dart:ffi';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart' as ffi;
-import 'package:meta/meta.dart';
 
 import '../constants.dart';
 import '../exception.dart';
@@ -1131,34 +1130,23 @@ final class FfiStatement implements RawSqliteStatement, Finalizable {
   final Pointer<sqlite3_stmt> stmt;
   final Object _detachToken = Object();
 
-  final List<Pointer> _allocatedArguments = [];
-
   FfiStatement(this.stmt) {
     statementFinalizer.attach(this, stmt.cast(), detach: _detachToken);
   }
 
-  @visibleForTesting
-  List<Pointer> get allocatedArguments => _allocatedArguments;
-
   @override
-  void deallocateArguments() {
-    for (final arg in _allocatedArguments) {
-      arg.free();
-    }
-    _allocatedArguments.clear();
-  }
+  void deallocateArguments() {}
 
   @override
   int sqlite3_bind_blob64(int index, List<int> value) {
     final ptr = allocateBytes(value);
-    _allocatedArguments.add(ptr);
 
     return libsqlite3.sqlite3_bind_blob64(
       stmt,
       index,
       ptr.cast(),
       value.length,
-      nullPtr(),
+      allocate.nativeFree,
     );
   }
 
@@ -1211,14 +1199,13 @@ final class FfiStatement implements RawSqliteStatement, Finalizable {
   int sqlite3_bind_text(int index, String value) {
     final bytes = utf8.encode(value);
     final ptr = allocateBytes(bytes);
-    _allocatedArguments.add(ptr);
 
     return libsqlite3.sqlite3_bind_text(
       stmt,
       index,
       ptr.cast(),
       bytes.length,
-      nullPtr(),
+      allocate.nativeFree,
     );
   }
 

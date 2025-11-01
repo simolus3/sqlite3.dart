@@ -68,12 +68,12 @@ sqlite3_char *sqlite3_column_name(sqlite3_stmt *pStmt, int N);
 sqlite3_char *sqlite3_column_table_name(sqlite3_stmt *pStmt, int N);
 
 int sqlite3_bind_blob64(sqlite3_stmt *pStmt, int index, void *data,
-                        uint64_t length, void *destructor);
+                        uint64_t length, void(*destructor)(void*));
 int sqlite3_bind_double(sqlite3_stmt *pStmt, int index, double data);
 int sqlite3_bind_int64(sqlite3_stmt *pStmt, int index, int64_t data);
 int sqlite3_bind_null(sqlite3_stmt *pStmt, int index);
 int sqlite3_bind_text(sqlite3_stmt *pStmt, int index, sqlite3_char *data,
-                      int length, void *destructor);
+                      int length, void(*destructor)(void*));
 
 void *sqlite3_column_blob(sqlite3_stmt *pStmt, int iCol);
 double sqlite3_column_double(sqlite3_stmt *pStmt, int iCol);
