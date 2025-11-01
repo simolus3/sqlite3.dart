@@ -152,7 +152,7 @@ void testSession(FutureOr<CommonSqlite3> Function() loadSqlite) {
 
     session = Session(database)..diff('another', 'entries');
     final changeset = session.changeset();
-    expect(changeset, [
+    expect(changeset.toList(), [
       isOp(
         operation: SqliteUpdateKind.update,
         oldValues: [1, 'b'],

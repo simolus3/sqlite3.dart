@@ -229,11 +229,15 @@ final class WasmSqliteBindings implements RawSqliteBindings {
 final class WasmDatabase implements RawSqliteDatabase {
   final wasm.WasmBindings bindings;
   final Pointer db;
+  final Object detach = Object();
 
-  WasmDatabase(this.bindings, this.db);
+  WasmDatabase(this.bindings, this.db) {
+    bindings.databaseFinalizer?.attach(this, db, detach: detach);
+  }
 
   @override
   int sqlite3_close_v2() {
+    bindings.databaseFinalizer?.detach(detach);
     return bindings.sqlite3_close_v2(db);
   }
 
@@ -448,8 +452,11 @@ final class WasmStatement implements RawSqliteStatement {
   final WasmDatabase database;
   final Pointer stmt;
   final WasmBindings bindings;
+  final Object detach = Object();
 
-  WasmStatement(this.database, this.stmt) : bindings = database.bindings;
+  WasmStatement(this.database, this.stmt) : bindings = database.bindings {
+    bindings.statementFinalizer?.attach(this, stmt, detach: detach);
+  }
 
   @override
   int sqlite3_bind_blob64(int index, List<int> value) {
@@ -576,6 +583,7 @@ final class WasmStatement implements RawSqliteStatement {
   @override
   void sqlite3_finalize() {
     bindings.sqlite3_finalize(stmt);
+    bindings.statementFinalizer?.detach(detach);
   }
 
   @override
@@ -770,10 +778,6 @@ class WasmValueList extends ListBase<WasmValue> {
 }
 
 final class WasmSession implements RawSqliteSession {
-  static final Finalizer<(WasmBindings, int)> _finalizer = Finalizer((args) {
-    args.$1.sqlite3session_delete(args.$2);
-  });
-
   final WasmSqliteBindings bindings;
   final int pointer; // the sqlite3_session ptr
   final Object detach = Object();
@@ -781,7 +785,7 @@ final class WasmSession implements RawSqliteSession {
   final WasmBindings _bindings;
 
   WasmSession(this.bindings, this.pointer) : _bindings = bindings.bindings {
-    _finalizer.attach(this, (_bindings, pointer), detach: detach);
+    _bindings.sessionFinalizer?.attach(this, pointer, detach: detach);
   }
 
   @override
@@ -828,7 +832,7 @@ final class WasmSession implements RawSqliteSession {
 
   @override
   void sqlite3session_delete() {
-    _finalizer.detach(this);
+    _bindings.sessionFinalizer?.detach(this);
     _bindings.sqlite3session_delete(pointer);
   }
 
@@ -859,16 +863,6 @@ final class WasmSession implements RawSqliteSession {
 }
 
 final class WasmChangesetIterator implements RawChangesetIterator {
-  static final Finalizer<(WasmBindings, int?, int)> _finalizer = Finalizer((
-    args,
-  ) {
-    if (args.$2 case final underlyingBytes?) {
-      args.$1.free(underlyingBytes);
-    }
-
-    args.$1.sqlite3changeset_finalize(args.$3);
-  });
-
   final WasmSqliteBindings bindings;
 
   /// If this iterator was created from an uint8list allocated when creating it,
@@ -886,28 +880,29 @@ final class WasmChangesetIterator implements RawChangesetIterator {
     bool owned = true,
   }) : _bindings = bindings.bindings {
     if (owned) {
-      _finalizer.attach(this, (
-        _bindings,
-        dataPointer,
+      bindings.bindings.changesetFinalizer?.attach(
+        this,
         pointer,
-      ), detach: detach);
+        detach: detach,
+      );
     }
   }
 
   @override
   int sqlite3changeset_finalize() {
-    _finalizer.detach(detach);
+    final rc = _bindings.sqlite3changeset_finalize(pointer);
+    bindings.bindings.changesetFinalizer?.detach(detach);
     if (dataPointer case final data?) {
       _bindings.free(data);
     }
 
-    return _bindings.sqlite3changeset_finalize(pointer);
+    return rc;
   }
 
   @override
   int sqlite3changeset_next() => _bindings.sqlite3changeset_next(pointer);
 
-  SqliteResult<RawSqliteValue> _extractValue(
+  SqliteResult<RawSqliteValue?> _extractValue(
     int Function(Pointer, int, Pointer) extract,
     int index,
   ) {
@@ -923,12 +918,12 @@ final class WasmChangesetIterator implements RawChangesetIterator {
   }
 
   @override
-  SqliteResult<RawSqliteValue> sqlite3changeset_old(int columnNumber) {
+  SqliteResult<RawSqliteValue?> sqlite3changeset_old(int columnNumber) {
     return _extractValue(_bindings.sqlite3changeset_old, columnNumber);
   }
 
   @override
-  SqliteResult<RawSqliteValue> sqlite3changeset_new(int columnNumber) {
+  SqliteResult<RawSqliteValue?> sqlite3changeset_new(int columnNumber) {
     return _extractValue(_bindings.sqlite3changeset_new, columnNumber);
   }
 

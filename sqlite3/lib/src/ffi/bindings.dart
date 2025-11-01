@@ -735,7 +735,7 @@ final class FfiChangesetIterator implements RawChangesetIterator, Finalizable {
   }
 
   @override
-  SqliteResult<RawSqliteValue> sqlite3changeset_new(int columnNumber) {
+  SqliteResult<RawSqliteValue?> sqlite3changeset_new(int columnNumber) {
     final outValue = allocate<Pointer<sqlite3_value>>();
     final result = libsqlite3.sqlite3changeset_new(
       iterator,
@@ -757,7 +757,7 @@ final class FfiChangesetIterator implements RawChangesetIterator, Finalizable {
   }
 
   @override
-  SqliteResult<RawSqliteValue> sqlite3changeset_old(int columnNumber) {
+  SqliteResult<RawSqliteValue?> sqlite3changeset_old(int columnNumber) {
     final outValue = allocate<Pointer<sqlite3_value>>();
     final result = libsqlite3.sqlite3changeset_old(
       iterator,

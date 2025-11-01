@@ -5,7 +5,11 @@
   - The SQLite library can only be customized with user defines.
   - You should drop your dependencies on `sqlite3_flutter_libs` and
     `sqlcipher_flutter_libs` when upgrading.
+  - You can also remove dependencies on `sqlite3_native_assets`, since that
+    package is now part of `package:sqlite3`.
 - __Breaking change__: Parameters to `SqliteException`s are now named.
+- On native platforms, use native finalizers to reliably clear statements and databases.
+- Refactor binding text and blob values to reduce the chance of memory leaks.
 
 ## 2.9.4
 

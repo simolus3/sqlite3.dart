@@ -25,11 +25,24 @@ class WasmBindings {
   final DartCallbacks callbacks;
   final SqliteExports sqlite3;
 
+  // Finalizers are deliberately referenced from this instance only - if the
+  // entire instance and module is GCed, we don't need to manually invoke
+  // finalizers anymore.
+  Finalizer<Pointer>? changesetFinalizer,
+      sessionFinalizer,
+      databaseFinalizer,
+      statementFinalizer;
+
   WasmBindings._(this.instance, _InjectedValues values)
     : memory = values.memory,
       callbacks = values.callbacks,
       sqlite3 = SqliteExports(instance.exports) {
     values.bindings = this;
+
+    changesetFinalizer = Finalizer((p) => sqlite3.sqlite3changeset_finalize(p));
+    sessionFinalizer = Finalizer((p) => sqlite3.sqlite3session_delete(p));
+    databaseFinalizer = Finalizer((p) => sqlite3.sqlite3_close_v2(p));
+    statementFinalizer = Finalizer((p) => sqlite3.sqlite3_finalize(p));
   }
 
   static Future<WasmBindings> instantiateAsync(web.Response response) async {

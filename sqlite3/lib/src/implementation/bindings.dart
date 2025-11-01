@@ -10,6 +10,11 @@ import 'package:meta/meta.dart';
 import '../functions.dart';
 import '../vfs.dart';
 
+/// A `sqlite3_changeset_iter` instance.
+///
+/// For iterators created through `sqlite3changeset_start`, implementations
+/// should use finalizers to automatically call `sqlite3changeset_finalize`
+/// even when [sqlite3changeset_finalize] is not called explicitly.
 abstract interface class RawChangesetIterator {
   // int sqlite3changeset_finalize(sqlite3_changeset_iter *pIter);
   int sqlite3changeset_finalize();
@@ -19,7 +24,7 @@ abstract interface class RawChangesetIterator {
   //   int iVal,                       /* Column number */
   //   sqlite3_value **ppValue         /* OUT: New value (or NULL pointer) */
   // );
-  SqliteResult<RawSqliteValue> sqlite3changeset_new(int columnNumber);
+  SqliteResult<RawSqliteValue?> sqlite3changeset_new(int columnNumber);
 
   // int sqlite3changeset_next(sqlite3_changeset_iter *pIter);
   int sqlite3changeset_next();
@@ -29,7 +34,7 @@ abstract interface class RawChangesetIterator {
   //   int iVal,                       /* Column number */
   //   sqlite3_value **ppValue         /* OUT: Old value (or NULL pointer) */
   // );
-  SqliteResult<RawSqliteValue> sqlite3changeset_old(int columnNumber);
+  SqliteResult<RawSqliteValue?> sqlite3changeset_old(int columnNumber);
 
   // int sqlite3changeset_op(
   //   sqlite3_changeset_iter *pIter,  /* Iterator object */
@@ -130,6 +135,11 @@ abstract interface class RawSqliteBindings {
   int sqlite3_initialize();
 }
 
+/// A `sqlite3_session` instance.
+///
+/// Implementations should use finalizers to automatically calls
+/// `sqlite3session_delete` even when [sqlite3session_delete] is not called
+/// explcitly.
 abstract interface class RawSqliteSession {
   // int sqlite3session_attach(
   //   sqlite3_session *pSession,      /* Session object */
@@ -166,7 +176,7 @@ abstract interface class RawSqliteSession {
 }
 
 /// Combines a sqlite result code and the result object.
-typedef SqliteResult<T extends Object> = ({T? result, int resultCode});
+typedef SqliteResult<T> = ({T? result, int resultCode});
 
 typedef RawXFunc = void Function(RawSqliteContext, List<RawSqliteValue>);
 typedef RawXStep = void Function(RawSqliteContext, List<RawSqliteValue>);
@@ -176,6 +186,10 @@ typedef RawCommitHook = int Function();
 typedef RawRollbackHook = void Function();
 typedef RawCollation = int Function(String? a, String? b);
 
+/// A `sqlite3` instance.
+///
+/// Instances should use finalizers to automatically close the database, even
+/// when [sqlite3_close_v2] is not called explicitly.
 abstract interface class RawSqliteDatabase {
   int sqlite3_changes();
   int sqlite3_last_insert_rowid();
@@ -252,6 +266,10 @@ abstract interface class RawStatementCompiler {
   void close();
 }
 
+/// A `sqlite3_stmt` instance.
+///
+/// Instances should use finalizers to automatically call `sqlite3_finalize` on
+/// the statement, even when [sqlite3_finalize] is not called explicitly.
 abstract interface class RawSqliteStatement {
   void sqlite3_reset();
   int sqlite3_step();

@@ -187,22 +187,16 @@ final class ChangesetIteratorImplementation implements ChangesetIterator {
       final kind = SqliteUpdateKind.fromCode(op.operation)!;
 
       final oldColumns = kind != SqliteUpdateKind.insert
-          ? List.generate(
-              op.columnCount,
-              (i) => raw
-                  .sqlite3changeset_old(i)
-                  .okOrThrowOutsideOfDatabase(bindings)
-                  .read(),
-            )
+          ? List.generate(op.columnCount, (i) {
+              final rawValue = raw.sqlite3changeset_old(i);
+              return _readChangesetValue(rawValue);
+            })
           : null;
       final newColumns = kind != SqliteUpdateKind.delete
-          ? List.generate(
-              op.columnCount,
-              (i) => raw
-                  .sqlite3changeset_new(i)
-                  .okOrThrowOutsideOfDatabase(bindings)
-                  .read(),
-            )
+          ? List.generate(op.columnCount, (i) {
+              final rawValue = raw.sqlite3changeset_new(i);
+              return _readChangesetValue(rawValue);
+            })
           : null;
       current = ChangesetOperation(
         table: op.tableName,
@@ -217,6 +211,13 @@ final class ChangesetIteratorImplementation implements ChangesetIterator {
 
     finalize();
     return false;
+  }
+
+  Object? _readChangesetValue(SqliteResult<RawSqliteValue?> result) {
+    return switch (result.resultCode) {
+      0 => result.result?.read(),
+      _ => throw createExceptionOutsideOfDatabase(bindings, result.resultCode),
+    };
   }
 
   @override
