@@ -69,6 +69,7 @@ jobs:
         shell: bash
         if: runner.os == 'Linux' && steps.cache_build.outputs.cache-hit != 'true'
         run: |
+          sudo apt update
           sudo apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-arm-linux-gnueabihf gcc-i686-linux-gnu
 
       - name: Compile sqlite3
