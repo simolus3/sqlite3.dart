@@ -74,7 +74,7 @@ final class WasmSqliteBindings implements RawSqliteBindings {
       ..free(vfsPtr);
     if (zVfs != null) bindings.free(vfsPtr);
 
-    return SqliteResult(result, WasmDatabase(bindings, dbPtr));
+    return (resultCode: result, result: WasmDatabase(bindings, dbPtr));
   }
 
   @override
@@ -426,7 +426,7 @@ final class WasmStatementCompiler implements RawStatementCompiler {
   }
 
   @override
-  SqliteResult<RawSqliteStatement?> sqlite3_prepare(
+  SqliteResult<RawSqliteStatement> sqlite3_prepare(
     int byteOffset,
     int length,
     int prepFlag,
@@ -443,7 +443,7 @@ final class WasmStatementCompiler implements RawStatementCompiler {
     final stmt = database.bindings.memory.int32ValueOfPointer(stmtOut);
     final libraryStatement = stmt == 0 ? null : WasmStatement(database, stmt);
 
-    return SqliteResult(result, libraryStatement);
+    return (resultCode: result, result: libraryStatement);
   }
 }
 
@@ -912,7 +912,7 @@ final class WasmChangesetIterator implements RawChangesetIterator {
   @override
   int sqlite3changeset_next() => _bindings.sqlite3changeset_next(pointer);
 
-  SqliteResult<RawSqliteValue?> _extractValue(
+  SqliteResult<RawSqliteValue> _extractValue(
     int Function(Pointer, int, Pointer) extract,
     int index,
   ) {
@@ -921,19 +921,19 @@ final class WasmChangesetIterator implements RawChangesetIterator {
     final value = _bindings.memory.int32ValueOfPointer(outValue);
     _bindings.free(outValue);
 
-    return SqliteResult(
-      resultCode,
-      value != 0 ? WasmValue(_bindings, value) : null,
+    return (
+      resultCode: resultCode,
+      result: value != 0 ? WasmValue(_bindings, value) : null,
     );
   }
 
   @override
-  SqliteResult<RawSqliteValue?> sqlite3changeset_old(int columnNumber) {
+  SqliteResult<RawSqliteValue> sqlite3changeset_old(int columnNumber) {
     return _extractValue(_bindings.sqlite3changeset_old, columnNumber);
   }
 
   @override
-  SqliteResult<RawSqliteValue?> sqlite3changeset_new(int columnNumber) {
+  SqliteResult<RawSqliteValue> sqlite3changeset_new(int columnNumber) {
     return _extractValue(_bindings.sqlite3changeset_new, columnNumber);
   }
 

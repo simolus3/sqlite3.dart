@@ -195,7 +195,7 @@ final class ChangesetIteratorImplementation implements ChangesetIterator {
               (i) => raw
                   .sqlite3changeset_old(i)
                   .okOrThrowOutsideOfDatabase(bindings)
-                  ?.read(),
+                  .read(),
             )
           : null;
       final newColumns = kind != SqliteUpdateKind.delete
@@ -204,7 +204,7 @@ final class ChangesetIteratorImplementation implements ChangesetIterator {
               (i) => raw
                   .sqlite3changeset_new(i)
                   .okOrThrowOutsideOfDatabase(bindings)
-                  ?.read(),
+                  .read(),
             )
           : null;
       current = ChangesetOperation(

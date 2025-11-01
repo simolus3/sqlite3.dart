@@ -34,6 +34,9 @@ final supportsPrepareV3 = sqlite3_libversion_number() >= _firstVersionForV3;
 final supportsErrorOffset =
     sqlite3_libversion_number() >= _firstVersionForErrorOffset;
 
+final databaseFinalizer = NativeFinalizer(addresses.sqlite3_close_v2.cast());
+final statementFinalizer = NativeFinalizer(addresses.sqlite3_finalize.cast());
+
 final sessionDeleteFinalizer = NativeFinalizer(
   addresses.sqlite3session_delete.cast(),
 );
@@ -225,7 +228,10 @@ final class FfiBindings implements RawSqliteBindings {
       flags,
       vfsPtr,
     );
-    final result = SqliteResult(resultCode, FfiDatabase(outDb.value));
+    final result = (
+      resultCode: resultCode,
+      result: outDb.value.isNullPointer ? null : FfiDatabase(outDb.value),
+    );
 
     namePtr.free();
     outDb.free();
@@ -730,7 +736,7 @@ final class FfiChangesetIterator implements RawChangesetIterator, Finalizable {
   }
 
   @override
-  SqliteResult<RawSqliteValue?> sqlite3changeset_new(int columnNumber) {
+  SqliteResult<RawSqliteValue> sqlite3changeset_new(int columnNumber) {
     final outValue = allocate<Pointer<sqlite3_value>>();
     final result = libsqlite3.sqlite3changeset_new(
       iterator,
@@ -740,7 +746,10 @@ final class FfiChangesetIterator implements RawChangesetIterator, Finalizable {
     final value = outValue.value;
     outValue.free();
 
-    return SqliteResult(result, value.isNullPointer ? null : FfiValue(value));
+    return (
+      resultCode: result,
+      result: value.isNullPointer ? null : FfiValue(value),
+    );
   }
 
   @override
@@ -749,7 +758,7 @@ final class FfiChangesetIterator implements RawChangesetIterator, Finalizable {
   }
 
   @override
-  SqliteResult<RawSqliteValue?> sqlite3changeset_old(int columnNumber) {
+  SqliteResult<RawSqliteValue> sqlite3changeset_old(int columnNumber) {
     final outValue = allocate<Pointer<sqlite3_value>>();
     final result = libsqlite3.sqlite3changeset_old(
       iterator,
@@ -759,7 +768,10 @@ final class FfiChangesetIterator implements RawChangesetIterator, Finalizable {
     final value = outValue.value;
     outValue.free();
 
-    return SqliteResult(result, value.isNullPointer ? null : FfiValue(value));
+    return (
+      resultCode: result,
+      result: value.isNullPointer ? null : FfiValue(value),
+    );
   }
 
   @override
@@ -1050,7 +1062,7 @@ final class FfiStatementCompiler implements RawStatementCompiler {
   int get endOffset => pzTail.value.address - sql.address;
 
   @override
-  SqliteResult<RawSqliteStatement?> sqlite3_prepare(
+  SqliteResult<RawSqliteStatement> sqlite3_prepare(
     int byteOffset,
     int length,
     int prepFlag,
@@ -1085,7 +1097,7 @@ final class FfiStatementCompiler implements RawStatementCompiler {
     final stmt = stmtOut.value;
     final libraryStatement = stmt.isNullPointer ? null : FfiStatement(stmt);
 
-    return SqliteResult(result, libraryStatement);
+    return (resultCode: result, result: libraryStatement);
   }
 }
 

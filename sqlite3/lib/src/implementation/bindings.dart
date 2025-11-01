@@ -19,7 +19,7 @@ abstract interface class RawChangesetIterator {
   //   int iVal,                       /* Column number */
   //   sqlite3_value **ppValue         /* OUT: New value (or NULL pointer) */
   // );
-  SqliteResult<RawSqliteValue?> sqlite3changeset_new(int columnNumber);
+  SqliteResult<RawSqliteValue> sqlite3changeset_new(int columnNumber);
 
   // int sqlite3changeset_next(sqlite3_changeset_iter *pIter);
   int sqlite3changeset_next();
@@ -29,7 +29,7 @@ abstract interface class RawChangesetIterator {
   //   int iVal,                       /* Column number */
   //   sqlite3_value **ppValue         /* OUT: Old value (or NULL pointer) */
   // );
-  SqliteResult<RawSqliteValue?> sqlite3changeset_old(int columnNumber);
+  SqliteResult<RawSqliteValue> sqlite3changeset_old(int columnNumber);
 
   // int sqlite3changeset_op(
   //   sqlite3_changeset_iter *pIter,  /* Iterator object */
@@ -166,15 +166,7 @@ abstract interface class RawSqliteSession {
 }
 
 /// Combines a sqlite result code and the result object.
-final class SqliteResult<T> {
-  final int resultCode;
-
-  /// The result of the operation, which is assumed to be valid if [resultCode]
-  /// is zero.
-  final T result;
-
-  SqliteResult(this.resultCode, this.result);
-}
+typedef SqliteResult<T extends Object> = ({T? result, int resultCode});
 
 typedef RawXFunc = void Function(RawSqliteContext, List<RawSqliteValue>);
 typedef RawXStep = void Function(RawSqliteContext, List<RawSqliteValue>);
@@ -257,7 +249,7 @@ abstract interface class RawStatementCompiler {
 
   /// Compile a statement from the substring at [byteOffset] with a maximum
   /// length of [length].
-  SqliteResult<RawSqliteStatement?> sqlite3_prepare(
+  SqliteResult<RawSqliteStatement> sqlite3_prepare(
     int byteOffset,
     int length,
     int prepFlag,

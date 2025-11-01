@@ -27,13 +27,13 @@ int eTextRep(bool deterministic, bool directOnly, bool subtype) {
   return flags;
 }
 
-extension HandleResult<T> on SqliteResult<T> {
+extension HandleResult<T extends Object> on SqliteResult<T> {
   T okOrThrowOutsideOfDatabase(RawSqliteBindings bindings) {
     if (resultCode != SqlError.SQLITE_OK) {
       throw createExceptionOutsideOfDatabase(bindings, resultCode);
     }
 
-    return result;
+    return result!;
   }
 }
 
