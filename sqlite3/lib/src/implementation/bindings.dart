@@ -189,13 +189,6 @@ abstract interface class RawSqliteDatabase {
   int sqlite3_close_v2();
   String sqlite3_errmsg();
 
-  /// Deallocate additional memory that the raw implementation may had to use
-  /// for some type conversions for previous method invocations.
-  ///
-  /// This is called by the higher-level implementation when a database is
-  /// closed.
-  void deallocateAdditionalMemory();
-
   void sqlite3_update_hook(RawUpdateHook? hook);
 
   void sqlite3_commit_hook(RawCommitHook? hook);

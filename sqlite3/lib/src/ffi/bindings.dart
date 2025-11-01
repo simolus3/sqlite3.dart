@@ -920,9 +920,6 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
   }
 
   @override
-  void deallocateAdditionalMemory() {}
-
-  @override
   int sqlite3_create_collation_v2({
     required Uint8List collationName,
     required int eTextRep,

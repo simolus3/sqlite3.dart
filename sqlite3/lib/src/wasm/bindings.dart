@@ -258,9 +258,6 @@ final class WasmDatabase implements RawSqliteDatabase {
   }
 
   @override
-  void deallocateAdditionalMemory() {}
-
-  @override
   RawStatementCompiler newCompiler(List<int> utf8EncodedSql) {
     final ptr = bindings.allocateBytes(utf8EncodedSql);
 

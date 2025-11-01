@@ -52,8 +52,6 @@ final class FinalizableDatabase extends FinalizablePart {
       );
     }
 
-    database.deallocateAdditionalMemory();
-
     if (exception != null) {
       throw exception;
     }
