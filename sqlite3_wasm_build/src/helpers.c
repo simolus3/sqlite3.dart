@@ -3,100 +3,102 @@
 #include "bridge.h"
 #include "sqlite3.h"
 
-#define DART_FD(file) (((dart_vfs_file *)(file))->dart_fd)
+#define DART_FD(file) (((dart_vfs_file*)(file))->dart_fd)
 
 #ifdef SQLITE_ENABLE_VFSTRACE
 // When this is enabled, assume that `vfstrace_register` exists
 // See https://www.sqlite.org/src/doc/trunk/src/test_vfstrace.c
 
 extern int vfstrace_register(
-    const char *zTraceName,             // Name of the newly constructed VFS
-    const char *zOldVfsName,            // Name of the underlying VFS
-    int (*xOut)(const char *, void *),  // Output routine.  ex: fputs
-    void *pOutArg,                      // 2nd argument to xOut.  ex: stderr
-    int makeDefault                     // Make the new VFS the default
+    const char* zTraceName,           // Name of the newly constructed VFS
+    const char* zOldVfsName,          // Name of the underlying VFS
+    int (*xOut)(const char*, void*),  // Output routine.  ex: fputs
+    void* pOutArg,                    // 2nd argument to xOut.  ex: stderr
+    int makeDefault                   // Make the new VFS the default
 );
 #endif
 
 typedef struct {
-  struct sqlite3_io_methods *pMethods;
+  struct sqlite3_io_methods* pMethods;
   int dart_fd;
 } dart_vfs_file;
 
 // Interfaces we want to access in Dart
-SQLITE_API void *dart_sqlite3_malloc(size_t size) { return malloc(size); }
+SQLITE_API void* dart_sqlite3_malloc(size_t size) { return malloc(size); }
 
-SQLITE_API void dart_sqlite3_free(void *ptr) { return free(ptr); }
+SQLITE_API void dart_sqlite3_free(void* ptr) { return free(ptr); }
 
-SQLITE_API int dart_sqlite3_bind_blob(sqlite3_stmt* stmt, int index, const void* buf, int len) {
+SQLITE_API int dart_sqlite3_bind_blob(sqlite3_stmt* stmt, int index,
+                                      const void* buf, int len) {
   return sqlite3_bind_blob64(stmt, index, buf, len, free);
 }
 
-SQLITE_API int dart_sqlite3_bind_text(sqlite3_stmt* stmt, int index, const char* buf, int len) {
+SQLITE_API int dart_sqlite3_bind_text(sqlite3_stmt* stmt, int index,
+                                      const char* buf, int len) {
   return sqlite3_bind_text(stmt, index, buf, len, free);
 }
 
-static int dartvfs_trace_log1(const char *msg, void *unused) {
+static int dartvfs_trace_log1(const char* msg, void* unused) {
   dartLogError(msg);
   return SQLITE_OK;
 }
 
-int dartvfs_close(sqlite3_file *file) { return xClose(DART_FD(file)); }
+int dartvfs_close(sqlite3_file* file) { return xClose(DART_FD(file)); }
 
-int dartvfs_read(sqlite3_file *file, void *buf, int iAmt, sqlite3_int64 iOfst) {
+int dartvfs_read(sqlite3_file* file, void* buf, int iAmt, sqlite3_int64 iOfst) {
   return xRead(DART_FD(file), buf, iAmt, iOfst);
 }
 
-int dartvfs_write(sqlite3_file *file, const void *buf, int iAmt,
+int dartvfs_write(sqlite3_file* file, const void* buf, int iAmt,
                   sqlite3_int64 iOfst) {
   return xWrite(DART_FD(file), buf, iAmt, iOfst);
 }
 
-int dartvfs_truncate(sqlite3_file *file, sqlite3_int64 size) {
+int dartvfs_truncate(sqlite3_file* file, sqlite3_int64 size) {
   return xTruncate(DART_FD(file), size);
 }
 
-int dartvfs_sync(sqlite3_file *file, int flags) {
+int dartvfs_sync(sqlite3_file* file, int flags) {
   return xSync(DART_FD(file), flags);
 }
 
-int dartvfs_fileSize(sqlite3_file *file, sqlite3_int64 *pSize) {
+int dartvfs_fileSize(sqlite3_file* file, sqlite3_int64* pSize) {
   int size32;
   int rc = xFileSize(DART_FD(file), &size32);
   *pSize = (sqlite3_int64)size32;
   return rc;
 }
 
-int dartvfs_lock(sqlite3_file *file, int i) { return xLock(DART_FD(file), i); }
+int dartvfs_lock(sqlite3_file* file, int i) { return xLock(DART_FD(file), i); }
 
-int dartvfs_unlock(sqlite3_file *file, int i) {
+int dartvfs_unlock(sqlite3_file* file, int i) {
   return xUnlock(DART_FD(file), i);
 }
 
-int dartvfs_checkReservedLock(sqlite3_file *file, int *pResOut) {
+int dartvfs_checkReservedLock(sqlite3_file* file, int* pResOut) {
   return xCheckReservedLock(DART_FD(file), pResOut);
 }
 
-int dartvfs_fileControl(sqlite3_file *file, int op, void *pArg) {
+int dartvfs_fileControl(sqlite3_file* file, int op, void* pArg) {
   // "VFS implementations should return SQLITE_NOTFOUND for file control opcodes
   // that they do not recognize". Well, we don't recognize any.
   return SQLITE_NOTFOUND;
 }
 
-int dartvfs_deviceCharacteristics(sqlite3_file *file) {
+int dartvfs_deviceCharacteristics(sqlite3_file* file) {
   return xDeviceCharacteristics(DART_FD(file));
 }
 
-int dartvfs_sectorSize(sqlite3_file *file) {
+int dartvfs_sectorSize(sqlite3_file* file) {
   // This is also the value of SQLITE_DEFAULT_SECTOR_SIZE, which would be picked
   // if this function didn't exist. We need this method because vfstrace does
   // not support null callbacks.
   return 4096;
 }
 
-static int dartvfs_open(sqlite3_vfs *vfs, sqlite3_filename zName,
-                        sqlite3_file *file, int flags, int *pOutFlags) {
-  dart_vfs_file *dartFile = (dart_vfs_file *)file;
+static int dartvfs_open(sqlite3_vfs* vfs, sqlite3_filename zName,
+                        sqlite3_file* file, int flags, int* pOutFlags) {
+  dart_vfs_file* dartFile = (dart_vfs_file*)file;
   memset(dartFile, 0, sizeof(dart_vfs_file));
   dartFile->dart_fd = -1;
 
@@ -120,7 +122,7 @@ static int dartvfs_open(sqlite3_vfs *vfs, sqlite3_filename zName,
 #endif
   };
 
-  int *dartFileId = &dartFile->dart_fd;
+  int* dartFileId = &dartFile->dart_fd;
 
   // The xOpen call will also set the dart_fd field.
   int rc = xOpen((int)vfs->pAppData, zName, dartFileId, flags, pOutFlags);
@@ -135,29 +137,29 @@ static int dartvfs_open(sqlite3_vfs *vfs, sqlite3_filename zName,
   return rc;
 }
 
-static int dartvfs_delete(sqlite3_vfs *vfs, const char *zName, int syncDir) {
+static int dartvfs_delete(sqlite3_vfs* vfs, const char* zName, int syncDir) {
   return xDelete((int)vfs->pAppData, zName, syncDir);
 }
 
-static int dartvfs_access(sqlite3_vfs *vfs, const char *zName, int flags,
-                          int *pResOut) {
+static int dartvfs_access(sqlite3_vfs* vfs, const char* zName, int flags,
+                          int* pResOut) {
   return xAccess((int)vfs->pAppData, zName, flags, pResOut);
 }
 
-static int dartvfs_fullPathname(sqlite3_vfs *vfs, const char *zName, int nOut,
-                                char *zOut) {
+static int dartvfs_fullPathname(sqlite3_vfs* vfs, const char* zName, int nOut,
+                                char* zOut) {
   return xFullPathname((int)vfs->pAppData, zName, nOut, zOut);
 }
 
-static int dartvfs_randomness(sqlite3_vfs *vfs, int nByte, char *zOut) {
+static int dartvfs_randomness(sqlite3_vfs* vfs, int nByte, char* zOut) {
   return xRandomness((int)vfs->pAppData, nByte, zOut);
 }
 
-static int dartvfs_sleep(sqlite3_vfs *vfs, int microseconds) {
+static int dartvfs_sleep(sqlite3_vfs* vfs, int microseconds) {
   return xSleep((int)vfs->pAppData, microseconds);
 }
 
-static int dartvfs_currentTimeInt64(sqlite3_vfs *vfs, sqlite3_int64 *timeOut) {
+static int dartvfs_currentTimeInt64(sqlite3_vfs* vfs, sqlite3_int64* timeOut) {
   int64_t milliseconds;
   int rc = xCurrentTimeInt64((int)vfs->pAppData, &milliseconds);
 
@@ -167,14 +169,14 @@ static int dartvfs_currentTimeInt64(sqlite3_vfs *vfs, sqlite3_int64 *timeOut) {
   return SQLITE_OK;
 }
 
-SQLITE_API sqlite3_vfs *dart_sqlite3_register_vfs(const char *name, int dartId,
+SQLITE_API sqlite3_vfs* dart_sqlite3_register_vfs(const char* name, int dartId,
                                                   int makeDefault) {
-  sqlite3_vfs *vfs = calloc(1, sizeof(sqlite3_vfs));
+  sqlite3_vfs* vfs = calloc(1, sizeof(sqlite3_vfs));
   vfs->iVersion = 2;
   vfs->szOsFile = sizeof(dart_vfs_file);
   vfs->mxPathname = 1024;
   vfs->zName = name;
-  vfs->pAppData = (void *)dartId;
+  vfs->pAppData = (void*)dartId;
   vfs->xOpen = &dartvfs_open;
   vfs->xDelete = &dartvfs_delete;
   vfs->xAccess = &dartvfs_access;
@@ -186,9 +188,9 @@ SQLITE_API sqlite3_vfs *dart_sqlite3_register_vfs(const char *name, int dartId,
 #ifdef SQLITE_ENABLE_VFSTRACE
   sqlite3_vfs_register(vfs, 0);
 
-  static const char *prefix = "trace_";
+  static const char* prefix = "trace_";
   static const int prefixLength = 6;
-  char *traceName = malloc(strlen(name) + prefixLength);
+  char* traceName = malloc(strlen(name) + prefixLength);
   strcpy(traceName, prefix);
   strcpy(&traceName[prefixLength], name);
 
@@ -204,57 +206,57 @@ SQLITE_API sqlite3_vfs *dart_sqlite3_register_vfs(const char *name, int dartId,
   return vfs;
 }
 
-SQLITE_API int dart_sqlite3_create_scalar_function(sqlite3 *db,
-                                                   const char *zFunctionName,
+SQLITE_API int dart_sqlite3_create_scalar_function(sqlite3* db,
+                                                   const char* zFunctionName,
                                                    int nArg, int eTextRep,
                                                    int id) {
   return sqlite3_create_function_v2(db, zFunctionName, nArg, eTextRep,
-                                    (void *)id, &dartXFunc, NULL, NULL,
+                                    (void*)id, &dartXFunc, NULL, NULL,
                                     &dartForgetAboutFunction);
 }
 
-SQLITE_API int dart_sqlite3_create_aggregate_function(sqlite3 *db,
-                                                      const char *zFunctionName,
+SQLITE_API int dart_sqlite3_create_aggregate_function(sqlite3* db,
+                                                      const char* zFunctionName,
                                                       int nArg, int eTextRep,
                                                       int id) {
   return sqlite3_create_function_v2(db, zFunctionName, nArg, eTextRep,
-                                    (void *)id, NULL, &dartXStep, &dartXFinal,
+                                    (void*)id, NULL, &dartXStep, &dartXFinal,
                                     &dartForgetAboutFunction);
 }
 
-SQLITE_API int dart_sqlite3_create_window_function(sqlite3 *db,
-                                                   const char *zFunctionName,
+SQLITE_API int dart_sqlite3_create_window_function(sqlite3* db,
+                                                   const char* zFunctionName,
                                                    int nArg, int eTextRep,
                                                    int id) {
   return sqlite3_create_window_function(
-      db, zFunctionName, nArg, eTextRep, (void *)id, &dartXStep, &dartXFinal,
+      db, zFunctionName, nArg, eTextRep, (void*)id, &dartXStep, &dartXFinal,
       &dartXValue, &dartXInverse, &dartForgetAboutFunction);
 }
 
-SQLITE_API void dart_sqlite3_updates(sqlite3 *db, int id) {
-  sqlite3_update_hook(db, id >= 0 ? &dartUpdateHook : NULL, (void *)id);
+SQLITE_API void dart_sqlite3_updates(sqlite3* db, int id) {
+  sqlite3_update_hook(db, id >= 0 ? &dartUpdateHook : NULL, (void*)id);
 }
 
-SQLITE_API void dart_sqlite3_commits(sqlite3 *db, int id) {
-  sqlite3_commit_hook(db, id >= 0 ? &dartCommitHook : NULL, (void *)id);
+SQLITE_API void dart_sqlite3_commits(sqlite3* db, int id) {
+  sqlite3_commit_hook(db, id >= 0 ? &dartCommitHook : NULL, (void*)id);
 }
 
-SQLITE_API void dart_sqlite3_rollbacks(sqlite3 *db, int id) {
-  sqlite3_rollback_hook(db, id >= 0 ? &dartRollbackHook : NULL, (void *)id);
+SQLITE_API void dart_sqlite3_rollbacks(sqlite3* db, int id) {
+  sqlite3_rollback_hook(db, id >= 0 ? &dartRollbackHook : NULL, (void*)id);
 }
 
-SQLITE_API int dart_sqlite3_create_collation(sqlite3 *db, const char *zName,
+SQLITE_API int dart_sqlite3_create_collation(sqlite3* db, const char* zName,
                                              int eTextRep, int id) {
-  return sqlite3_create_collation_v2(db, zName, eTextRep, (void *)id,
+  return sqlite3_create_collation_v2(db, zName, eTextRep, (void*)id,
                                      &dartXCompare, &dartForgetAboutFunction);
 }
 
-SQLITE_API int dart_sqlite3_db_config_int(sqlite3 *db, int op, int arg) {
+SQLITE_API int dart_sqlite3_db_config_int(sqlite3* db, int op, int arg) {
   return sqlite3_db_config(db, op, arg);
 }
 
-SQLITE_API int dart_sqlite3changeset_apply(sqlite3 *db, int nChangeset,
-                                           void *pChangeset, void *pCtx,
+SQLITE_API int dart_sqlite3changeset_apply(sqlite3* db, int nChangeset,
+                                           void* pChangeset, void* pCtx,
                                            bool filter) {
   return sqlite3changeset_apply(db, nChangeset, pChangeset,
                                 filter ? &dartChangesetApplyFilter : 0,

@@ -10,8 +10,8 @@ int sqlite3_os_init(void) { return SQLITE_OK; }
 
 int sqlite3_os_end(void) { return SQLITE_OK; }
 
-struct tm *localtime_r(const time_t *restrict timep,
-                       struct tm *restrict result) {
+struct tm* localtime_r(const time_t* restrict timep,
+                       struct tm* restrict result) {
   // This is not implemented by the WASI libc, but we can easily implement it
   // with a Dart hook.
   static_assert(sizeof(time_t) == sizeof(int64_t));
