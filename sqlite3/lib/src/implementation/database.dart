@@ -40,7 +40,7 @@ base class DatabaseImplementation implements CommonDatabase {
       final version = result.first.columnAt(0) as int;
       return version;
     } finally {
-      stmt.dispose();
+      stmt.close();
     }
   }
 
@@ -238,6 +238,11 @@ base class DatabaseImplementation implements CommonDatabase {
 
   @override
   void dispose() {
+    return close();
+  }
+
+  @override
+  void close() {
     if (isClosed) return;
 
     isClosed = true;
@@ -288,7 +293,7 @@ base class DatabaseImplementation implements CommonDatabase {
       try {
         stmt.execute(parameters);
       } finally {
-        stmt.dispose();
+        stmt.close();
       }
     }
   }
@@ -450,7 +455,7 @@ base class DatabaseImplementation implements CommonDatabase {
     try {
       return stmt.select(parameters);
     } finally {
-      stmt.dispose();
+      stmt.close();
     }
   }
 

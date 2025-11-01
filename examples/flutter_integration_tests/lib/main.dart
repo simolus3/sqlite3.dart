@@ -35,7 +35,7 @@ class _SqliteDiagnosticTextState extends State<_SqliteDiagnosticText> {
     setState(() {
       _text = 'Version: ${sqlite3.version}\nOptions: $options';
     });
-    db.dispose();
+    db.close();
   }
 
   @override

@@ -19,7 +19,7 @@ void testSession(FutureOr<CommonSqlite3> Function() loadSqlite) {
         'CREATE TABLE other (id INTEGER PRIMARY KEY, content INTEGER);',
       );
   });
-  tearDown(() => database.dispose());
+  tearDown(() => database.close());
 
   Session createSession() {
     final session = Session(database);

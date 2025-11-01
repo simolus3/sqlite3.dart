@@ -26,7 +26,7 @@ Future<void> main() async {
       ..execute('pragma user_version = 1')
       ..execute('CREATE TABLE foo (bar INTEGER NOT NULL);')
       ..execute('INSERT INTO foo (bar) VALUES (?)', [3])
-      ..dispose();
+      ..close();
 
     final db = sqlite3.open('/database');
     print(db.select('SELECT * FROM foo'));
@@ -50,7 +50,7 @@ Future<void> main() async {
       ..execute('pragma user_version = 1')
       ..execute('CREATE TABLE foo (bar INTEGER NOT NULL);')
       ..execute('INSERT INTO foo (bar) VALUES (?)', [3])
-      ..dispose();
+      ..close();
 
     final db = sqlite3.open('/database');
     try {

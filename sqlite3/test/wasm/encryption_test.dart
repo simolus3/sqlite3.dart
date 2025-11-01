@@ -15,7 +15,7 @@ void main() {
       ..execute('pragma key = "key"')
       ..execute('CREATE TABLE foo (bar TEXT) STRICT;')
       ..execute('INSERT INTO foo VALUES (?)', ['test'])
-      ..dispose();
+      ..close();
 
     final database = sqlite3.open('/test');
     expect(

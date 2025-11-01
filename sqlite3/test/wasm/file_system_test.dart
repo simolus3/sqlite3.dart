@@ -69,7 +69,7 @@ Future<void> main() async {
 
         expect(database.select('SELECT * FROM users'), hasLength(200));
 
-        database.dispose();
+        database.close();
 
         // file-system should save reasonably quickly
         await fileSystem.close().timeout(const Duration(seconds: 1));

@@ -1,4 +1,4 @@
-## 3.0.0-beta.1
+## 3.0.0-beta.2
 
 - __Breaking change__: Use [build hooks](https://dart.dev/tools/hooks) to load
   SQLite instead of `DynamicLibrary`.
@@ -9,7 +9,10 @@
     package is now part of `package:sqlite3`.
 - __Breaking change__: Parameters to `SqliteException`s are now named.
 - On native platforms, use native finalizers to reliably clear statements and databases.
+- On the web, use regular finalizers more consistently.
 - Refactor binding text and blob values to reduce the chance of memory leaks.
+- Deprecated `dispose()` on `CommonDatabase` and `CommonPreparedStatement`. Use `close()`
+  instead.
 
 ## 2.9.4
 

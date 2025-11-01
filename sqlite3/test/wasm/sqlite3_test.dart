@@ -56,7 +56,7 @@ void main() {
 
       test('can use current date', () {
         final db = sqlite3.openInMemory();
-        addTearDown(db.dispose);
+        addTearDown(db.close);
 
         final results = db.select(
           "SELECT strftime('%s', CURRENT_TIMESTAMP) AS r",
@@ -71,7 +71,7 @@ void main() {
 
       test('can use localtime', () {
         final db = sqlite3.openInMemory();
-        addTearDown(db.dispose);
+        addTearDown(db.close);
 
         final testValues = [
           (DateTime(1970, 1, 1), 1),
@@ -109,7 +109,7 @@ void main() {
 
       test('can report error location', () {
         final db = sqlite3.openInMemory();
-        addTearDown(db.dispose);
+        addTearDown(db.close);
 
         expect(
           () => db.select('SELECT totally invalid syntax;'),

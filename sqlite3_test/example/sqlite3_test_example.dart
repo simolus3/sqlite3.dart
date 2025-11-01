@@ -15,7 +15,7 @@ void main() {
 
   test('my test depending on database time', () {
     final database = sqlite3.openInMemory(vfs: vfs.name);
-    addTearDown(database.dispose);
+    addTearDown(database.close);
 
     // The VFS uses package:clock to get the current time, which can be
     // overridden for tests:

@@ -17,7 +17,7 @@ void main() {
   late Database database;
 
   setUp(() => database = sqlite3.openInMemory());
-  tearDown(() => database.dispose());
+  tearDown(() => database.close());
 
   test('can bind and retrieve 64 bit ints', () {
     const value = 1 << 63;
@@ -42,7 +42,7 @@ void main() {
     var db = sqlite3.open(path);
     // Change the user version to test read-write access
     db.userVersion = 1;
-    db.dispose();
+    db.close();
 
     // Open in read-only
     db = sqlite3.open(path, mode: OpenMode.readOnly);
@@ -56,7 +56,7 @@ void main() {
     // Check that it has not changed
     expect(db.userVersion, 1);
 
-    db.dispose();
+    db.close();
   });
 
   test('throws meaningful exception for open failure', () {
@@ -99,8 +99,8 @@ void main() {
       expect(db2.select('SELECT * FROM a'), hasLength(1));
       expect(db1.select('SELECT * FROM a'), hasLength(2));
 
-      db1.dispose();
-      db2.dispose();
+      db1.close();
+      db2.close();
     });
 
     test('restore from disk into memory', () {
@@ -116,8 +116,8 @@ void main() {
       expect(db2.select('SELECT * FROM a'), hasLength(1));
       expect(db1.select('SELECT * FROM a'), hasLength(2));
 
-      db1.dispose();
-      db2.dispose();
+      db1.close();
+      db2.close();
     });
 
     group('backup memory to disk', () {
@@ -137,14 +137,14 @@ void main() {
           //Should not be included in backup
           db1.execute('INSERT INTO a VALUES (2);');
 
-          db1.dispose();
-          db2.dispose();
+          db1.close();
+          db2.close();
 
           final db3 = sqlite3.open(path);
 
           expect(db3.select('SELECT * FROM a'), hasLength(1));
 
-          db3.dispose();
+          db3.close();
         });
       }
     });
@@ -176,14 +176,14 @@ void main() {
           //Should not be included in backup
           db1.execute('INSERT INTO a VALUES (2);');
 
-          db1.dispose();
-          db2.dispose();
+          db1.close();
+          db2.close();
 
           final db3 = sqlite3.open(path);
 
           expect(db3.select('SELECT * FROM a'), hasLength(1));
 
-          db3.dispose();
+          db3.close();
 
           if (File(pathFrom).existsSync()) {
             File(pathFrom).deleteSync();

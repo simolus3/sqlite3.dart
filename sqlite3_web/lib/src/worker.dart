@@ -704,7 +704,7 @@ final class DatabaseState {
     final sqlite3 = await runner._sqlite3!;
     final database = await _database!;
 
-    database.database.dispose();
+    database.database.close();
     if (_resolvedVfs case final vfs?) {
       sqlite3.unregisterVirtualFileSystem(vfs);
     }

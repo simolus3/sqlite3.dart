@@ -260,6 +260,11 @@ base class StatementImplementation extends CommonPreparedStatement {
 
   @override
   void dispose() {
+    close();
+  }
+
+  @override
+  void close() {
     if (!_closed) {
       _closed = true;
       reset();

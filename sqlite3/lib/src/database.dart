@@ -140,7 +140,7 @@ abstract class CommonDatabase {
   /// The [persistent] flag can be used as a hint to the query planner that the
   /// statement will be retained for a long time and probably reused many times.
   /// Without this flag, sqlite assumes that the prepared statement will be used
-  /// just once or at most a few times before [CommonPreparedStatement.dispose]
+  /// just once or at most a few times before [CommonPreparedStatement.close]
   /// is called.
   /// If [vtab] is disabled (it defaults to `true`) and the statement references
   /// a virtual table, [prepare] throws an exception.
@@ -271,7 +271,15 @@ abstract class CommonDatabase {
   bool get autocommit;
 
   /// Closes this database and releases associated resources.
+  @Deprecated('Call close() instead')
   void dispose();
+
+  /// Closes this database and releases associated resources.
+  ///
+  /// On native platforms, a native finalizer will also close the connection
+  /// automatically. On the web, finalizers are less reliable. For this reason,
+  /// closing databases explicitly is still recommended.
+  void close();
 }
 
 /// The kind of an [SqliteUpdate] received through a [CommonDatabase.updates]

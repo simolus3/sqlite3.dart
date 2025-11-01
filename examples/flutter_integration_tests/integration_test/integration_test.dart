@@ -110,5 +110,5 @@ void main() {
 }
 
 extension on Database {
-  void closeWhenDone() => addTearDown(dispose);
+  void closeWhenDone() => addTearDown(close);
 }

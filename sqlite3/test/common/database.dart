@@ -17,7 +17,7 @@ void testDatabase(
 
   setUpAll(() async => sqlite3 = await loadSqlite());
   setUp(() => database = sqlite3.openInMemory());
-  tearDown(() => database.dispose());
+  tearDown(() => database.close());
 
   test('user version', () {
     expect(database.userVersion, 0);
@@ -25,15 +25,15 @@ void testDatabase(
     expect(database.userVersion, 1);
   });
 
-  test("database can't be used after dispose", () {
-    database.dispose();
+  test("database can't be used after close", () {
+    database.close();
 
     expect(() => database.execute('SELECT 1;'), throwsStateError);
   });
 
-  test('disposing multiple times works', () {
-    database.dispose();
-    database.dispose(); // shouldn't throw or crash
+  test('closing multiple times works', () {
+    database.close();
+    database.close(); // shouldn't throw or crash
   });
 
   test('updated rows', () {
@@ -317,8 +317,8 @@ void testDatabase(
       final db1 = sqlite3.open('file:test?mode=memory&cache=shared', uri: true);
       final db2 = sqlite3.open('file:test?mode=memory&cache=shared', uri: true);
       addTearDown(() {
-        db1.dispose();
-        db2.dispose();
+        db1.close();
+        db2.close();
       });
 
       db1
@@ -335,8 +335,8 @@ void testDatabase(
     final db1 = sqlite3.open('file:busy?mode=memory&cache=shared', uri: true);
     final db2 = sqlite3.open('file:busy?mode=memory&cache=shared', uri: true);
     addTearDown(() {
-      db1.dispose();
-      db2.dispose();
+      db1.close();
+      db2.close();
     });
 
     db1.execute('BEGIN EXCLUSIVE TRANSACTION');
@@ -820,7 +820,7 @@ void testDatabase(
 
     test('closes when disposing the database', () {
       expect(database.updates.listen(null).asFuture(null), completes);
-      database.dispose();
+      database.close();
     });
 
     test('can listen synchronously', () async {
@@ -994,7 +994,7 @@ void testDatabase(
 
       // Disposing the database here so that the stream closes and neverEmits
       // completes.
-      database.dispose();
+      database.close();
     });
   });
 
@@ -1014,7 +1014,7 @@ void testDatabase(
       final cursor = statement.selectCursor();
       expect(cursor.moveNext(), isTrue);
 
-      database.dispose();
+      database.close();
     });
 
     test('return value of function', () {
