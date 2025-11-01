@@ -16,6 +16,8 @@ void main(List<String> args) {
 const stableFunctions = {
   'dart_sqlite3_malloc',
   'dart_sqlite3_free',
+  'dart_sqlite3_bind_blob',
+  'dart_sqlite3_bind_text',
   'dart_sqlite3_register_vfs',
   'dart_sqlite3_create_scalar_function',
   'dart_sqlite3_create_aggregate_function',
@@ -45,11 +47,9 @@ const stableFunctions = {
   'sqlite3_column_count',
   'sqlite3_bind_parameter_count',
   'sqlite3_bind_parameter_index',
-  'sqlite3_bind_blob64',
   'sqlite3_bind_double',
   'sqlite3_bind_int64',
   'sqlite3_bind_null',
-  'sqlite3_bind_text',
   'sqlite3_column_blob',
   'sqlite3_column_double',
   'sqlite3_column_int64',
@@ -71,10 +71,6 @@ const stableFunctions = {
   'sqlite3_result_null',
   'sqlite3_result_text',
   'sqlite3_vfs_unregister',
-};
-
-/// Newer functions that aren't available in older WASM bundldes.
-const unstable = {
   'sqlite3_db_config',
   'sqlite3_initialize',
   'dart_sqlite3_updates',
@@ -104,3 +100,6 @@ const unstable = {
   'sqlite3changeset_new',
   'dart_sqlite3changeset_apply',
 };
+
+/// Newer functions that aren't available in older WASM bundles.
+const unstable = <String>{};

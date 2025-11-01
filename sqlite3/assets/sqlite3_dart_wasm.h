@@ -7,6 +7,10 @@
 void *dart_sqlite3_malloc(int size);
 void dart_sqlite3_free(void *ptr);
 
+int dart_sqlite3_bind_blob(sqlite3_stmt* stmt, int index, const void* buf, int len);
+
+int dart_sqlite3_bind_text(sqlite3_stmt* stmt, int index, const char* buf, int len);
+
 sqlite3_vfs *dart_sqlite3_register_vfs(const char *name, int dartId,
                                        int makeDefault);
 

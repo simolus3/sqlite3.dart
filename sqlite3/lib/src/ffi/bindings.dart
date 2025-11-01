@@ -1135,9 +1135,6 @@ final class FfiStatement implements RawSqliteStatement, Finalizable {
   }
 
   @override
-  void deallocateArguments() {}
-
-  @override
   int sqlite3_bind_blob64(int index, List<int> value) {
     final ptr = allocateBytes(value);
 

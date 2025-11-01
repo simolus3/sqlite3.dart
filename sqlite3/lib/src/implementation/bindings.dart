@@ -264,10 +264,6 @@ abstract interface class RawSqliteStatement {
   int sqlite3_step();
   void sqlite3_finalize();
 
-  /// Deallocates memory used using `sqlite3_bind` calls to hold argument
-  /// values.
-  void deallocateArguments();
-
   int sqlite3_bind_parameter_index(String name);
 
   int sqlite3_bind_null(int index);

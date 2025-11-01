@@ -39,17 +39,6 @@ class WasmBindings {
     return WasmBindings._(instance, injected);
   }
 
-  JSFunction _checkForPresence(JSFunction? function, String name) {
-    if (function == null) {
-      throw UnsupportedError(
-        '$name is not supported by WASM sqlite3, try upgrading to '
-        'a more recent sqlite3.wasm',
-      );
-    }
-
-    return function;
-  }
-
   Pointer allocateBytes(List<int> bytes, {int additionalLength = 0}) {
     final ptr = malloc(bytes.length + additionalLength);
     memory.asBytes
@@ -73,12 +62,7 @@ class WasmBindings {
 
   void sqlite3_free(Pointer ptr) => sqlite3.sqlite3_free(ptr);
 
-  int sqlite3_initialize() {
-    return switch (sqlite3.sqlite3_initialize) {
-      final fun? => fun.callReturningInt0(),
-      null => 0,
-    };
-  }
+  int sqlite3_initialize() => sqlite3.sqlite3_initialize();
 
   int create_scalar_function(
     Pointer db,
@@ -119,30 +103,17 @@ class WasmBindings {
     int eTextRep,
     int id,
   ) {
-    final function = _checkForPresence(
-      sqlite3.dart_sqlite3_create_window_function,
-      'createWindow',
-    );
-    return function.callReturningInt5(
-      db.toJS,
-      functionName.toJS,
-      nArg.toJS,
-      eTextRep.toJS,
-      id.toJS,
+    return sqlite3.dart_sqlite3_create_window_function(
+      db,
+      functionName,
+      nArg,
+      eTextRep,
+      id,
     );
   }
 
   int create_collation(Pointer db, Pointer name, int eTextRep, int id) {
-    final function = _checkForPresence(
-      sqlite3.dart_sqlite3_create_collation,
-      'createCollation',
-    );
-    return function.callReturningInt4(
-      db.toJS,
-      name.toJS,
-      eTextRep.toJS,
-      id.toJS,
-    );
+    return sqlite3.dart_sqlite3_create_collation(db, name, eTextRep, id);
   }
 
   Pointer dart_sqlite3_register_vfs(Pointer name, int dartId, int makeDefault) {
@@ -173,7 +144,7 @@ class WasmBindings {
   Pointer sqlite3_errstr(int resultCode) => sqlite3.sqlite3_errstr(resultCode);
 
   int sqlite3_error_offset(Pointer db) {
-    return sqlite3.sqlite3_error_offset?.callReturningInt(db.toJS) ?? -1;
+    return sqlite3.sqlite3_error_offset(db);
   }
 
   int sqlite3_extended_result_codes(Pointer db, int onoff) {
@@ -183,15 +154,15 @@ class WasmBindings {
   /// Pass a non-negative [id] to enable update tracking on the db, a negative
   /// one to stop it.
   void dart_sqlite3_updates(Pointer db, int id) {
-    return sqlite3.dart_sqlite3_updates?.callReturningVoid2(db.toJS, id.toJS);
+    return sqlite3.dart_sqlite3_updates(db, id);
   }
 
   void dart_sqlite3_commits(Pointer db, int id) {
-    return sqlite3.dart_sqlite3_commits?.callReturningVoid2(db.toJS, id.toJS);
+    return sqlite3.dart_sqlite3_commits(db, id);
   }
 
   void dart_sqlite3_rollbacks(Pointer db, int id) {
-    return sqlite3.dart_sqlite3_rollbacks?.callReturningVoid2(db.toJS, id.toJS);
+    return sqlite3.dart_sqlite3_rollbacks(db, id);
   }
 
   int sqlite3_exec(
@@ -250,30 +221,24 @@ class WasmBindings {
     return sqlite3.sqlite3_bind_double(stmt, index, value);
   }
 
-  int sqlite3_bind_text(
+  /// Calls `sqlite3_bind_text` with `free` as the destructor argument.
+  int sqlite3_bind_text_finalizerFree(
     Pointer stmt,
     int index,
     Pointer text,
     int length,
-    Pointer a,
   ) {
-    return sqlite3.sqlite3_bind_text(stmt, index, text, length, a);
+    return sqlite3.dart_sqlite3_bind_text(stmt, index, text, length);
   }
 
-  int sqlite3_bind_blob64(
+  /// Calls `sqlite3_bind_blob` with `free` as the destructor argument.
+  int sqlite3_bind_blob_finalizerFree(
     Pointer stmt,
     int index,
     Pointer test,
     int length,
-    Pointer a,
   ) {
-    return sqlite3.sqlite3_bind_blob64(
-      stmt,
-      index,
-      test,
-      JsBigInt.fromInt(length),
-      a,
-    );
+    return sqlite3.dart_sqlite3_bind_blob(stmt, index, test, length);
   }
 
   int sqlite3_bind_parameter_index(Pointer statement, Pointer key) {
@@ -317,7 +282,7 @@ class WasmBindings {
   }
 
   int sqlite3_value_subtype(Pointer value) {
-    return sqlite3.sqlite3_value_subtype?.callReturningInt(value.toJS) ?? 0;
+    return sqlite3.sqlite3_value_subtype(value);
   }
 
   JsBigInt sqlite3_value_int64(Pointer value) {
@@ -375,10 +340,7 @@ class WasmBindings {
   }
 
   void sqlite3_result_subtype(Pointer context, int subtype) {
-    sqlite3.sqlite3_result_subtype?.callReturningVoid2(
-      context.toJS,
-      subtype.toJS,
-    );
+    sqlite3.sqlite3_result_subtype(context, subtype);
   }
 
   int sqlite3_user_data(Pointer context) {
@@ -409,49 +371,31 @@ class WasmBindings {
   int sqlite3_get_autocommit(Pointer db) => sqlite3.sqlite3_get_autocommit(db);
 
   int sqlite3_db_config(Pointer db, int op, int value) {
-    final function = sqlite3.dart_sqlite3_db_config_int;
-    if (function != null) {
-      return function.callReturningInt3(db.toJS, op.toJS, value.toJS);
-    } else {
-      return 1; // Not supported with this wasm build
-    }
+    return sqlite3.dart_sqlite3_db_config_int(db, op, value);
   }
 
   int sqlite3session_create(Pointer db, Pointer zDb, Pointer sessionOut) {
-    return sqlite3.sqlite3session_create!.callReturningInt3(
-      db.toJS,
-      zDb.toJS,
-      sessionOut.toJS,
-    );
+    return sqlite3.sqlite3session_create(db, zDb, sessionOut);
   }
 
   void sqlite3session_delete(Pointer session) {
-    sqlite3.sqlite3session_delete!.callAsFunction(null, session.toJS);
+    sqlite3.sqlite3session_delete(session);
   }
 
   int sqlite3session_enable(Pointer session, int enable) {
-    return sqlite3.sqlite3session_enable!.callReturningInt2(
-      session.toJS,
-      enable.toJS,
-    );
+    return sqlite3.sqlite3session_enable(session, enable);
   }
 
   int sqlite3session_indirect(Pointer session, int enable) {
-    return sqlite3.sqlite3session_indirect!.callReturningInt2(
-      session.toJS,
-      enable.toJS,
-    );
+    return sqlite3.sqlite3session_indirect(session, enable);
   }
 
   int sqlite3session_isempty(Pointer session) {
-    return sqlite3.sqlite3session_isempty!.callReturningInt(session.toJS);
+    return sqlite3.sqlite3session_isempty(session);
   }
 
   int sqlite3session_attach(Pointer session, Pointer zTab) {
-    return sqlite3.sqlite3session_attach!.callReturningInt2(
-      session.toJS,
-      zTab.toJS,
-    );
+    return sqlite3.sqlite3session_attach(session, zTab);
   }
 
   int sqlite3session_diff(
@@ -460,12 +404,7 @@ class WasmBindings {
     Pointer zTbl,
     Pointer pzErrMsg,
   ) {
-    return sqlite3.sqlite3session_diff!.callReturningInt4(
-      session.toJS,
-      zFromDb.toJS,
-      zTbl.toJS,
-      pzErrMsg.toJS,
-    );
+    return sqlite3.sqlite3session_diff(session, zFromDb, zTbl, pzErrMsg);
   }
 
   int sqlite3session_patchset(
@@ -473,11 +412,7 @@ class WasmBindings {
     Pointer pnPatchset,
     Pointer ppPatchset,
   ) {
-    return sqlite3.sqlite3session_patchset!.callReturningInt3(
-      session.toJS,
-      pnPatchset.toJS,
-      ppPatchset.toJS,
-    );
+    return sqlite3.sqlite3session_patchset(session, pnPatchset, ppPatchset);
   }
 
   int sqlite3session_changeset(
@@ -485,11 +420,7 @@ class WasmBindings {
     Pointer pnPatchset,
     Pointer ppPatchset,
   ) {
-    return sqlite3.sqlite3session_changeset!.callReturningInt3(
-      session.toJS,
-      pnPatchset.toJS,
-      ppPatchset.toJS,
-    );
+    return sqlite3.sqlite3session_changeset(session, pnPatchset, ppPatchset);
   }
 
   int sqlite3changeset_invert(
@@ -498,28 +429,19 @@ class WasmBindings {
     Pointer pnOut,
     Pointer ppOut,
   ) {
-    return sqlite3.sqlite3changeset_invert!.callReturningInt4(
-      nIn.toJS,
-      pIn.toJS,
-      pnOut.toJS,
-      ppOut.toJS,
-    );
+    return sqlite3.sqlite3changeset_invert(nIn, pIn, pnOut, ppOut);
   }
 
   int sqlite3changeset_start(Pointer outPtr, int size, Pointer changeset) {
-    return sqlite3.sqlite3changeset_start!.callReturningInt3(
-      outPtr.toJS,
-      size.toJS,
-      changeset.toJS,
-    );
+    return sqlite3.sqlite3changeset_start(outPtr, size, changeset);
   }
 
   int sqlite3changeset_finalize(Pointer iterator) {
-    return sqlite3.sqlite3changeset_finalize!.callReturningInt(iterator.toJS);
+    return sqlite3.sqlite3changeset_finalize(iterator);
   }
 
   int sqlite3changeset_next(Pointer iterator) {
-    return sqlite3.sqlite3changeset_next!.callReturningInt(iterator.toJS);
+    return sqlite3.sqlite3changeset_next(iterator);
   }
 
   int sqlite3changeset_op(
@@ -529,29 +451,21 @@ class WasmBindings {
     Pointer outOp,
     Pointer outIndirect,
   ) {
-    return sqlite3.sqlite3changeset_op!.callReturningInt5(
-      iterator.toJS,
-      outTable.toJS,
-      outColCount.toJS,
-      outOp.toJS,
-      outIndirect.toJS,
+    return sqlite3.sqlite3changeset_op(
+      iterator,
+      outTable,
+      outColCount,
+      outOp,
+      outIndirect,
     );
   }
 
   int sqlite3changeset_old(Pointer iterator, int iVal, Pointer outValue) {
-    return sqlite3.sqlite3changeset_old!.callReturningInt3(
-      iterator.toJS,
-      iVal.toJS,
-      outValue.toJS,
-    );
+    return sqlite3.sqlite3changeset_old(iterator, iVal, outValue);
   }
 
   int sqlite3changeset_new(Pointer iterator, int iVal, Pointer outValue) {
-    return sqlite3.sqlite3changeset_new!.callReturningInt3(
-      iterator.toJS,
-      iVal.toJS,
-      outValue.toJS,
-    );
+    return sqlite3.sqlite3changeset_new(iterator, iVal, outValue);
   }
 
   int dart_sqlite3changeset_apply(
@@ -561,12 +475,12 @@ class WasmBindings {
     Pointer context,
     int filter,
   ) {
-    return sqlite3.dart_sqlite3changeset_apply!.callReturningInt5(
-      db.toJS,
-      length.toJS,
-      changeset.toJS,
-      context.toJS,
-      filter.toJS,
+    return sqlite3.dart_sqlite3changeset_apply(
+      db,
+      length,
+      changeset,
+      context,
+      filter,
     );
   }
 
@@ -989,50 +903,4 @@ final class SessionApplyCallbacks {
   final RawConflict? conflict;
 
   SessionApplyCallbacks(this.filter, this.conflict);
-}
-
-extension on JSFunction {
-  @JS('call')
-  external JSNumber _call5(
-    JSAny? r,
-    JSAny? a0,
-    JSAny? a1,
-    JSAny? a2,
-    JSAny? a3,
-    JSAny? a4,
-  );
-
-  int callReturningInt0() {
-    return (callAsFunction(null) as JSNumber).toDartInt;
-  }
-
-  int callReturningInt(JSAny? arg) {
-    return (callAsFunction(null, arg) as JSNumber).toDartInt;
-  }
-
-  int callReturningInt2(JSAny? arg0, JSAny? arg1) {
-    return (callAsFunction(null, arg0, arg1) as JSNumber).toDartInt;
-  }
-
-  int callReturningInt3(JSAny? arg0, JSAny? arg1, JSAny? arg2) {
-    return (callAsFunction(null, arg0, arg1, arg2) as JSNumber).toDartInt;
-  }
-
-  int callReturningInt4(JSAny? arg0, JSAny? arg1, JSAny? arg2, JSAny? arg3) {
-    return (callAsFunction(null, arg0, arg1, arg2, arg3) as JSNumber).toDartInt;
-  }
-
-  int callReturningInt5(
-    JSAny? arg0,
-    JSAny? arg1,
-    JSAny? arg2,
-    JSAny? arg3,
-    JSAny? arg4,
-  ) {
-    return _call5(null, arg0, arg1, arg2, arg3, arg4).toDartInt;
-  }
-
-  void callReturningVoid2(JSAny? arg0, JSAny? arg1) {
-    callAsFunction(null, arg0, arg1);
-  }
 }

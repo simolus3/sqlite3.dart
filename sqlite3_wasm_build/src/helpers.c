@@ -28,6 +28,14 @@ SQLITE_API void *dart_sqlite3_malloc(size_t size) { return malloc(size); }
 
 SQLITE_API void dart_sqlite3_free(void *ptr) { return free(ptr); }
 
+SQLITE_API int dart_sqlite3_bind_blob(sqlite3_stmt* stmt, int index, const void* buf, int len) {
+  return sqlite3_bind_blob64(stmt, index, buf, len, free);
+}
+
+SQLITE_API int dart_sqlite3_bind_text(sqlite3_stmt* stmt, int index, const char* buf, int len) {
+  return sqlite3_bind_text(stmt, index, buf, len, free);
+}
+
 static int dartvfs_trace_log1(const char *msg, void *unused) {
   dartLogError(msg);
   return SQLITE_OK;

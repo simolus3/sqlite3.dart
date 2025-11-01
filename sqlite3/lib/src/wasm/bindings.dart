@@ -452,24 +452,18 @@ final class WasmStatement implements RawSqliteStatement {
   final Pointer stmt;
   final WasmBindings bindings;
 
-  final List<Pointer> _allocatedArguments = [];
-
   WasmStatement(this.database, this.stmt) : bindings = database.bindings;
-
-  @override
-  void deallocateArguments() {
-    for (final arg in _allocatedArguments) {
-      bindings.free(arg);
-    }
-    _allocatedArguments.clear();
-  }
 
   @override
   int sqlite3_bind_blob64(int index, List<int> value) {
     final ptr = bindings.allocateBytes(value);
-    _allocatedArguments.add(ptr);
 
-    return bindings.sqlite3_bind_blob64(stmt, index, ptr, value.length, 0);
+    return bindings.sqlite3_bind_blob_finalizerFree(
+      stmt,
+      index,
+      ptr,
+      value.length,
+    );
   }
 
   @override
@@ -521,9 +515,13 @@ final class WasmStatement implements RawSqliteStatement {
   int sqlite3_bind_text(int index, String value) {
     final encoded = utf8.encode(value);
     final ptr = bindings.allocateBytes(encoded);
-    _allocatedArguments.add(ptr);
 
-    return bindings.sqlite3_bind_text(stmt, index, ptr, encoded.length, 0);
+    return bindings.sqlite3_bind_text_finalizerFree(
+      stmt,
+      index,
+      ptr,
+      encoded.length,
+    );
   }
 
   @override

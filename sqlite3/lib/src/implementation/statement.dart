@@ -20,7 +20,6 @@ final class FinalizableStatement extends FinalizablePart {
     if (!_closed) {
       _closed = true;
       _reset();
-      _deallocateArguments();
       statement.sqlite3_finalize();
     }
   }
@@ -30,10 +29,6 @@ final class FinalizableStatement extends FinalizablePart {
       statement.sqlite3_reset();
       _inResetState = true;
     }
-  }
-
-  void _deallocateArguments() {
-    statement.deallocateArguments();
   }
 }
 
@@ -88,15 +83,6 @@ base class StatementImplementation extends CommonPreparedStatement {
   }
 
   int _step() => statement.sqlite3_step();
-
-  void _reset({bool invalidateArgs = true}) {
-    finalizable._reset();
-    if (invalidateArgs) {
-      finalizable._deallocateArguments();
-    }
-
-    _currentCursor = null;
-  }
 
   void _execute() {
     int result;
@@ -289,7 +275,8 @@ base class StatementImplementation extends CommonPreparedStatement {
 
   @override
   void reset() {
-    _reset(invalidateArgs: false);
+    finalizable._reset();
+    _currentCursor = null;
   }
 
   @override
@@ -306,7 +293,7 @@ base class StatementImplementation extends CommonPreparedStatement {
   ResultSet selectWith(StatementParameters parameters) {
     _ensureNotFinalized();
 
-    _reset();
+    reset();
     _bindParams(parameters);
 
     return _selectResults();
@@ -316,7 +303,7 @@ base class StatementImplementation extends CommonPreparedStatement {
   void executeWith(StatementParameters parameters) {
     _ensureNotFinalized();
 
-    _reset();
+    reset();
     _bindParams(parameters);
     _execute();
   }
@@ -325,7 +312,7 @@ base class StatementImplementation extends CommonPreparedStatement {
   IteratingCursor iterateWith(StatementParameters parameters) {
     _ensureNotFinalized();
 
-    _reset();
+    reset();
     _bindParams(parameters);
 
     return _currentCursor = _ActiveCursorIterator(this);
@@ -344,7 +331,7 @@ base class StatementImplementation extends CommonPreparedStatement {
   ResultSet selectMap(Map<String, Object?> parameters) {
     _ensureNotFinalized();
 
-    _reset();
+    reset();
     _bindMapParams(parameters);
 
     return _selectResults();
