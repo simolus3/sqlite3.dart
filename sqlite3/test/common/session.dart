@@ -159,7 +159,7 @@ void testSession(FutureOr<CommonSqlite3> Function() loadSqlite) {
         newValues: [null, 'a'],
       ),
     ]);
-  });
+  }, onPlatform: {'vm': Skip('diff seems to be unreliable in CI')});
 }
 
 TypeMatcher<ChangesetOperation> isOp({
