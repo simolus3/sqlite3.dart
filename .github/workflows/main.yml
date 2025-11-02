@@ -94,6 +94,17 @@ jobs:
         dart test --test-randomize-ordering-seed "random" -P ci --reporter expanded --concurrency 1
       working-directory: sqlite3/
 
+    - name: Enable sqlite3mc
+      if: matrix.sqlite == 'compiled'
+      run: |
+        dart run tool/hook_overrides.dart compiled-ciphers
+
+    - name: Test sqlite3 package with sqlite3mc
+      if: matrix.sqlite == 'compiled'
+      run: |
+        dart test --test-randomize-ordering-seed "random" -P ci --reporter expanded --concurrency 1
+      working-directory: sqlite3/
+
     # - name: Test with SQLITE_OMIT_AUTOINIT
     #   if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
     #   run: |
