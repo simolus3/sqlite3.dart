@@ -5,7 +5,7 @@ import 'vfs.dart';
 ///
 /// {@category common}
 abstract interface class CommonSqlite3 {
-  /// The version of the sqlite3 library in used.
+  /// The version of the sqlite3 library used.
   Version get version;
 
   /// Opens a database file.

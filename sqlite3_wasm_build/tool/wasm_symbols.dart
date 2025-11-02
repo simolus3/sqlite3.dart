@@ -21,6 +21,7 @@ const stableFunctions = {
   'dart_sqlite3_register_vfs',
   'dart_sqlite3_unregister_vfs',
   'dart_sqlite3_create_function_v2',
+  'dart_sqlite3_busy_handler',
   'sqlite3_temp_directory',
   'sqlite3_open_v2',
   'sqlite3_close_v2',

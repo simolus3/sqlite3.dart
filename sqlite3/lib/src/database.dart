@@ -264,6 +264,20 @@ abstract class CommonDatabase {
     bool subtype = false,
   });
 
+  /// Installs a function to invoke whenever an attempt is made to access a
+  /// database table when another thread or process has the table locked.
+  ///
+  /// The argument passed to the [handler] is the amount of times it has
+  /// previously been invoked for the same locking event.
+  /// The handler should return `true` if SQLite should make another attempt to
+  /// access the database, or `false` if SQLite should stop making attempts and
+  /// return `SQLITE_BUSY`.
+  ///
+  /// Note that using the `busy_timeout` pragma will overwrite this handler.
+  ///
+  /// See also: https://www.sqlite.org/c3ref/busy_handler.html
+  set busyHandler(bool Function(int count)? handler);
+
   /// Checks whether the connection is in autocommit mode. The connection is in
   /// autocommit by default, except when inside a transaction.
   ///

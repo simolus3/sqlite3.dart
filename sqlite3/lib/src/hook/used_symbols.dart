@@ -11,6 +11,7 @@ const usedSqliteSymbols = {
   'sqlite3_db_filename',
   'sqlite3_compileoption_used',
   'sqlite3_compileoption_get',
+  'sqlite3_busy_handler',
   'sqlite3_extended_result_codes',
   'sqlite3_extended_errcode',
   'sqlite3_errmsg',

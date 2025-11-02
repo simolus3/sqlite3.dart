@@ -78,6 +78,8 @@ import_dart("dispatch_xValue") extern void dispatchXValue(__externref_t handle,
 import_dart("dispatch_compare") extern int dispatchXCompare(
     __externref_t handle, int lengthA, const void* a, int lengthB,
     const void* b);
+import_dart("dispatch_busy") extern int dispatchBusyHandler(
+    __externref_t handle, int amount);
 
 // Methods on SessionApplyCallbacks
 import_dart("changeset_apply_filter") extern int dispatchApplyFilter(

@@ -352,6 +352,14 @@ final class DartBridgeCallbacks {
     return functions.toDartObject.collation!(aStr, bStr);
   }
 
+  @JSExport('dispatch_busy')
+  int dispatchBusyHandler(
+    ExternalDartReference<int Function(int)> function,
+    int amount,
+  ) {
+    return function.toDartObject(amount);
+  }
+
   @JSExport('changeset_apply_filter')
   int dispatchApplyFilter(
     ExternalDartReference<SessionApplyCallbacks> callbacks,

@@ -40,3 +40,4 @@ int dart_sqlite3_db_config_int(sqlite3* db, int op, int arg);
 
 int dart_sqlite3changeset_apply(sqlite3* db, int nChangeset, void* pChangeset,
                                 externref* callbacks, int filter);
+int dart_sqlite3_busy_handler(sqlite3* db, externref* callback);

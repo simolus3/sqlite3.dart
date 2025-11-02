@@ -383,6 +383,14 @@ final class WasmDatabase implements RawSqliteDatabase {
   int sqlite3_db_config(int op, int value) {
     return bindings.sqlite3_db_config(db, op, value);
   }
+
+  @override
+  int sqlite3_busy_handler(int Function(int p1)? callback) {
+    return bindings.sqlite3.dart_sqlite3_busy_handler(
+      db,
+      callback?.toExternalReference,
+    );
+  }
 }
 
 final class WasmStatementCompiler implements RawStatementCompiler {

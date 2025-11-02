@@ -68,6 +68,26 @@ void main() {
     );
   });
 
+  test('busy handler', () {
+    final path = d.path('test.db');
+    final a = sqlite3.open(path);
+    final b = sqlite3.open(path);
+    addTearDown(() {
+      a.close();
+      b.close();
+    });
+
+    a.execute('BEGIN EXCLUSIVE');
+    final busyHandlerInvocations = <int>[];
+    b.busyHandler = (int amount) {
+      busyHandlerInvocations.add(amount);
+      return amount < 3;
+    };
+
+    expect(() => b.execute('BEGIN EXCLUSIVE'), throwsSqlError(5, 5));
+    expect(busyHandlerInvocations, [0, 1, 2, 3]);
+  });
+
   group('backup', () {
     late String path;
 

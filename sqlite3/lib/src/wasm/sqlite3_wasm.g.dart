@@ -311,4 +311,8 @@ extension type SqliteExports(JSObject raw) implements JSObject {
     ExternalDartReference<Object>? callbacks,
     int filter,
   );
+  external int dart_sqlite3_busy_handler(
+    Pointer /*<struct sqlite3 *>*/ db,
+    ExternalDartReference<Object>? callback,
+  );
 }

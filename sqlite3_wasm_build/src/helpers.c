@@ -380,3 +380,15 @@ SQLITE_API int dart_sqlite3changeset_apply(sqlite3* db, int nChangeset,
   host_object_free(context);
   return rc;
 }
+
+static int dartBusyHandler(void* context, int amount) {
+  return dispatchBusyHandler(host_object_get(context), amount);
+}
+
+SQLITE_API int dart_sqlite3_busy_handler(sqlite3* db, __externref_t callback) {
+  if (__builtin_wasm_ref_is_null_extern(callback)) {
+    return sqlite3_busy_handler(db, nullptr, nullptr);
+  }
+  return sqlite3_busy_handler(db, &dartBusyHandler,
+                              host_object_insert(callback));
+}

@@ -52,6 +52,24 @@ external int sqlite3_compileoption_used(ffi.Pointer<sqlite3_char> zOptName);
 @ffi.Native<ffi.Pointer<sqlite3_char> Function(ffi.Int)>()
 external ffi.Pointer<sqlite3_char> sqlite3_compileoption_get(int N);
 
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Pointer<
+      ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>, ffi.Int)>
+    >,
+    ffi.Pointer<ffi.Void>,
+  )
+>()
+external int sqlite3_busy_handler(
+  ffi.Pointer<sqlite3> db,
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>, ffi.Int)>
+  >
+  arg1,
+  ffi.Pointer<ffi.Void> context,
+);
+
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3>, ffi.Int)>()
 external int sqlite3_extended_result_codes(ffi.Pointer<sqlite3> db, int onoff);
 

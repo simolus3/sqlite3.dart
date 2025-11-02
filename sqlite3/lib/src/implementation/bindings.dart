@@ -238,6 +238,8 @@ abstract interface class RawSqliteDatabase {
     required RawXStep xInverse,
   });
 
+  int sqlite3_busy_handler(int Function(int)? callback);
+
   int sqlite3_db_config(int op, int value);
   int sqlite3_get_autocommit();
 }

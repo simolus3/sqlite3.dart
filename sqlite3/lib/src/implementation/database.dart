@@ -312,6 +312,17 @@ base class DatabaseImplementation implements CommonDatabase {
     return database.sqlite3_get_autocommit() != 0;
   }
 
+  @override
+  set busyHandler(bool Function(int count)? handler) {
+    final result = database.sqlite3_busy_handler(switch (handler) {
+      null => null,
+      final handler => (count) => handler(count) ? 1 : 0,
+    });
+    if (result != SqlError.SQLITE_OK) {
+      throwException(this, result, operation: 'set busy handler');
+    }
+  }
+
   List<StatementImplementation> _prepareInternal(
     String sql, {
     bool persistent = false,

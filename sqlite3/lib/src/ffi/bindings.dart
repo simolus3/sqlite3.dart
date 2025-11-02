@@ -1060,6 +1060,29 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
   }
 
   @override
+  int sqlite3_busy_handler(int Function(int)? callback) {
+    if (callback == null) {
+      return libsqlite3.sqlite3_busy_handler(db, nullPtr(), nullPtr());
+    } else {
+      final callable =
+          NativeCallable<Int Function(Pointer<Void>, Int)>.isolateLocal((
+              Pointer<void> _,
+              int amount,
+            ) {
+              return callback(amount);
+            }, exceptionalReturn: 0)
+            ..keepIsolateAlive = false
+            ..closeIn(_functions);
+
+      return libsqlite3.sqlite3_busy_handler(
+        db,
+        callable.nativeFunction,
+        nullPtr(),
+      );
+    }
+  }
+
+  @override
   RawStatementCompiler newCompiler(List<int> utf8EncodedSql) {
     return FfiStatementCompiler(this, allocateBytes(utf8EncodedSql));
   }
