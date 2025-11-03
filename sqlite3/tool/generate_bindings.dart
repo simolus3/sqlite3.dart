@@ -6,11 +6,14 @@ import 'package:ffigen/src/config_provider/config_types.dart';
 import 'package:ffigen/src/config_provider/spec_utils.dart';
 import 'package:ffigen/src/code_generator.dart';
 import 'package:ffigen/src/header_parser.dart' as ffigen;
+import 'package:logging/logging.dart';
 import 'package:pub_semver/pub_semver.dart';
 
 import '../../sqlite3_wasm_build/tool/wasm_symbols.dart';
 
 void main() {
+  Logger.root.onRecord.listen(print);
+
   _ffigen();
   writeUsedSymbols();
   writeWasmDefinitions();
@@ -97,7 +100,12 @@ extension type SqliteExports(JSObject raw) implements JSObject {
 
     switch (type) {
       case PointerType():
-        buffer.write('Pointer /*<${type.getNativeType().trim()}>*/');
+        if (type.child.getNativeType() == 'externref ') {
+          buffer.write('ExternalDartReference<Object>?');
+        } else {
+          buffer.write('Pointer /*<${type.getNativeType().trim()}>*/');
+        }
+
         return;
       case NativeType():
         if (bigIntInJs.contains(type.toString())) {

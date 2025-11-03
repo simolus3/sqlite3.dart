@@ -45,6 +45,7 @@ macro(base_sqlite3_target name debug crypto)
   set(sources
     ${CMAKE_CURRENT_SOURCE_DIR}/os_web.c
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/external_objects.c
   )
   set(flags -Wall -Wextra -Wno-unused-parameter -Wno-unused-function)
 
@@ -117,11 +118,12 @@ macro(base_sqlite3_target name debug crypto)
 endmacro()
 
 base_sqlite3_target(sqlite3_debug true false)
-base_sqlite3_target(sqlite3_opt false false)
-base_sqlite3_target(sqlite3mc false true)
+#base_sqlite3_target(sqlite3_opt false false)
+#base_sqlite3_target(sqlite3mc false true)
 
 add_custom_target(output)
-add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_opt.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3.wasm)
+#add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_opt.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3.wasm)
 add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_debug.init.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3.debug.wasm)
-add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3mc.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3mc.wasm)
-add_dependencies(output sqlite3_debug sqlite3_opt sqlite3mc)
+#add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3mc.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3mc.wasm)
+#add_dependencies(output sqlite3_debug sqlite3_opt sqlite3mc)
+add_dependencies(output sqlite3_debug)

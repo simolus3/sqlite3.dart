@@ -1,5 +1,6 @@
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:js_interop';
 import 'dart:typed_data';
 
 import 'package:sqlite3/src/vfs.dart';
@@ -8,6 +9,7 @@ import '../constants.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
 import '../implementation/exception.dart';
+import 'injected_values.dart';
 import 'wasm_interop.dart' as wasm;
 import 'sqlite3_wasm.g.dart';
 import 'wasm_interop.dart';
@@ -90,32 +92,26 @@ final class WasmSqliteBindings implements RawSqliteBindings {
   @override
   void registerVirtualFileSystem(VirtualFileSystem vfs, int makeDefault) {
     final name = bindings.allocateZeroTerminated(vfs.name);
-    final id = bindings.callbacks.registerVfs(vfs);
 
-    final ptr = bindings.dart_sqlite3_register_vfs(name, id, makeDefault);
+    final ptr = bindings.sqlite3.dart_sqlite3_register_vfs(
+      name,
+      vfs.toExternalReference,
+      makeDefault,
+    );
     if (ptr == 0) {
       throw StateError('could not register vfs');
     }
-    DartCallbacks.sqliteVfsPointer[vfs] = ptr;
+    _sqliteVfsPointer[vfs] = ptr;
   }
 
   @override
   void unregisterVirtualFileSystem(VirtualFileSystem vfs) {
-    final ptr = DartCallbacks.sqliteVfsPointer[vfs];
+    final ptr = _sqliteVfsPointer[vfs];
     if (ptr == null) {
       throw StateError('vfs has not been registered');
     }
 
-    // zName field is the fifth field, after the (word-sized) iVersion, szOsFile,
-    // maxPathname and pNext pointers.
-    final zNamePtr = ptr + 4 * 4;
-    final pAppDataPtr = zNamePtr + 4;
-
     bindings.sqlite3_vfs_unregister(ptr);
-    bindings.free(zNamePtr);
-
-    final dartId = bindings.memory.int32ValueOfPointer(pAppDataPtr);
-    bindings.callbacks.registeredVfs.remove(dartId);
   }
 
   @override
@@ -161,18 +157,16 @@ final class WasmSqliteBindings implements RawSqliteBindings {
         return conflict(eConflict, impl);
       },
     );
-    final callbackId = bindings.callbacks.registerChangesetApply(callbacks);
+
     final changesetPtr = bindings.allocateBytes(changeset);
 
-    final result = bindings.dart_sqlite3changeset_apply(
+    final result = bindings.sqlite3.dart_sqlite3changeset_apply(
       (database as WasmDatabase).db,
       changeset.length,
       changesetPtr,
-      callbackId,
+      callbacks.toExternalReference,
       filter != null ? 1 : 0,
     );
-
-    bindings.callbacks.sessionApply.remove(callbackId);
     bindings.free(changesetPtr);
     return result;
   }
@@ -224,6 +218,8 @@ final class WasmSqliteBindings implements RawSqliteBindings {
     }
     return WasmChangesetIterator(this, iterator, dataPointer: changesetPtr);
   }
+
+  static final _sqliteVfsPointer = Expando<int>();
 }
 
 final class WasmDatabase implements RawSqliteDatabase {
@@ -278,11 +274,11 @@ final class WasmDatabase implements RawSqliteDatabase {
     required RawCollation collation,
   }) {
     final ptr = bindings.allocateBytes(collationName, additionalLength: 1);
-    final result = bindings.create_collation(
+    final result = bindings.sqlite3.dart_sqlite3_create_collation(
       db,
       ptr,
       eTextRep,
-      bindings.callbacks.register(RegisteredFunctionSet(collation: collation)),
+      RegisteredFunctionSet(collation: collation).toExternalReference,
     );
 
     bindings.free(ptr);
@@ -300,28 +296,23 @@ final class WasmDatabase implements RawSqliteDatabase {
   }) {
     final ptr = bindings.allocateBytes(functionName, additionalLength: 1);
 
-    final int result;
+    var isAggregate = false;
+    RegisteredFunctionSet set;
     if (xFunc != null) {
-      // Scalar function
-      result = bindings.create_scalar_function(
-        db,
-        ptr,
-        nArg,
-        eTextRep,
-        bindings.callbacks.register(RegisteredFunctionSet(xFunc: xFunc)),
-      );
+      set = RegisteredFunctionSet(xFunc: xFunc);
     } else {
-      // Aggregate function
-      result = bindings.create_aggregate_function(
-        db,
-        ptr,
-        nArg,
-        eTextRep,
-        bindings.callbacks.register(
-          RegisteredFunctionSet(xStep: xStep, xFinal: xFinal),
-        ),
-      );
+      isAggregate = true;
+      set = RegisteredFunctionSet(xStep: xStep, xFinal: xFinal);
     }
+
+    final result = bindings.sqlite3.dart_sqlite3_create_function_v2(
+      db,
+      ptr,
+      nArg,
+      eTextRep,
+      isAggregate ? 1 : 0,
+      set.toExternalReference,
+    );
 
     bindings.free(ptr);
     return result;
@@ -343,13 +334,11 @@ final class WasmDatabase implements RawSqliteDatabase {
       ptr,
       nArg,
       eTextRep,
-      bindings.callbacks.register(
-        RegisteredFunctionSet(
-          xStep: xStep,
-          xFinal: xFinal,
-          xValue: xValue,
-          xInverse: xInverse,
-        ),
+      RegisteredFunctionSet(
+        xStep: xStep,
+        xFinal: xFinal,
+        xValue: xValue,
+        xInverse: xInverse,
       ),
     );
 
@@ -372,23 +361,17 @@ final class WasmDatabase implements RawSqliteDatabase {
 
   @override
   void sqlite3_update_hook(RawUpdateHook? hook) {
-    bindings.callbacks.installedUpdateHook = hook;
-
-    bindings.dart_sqlite3_updates(db, hook != null ? 1 : -1);
+    bindings.dart_sqlite3_updates(db, hook);
   }
 
   @override
   void sqlite3_commit_hook(RawCommitHook? hook) {
-    bindings.callbacks.installedCommitHook = hook;
-
-    bindings.dart_sqlite3_commits(db, hook != null ? 1 : -1);
+    bindings.dart_sqlite3_commits(db, hook);
   }
 
   @override
   void sqlite3_rollback_hook(RawRollbackHook? hook) {
-    bindings.callbacks.installedRollbackHook = hook;
-
-    bindings.dart_sqlite3_rollbacks(db, hook != null ? 1 : -1);
+    bindings.dart_sqlite3_rollbacks(db, hook);
   }
 
   @override
@@ -603,7 +586,7 @@ final class WasmStatement implements RawSqliteStatement {
 final class WasmContext implements RawSqliteContext {
   final WasmBindings bindings;
   final Pointer context;
-  final DartCallbacks callbacks;
+  final DartBridgeCallbacks callbacks;
 
   WasmContext(this.bindings, this.context, this.callbacks);
 
