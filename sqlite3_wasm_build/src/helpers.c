@@ -47,7 +47,7 @@ static int dartvfs_trace_log1(const char* msg, void* unused) {
 int dartvfs_close(sqlite3_file* file) {
   auto rc = xClose(DART_FILE(file));
   if (rc == 0) {
-    host_object_free(((dart_vfs_file*) file)->dart_object);
+    host_object_free(((dart_vfs_file*)file)->dart_object);
   }
   return rc;
 }
@@ -76,7 +76,9 @@ int dartvfs_fileSize(sqlite3_file* file, sqlite3_int64* pSize) {
   return rc;
 }
 
-int dartvfs_lock(sqlite3_file* file, int i) { return xLock(DART_FILE(file), i); }
+int dartvfs_lock(sqlite3_file* file, int i) {
+  return xLock(DART_FILE(file), i);
+}
 
 int dartvfs_unlock(sqlite3_file* file, int i) {
   return xUnlock(DART_FILE(file), i);
@@ -130,7 +132,8 @@ static int dartvfs_open(sqlite3_vfs* vfs, sqlite3_filename zName,
 
   // The xOpen call will also set the dart_fd field.
   int rc;
-  auto dart_file_object = xOpen(host_object_get(vfs->pAppData), zName, &rc, flags, pOutFlags);
+  auto dart_file_object =
+      xOpen(host_object_get(vfs->pAppData), zName, &rc, flags, pOutFlags);
 
   if (__builtin_wasm_ref_is_null_extern(dart_file_object)) {
     dartFile->pMethods = nullptr;
@@ -180,7 +183,8 @@ static int dartvfs_currentTimeInt64(sqlite3_vfs* vfs, sqlite3_int64* timeOut) {
   return SQLITE_OK;
 }
 
-SQLITE_API sqlite3_vfs* dart_sqlite3_register_vfs(const char* name, __externref_t dart_vfs,
+SQLITE_API sqlite3_vfs* dart_sqlite3_register_vfs(const char* name,
+                                                  __externref_t dart_vfs,
                                                   int makeDefault) {
   sqlite3_vfs* vfs = calloc(1, sizeof(sqlite3_vfs));
   vfs->iVersion = 2;
@@ -228,17 +232,20 @@ int dart_sqlite3_unregister_vfs(sqlite3_vfs* vfs) {
   return rc;
 }
 
-static void dartXFunc(sqlite3_context* context, int nArg, sqlite3_value** args) {
+static void dartXFunc(sqlite3_context* context, int nArg,
+                      sqlite3_value** args) {
   auto handle = host_object_get(sqlite3_user_data(context));
   return dispatchXFunc(handle, context, nArg, args);
 }
 
-static void dartXStep(sqlite3_context* context, int nArg, sqlite3_value** args) {
+static void dartXStep(sqlite3_context* context, int nArg,
+                      sqlite3_value** args) {
   auto handle = host_object_get(sqlite3_user_data(context));
   return dispatchXStep(handle, context, nArg, args);
 }
 
-static void dartXInverse(sqlite3_context* context, int nArg, sqlite3_value** args) {
+static void dartXInverse(sqlite3_context* context, int nArg,
+                         sqlite3_value** args) {
   auto handle = host_object_get(sqlite3_user_data(context));
   return dispatchXInverse(handle, context, nArg, args);
 }
@@ -253,57 +260,42 @@ static void dartXValue(sqlite3_context* context) {
   return dispatchXValue(handle, context);
 }
 
-SQLITE_API int dart_sqlite3_create_function_v2(
-    sqlite3* db,
-    const char* zFunctionName,
-    int nArg,
-    int eTextRep,
-    int isAggregate,
-    __externref_t handlers
-) {
+SQLITE_API int dart_sqlite3_create_function_v2(sqlite3* db,
+                                               const char* zFunctionName,
+                                               int nArg, int eTextRep,
+                                               int isAggregate,
+                                               __externref_t handlers) {
   auto id = host_object_insert(handlers);
   return sqlite3_create_function_v2(
-    db,
-    zFunctionName,
-    nArg,
-    eTextRep,
-    id,
-    &dartXFunc,
-    isAggregate ? &dartXStep : nullptr,
-    isAggregate ? &dartXFinal : nullptr,
-    &host_object_free
-  );
+      db, zFunctionName, nArg, eTextRep, id, isAggregate ? nullptr : &dartXFunc,
+      isAggregate ? &dartXStep : nullptr, isAggregate ? &dartXFinal : nullptr,
+      &host_object_free);
 }
 
-SQLITE_API int dart_sqlite3_create_window_function(sqlite3* db, const char* zFunctionName,
-                                        int nArg, int eTextRep, __externref_t handlers) {
+SQLITE_API int dart_sqlite3_create_window_function(sqlite3* db,
+                                                   const char* zFunctionName,
+                                                   int nArg, int eTextRep,
+                                                   __externref_t handlers) {
   auto id = host_object_insert(handlers);
-  return sqlite3_create_window_function(
-    db,
-    zFunctionName,
-    nArg,
-    eTextRep,
-    id,
-    &dartXStep,
-    &dartXFinal,
-    &dartXValue,
-    &dartXInverse,
-    &host_object_free
-  );
+  return sqlite3_create_window_function(db, zFunctionName, nArg, eTextRep, id,
+                                        &dartXStep, &dartXFinal, &dartXValue,
+                                        &dartXInverse, &host_object_free);
 }
 
-static void dartXUpdate(void* context, int kind, const char* schema, const char* table, sqlite3_int64 rowid) {
-  // TODO (not supported in clang): Cast to extern => anyref => function => call_ref
+static void dartXUpdate(void* context, int kind, const char* schema,
+                        const char* table, sqlite3_int64 rowid) {
+  // TODO (not supported in clang): Cast to extern => anyref => function =>
+  // call_ref
   dartDispatchUpdateHook(host_object_get(context), kind, schema, table, rowid);
 }
-
 
 SQLITE_API void dart_sqlite3_updates(sqlite3* db, __externref_t function) {
   void* previous;
   if (__builtin_wasm_ref_is_null_extern(function)) {
     previous = sqlite3_update_hook(db, nullptr, nullptr);
   } else {
-    previous = sqlite3_update_hook(db, &dartXUpdate, host_object_insert(function));
+    previous =
+        sqlite3_update_hook(db, &dartXUpdate, host_object_insert(function));
   }
 
   if (previous) {
@@ -312,7 +304,8 @@ SQLITE_API void dart_sqlite3_updates(sqlite3* db, __externref_t function) {
 }
 
 static int dartXCommit(void* context) {
-  // TODO (not supported in clang): Cast to extern => anyref => function => call_ref
+  // TODO (not supported in clang): Cast to extern => anyref => function =>
+  // call_ref
   return dartDispatchReturnInt(host_object_get(context));
 }
 
@@ -321,7 +314,8 @@ SQLITE_API void dart_sqlite3_commits(sqlite3* db, __externref_t function) {
   if (__builtin_wasm_ref_is_null_extern(function)) {
     previous = sqlite3_commit_hook(db, nullptr, nullptr);
   } else {
-    previous = sqlite3_commit_hook(db, &dartXCommit, host_object_insert(function));
+    previous =
+        sqlite3_commit_hook(db, &dartXCommit, host_object_insert(function));
   }
 
   if (previous) {
@@ -330,7 +324,8 @@ SQLITE_API void dart_sqlite3_commits(sqlite3* db, __externref_t function) {
 }
 
 static void dartXRollback(void* context) {
-  // TODO (not supported in clang): Cast to extern => anyref => function => call_ref
+  // TODO (not supported in clang): Cast to extern => anyref => function =>
+  // call_ref
   return dartDispatchReturnVoid(host_object_get(context));
 }
 
@@ -339,7 +334,8 @@ SQLITE_API void dart_sqlite3_rollbacks(sqlite3* db, __externref_t function) {
   if (__builtin_wasm_ref_is_null_extern(function)) {
     previous = sqlite3_rollback_hook(db, nullptr, nullptr);
   } else {
-    previous = sqlite3_rollback_hook(db, &dartXRollback, host_object_insert(function));
+    previous =
+        sqlite3_rollback_hook(db, &dartXRollback, host_object_insert(function));
   }
 
   if (previous) {
@@ -347,39 +343,40 @@ SQLITE_API void dart_sqlite3_rollbacks(sqlite3* db, __externref_t function) {
   }
 }
 
-static int dartXCompare(void* context, int lengthA,
-                                        const void* a,
-                                        int lengthB,
-                                        const void* b) {
+static int dartXCompare(void* context, int lengthA, const void* a, int lengthB,
+                        const void* b) {
   return dispatchXCompare(host_object_get(context), lengthA, a, lengthB, b);
 }
 
 SQLITE_API int dart_sqlite3_create_collation(sqlite3* db, const char* zName,
-                                             int eTextRep, __externref_t function) {
+                                             int eTextRep,
+                                             __externref_t function) {
   auto context = host_object_insert(function);
   return sqlite3_create_collation_v2(db, zName, eTextRep, context,
-                                      &dartXCompare, &host_object_free);
+                                     &dartXCompare, &host_object_free);
 }
 
 SQLITE_API int dart_sqlite3_db_config_int(sqlite3* db, int op, int arg) {
   return sqlite3_db_config(db, op, arg);
 }
 
-static int dartChangesetXFilter(void *pCtx, const char *zTab) {
+static int dartChangesetXFilter(void* pCtx, const char* zTab) {
   return dispatchApplyFilter(host_object_get(pCtx), zTab);
 }
 
-static int dartChangesetXConflict(void *pCtx, int eConflict, sqlite3_changeset_iter* p) {
+static int dartChangesetXConflict(void* pCtx, int eConflict,
+                                  sqlite3_changeset_iter* p) {
   return dispatchApplyConflict(host_object_get(pCtx), eConflict, p);
 }
 
 SQLITE_API int dart_sqlite3changeset_apply(sqlite3* db, int nChangeset,
-                                           void* pChangeset, __externref_t callbacks,
+                                           void* pChangeset,
+                                           __externref_t callbacks,
                                            bool filter) {
   auto context = host_object_insert(callbacks);
-  auto rc =  sqlite3changeset_apply(db, nChangeset, pChangeset,
-                                filter ? &dartChangesetXFilter : 0,
-                                &dartChangesetXConflict, context);
+  auto rc = sqlite3changeset_apply(db, nChangeset, pChangeset,
+                                   filter ? &dartChangesetXFilter : 0,
+                                   &dartChangesetXConflict, context);
   host_object_free(context);
   return rc;
 }

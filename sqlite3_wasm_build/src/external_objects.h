@@ -1,7 +1,7 @@
 #pragma once
 
-
-/// Insert an external reference into a global table, returning a pointer identifying the slot.
+/// Insert an external reference into a global table, returning a pointer
+/// identifying the slot.
 void* host_object_insert(__externref_t ref);
 
 /// From a slot returned by `host_object_insert`, obtain the external reference.

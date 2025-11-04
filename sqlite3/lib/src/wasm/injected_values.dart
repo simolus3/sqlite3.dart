@@ -14,14 +14,12 @@ import 'sqlite3_wasm.g.dart';
 import 'wasm_interop.dart';
 
 final class DartBridgeCallbacks {
-  // We only have access to these bindings after instantiating the module.
+  // We only have access to bindings and memory after instantiating the module.
   late final WasmBindings bindings;
-  final Memory memory;
+  late final Memory memory;
 
   int aggregateContextId = 1;
   final Map<int, AggregateContext<Object?>> aggregateContexts = {};
-
-  DartBridgeCallbacks(this.memory);
 
   @JSExport('error_log')
   void logError(Pointer message) {
@@ -259,7 +257,6 @@ final class DartBridgeCallbacks {
   @JSExport()
   int xDeviceCharacteristics(
     ExternalDartReference<VirtualFileSystemFile> file,
-    int fd,
   ) {
     return file.toDartObject.xDeviceCharacteristics;
   }
@@ -354,6 +351,23 @@ final class DartBridgeCallbacks {
 
     return functions.toDartObject.collation!(aStr, bStr);
   }
+
+  @JSExport('changeset_apply_filter')
+  int dispatchApplyFilter(
+    ExternalDartReference<SessionApplyCallbacks> callbacks,
+    Pointer zTab,
+  ) {
+    return callbacks.toDartObject.filter!(zTab);
+  }
+
+  @JSExport('changeset_apply_conflict')
+  int dispatchApplyConflict(
+    ExternalDartReference<SessionApplyCallbacks> callbacks,
+    int eConflict,
+    Pointer iterator,
+  ) {
+    return callbacks.toDartObject.conflict!(eConflict, iterator);
+  }
 }
 
 int _runVfs(void Function() body) {
@@ -386,6 +400,10 @@ final class RegisteredFunctionSet {
     this.collation,
   });
 }
+
+typedef RawFilter = int Function(Pointer tableName);
+
+typedef RawConflict = int Function(int eConflict, Pointer iterator);
 
 final class SessionApplyCallbacks {
   final RawFilter? filter;

@@ -34,7 +34,7 @@ class WasmBindings {
       statementFinalizer;
 
   WasmBindings._(this.instance, this.callbacks)
-    : memory = callbacks.memory,
+    : memory = callbacks.memory = _exportedMemory(instance),
       sqlite3 = SqliteExports(instance.exports) {
     callbacks.bindings = this;
 
@@ -45,11 +45,9 @@ class WasmBindings {
   }
 
   static Future<WasmBindings> instantiateAsync(web.Response response) async {
-    final memory = Memory(MemoryDescriptor(initial: 16.toJS));
-    final injectedDartFunctions = DartBridgeCallbacks(memory);
+    final injectedDartFunctions = DartBridgeCallbacks();
 
     final imported = JSObject();
-    imported['env'] = JSObject()..['memory'] = memory;
     imported['dart'] = createJSInteropWrapper(injectedDartFunctions);
 
     final instance = await WasmInstance.load(response, imported);
@@ -509,25 +507,6 @@ extension WrappedMemory on Memory {
   }
 }
 
-// 'changeset_apply_filter': (Pointer context, Pointer zTab) {
-//           final cb = callbacks.sessionApply[context]!;
-//           return cb.filter!(zTab);
-//         }.toJS,
-//         'changeset_apply_conflict':
-//             (Pointer context, int eConflict, Pointer iter) {
-//               final cb = callbacks.sessionApply[context]!;
-//               return cb.conflict!(eConflict, iter);
-//             }.toJS,
-
-// class DartCallbacks {
-//   int _id = 0;
-
-//   int aggregateContextId = 1;
-//   final Map<int, AggregateContext<Object?>> aggregateContexts = {};
-
-//
-// }
-
-typedef RawFilter = int Function(Pointer tableName);
-
-typedef RawConflict = int Function(int eConflict, Pointer iterator);
+Memory _exportedMemory(WasmInstance instance) {
+  return instance.exports['memory'] as Memory;
+}

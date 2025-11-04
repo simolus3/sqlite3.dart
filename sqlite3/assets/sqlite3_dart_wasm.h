@@ -3,7 +3,8 @@
 // Additional bindings we need for WASM interop.
 // These are implemented in sqlite3_wasm_build, this header is only used for
 // ffigen.
-typedef struct {} externref;
+typedef struct {
+} externref;
 
 void* dart_sqlite3_malloc(int size);
 void dart_sqlite3_free(void* ptr);
@@ -18,17 +19,13 @@ sqlite3_vfs* dart_sqlite3_register_vfs(const char* name, externref* vfs,
                                        int makeDefault);
 int dart_sqlite3_unregister_vfs(sqlite3_vfs* vfs);
 
-int dart_sqlite3_create_function_v2(
-    sqlite3* db,
-    const char* zFunctionName,
-    int nArg,
-    int eTextRep,
-    int isAggregate,
-    externref* handlers
-);
+int dart_sqlite3_create_function_v2(sqlite3* db, const char* zFunctionName,
+                                    int nArg, int eTextRep, int isAggregate,
+                                    externref* handlers);
 
 int dart_sqlite3_create_window_function(sqlite3* db, const char* zFunctionName,
-                                        int nArg, int eTextRep, externref* handlers);
+                                        int nArg, int eTextRep,
+                                        externref* handlers);
 
 void dart_sqlite3_updates(sqlite3* db, externref* callback);
 
