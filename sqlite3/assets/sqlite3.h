@@ -22,7 +22,7 @@ int sqlite3_close_v2(sqlite3* db);
 sqlite3_char* sqlite3_db_filename(sqlite3* db, sqlite3_char* zDbName);
 int sqlite3_compileoption_used(const sqlite3_char* zOptName);
 const sqlite3_char* sqlite3_compileoption_get(int N);
-int sqlite3_busy_handler(sqlite3* db,int(*)(void*,int),void* context);
+int sqlite3_busy_handler(sqlite3* db, int (*)(void*, int), void* context);
 
 // Error handling
 int sqlite3_extended_result_codes(sqlite3* db, int onoff);

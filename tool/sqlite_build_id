@@ -1,3 +1,3 @@
 # Changed whenever we change how SQLite is built and want to invalidate GH action caches
 # TODO: Come up with a better system
-4
+5

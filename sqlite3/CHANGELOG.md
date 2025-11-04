@@ -8,11 +8,13 @@
   - You can also remove dependencies on `sqlite3_native_assets`, since that
     package is now part of `package:sqlite3`.
 - __Breaking change__: Parameters to `SqliteException`s are now named.
+- Deprecated `dispose()` on `CommonDatabase` and `CommonPreparedStatement`. Use `close()`
+  instead.
 - On native platforms, use native finalizers to reliably clear statements and databases.
 - On the web, use regular finalizers more consistently.
 - Refactor binding text and blob values to reduce the chance of memory leaks.
-- Deprecated `dispose()` on `CommonDatabase` and `CommonPreparedStatement`. Use `close()`
-  instead.
+- On the web, use `externref`s to call Dart functions from compiled WebAssembly sources.
+- Add `busyHandler` setter to install a custom `sqlite3_busy_handler` on databases.
 
 ## 2.9.4
 
