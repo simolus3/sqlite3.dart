@@ -7,5 +7,5 @@
 // here. Instead, we use a local implementation backed by `Random.secure()` in
 // Dart.
 int getentropy(void* buf, size_t n) {
-  return xRandomness(-1, (int)n, (char*)buf);
+  return xRandomness(__builtin_wasm_ref_null_extern(), (int)n, (char*)buf);
 }

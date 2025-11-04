@@ -171,7 +171,6 @@ extension type SqliteExports(JSObject raw) implements JSObject {
     int subtype,
   );
   external int sqlite3_db_config(Pointer /*<struct sqlite3 *>*/ db, int op);
-  external int sqlite3_vfs_unregister(Pointer /*<struct sqlite3_vfs *>*/ arg0);
   external int sqlite3session_create(
     Pointer /*<struct sqlite3 *>*/ db,
     Pointer /*<struct sqlite3_char *>*/ zDb,
@@ -261,41 +260,44 @@ extension type SqliteExports(JSObject raw) implements JSObject {
   );
   external Pointer /*<struct sqlite3_vfs *>*/ dart_sqlite3_register_vfs(
     Pointer /*<char *>*/ name,
-    int dartId,
+    ExternalDartReference<Object>? vfs,
     int makeDefault,
   );
-  external int dart_sqlite3_create_scalar_function(
-    Pointer /*<struct sqlite3 *>*/ db,
-    Pointer /*<char *>*/ zFunctionName,
-    int nArg,
-    int eTextRep,
-    int id,
+  external int dart_sqlite3_unregister_vfs(
+    Pointer /*<struct sqlite3_vfs *>*/ vfs,
   );
-  external int dart_sqlite3_create_aggregate_function(
+  external int dart_sqlite3_create_function_v2(
     Pointer /*<struct sqlite3 *>*/ db,
     Pointer /*<char *>*/ zFunctionName,
     int nArg,
     int eTextRep,
-    int id,
+    int isAggregate,
+    ExternalDartReference<Object>? handlers,
   );
   external int dart_sqlite3_create_window_function(
     Pointer /*<struct sqlite3 *>*/ db,
     Pointer /*<char *>*/ zFunctionName,
     int nArg,
     int eTextRep,
-    int id,
+    ExternalDartReference<Object>? handlers,
   );
-  external void dart_sqlite3_updates(Pointer /*<struct sqlite3 *>*/ db, int id);
-  external void dart_sqlite3_commits(Pointer /*<struct sqlite3 *>*/ db, int id);
+  external void dart_sqlite3_updates(
+    Pointer /*<struct sqlite3 *>*/ db,
+    ExternalDartReference<Object>? callback,
+  );
+  external void dart_sqlite3_commits(
+    Pointer /*<struct sqlite3 *>*/ db,
+    ExternalDartReference<Object>? callback,
+  );
   external void dart_sqlite3_rollbacks(
     Pointer /*<struct sqlite3 *>*/ db,
-    int id,
+    ExternalDartReference<Object>? callback,
   );
   external int dart_sqlite3_create_collation(
     Pointer /*<struct sqlite3 *>*/ db,
     Pointer /*<char *>*/ zName,
     int eTextRep,
-    int id,
+    ExternalDartReference<Object>? function,
   );
   external int dart_sqlite3_db_config_int(
     Pointer /*<struct sqlite3 *>*/ db,
@@ -306,7 +308,7 @@ extension type SqliteExports(JSObject raw) implements JSObject {
     Pointer /*<struct sqlite3 *>*/ db,
     int nChangeset,
     Pointer /*<void *>*/ pChangeset,
-    Pointer /*<void *>*/ pCtx,
+    ExternalDartReference<Object>? callbacks,
     int filter,
   );
 }

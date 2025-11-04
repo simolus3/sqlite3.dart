@@ -25,8 +25,6 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(sqlite3)
 FetchContent_MakeAvailable(sqlite3mc)
 
-file(DOWNLOAD https://raw.githubusercontent.com/sqlite/sqlite/master/src/test_vfstrace.c "${CMAKE_BINARY_DIR}/vfstrace.c")
-
 # Generate symbols we need to export from the sqlite3.wasm build
 add_custom_command(
     OUTPUT required_symbols.txt
@@ -45,6 +43,7 @@ macro(base_sqlite3_target name debug crypto)
   set(sources
     ${CMAKE_CURRENT_SOURCE_DIR}/os_web.c
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/external_objects.c
   )
   set(flags -Wall -Wextra -Wno-unused-parameter -Wno-unused-function)
 
@@ -68,7 +67,6 @@ macro(base_sqlite3_target name debug crypto)
   endif()
 
   if(${debug})
-    list(APPEND sources "${CMAKE_BINARY_DIR}/vfstrace.c")
     list(APPEND flags "-g" "-DDEBUG")
   else()
     list(APPEND flags "-Oz" "-DNDEBUG" "-flto")
@@ -87,7 +85,6 @@ macro(base_sqlite3_target name debug crypto)
       -mcpu=generic
       -mexec-model=reactor
       -fno-stack-protector -fno-stack-clash-protection
-      -Wl,--import-memory
       --sysroot ${wasi_sysroot}
       ${sources}
       @${CMAKE_CURRENT_BINARY_DIR}/required_symbols.txt
@@ -125,3 +122,4 @@ add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY
 add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_debug.init.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3.debug.wasm)
 add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3mc.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3mc.wasm)
 add_dependencies(output sqlite3_debug sqlite3_opt sqlite3mc)
+add_dependencies(output sqlite3_debug)
