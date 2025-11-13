@@ -5,6 +5,7 @@ import 'package:ffigen/ffigen.dart';
 import 'package:ffigen/src/config_provider/config_types.dart';
 import 'package:ffigen/src/config_provider/spec_utils.dart';
 import 'package:ffigen/src/code_generator.dart';
+import 'package:ffigen/src/context.dart';
 import 'package:ffigen/src/header_parser.dart' as ffigen;
 import 'package:logging/logging.dart';
 import 'package:pub_semver/pub_semver.dart';
@@ -19,68 +20,65 @@ void main() {
   writeWasmDefinitions();
 }
 
-void _ffigen() {
-  final libraryImports = <String, LibraryImport>{};
-  final generator = FfiGen();
-  final config = Config(
-    preamble: '// ignore_for_file: type=lint',
-    ffiNativeConfig: FfiNativeConfig(
-      enabled: true,
-      assetId: 'package:sqlite3/src/ffi/libsqlite3.g.dart',
+FfiGenerator createGenerator(
+  bool Function(Declaration) filter, {
+  List<String> headers = const ['assets/sqlite3.h'],
+}) {
+  return FfiGenerator(
+    output: Output(
+      dartFile: Uri.parse('lib/src/ffi/libsqlite3.g.dart'),
+      preamble: '// ignore_for_file: type=lint',
+      style: NativeExternalBindings(
+        assetId: 'package:sqlite3/src/ffi/libsqlite3.g.dart',
+      ),
     ),
-    output: Uri.parse('lib/src/ffi/libsqlite3.g.dart'),
-    entryPoints: [Uri.parse('assets/sqlite3.h')],
-    symbolFile: null,
-    structDecl: _includeSqlite3Only,
-    functionDecl: _includeSqlite3Only,
-    globals: _includeSqlite3Only,
-    varArgFunctions: makeVarArgFunctionsMapping({
-      'sqlite3_db_config': [
-        RawVarArgFunction('', ['int', 'int*']),
-      ],
-    }, libraryImports),
-    libraryImports: libraryImports.values.toList(),
+    headers: Headers(
+      entryPoints: [for (final header in headers) Uri.parse(header)],
+    ),
+    structs: Structs(include: filter),
+    functions: Functions(
+      include: filter,
+      includeSymbolAddress: (decl) => switch (decl.originalName) {
+        'sqlite3_close_v2' => true,
+        'sqlite3_finalize' => true,
+        'sqlite3changeset_finalize' => true,
+        'sqlite3session_delete' => true,
+        'sqlite3_free' => true,
+        _ => false,
+      },
+      varArgs: makeVarArgFunctionsMapping({
+        'sqlite3_db_config': [
+          RawVarArgFunction('', ['int', 'int*']),
+        ],
+      }, const {}),
+    ),
+    globals: Globals(include: _includeSqlite3Only),
   );
-
-  generator.run(config);
 }
 
-DeclarationFilters _includeSqlite3Only = DeclarationFilters(
-  shouldInclude: (d) => d.isSqlite3Symbol,
-  shouldIncludeSymbolAddress: (decl) {
-    return switch (decl.originalName) {
-      'sqlite3_close_v2' => true,
-      'sqlite3_finalize' => true,
-      'sqlite3changeset_finalize' => true,
-      'sqlite3session_delete' => true,
-      'sqlite3_free' => true,
-      _ => false,
-    };
-  },
-);
+void _ffigen() {
+  createGenerator(_includeSqlite3Only).generate();
+}
+
+bool _includeSqlite3Only(Declaration declaration) =>
+    declaration.isSqlite3Symbol;
 
 extension on Declaration {
   bool get isSqlite3Symbol => originalName.startsWith('sqlite3');
 }
 
 void writeWasmDefinitions() {
-  final filter = DeclarationFilters(
-    shouldInclude: (d) =>
-        stableFunctions.contains(d.originalName) ||
-        unstable.contains(d.originalName),
+  bool filter(Declaration d) {
+    return stableFunctions.contains(d.originalName) ||
+        unstable.contains(d.originalName);
+  }
+
+  final generator = createGenerator(
+    filter,
+    headers: ['assets/sqlite3_dart_wasm.h', 'assets/sqlite3.h'],
   );
 
-  final library = ffigen.parse(
-    Config(
-      output: Uri.parse('unused'),
-      entryPoints: [
-        Uri.parse('assets/sqlite3.h'),
-        Uri.parse('assets/sqlite3_dart_wasm.h'),
-      ],
-      functionDecl: filter,
-      globals: filter,
-    ),
-  );
+  final library = ffigen.parse(Context(Logger.root, generator));
   final buffer = StringBuffer('''
 import 'dart:js_interop';
 
@@ -119,7 +117,7 @@ extension type SqliteExports(JSObject raw) implements JSObject {
         }
     }
 
-    buffer.write(type.getDartType(library.writer));
+    buffer.write(type.getDartType(library.context));
   }
 
   for (final binding in library.bindings) {
@@ -177,12 +175,7 @@ void writeUsedSymbols() {
 const usedSqliteSymbols = {
 ''');
   final library = ffigen.parse(
-    Config(
-      output: Uri.parse('unused'),
-      entryPoints: [Uri.parse('assets/sqlite3.h')],
-      functionDecl: _includeSqlite3Only,
-      globals: _includeSqlite3Only,
-    ),
+    Context(Logger.root, createGenerator(_includeSqlite3Only)),
   );
 
   for (final binding in library.bindings) {
