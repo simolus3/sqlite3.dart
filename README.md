@@ -1,5 +1,12 @@
 # sqlite3.dart
 
+> [!TIP]
+> This branch contains sources for version 3 of `package:sqlite3`, a major update
+> relying on build hooks and code assets to load SQLite.
+> Version 2 of `package:sqlite` will continue to be supported and updated until early 2026.
+> See the [v2](https://github.com/simolus3/sqlite3.dart/tree/v2) branch for those sources, and
+> [these notes](./UPGRADING_TO_V3.md) for details on how to upgrade.
+
 This project contains Dart packages to use SQLite from Dart via `dart:ffi`.
 
 The main package in this repository is [`sqlite3`](sqlite3), which contains all the Dart apis and their implementation.

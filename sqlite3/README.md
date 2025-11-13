@@ -2,6 +2,12 @@
 
 Provides Dart bindings to [SQLite](https://www.sqlite.org/index.html) via `dart:ffi`.
 
+> [!TIP]
+> Version 3 of `package:sqlite3` is a major update relying on build hooks and
+> code assets to load SQLite. Version 2 of `package:sqlite` will continue to be
+> supported and updated until early 2026.
+> See [these notes](../UPGRADING_TO_V3.md) for details on how to upgrade.
+
 ## Using this library
 
 Because this library uses [hooks](https://dart.dev/tools/hooks), it bundles SQLite with
