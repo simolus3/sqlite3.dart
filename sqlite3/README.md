@@ -1,5 +1,10 @@
 # sqlite3
 
+> [!CAUTION]
+> Please consider upgrading to version 3.x of this package, contains reliability
+> improvements and is much easier to install.
+> Version 2.x will continue to be maintained until early 2026. See [notes on upgrading](https://github.com/simolus3/sqlite3.dart/blob/main/UPGRADING_TO_V3.md).
+
 Provides Dart bindings to [SQLite](https://www.sqlite.org/index.html) via `dart:ffi`.
 
 ## Using this library

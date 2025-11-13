@@ -1,5 +1,9 @@
 # sqlcipher_flutter_libs
 
+> [!CAUTION]
+> This package relates to version 2.x of `package:sqlite3`, and is obsolete after upgrading.
+> It will continue to be maintained until early 2026. See [notes on upgrading](https://github.com/simolus3/sqlite3.dart/blob/main/UPGRADING_TO_V3.md).
+
 Flutter apps depending on this package will contain native `SQLCipher` libraries
 on Android, iOS, macOS, Linux and Windows.
 

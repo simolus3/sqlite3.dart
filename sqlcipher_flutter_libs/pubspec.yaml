@@ -1,7 +1,7 @@
 name: sqlcipher_flutter_libs
 description: Flutter plugin to include native SQLCipher libraries in your app
 version: 0.6.8
-homepage: https://github.com/simolus3/sqlite3.dart/tree/main/sqlcipher_flutter_libs
+homepage: https://github.com/simolus3/sqlite3.dart/tree/v2/sqlcipher_flutter_libs
 issue_tracker: https://github.com/simolus3/sqlite3.dart/issues
 
 environment:

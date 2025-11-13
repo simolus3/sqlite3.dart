@@ -1,5 +1,9 @@
 __Like native assets, this package is experimental.__
 
+> [!CAUTION]
+> This package relates to version 2.x of `package:sqlite3`, and is obsolete after upgrading.
+> Version 3.x of `package:sqlite3` uses hooks and code assets by default!
+
 This package provides SQLite as a [native code asset](https://dart.dev/interop/c-interop#native-assets).
 
 It has the same functionality as the `sqlite3_flutter_libs` package,
