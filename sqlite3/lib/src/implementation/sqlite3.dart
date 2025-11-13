@@ -12,7 +12,7 @@ import 'exception.dart';
 base class Sqlite3Implementation implements CommonSqlite3 {
   final RawSqliteBindings bindings;
 
-  Sqlite3Implementation(this.bindings);
+  const Sqlite3Implementation(this.bindings);
 
   @visibleForOverriding
   CommonDatabase wrapDatabase(RawSqliteDatabase rawDb) {
@@ -28,16 +28,21 @@ base class Sqlite3Implementation implements CommonSqlite3 {
   void initialize() {
     final rc = bindings.sqlite3_initialize();
     if (rc != 0) {
-      throw SqliteException(rc, 'Error returned by sqlite3_initialize');
+      throw SqliteException(
+        extendedResultCode: rc,
+        message: 'Error returned by sqlite3_initialize',
+      );
     }
   }
 
   @override
-  CommonDatabase open(String filename,
-      {String? vfs,
-      OpenMode mode = OpenMode.readWriteCreate,
-      bool uri = false,
-      bool? mutex}) {
+  CommonDatabase open(
+    String filename, {
+    String? vfs,
+    OpenMode mode = OpenMode.readWriteCreate,
+    bool uri = false,
+    bool? mutex,
+  }) {
     initialize();
 
     int flags;
@@ -58,22 +63,33 @@ base class Sqlite3Implementation implements CommonSqlite3 {
     }
 
     if (mutex != null) {
-      flags |=
-          mutex ? SqlFlag.SQLITE_OPEN_FULLMUTEX : SqlFlag.SQLITE_OPEN_NOMUTEX;
+      flags |= mutex
+          ? SqlFlag.SQLITE_OPEN_FULLMUTEX
+          : SqlFlag.SQLITE_OPEN_NOMUTEX;
     }
 
     final result = bindings.sqlite3_open_v2(filename, flags, vfs);
     if (result.resultCode != SqlError.SQLITE_OK) {
-      final exception = createExceptionRaw(
-          bindings, result.result, result.resultCode,
-          operation: 'opening the database');
-      // Close the database after creating the exception, which needs to read
-      // the extended error from the database.
-      result.result.sqlite3_close_v2();
-      throw exception;
+      // It's possible for us to have a database even if opening it failed. Only
+      // if allocating memory for the connection failed would we not have a
+      // database.
+      if (result.result case final database?) {
+        final exception = createExceptionRaw(
+          bindings,
+          database,
+          result.resultCode,
+          operation: 'opening the database',
+        );
+        // Close the database after creating the exception, which needs to read
+        // the extended error from the database.
+        database.sqlite3_close_v2();
+        throw exception;
+      } else {
+        throw createExceptionOutsideOfDatabase(bindings, result.resultCode);
+      }
     }
 
-    return wrapDatabase(result.result..sqlite3_extended_result_codes(1));
+    return wrapDatabase(result.result!..sqlite3_extended_result_codes(1));
   }
 
   @override
@@ -82,8 +98,12 @@ base class Sqlite3Implementation implements CommonSqlite3 {
   }
 
   @override
-  void registerVirtualFileSystem(VirtualFileSystem vfs,
-      {bool makeDefault = false}) {
+  void registerVirtualFileSystem(
+    VirtualFileSystem vfs, {
+    bool makeDefault = false,
+  }) {
+    initialize();
+
     bindings.registerVirtualFileSystem(vfs, makeDefault ? 1 : 0);
   }
 

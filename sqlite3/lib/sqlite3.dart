@@ -1,6 +1,7 @@
 /// Dart bindings to `sqlite3`.
 ///
 /// {@category native}
+/// {@category hook}
 library;
 
 // Hide common base classes that have more specific ffi-APIs.

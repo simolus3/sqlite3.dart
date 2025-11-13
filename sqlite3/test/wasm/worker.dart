@@ -13,23 +13,29 @@ extension type _Array._(JSArray _) implements JSArray {
 void main() {
   final scope = (globalContext as web.DedicatedWorkerGlobalScope);
 
-  runZonedGuarded(() {
-    scope.onmessage = Zone.current.bindUnaryCallback((web.MessageEvent event) {
-      final rawData = event.data;
-      if (_Array.isArray(rawData)) {
-        final backend = ((rawData as JSArray).toDart[0] as JSString).toDart;
-        final wasmUri = Uri.parse((rawData.toDart[1] as JSString).toDart);
+  runZonedGuarded(
+    () {
+      scope.onmessage = Zone.current.bindUnaryCallback((
+        web.MessageEvent event,
+      ) {
+        final rawData = event.data;
+        if (_Array.isArray(rawData)) {
+          final backend = ((rawData as JSArray).toDart[0] as JSString).toDart;
+          final wasmUri = Uri.parse((rawData.toDart[1] as JSString).toDart);
 
-        _startTest(backend, wasmUri);
-      } else {
-        _startOpfsServer(rawData as WorkerOptions);
-      }
-    }).toJS;
-  }, (error, stack) {
-    // Inform the calling test in sqlite3_test.dart about the error
-    scope.postMessage(
-        [false.toJS, error.toString().toJS, stack.toString().toJS].toJS);
-  });
+          _startTest(backend, wasmUri);
+        } else {
+          _startOpfsServer(rawData as WorkerOptions);
+        }
+      }).toJS;
+    },
+    (error, stack) {
+      // Inform the calling test in sqlite3_test.dart about the error
+      scope.postMessage(
+        [false.toJS, error.toString().toJS, stack.toString().toJS].toJS,
+      );
+    },
+  );
 }
 
 Future<void> _startTest(String fsImplementation, Uri wasmUri) async {
@@ -40,11 +46,7 @@ Future<void> _startTest(String fsImplementation, Uri wasmUri) async {
     case 'memory':
       final fs = InMemoryFileSystem();
 
-      test = _runTest(
-        open: () => fs,
-        close: (fs) async {},
-        wasmUri: wasmUri,
-      );
+      test = _runTest(open: () => fs, close: (fs) async {}, wasmUri: wasmUri);
       break;
     case 'indexeddb':
       test = _runTest(
@@ -96,8 +98,9 @@ Future<void> _startOpfsServer(WorkerOptions options) async {
   final worker = await VfsWorker.create(options);
 
   // Inform the worker running the test that we're on it
-  (globalContext as web.DedicatedWorkerGlobalScope)
-      .postMessage([true.toJS].toJS);
+  (globalContext as web.DedicatedWorkerGlobalScope).postMessage(
+    [true.toJS].toJS,
+  );
   await worker.start();
 }
 
@@ -122,31 +125,35 @@ Future<void> _runTest<T extends VirtualFileSystem>({
   database.userVersion = 1;
   _expect(database.userVersion == 1, 'Should be 1 after setting it');
 
-  database.execute('CREATE TABLE IF NOT EXISTS users ( '
-      'id INTEGER NOT NULL, '
-      'name TEXT NOT NULL, '
-      'email TEXT NOT NULL UNIQUE, '
-      'user_id INTEGER NOT NULL, '
-      'PRIMARY KEY (id));');
+  database.execute(
+    'CREATE TABLE IF NOT EXISTS users ( '
+    'id INTEGER NOT NULL, '
+    'name TEXT NOT NULL, '
+    'email TEXT NOT NULL UNIQUE, '
+    'user_id INTEGER NOT NULL, '
+    'PRIMARY KEY (id));',
+  );
 
-  final prepared = database.prepare('INSERT INTO users '
-      '(id, name, email, user_id) VALUES (?, ?, ?, ?)');
+  final prepared = database.prepare(
+    'INSERT INTO users '
+    '(id, name, email, user_id) VALUES (?, ?, ?, ?)',
+  );
 
   for (var i = 0; i < 200; i++) {
-    prepared.execute(
-      [
-        BigInt.from(i),
-        'name',
-        'email${BigInt.from(i)}',
-        BigInt.from(i),
-      ],
-    );
+    prepared.execute([
+      BigInt.from(i),
+      'name',
+      'email${BigInt.from(i)}',
+      BigInt.from(i),
+    ]);
   }
 
-  _expect(database.select('SELECT * FROM users').length == 200,
-      'Should find 200 rows');
+  _expect(
+    database.select('SELECT * FROM users').length == 200,
+    'Should find 200 rows',
+  );
 
-  database.dispose();
+  database.close();
 
   // file-system should save reasonably quickly
   await close(fileSystem).timeout(const Duration(seconds: 1));
@@ -157,7 +164,9 @@ Future<void> _runTest<T extends VirtualFileSystem>({
   final database2 = sqlite32.open('database');
 
   _expect(database2.userVersion == 1, 'Should be 1 after reload');
-  _expect(database2.select('SELECT * FROM users').length == 200,
-      'Should find 200 rows');
-  database2.dispose();
+  _expect(
+    database2.select('SELECT * FROM users').length == 200,
+    'Should find 200 rows',
+  );
+  database2.close();
 }

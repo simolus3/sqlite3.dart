@@ -22,12 +22,13 @@ final class TestSqliteFileSystem extends BaseVirtualFileSystem {
   int _tmpFileCounter = 0;
 
   TestSqliteFileSystem({required FileSystem fs, String? name})
-      : _fs = fs,
-        super(name: name ?? 'dart-test-vfs-${_counter++}');
+    : _fs = fs,
+      super(name: name ?? 'dart-test-vfs-${_counter++}');
 
   Directory get _tempDirectory {
-    return _createdTmp ??=
-        _fs.systemTempDirectory.createTempSync('dart-sqlite3-test');
+    return _createdTmp ??= _fs.systemTempDirectory.createTempSync(
+      'dart-sqlite3-test',
+    );
   }
 
   @override
@@ -65,7 +66,8 @@ final class TestSqliteFileSystem extends BaseVirtualFileSystem {
 
   @override
   XOpenResult xOpen(Sqlite3Filename path, int flags) {
-    final fsPath = path.path ??
+    final fsPath =
+        path.path ??
         _tempDirectory.childFile((_tmpFileCounter++).toString()).absolute.path;
     final type = _fs.typeSync(fsPath);
 
@@ -86,8 +88,9 @@ final class TestSqliteFileSystem extends BaseVirtualFileSystem {
     final deleteOnClose = flags & SqlFlag.SQLITE_OPEN_DELETEONCLOSE != 0;
     final readonly = flags & SqlFlag.SQLITE_OPEN_READONLY != 0;
     final vsFile = _fs.file(fsPath);
-    final file =
-        vsFile.openSync(mode: readonly ? FileMode.read : FileMode.write);
+    final file = vsFile.openSync(
+      mode: readonly ? FileMode.read : FileMode.write,
+    );
 
     return (
       file: _TestFile(vsFile, file, deleteOnClose),
@@ -170,7 +173,8 @@ final class _TestFile implements VirtualFileSystemFile {
 
     final exclusive = mode > SqlFileLockingLevels.SQLITE_LOCK_SHARED;
     _file.lockSync(
-        exclusive ? FileLock.blockingExclusive : FileLock.blockingShared);
+      exclusive ? FileLock.blockingExclusive : FileLock.blockingShared,
+    );
     _lockLevel = mode;
   }
 

@@ -1,8 +1,0 @@
-.DS_Store
-.dart_tool/
-
-.packages
-.pub/
-
-build/
-darwin/sqlite3_flutter_libs/.build

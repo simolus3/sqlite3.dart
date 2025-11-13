@@ -53,7 +53,9 @@ enum DatabaseImplementation {
   /// There is no concurrency control between these tabs, so this effectively
   /// does not support multiple tabs. It's mostly included for legacy reasons.
   indexedDbUnsafeWorker(
-      StorageMode.indexedDb, AccessMode.throughDedicatedWorker),
+    StorageMode.indexedDb,
+    AccessMode.throughDedicatedWorker,
+  ),
 
   /// Open an IndexedDB database in a shared worker.
   indexedDbShared(StorageMode.indexedDb, AccessMode.throughSharedWorker),
@@ -74,8 +76,7 @@ enum DatabaseImplementation {
   ///
   /// This works by letting a shared worker spawn a dedicated worker. This is
   /// supposed to work, but only implemented in Firefox.
-  opfsShared(StorageMode.opfs, AccessMode.throughSharedWorker),
-  ;
+  opfsShared(StorageMode.opfs, AccessMode.throughSharedWorker);
 
   final StorageMode storage;
   final AccessMode access;

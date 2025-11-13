@@ -62,7 +62,10 @@ String _randomLockName() {
 }
 
 StreamChannel<Message> _channel(
-    MessagePort port, String? lockName, HeldLock? lock) {
+  MessagePort port,
+  String? lockName,
+  HeldLock? lock,
+) {
   final controller = StreamChannelController<Message>();
   port.start();
   EventStreamProviders.messageEvent.forTarget(port).listen((event) {
@@ -76,15 +79,18 @@ StreamChannel<Message> _channel(
     }
   });
 
-  controller.local.stream.listen((msg) {
-    msg.sendToPort(port);
-  }, onDone: () {
-    // Closed locally, inform the other end.
-    port
-      ..postMessage(_disconnectMessage.toJS)
-      ..close();
-    lock?.release();
-  });
+  controller.local.stream.listen(
+    (msg) {
+      msg.sendToPort(port);
+    },
+    onDone: () {
+      // Closed locally, inform the other end.
+      port
+        ..postMessage(_disconnectMessage.toJS)
+        ..close();
+      lock?.release();
+    },
+  );
 
   if (lock == null && lockName != null) {
     // Once this side is able to acquire the lock, the connection is closed.
@@ -108,9 +114,12 @@ abstract base class ProtocolChannel extends RequestHandler {
   final Map<int, AbortController> _handlingRequests = {};
 
   ProtocolChannel(this._channel) {
-    _channel.stream.listen(_handleIncoming, onError: (e) {
-      close(e);
-    });
+    _channel.stream.listen(
+      _handleIncoming,
+      onError: (e) {
+        close(e);
+      },
+    );
   }
 
   Future<void> get closed => _channel.sink.done;
@@ -124,8 +133,8 @@ abstract base class ProtocolChannel extends RequestHandler {
       case Request():
         Response response;
 
-        final abortController =
-            _handlingRequests[message.requestId] = AbortController();
+        final abortController = _handlingRequests[message.requestId] =
+            AbortController();
 
         try {
           response = await message.dispatchTo(this, abortController.signal);
@@ -167,8 +176,10 @@ abstract base class ProtocolChannel extends RequestHandler {
   /// If [abortTrigger] is given and completes before this request is completed,
   /// a request to cancel the request is sent to the remote.
   Future<Res> sendRequest<Res extends Response>(
-      Request request, MessageType<Res> expectedType,
-      {Future<void>? abortTrigger}) async {
+    Request request,
+    MessageType<Res> expectedType, {
+    Future<void>? abortTrigger,
+  }) async {
     final id = _nextRequestId++;
     final completer = _responses[id] = Completer.sync();
 
@@ -204,7 +215,8 @@ abstract base class ProtocolChannel extends RequestHandler {
 
     for (final response in _responses.values) {
       response.completeError(
-          StateError('Channel closed before receiving response: $error'));
+        StateError('Channel closed before receiving response: $error'),
+      );
     }
     _responses.clear();
   }

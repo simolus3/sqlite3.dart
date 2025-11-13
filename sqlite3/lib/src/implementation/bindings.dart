@@ -10,7 +10,12 @@ import 'package:meta/meta.dart';
 import '../functions.dart';
 import '../vfs.dart';
 
-abstract base class RawChangesetIterator {
+/// A `sqlite3_changeset_iter` instance.
+///
+/// For iterators created through `sqlite3changeset_start`, implementations
+/// should use finalizers to automatically call `sqlite3changeset_finalize`
+/// even when [sqlite3changeset_finalize] is not called explicitly.
+abstract interface class RawChangesetIterator {
   // int sqlite3changeset_finalize(sqlite3_changeset_iter *pIter);
   int sqlite3changeset_finalize();
 
@@ -71,16 +76,13 @@ final class RawChangeSetOp {
 ///
 /// All of the classes and methods defined here are internal and can be changed
 /// as needed.
-abstract base class RawSqliteBindings {
+abstract interface class RawSqliteBindings {
   // int sqlite3session_create(
   //   sqlite3 *db,                    /* Database handle */
   //   const char *zDb,                /* Name of db (e.g. "main") */
   //   sqlite3_session **ppSession     /* OUT: New session object */
   // );
-  RawSqliteSession sqlite3session_create(
-    RawSqliteDatabase db,
-    String name,
-  );
+  RawSqliteSession sqlite3session_create(RawSqliteDatabase db, String name);
 
   // int sqlite3changeset_apply(
   //   sqlite3 *db,                    /* Apply change to "main" db of this handle */
@@ -100,13 +102,8 @@ abstract base class RawSqliteBindings {
   int sqlite3changeset_apply(
     RawSqliteDatabase database,
     Uint8List changeset,
-    int Function(
-      String tableName,
-    )? filter,
-    int Function(
-      int eConflict,
-      RawChangesetIterator iter,
-    ) conflict,
+    int Function(String tableName)? filter,
+    int Function(int eConflict, RawChangesetIterator iter) conflict,
   );
 
   // int sqlite3changeset_start(
@@ -125,7 +122,10 @@ abstract base class RawSqliteBindings {
   String? sqlite3_temp_directory;
 
   SqliteResult<RawSqliteDatabase> sqlite3_open_v2(
-      String name, int flags, String? zVfs);
+    String name,
+    int flags,
+    String? zVfs,
+  );
 
   String sqlite3_errstr(int extendedErrorCode);
 
@@ -135,7 +135,12 @@ abstract base class RawSqliteBindings {
   int sqlite3_initialize();
 }
 
-abstract base class RawSqliteSession {
+/// A `sqlite3_session` instance.
+///
+/// Implementations should use finalizers to automatically calls
+/// `sqlite3session_delete` even when [sqlite3session_delete] is not called
+/// explcitly.
+abstract interface class RawSqliteSession {
   // int sqlite3session_attach(
   //   sqlite3_session *pSession,      /* Session object */
   //   const char *zTab                /* Table name */
@@ -171,15 +176,7 @@ abstract base class RawSqliteSession {
 }
 
 /// Combines a sqlite result code and the result object.
-final class SqliteResult<T> {
-  final int resultCode;
-
-  /// The result of the operation, which is assumed to be valid if [resultCode]
-  /// is zero.
-  final T result;
-
-  SqliteResult(this.resultCode, this.result);
-}
+typedef SqliteResult<T> = ({T? result, int resultCode});
 
 typedef RawXFunc = void Function(RawSqliteContext, List<RawSqliteValue>);
 typedef RawXStep = void Function(RawSqliteContext, List<RawSqliteValue>);
@@ -189,7 +186,11 @@ typedef RawCommitHook = int Function();
 typedef RawRollbackHook = void Function();
 typedef RawCollation = int Function(String? a, String? b);
 
-abstract base class RawSqliteDatabase {
+/// A `sqlite3` instance.
+///
+/// Instances should use finalizers to automatically close the database, even
+/// when [sqlite3_close_v2] is not called explicitly.
+abstract interface class RawSqliteDatabase {
   int sqlite3_changes();
   int sqlite3_last_insert_rowid();
 
@@ -201,13 +202,6 @@ abstract base class RawSqliteDatabase {
   void sqlite3_extended_result_codes(int onoff);
   int sqlite3_close_v2();
   String sqlite3_errmsg();
-
-  /// Deallocate additional memory that the raw implementation may had to use
-  /// for some type conversions for previous method invocations.
-  ///
-  /// This is called by the higher-level implementation when a database is
-  /// closed.
-  void deallocateAdditionalMemory();
 
   void sqlite3_update_hook(RawUpdateHook? hook);
 
@@ -244,12 +238,14 @@ abstract base class RawSqliteDatabase {
     required RawXStep xInverse,
   });
 
+  int sqlite3_busy_handler(int Function(int)? callback);
+
   int sqlite3_db_config(int op, int value);
   int sqlite3_get_autocommit();
 }
 
 /// A stateful wrapper around multiple `sqlite3_prepare` invocations.
-abstract base class RawStatementCompiler {
+abstract interface class RawStatementCompiler {
   /// The current byte-offset in the SQL statement passed to
   /// [RawSqliteDatabase.newCompiler].
   ///
@@ -262,21 +258,24 @@ abstract base class RawStatementCompiler {
 
   /// Compile a statement from the substring at [byteOffset] with a maximum
   /// length of [length].
-  SqliteResult<RawSqliteStatement?> sqlite3_prepare(
-      int byteOffset, int length, int prepFlag);
+  SqliteResult<RawSqliteStatement> sqlite3_prepare(
+    int byteOffset,
+    int length,
+    int prepFlag,
+  );
 
   /// Releases resources used by this compiler interface.
   void close();
 }
 
-abstract base class RawSqliteStatement {
+/// A `sqlite3_stmt` instance.
+///
+/// Instances should use finalizers to automatically call `sqlite3_finalize` on
+/// the statement, even when [sqlite3_finalize] is not called explicitly.
+abstract interface class RawSqliteStatement {
   void sqlite3_reset();
   int sqlite3_step();
   void sqlite3_finalize();
-
-  /// Deallocates memory used using `sqlite3_bind` calls to hold argument
-  /// values.
-  void deallocateArguments();
 
   int sqlite3_bind_parameter_index(String name);
 
@@ -308,7 +307,7 @@ abstract base class RawSqliteStatement {
   int sqlite3_stmt_isexplain();
 }
 
-abstract base class RawSqliteContext {
+abstract interface class RawSqliteContext {
   AggregateContext<Object?>? dartAggregateContext;
 
   void sqlite3_result_null();
@@ -321,7 +320,7 @@ abstract base class RawSqliteContext {
   void sqlite3_result_subtype(int value);
 }
 
-abstract base class RawSqliteValue {
+abstract interface class RawSqliteValue {
   int sqlite3_value_type();
   int sqlite3_value_int64();
   double sqlite3_value_double();

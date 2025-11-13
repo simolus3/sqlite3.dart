@@ -49,14 +49,17 @@ final class WasmVfs extends BaseVirtualFileSystem {
     required WorkerOptions workerOptions,
     this.chroot = '/',
     String vfsName = 'dart-sqlite3-vfs',
-  })  : synchronizer =
-            RequestResponseSynchronizer(workerOptions.synchronizationBuffer),
-        serializer = MessageSerializer(workerOptions.communicationBuffer),
-        pathContext = p.Context(style: p.Style.url, current: chroot),
-        super(name: vfsName);
+  }) : synchronizer = RequestResponseSynchronizer(
+         workerOptions.synchronizationBuffer,
+       ),
+       serializer = MessageSerializer(workerOptions.communicationBuffer),
+       pathContext = p.Context(style: p.Style.url, current: chroot),
+       super(name: vfsName);
 
   Res _runInWorker<Req extends Message, Res extends Message>(
-      WorkerOperation<Req, Res> operation, Req requestData) {
+    WorkerOperation<Req, Res> operation,
+    Req requestData,
+  ) {
     serializer.write(requestData);
 
     final rc = synchronizer.requestAndWaitForResponse(operation.index);
@@ -70,14 +73,18 @@ final class WasmVfs extends BaseVirtualFileSystem {
   @override
   int xAccess(String path, int flags) {
     final res = _runInWorker(
-        WorkerOperation.xAccess, NameAndInt32Flags(path, flags, 0, 0));
+      WorkerOperation.xAccess,
+      NameAndInt32Flags(path, flags, 0, 0),
+    );
     return res.flag0;
   }
 
   @override
   void xDelete(String path, int syncDir) {
     _runInWorker(
-        WorkerOperation.xDelete, NameAndInt32Flags(path, syncDir, 0, 0));
+      WorkerOperation.xDelete,
+      NameAndInt32Flags(path, syncDir, 0, 0),
+    );
   }
 
   @override
@@ -94,7 +101,9 @@ final class WasmVfs extends BaseVirtualFileSystem {
   XOpenResult xOpen(Sqlite3Filename path, int flags) {
     final filePath = path.path ?? random.randomFileName(prefix: chroot);
     final result = _runInWorker(
-        WorkerOperation.xOpen, NameAndInt32Flags(filePath, flags, 0, 0));
+      WorkerOperation.xOpen,
+      NameAndInt32Flags(filePath, flags, 0, 0),
+    );
 
     final outFlags = result.flag0;
     final fd = result.flag1;
@@ -150,8 +159,10 @@ class WasmFile extends BaseVfsFile {
       final bytesToRead = min(MessageSerializer.dataSize, remainingBytes);
       remainingBytes -= bytesToRead;
 
-      final result = vfs._runInWorker(WorkerOperation.xRead,
-          Flags(fd, offset + totalBytesRead, bytesToRead));
+      final result = vfs._runInWorker(
+        WorkerOperation.xRead,
+        Flags(fd, offset + totalBytesRead, bytesToRead),
+      );
       final bytesRead = result.flag0;
 
       // Copy read bytes into result buffer.
@@ -183,8 +194,10 @@ class WasmFile extends BaseVfsFile {
 
   @override
   int xFileSize() {
-    final response =
-        vfs._runInWorker(WorkerOperation.xFileSize, Flags(fd, 0, 0));
+    final response = vfs._runInWorker(
+      WorkerOperation.xFileSize,
+      Flags(fd, 0, 0),
+    );
     return response.flag0;
   }
 
@@ -231,13 +244,17 @@ class WasmFile extends BaseVfsFile {
 
       final subBuffer =
           (bytesToWrite == remainingBytes && totalBytesWritten == 0)
-              ? buffer
-              : buffer.buffer.asUint8List(
-                  buffer.offsetInBytes + totalBytesWritten, bytesToWrite);
+          ? buffer
+          : buffer.buffer.asUint8List(
+              buffer.offsetInBytes + totalBytesWritten,
+              bytesToWrite,
+            );
       vfs.serializer.byteView.set(subBuffer, 0);
 
-      vfs._runInWorker(WorkerOperation.xWrite,
-          Flags(fd, fileOffset + totalBytesWritten, bytesToWrite));
+      vfs._runInWorker(
+        WorkerOperation.xWrite,
+        Flags(fd, fileOffset + totalBytesWritten, bytesToWrite),
+      );
 
       totalBytesWritten += bytesToWrite;
       remainingBytes -= bytesToWrite;

@@ -1,0 +1,22 @@
+name: flutter_integration_tests
+publish_to: 'none'
+version: 1.0.0+1
+resolution: workspace
+
+environment:
+  sdk: ^3.10.0-0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  sqlite3:
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

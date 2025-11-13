@@ -1,0 +1,16 @@
+name: sqlite3_multiplatform_example
+description: Uses common interface to `sqlite3` on web and native platforms.
+version: 0.1.0
+publish_to: 'none'
+resolution: workspace
+
+environment:
+  sdk: "^3.9.0"
+
+dependencies:
+  path: ^1.8.3
+  path_provider: ^2.1.1
+  sqlite3: ^3.0.0-0
+
+dev_dependencies:
+  lints: ^6.0.0

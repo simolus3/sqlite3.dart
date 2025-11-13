@@ -5,7 +5,7 @@ import 'vfs.dart';
 ///
 /// {@category common}
 abstract interface class CommonSqlite3 {
-  /// The version of the sqlite3 library in used.
+  /// The version of the sqlite3 library used.
   Version get version;
 
   /// Opens a database file.
@@ -49,8 +49,10 @@ abstract interface class CommonSqlite3 {
   /// method for them (like `drift` or `sqflite_common_ffi_web`).
   /// For more information on how to implement this, see the readme of the
   /// `sqlite3` package for details.
-  void registerVirtualFileSystem(VirtualFileSystem vfs,
-      {bool makeDefault = false});
+  void registerVirtualFileSystem(
+    VirtualFileSystem vfs, {
+    bool makeDefault = false,
+  });
 
   /// Unregisters a virtual file system implementation that has been registered
   /// with [registerVirtualFileSystem].

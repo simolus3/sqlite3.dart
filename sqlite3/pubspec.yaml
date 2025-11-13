@@ -1,12 +1,13 @@
 name: sqlite3
 description: Provides lightweight yet convenient bindings to SQLite by using dart:ffi
-version: 2.9.4
+version: 3.0.0
 homepage: https://github.com/simolus3/sqlite3.dart/tree/main/sqlite3
 issue_tracker: https://github.com/simolus3/sqlite3.dart/issues
 resolution: workspace
 
 environment:
-  sdk: '>=3.5.0 <4.0.0'
+  # We want >=3.10, but Flutter 3.38 somehow ships with a beta Dart SDK that rejects >=3.10 deps.
+  sdk: '>=3.9.999 <4.0.0'
 
 # This package supports all platforms listed below.
 platforms:
@@ -25,11 +26,15 @@ topics:
 
 dependencies:
   collection: ^1.15.0
-  ffi: '>=1.2.1 <3.0.0'
+  ffi: '^2.1.0'
   meta: ^1.3.0
   path: ^1.8.0
   web: ^1.0.0
   typed_data: ^1.3.2
+  hooks: ^1.0.0
+  code_assets: ^1.0.0
+  native_toolchain_c: ^0.17.3
+  crypto: ^3.0.6
 
 dev_dependencies:
   analyzer: ^8.0.0
@@ -48,3 +53,5 @@ dev_dependencies:
   test_descriptor: ^2.0.0
   pub_semver: ^2.1.5
   convert: ^3.1.2
+  package_config: ^2.2.0
+  logging: ^1.3.0

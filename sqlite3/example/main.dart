@@ -26,12 +26,14 @@ void main() {
     ..execute(['Nirvana']);
 
   // Dispose a statement when you don't need it anymore to clean up resources.
-  stmt.dispose();
+  stmt.close();
 
   // You can run select statements with PreparedStatement.select, or directly
   // on the database:
-  final ResultSet resultSet =
-      db.select('SELECT * FROM artists WHERE name LIKE ?', ['The %']);
+  final ResultSet resultSet = db.select(
+    'SELECT * FROM artists WHERE name LIKE ?',
+    ['The %'],
+  );
 
   // You can iterate on the result set in multiple ways to retrieve Row objects
   // one by one.
@@ -47,6 +49,7 @@ void main() {
   );
   print(db.select('SELECT dart_version()'));
 
-  // Don't forget to dispose the database to avoid memory leaks
-  db.dispose();
+  // Don't forget to dispose the database to avoid memory leaks (optional on
+  // native platforms).
+  db.close();
 }

@@ -28,7 +28,7 @@ void main() {
         ..execute('PRAGMA temp_store = FILE;')
         ..execute('CREATE TEMP TABLE my_tbl (foo, bar);')
         ..userVersion = 3
-        ..dispose();
+        ..close();
     } finally {
       sqlite3.tempDirectory = old;
     }
@@ -55,15 +55,12 @@ void main() {
       } else if (Platform.isWindows) {
         dynamicLibraryPath = p.join(d.sandbox, 'my_extension.dll');
 
-        result = await Process.run(
-          'cl',
-          [
-            sourcePath,
-            '/link',
-            '/DLL',
-            '/OUT:$dynamicLibraryPath',
-          ],
-        );
+        result = await Process.run('cl', [
+          sourcePath,
+          '/link',
+          '/DLL',
+          '/OUT:$dynamicLibraryPath',
+        ]);
       } else if (Platform.isMacOS) {
         dynamicLibraryPath = p.join(d.sandbox, 'my_extension.dylib');
 
@@ -79,16 +76,19 @@ void main() {
       }
 
       if (result.exitCode != 0) {
-        fail('Could not compile shared library for extension: \n'
-            '${result.stderr}\n${result.stdout}');
+        fail(
+          'Could not compile shared library for extension: \n'
+          '${result.stderr}\n${result.stdout}',
+        );
       }
 
       final library = DynamicLibrary.open(dynamicLibraryPath);
       sqlite3.ensureExtensionLoaded(
-          SqliteExtension.inLibrary(library, 'sqlite3_myextension_init'));
+        SqliteExtension.inLibrary(library, 'sqlite3_myextension_init'),
+      );
 
       final db = sqlite3.openInMemory();
-      addTearDown(db.dispose);
+      addTearDown(db.close);
       expect(db.select('SELECT my_function() AS r'), [
         {'r': 'my custom extension'},
       ]);

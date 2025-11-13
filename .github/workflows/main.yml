@@ -7,102 +7,16 @@ on:
     branches: [ main ]
 
 jobs:
-  compile_sqlite3:
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-
-    name: Compile sqlite3 for ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    env:
-      SQLITE_YEAR: "2025"
-      SQLITE_VERSION: "3500300"
-
-    steps:
-    - uses: actions/cache@v4
-      id: cache_sqlite_build
-      with:
-        path: sqlite/out
-        key: sqlite-v6-${{ runner.os }}-${{ env.SQLITE_VERSION }}
-    - name: Compile sqlite3 on Linux
-      if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Linux'
-      run: |
-        mkdir sqlite
-        cd sqlite
-        curl https://sqlite.org/$SQLITE_YEAR/sqlite-autoconf-$SQLITE_VERSION.tar.gz --output sqlite.tar.gz
-        tar zxvf sqlite.tar.gz
-        cd sqlite-autoconf-$SQLITE_VERSION
-        ./configure --session
-        make -j
-        mkdir ../out
-        cp sqlite3.c ../out
-        cp sqlite3 ../out
-        cp libsqlite3.so ../out
-        cp *.h ../out
-    - name: Compile sqlite3 on Linux (no autoinit)
-      if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Linux'
-      working-directory: sqlite
-      run: |
-        curl -L https://sqlite.org/$SQLITE_YEAR/sqlite-amalgamation-$SQLITE_VERSION.zip --output sqlite.zip
-        unzip sqlite.zip
-
-        cd sqlite-amalgamation-$SQLITE_VERSION
-        gcc -DSQLITE_OMIT_AUTOINIT=1 -DSQLITE_ENABLE_SESSION -DSQLITE_ENABLE_PREUPDATE_HOOK -c -fPIC sqlite3.c -o sqlite3.o
-        gcc -shared sqlite3.o -o libsqlite3.so
-        mkdir ../out/without_autoinit
-        cp libsqlite3.so ../out/without_autoinit
-    - name: Compile sqlite3 on macOS
-      if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'macOS'
-      run: |
-        mkdir sqlite
-        cd sqlite
-        curl https://sqlite.org/$SQLITE_YEAR/sqlite-autoconf-$SQLITE_VERSION.tar.gz --output sqlite.tar.gz
-        tar zxvf sqlite.tar.gz
-        cd sqlite-autoconf-$SQLITE_VERSION
-        ./configure --session
-        make -j
-        mkdir ../out
-        cp sqlite3.c ../out
-        cp sqlite3 ../out
-        cp libsqlite3.dylib ../out
-        cp *.h ../out
-    - uses: ilammy/msvc-dev-cmd@v1
-      if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Windows'
-    - name: Compile sqlite3 on Windows
-      if: steps.cache_sqlite_build.outputs.cache-hit != 'true' && runner.os == 'Windows'
-      run: |
-        mkdir sqlite
-        cd sqlite
-        curl https://sqlite.org/$Env:SQLITE_YEAR/sqlite-autoconf-$Env:SQLITE_VERSION.tar.gz --output sqlite.tar.gz
-        tar zxvf sqlite.tar.gz
-        cd sqlite-autoconf-$Env:SQLITE_VERSION
-        ./configure --session
-        nmake /f Makefile.msc sqlite3.c
-        "#define SQLITE_API __declspec(dllexport)" | Out-File -FilePath sqlite3e.c
-        '#include "sqlite3.c"' | Out-File -FilePath sqlite3e.c -Append
-        cl sqlite3e.c -link -dll -out:sqlite3.dll
-        mkdir ../out
-        cp sqlite3.c ../out
-        cp sqlite3.dll ../out
-        cp sqlite3.h ../out
-        cp sqlite3ext.h ../out
-        cp *.h ../out
-    - name: Upload built sqlite3 binaries
-      uses: actions/upload-artifact@v4
-      with:
-        name: sqlite3-${{ runner.os }}
-        path: sqlite/out
-        if-no-files-found: error
-        retention-days: 1
+  fetch_sqlite:
+    uses: ./.github/workflows/compile_sqlite.yml
 
   analyze:
-    needs: [compile_sqlite3]
+    timeout-minutes: 5
     strategy:
       matrix:
-        package: [sqlite3, sqlite3_test]
         dart: [stable]
 
-    name: Analyze on Dart ${{ matrix.dart }}
+    name: Analyze ${{ matrix.package }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
@@ -119,23 +33,27 @@ jobs:
 
     - name: Pub get
       run: dart pub get
-      working-directory: ${{ matrix.package }}
 
     - name: Format dart
-      run: dart format --set-exit-if-changed .
-      working-directory: ${{ matrix.package }}
+      run: |
+        dart format --set-exit-if-changed sqlite3
+        dart format --set-exit-if-changed sqlite3_test
+        dart format --set-exit-if-changed sqlite3_web
 
     - name: Format native
-      run: clang-format --Werror --dry-run --style=google assets/sqlite3.h assets/wasm/*.{c,h} test/**/*.c
-      if: ${{ matrix.package == 'sqlite3' }}
+      run: clang-format --Werror --dry-run --style=google assets/*.h test/**/*.c
       working-directory: sqlite3
 
+    - name: Format native
+      run: clang-format --Werror --dry-run --style=google src/*{.h,.c}
+      working-directory: sqlite3_wasm_build
+
     - name: Analyze
-      run: dart analyze --fatal-infos lib/ test/
-      working-directory: ${{ matrix.package }}
+      run: dart analyze --fatal-infos sqlite3 sqlite3_web sqlite3_test
 
   test:
-    needs: [analyze]
+    timeout-minutes: 5
+    needs: [analyze, fetch_sqlite]
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -150,43 +68,12 @@ jobs:
     - uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{ matrix.dart }}
-
     - name: Download compiled sqlite3
-      if: matrix.sqlite == 'compiled' && (runner.os == 'Linux' || runner.os == 'Windows' || runner.os == 'macOS')
-      uses: actions/download-artifact@v4
+      if: matrix.sqlite == 'compiled'
+      uses: actions/download-artifact@v5
       with:
-        name: sqlite3-${{ runner.os }}
-        path: sqlite/out
-
-    - name: Install compiled sqlite3 (Linux)
-      if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
-      run: |
-        chmod a+x sqlite/out/sqlite3
-        realpath sqlite/out >> $GITHUB_PATH
-        echo "LD_LIBRARY_PATH=$(realpath sqlite/out)" >> $GITHUB_ENV
-        echo "C_INCLUDE_PATH=$(realpath sqlite/out)" >> $GITHUB_ENV
-    - name: Install system sqlite3 (Ubuntu)
-      if: matrix.sqlite == 'system' && runner.os == 'Linux'
-      run: sudo apt install sqlite3
-    - name: Install compiled sqlite3 (macOS)
-      if: matrix.sqlite == 'compiled' && runner.os == 'macOS'
-      run: |
-        chmod a+x sqlite/out/sqlite3
-        echo "$(pwd)/sqlite/out" >> $GITHUB_PATH
-        echo "DYLD_LIBRARY_PATH=$(pwd)/sqlite/out" >> $GITHUB_ENV
-        echo "CPATH=$(pwd)/sqlite/out" >> $GITHUB_ENV
-    - uses: ilammy/msvc-dev-cmd@v1
-      if: matrix.sqlite == 'compiled' && runner.os == 'Windows'
-    - name: Install compiled sqlite3 (Windows)
-      if: matrix.sqlite == 'compiled' && runner.os == 'Windows'
-      run: |
-        echo $env:path
-        Resolve-Path -Path "sqlite/out" >> $env:GITHUB_PATH
-        "INCLUDE=" + $env:INCLUDE + ";" + (Resolve-Path -Path "sqlite/out") >> $env:GITHUB_EN
-    - name: Check if Winsqlite exists
-      if: matrix.sqlite == 'system' && runner.os == 'Windows'
-      run: Test-Path C:\Windows\System32\winsqlite3.dll
-
+        artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
+        path: sqlite-compiled
     - uses: actions/cache@v4
       with:
         path: "${{ env.PUB_CACHE }}"
@@ -194,63 +81,126 @@ jobs:
         restore-keys: |
           dart-dependencies-${{ matrix.dart }}-
           dart-dependencies-
+    - name: Get Dart dependencies
+      run: |
+        dart pub get
+    - name: Write asset hashes
+      run: dart run tool/write_asset_hashes.dart
+      if: matrix.sqlite == 'compiled'
+    - name: Prepare for tests
+      run: |
+        dart run tool/hook_overrides.dart ${{ matrix.sqlite }}
 
     - name: Test sqlite3 package
       run: |
-        dart pub get
-        dart test --test-randomize-ordering-seed "random" -P ci
+        dart test --test-randomize-ordering-seed "random" -P ci --reporter expanded --concurrency 1
       working-directory: sqlite3/
 
-    - name: Test with SQLITE_OMIT_AUTOINIT
-      if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
+    - name: Enable sqlite3mc
+      if: matrix.sqlite == 'compiled'
       run: |
-        ls $LD_LIBRARY_PATH
-        dart run tool/check_compile_time_option.dart OMIT_AUTOINIT
-        dart test -P ci
-      env:
-        LD_LIBRARY_PATH: ../sqlite/out/without_autoinit
+        dart run tool/hook_overrides.dart compiled-ciphers
+
+    - name: Test sqlite3 package with sqlite3mc
+      if: matrix.sqlite == 'compiled'
+      run: |
+        dart test --test-randomize-ordering-seed "random" -P ci --reporter expanded --concurrency 1
       working-directory: sqlite3/
+
+    # - name: Test with SQLITE_OMIT_AUTOINIT
+    #   if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
+    #   run: |
+    #     ls $LD_LIBRARY_PATH
+    #     dart run tool/check_compile_time_option.dart OMIT_AUTOINIT
+    #     dart test -P ci
+    #   env:
+    #     LD_LIBRARY_PATH: ../sqlite/out/without_autoinit
+    #   working-directory: sqlite3/
 
     - name: Test sqlite3_test package
-      if: matrix.sqlite != 'system' || runner.os != 'Windows'
-      run: |
-        dart pub get
-        dart test
+      run: dart test
+      if: ${{ runner.os != 'windows' }} # TODO: Investigate crashes on Windows
       working-directory: sqlite3_test/
+
+    - name: Test extension example
+      # We can't load extension with the system SQLite on Apple platforms,
+      # the feature is disabled.
+      if: ${{ !(runner.os == 'macos' && matrix.sqlite == 'system') }}
+      run: dart test
+      working-directory: sqlite3/example/custom_extension
 
     - name: Web tests
       run: |
-        curl https://simon-public.fsn1.your-objectstorage.com/assets/sqlite3/2.8.0/sqlite3.wasm -o example/web/sqlite3.wasm
-        curl https://simon-public.fsn1.your-objectstorage.com/assets/sqlite3/2.8.0/sqlite3mc.wasm -o example/web/sqlite3mc.wasm
+        cp ../sqlite-compiled/*.wasm example/web
         dart test -P web -r expanded
       # If browsers behave differently on different platforms, surely that's not our fault...
       # So, only run browser tests on Linux to be faster.
-      # todo: Something broke Dart web tests in Dart 2.18, it looks like this is related to finalizers
       if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
       working-directory: sqlite3/
 
-  test_native_assets:
-    needs: [analyze]
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    name: Testing with native assets on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+  upload_asset_hashes:
+    timeout-minutes: 5
+    needs: [test, fetch_sqlite]
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
     - uses: dart-lang/setup-dart@v1
-      with:
-        sdk: beta
     - name: Download compiled sqlite3
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
-        name: sqlite3-${{ runner.os }}
-        path: sqlite/out
-    - name: Prepare native assets
-      run: dart run tool/prepare_native_assets_test.dart
-    - name: Native assets test
-      working-directory: sqlite3_native_assets
-      run: dart test
+        artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
+        path: sqlite-compiled
+    - uses: actions/cache@v4
+      with:
+        path: "${{ env.PUB_CACHE }}"
+        key: dart-dependencies-beta-${{ runner.os }}
+        restore-keys: |
+          dart-dependencies-beta-
+          dart-dependencies-
+    - name: Get Dart dependencies
+      run: |
+        dart pub get
+    - name: Write asset hashes
+      run: dart run tool/write_asset_hashes.dart
+    - name: Upload asset hashes
+      uses: actions/upload-artifact@v4
+      id: upload
+      with:
+        name: asset-hashes
+        path: sqlite3/lib/src/hook/asset_hashes.dart
+        if-no-files-found: error
+        retention-days: 1
+
+  integration_test_web:
+    timeout-minutes: 10
+    needs: [analyze, fetch_sqlite]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dart-lang/setup-dart@v1
+      - name: Download compiled sqlite3
+        uses: actions/download-artifact@v5
+        with:
+          artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
+          path: sqlite-compiled
+      - uses: actions/cache@v4
+        with:
+          path: "${{ env.PUB_CACHE }}"
+          key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
+          restore-keys: |
+            dart-dependencies-${{ matrix.dart }}-
+            dart-dependencies-
+
+      - name: Prepare for tests
+        run: |
+          dart run tool/write_asset_hashes.dart
+          dart run tool/hook_overrides.dart compiled
+      - name: Web tests
+        run: |
+          cp ../sqlite-compiled/*.wasm web/
+          dart pub get
+          dart test -P gh_actions -r expanded
+        working-directory: sqlite3_web
 
 # The integration tests for android are currently broken (the emulator doesn't want to
 # start up...)
@@ -279,37 +229,24 @@ jobs:
 #          script: flutter test integration_test
 #          working-directory: "integration_tests/${{ matrix.test }}"
 
-  integration_test_linux:
-    needs: [test]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: subosito/flutter-action@v2
-      - name: Setup Flutter
-        run: |
-          flutter config --enable-linux-desktop
-          sudo apt-get update -y
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
-          flutter --version
-
-      - name: sqlite3 driver tests
-        run: "flutter pub get && xvfb-run -a flutter test integration_test"
-        working-directory: integration_tests/flutter_swiftpm
-
-      - name: sqlcipher driver tests
-        run: "flutter pub get && xvfb-run -a flutter test integration_test"
-        working-directory: integration_tests/sqlcipher_flutter
-
   # Shamelessly stolen from https://medium.com/flutter-community/run-flutter-driver-tests-on-github-actions-13c639c7e4ab
 
-  integration_test_ios:
-    needs: [test]
-    runs-on: macos-latest
+  integration_test:
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, macos-latest]
+    needs: [test, fetch_sqlite]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    env:
+      AVD_NAME: ubuntu-avd-x86_64-34
     steps:
       - name: List simulators
+        if: runner.os == 'macos'
         run: "xcrun xctrace list devices"
 
       - name: Start simulator
+        if: runner.os == 'macos'
         run: |
           IPHONE=$(xcrun xctrace list devices  2>&1 | grep -m 1 "iPhone" | awk -F'[()]' '{print $4}')
           xcrun simctl boot $IPHONE
@@ -320,44 +257,30 @@ jobs:
       - name: Flutter version
         run: flutter --version
 
-      - name: sqlite3 cocoapods driver tests
-        run: "flutter pub get && flutter test integration_test"
-        working-directory: integration_tests/flutter_cocoapods
-      - name: sqlite3 swiftpm driver tests
-        run: "flutter pub get && flutter test integration_test"
-        working-directory: integration_tests/flutter_swiftpm
-
-      - name: sqlcipher driver tests
-        run: "flutter pub get && flutter test integration_test"
-        working-directory: integration_tests/sqlcipher_flutter
-
-  integration_test_macos:
-    if: "false" # Temporarily disabled since it causes timeouts
-    needs: [test]
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: subosito/flutter-action@v2
-      - name: Setup Flutter
+      - name: Setup runner
+        if: runner.os == 'linux'
+        # https://github.com/ReactiveCircus/android-emulator-runner?tab=readme-ov-file#usage--examples
         run: |
-          flutter config --enable-macos-desktop
-          flutter --version
+          sudo apt-get install -y cmake ninja-build pkg-config libgtk-3-dev libstdc++-12-dev
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
-      - name: sqlite3 driver tests
-        run: "flutter pub get && flutter test integration_test"
-        working-directory: integration_tests/flutter_libs
-
-      - name: sqlcipher driver tests
-        run: "flutter pub get && flutter test integration_test"
-        working-directory: integration_tests/sqlcipher_flutter
-
-  integration_test_web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: dart-lang/setup-dart@v1
+      - name: AVD Cache
+        uses: actions/cache@v4
+        id: avd-cache
+        if: runner.os == 'linux'
         with:
-          sdk: beta
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-35
+
+      - name: Download compiled sqlite3
+        uses: actions/download-artifact@v5
+        with:
+          artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
+          path: sqlite-compiled
 
       - uses: actions/cache@v4
         with:
@@ -367,9 +290,62 @@ jobs:
             dart-dependencies-${{ matrix.dart }}-
             dart-dependencies-
 
-      - name: Web tests
+      - name: Write asset hashes
         run: |
-          curl https://simon-public.fsn1.your-objectstorage.com/assets/sqlite3/2.8.0/sqlite3.wasm -o web/sqlite3.wasm
           dart pub get
-          dart test -P gh_actions -r expanded
-        working-directory: sqlite3_web
+          dart run tool/write_asset_hashes.dart
+          dart run tool/hook_overrides.dart compiled
+
+      - name: Flutter sqlite3 tests on macOS
+        if: runner.os == 'macos'
+        working-directory: examples/flutter_integration_tests
+        run: |
+          flutter config --enable-swift-package-manager
+          flutter test integration_test
+          flutter test integration_test -d macos
+
+      - name: Flutter sqlite3 tests on Linux
+        if: false # runner.os == 'linux' currently broken in ci, can't reproduce locally or in Ubuntu VM
+        working-directory: examples/flutter_integration_tests
+        run: |
+          flutter test integration_test -d linux
+
+      - name: SQLite Android emulator tests
+        uses: reactivecircus/android-emulator-runner@v2
+        if: runner.os == 'linux'
+        with:
+          api-level: 34
+          force-avd-creation: false
+          target: google_apis
+          arch: x86_64
+          disable-animations: false
+          avd-name: $AVD_NAME
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: flutter test integration_test
+          working-directory: "examples/flutter_integration_tests"
+
+      - name: Enable sqlite3mc
+        run: |
+          dart run tool/hook_overrides.dart compiled-ciphers
+
+      - name: Flutter sqlite3mc tests on macOS
+        if: runner.os == 'macos'
+        working-directory: examples/flutter_integration_tests
+        run: |
+          flutter config --enable-swift-package-manager
+          flutter test integration_test -Dsqlite3.multipleciphers=true
+          flutter test integration_test -Dsqlite3.multipleciphers=true -d macos
+
+      - name: sqlite3mc Android emulator tests
+        uses: reactivecircus/android-emulator-runner@v2
+        if: runner.os == 'linux'
+        with:
+          api-level: 34
+          force-avd-creation: false
+          target: google_apis
+          arch: x86_64
+          disable-animations: false
+          avd-name: $AVD_NAME
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: flutter test integration_test -Dsqlite3.multipleciphers=true
+          working-directory: "examples/flutter_integration_tests"

@@ -66,8 +66,7 @@ final class ResultSet extends Cursor
     with
         ListMixin<Row>,
         NonGrowableListMixin<Row> // ignore: prefer_mixin
-    implements
-        Iterable<Row> {
+    implements Iterable<Row> {
   /// The raw row data.
   final List<List<Object?>> rows;
 
@@ -101,8 +100,7 @@ final class Row
         // ignore: prefer_mixin
         UnmodifiableMapMixin<String, dynamic>,
         MapMixin<String, dynamic>
-    implements
-        Map<String, dynamic> {
+    implements Map<String, dynamic> {
   final Cursor _result;
   final List<Object?> _data;
 

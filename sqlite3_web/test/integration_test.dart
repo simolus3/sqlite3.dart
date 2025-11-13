@@ -16,18 +16,14 @@ enum Browser {
   chrome(
     driverUriString: 'http://localhost:4444/wd/hub/',
     isChromium: true,
-    unsupportedImplementations: {
-      DatabaseImplementation.opfsShared,
-    },
+    unsupportedImplementations: {DatabaseImplementation.opfsShared},
     missingFeatures: {MissingBrowserFeature.dedicatedWorkersInSharedWorkers},
     defaultImplementation: DatabaseImplementation.opfsWithExternalLocks,
   ),
   firefox(
     driverUriString: 'http://localhost:4444/',
     defaultImplementation: DatabaseImplementation.opfsShared,
-    unsupportedImplementations: {
-      DatabaseImplementation.opfsWithExternalLocks,
-    },
+    unsupportedImplementations: {DatabaseImplementation.opfsWithExternalLocks},
     missingFeatures: {
       MissingBrowserFeature.createSyncAccessHandleReadWriteUnsafe,
     },
@@ -59,12 +55,14 @@ enum Browser {
   Future<Process> spawnDriver() async {
     return switch (this) {
       firefox => Process.start('geckodriver', []).then((result) async {
-          // geckodriver seems to take a while to initialize
-          await Future.delayed(const Duration(seconds: 1));
-          return result;
-        }),
-      chrome =>
-        Process.start('chromedriver', ['--port=4444', '--url-base=/wd/hub']),
+        // geckodriver seems to take a while to initialize
+        await Future.delayed(const Duration(seconds: 1));
+        return result;
+      }),
+      chrome => Process.start('chromedriver', [
+        '--port=4444',
+        '--url-base=/wd/hub',
+      ]),
     };
   }
 }
@@ -141,7 +139,7 @@ final class _TestConfiguration {
               ],
             },
             'moz:firefoxOptions': {
-              'args': ['-headless']
+              'args': ['-headless'],
             },
           },
         );
@@ -164,9 +162,9 @@ final class _TestConfiguration {
     }
 
     driver = TestWebDriver(server, rawDriver);
-    await driver.driver.get(isDart2Wasm
-        ? 'http://localhost:8080/?wasm=1'
-        : 'http://localhost:8080/');
+    await driver.driver.get(
+      isDart2Wasm ? 'http://localhost:8080/?wasm=1' : 'http://localhost:8080/',
+    );
     await driver.waitReady();
   }
 
@@ -267,7 +265,8 @@ final class _TestConfiguration {
       // In 0.4.0, we've added a new OPFS implementation that would be used by
       // default on browsers that previously only supported IndexedDB.
       await driver.openDatabase(
-          implementation: DatabaseImplementation.indexedDbShared);
+        implementation: DatabaseImplementation.indexedDbShared,
+      );
       await driver.execute('CREATE TABLE foo (bar TEXT);');
       await driver.closeDatabase();
 

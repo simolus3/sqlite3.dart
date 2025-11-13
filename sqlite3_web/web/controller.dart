@@ -11,13 +11,19 @@ final class ExampleController extends DatabaseController {
 
   @override
   Future<JSAny?> handleCustomRequest(
-      ClientConnection connection, JSAny? request) async {
+    ClientConnection connection,
+    JSAny? request,
+  ) async {
     return null;
   }
 
   @override
-  Future<WorkerDatabase> openDatabase(WasmSqlite3 sqlite3, String path,
-      String vfs, JSAny? additionalData) async {
+  Future<WorkerDatabase> openDatabase(
+    WasmSqlite3 sqlite3,
+    String path,
+    String vfs,
+    JSAny? additionalData,
+  ) async {
     final raw = sqlite3.open(path, vfs: vfs);
     raw.createFunction(
       functionName: 'database_host',
@@ -42,7 +48,9 @@ final class ExampleDatabase extends WorkerDatabase {
 
   @override
   Future<JSAny?> handleCustomRequest(
-      ClientConnection connection, JSAny? request) async {
+    ClientConnection connection,
+    JSAny? request,
+  ) async {
     final response =
         ((await connection.customRequest(null)) as JSNumber).toDartInt;
 

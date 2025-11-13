@@ -52,10 +52,7 @@ abstract base class VirtualFileSystem {
   VirtualFileSystem(this.name);
 
   /// Opens a file, returning supported flags and a file instance.
-  XOpenResult xOpen(
-    Sqlite3Filename path,
-    int flags,
-  );
+  XOpenResult xOpen(Sqlite3Filename path, int flags);
 
   /// Delete a file.
   void xDelete(String path, int syncDir);
@@ -142,8 +139,8 @@ abstract base class BaseVirtualFileSystem extends VirtualFileSystem {
   final Random random;
 
   BaseVirtualFileSystem({Random? random, required String name})
-      : random = random ?? _fallbackRandom,
-        super(name);
+    : random = random ?? _fallbackRandom,
+      super(name);
 
   @override
   void xRandomness(Uint8List target) {

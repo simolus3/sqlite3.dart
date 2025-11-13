@@ -1,3 +1,7 @@
+## 0.5.0
+
+- Use version 3 of `package:sqlite3`.
+
 ## 0.4.1
 
 - Support older versions of `package:meta`.

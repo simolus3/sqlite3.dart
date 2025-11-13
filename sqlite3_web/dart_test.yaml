@@ -13,3 +13,4 @@ override_platforms:
 
 presets:
   gh_actions:
+    concurrency: 1

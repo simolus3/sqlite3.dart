@@ -49,7 +49,10 @@ void main() {
     final root = Directory('lib/');
     check(root);
 
-    expect(failures, isEmpty,
-        reason: 'This package should not import legacy JS code.');
+    expect(
+      failures,
+      isEmpty,
+      reason: 'This package should not import legacy JS code.',
+    );
   });
 }

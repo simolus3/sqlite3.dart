@@ -19,10 +19,12 @@ typedef PostMessage = void Function(JSAny? msg, JSObject transfer);
 
 enum MessageType<T extends Message> {
   dedicatedCompatibilityCheck<CompatibilityCheck>(
-      _deserializeDedicatedCompatCheck),
+    _deserializeDedicatedCompatCheck,
+  ),
   sharedCompatibilityCheck<CompatibilityCheck>(_deserializeSharedCompatCheck),
   dedicatedInSharedCompatibilityCheck<CompatibilityCheck>(
-      _deserializeDedicatedCompatCheck),
+    _deserializeDedicatedCompatCheck,
+  ),
   custom<CustomRequest>(CustomRequest.deserialize),
   open<OpenRequest>(OpenRequest.deserialize),
   runQuery<RunQuery>(RunQuery.deserialize),
@@ -31,12 +33,14 @@ enum MessageType<T extends Message> {
   fileSystemFlush<FileSystemFlushRequest>(FileSystemFlushRequest.deserialize),
   connect<ConnectRequest>(ConnectRequest.deserialize),
   startFileSystemServer<StartFileSystemServer>(
-      StartFileSystemServer.deserialize),
+    StartFileSystemServer.deserialize,
+  ),
   updateRequest<StreamRequest>(_deserializeUpdateRequest),
   rollbackRequest<StreamRequest>(_deserializeRollbackRequest),
   commitRequest<StreamRequest>(_deserializeCommitRequest),
   simpleSuccessResponse<SimpleSuccessResponse>(
-      SimpleSuccessResponse.deserialize),
+    SimpleSuccessResponse.deserialize,
+  ),
   rowsResponse<RowsResponse>(RowsResponse.deserialize),
   errorResponse<ErrorResponse>(ErrorResponse.deserialize),
   endpointResponse<EndpointResponse>(EndpointResponse.deserialize),
@@ -44,12 +48,12 @@ enum MessageType<T extends Message> {
   releaseLock<ReleaseLock>(ReleaseLock.deserialize),
   closeDatabase<CloseDatabase>(CloseDatabase.deserialize),
   openAdditionalConnection<OpenAdditonalConnection>(
-      OpenAdditonalConnection.deserialize),
+    OpenAdditonalConnection.deserialize,
+  ),
   notifyUpdate<UpdateNotification>(UpdateNotification.deserialize),
   notifyRollback<EmptyNotification>(_deserializeNotifyRollback),
   notifyCommit<EmptyNotification>(_deserializeNotifyCommit),
-  abort<AbortRequest>(AbortRequest.deserialize),
-  ;
+  abort<AbortRequest>(AbortRequest.deserialize);
 
   final T Function(JSObject) deserialize;
 
@@ -59,12 +63,16 @@ enum MessageType<T extends Message> {
 
   static CompatibilityCheck _deserializeDedicatedCompatCheck(JSObject obj) {
     return CompatibilityCheck.deserialize(
-        MessageType.dedicatedCompatibilityCheck, obj);
+      MessageType.dedicatedCompatibilityCheck,
+      obj,
+    );
   }
 
   static CompatibilityCheck _deserializeSharedCompatCheck(JSObject obj) {
     return CompatibilityCheck.deserialize(
-        MessageType.sharedCompatibilityCheck, obj);
+      MessageType.sharedCompatibilityCheck,
+      obj,
+    );
   }
 
   static StreamRequest _deserializeUpdateRequest(JSObject obj) {
@@ -163,17 +171,23 @@ sealed class Notification extends Message {}
 
 abstract base class RequestHandler {
   FutureOr<Response> handleCompatibilityCheck(
-      CompatibilityCheck request, AbortSignal abortSignal) {
+    CompatibilityCheck request,
+    AbortSignal abortSignal,
+  ) {
     _unsupportedRequest(request);
   }
 
   FutureOr<Response> handleConnect(
-      ConnectRequest request, AbortSignal abortSignal) {
+    ConnectRequest request,
+    AbortSignal abortSignal,
+  ) {
     _unsupportedRequest(request);
   }
 
   FutureOr<Response> handleCustom(
-      CustomRequest request, AbortSignal abortSignal) {
+    CustomRequest request,
+    AbortSignal abortSignal,
+  ) {
     _unsupportedRequest(request);
   }
 
@@ -186,42 +200,58 @@ abstract base class RequestHandler {
   }
 
   FutureOr<Response> handleExclusiveLock(
-      RequestExclusiveLock request, AbortSignal abortSignal) {
+    RequestExclusiveLock request,
+    AbortSignal abortSignal,
+  ) {
     _unsupportedRequest(request);
   }
 
   FutureOr<Response> handleReleaseLock(
-      ReleaseLock request, AbortSignal abortSignal) {
+    ReleaseLock request,
+    AbortSignal abortSignal,
+  ) {
     _unsupportedRequest(request);
   }
 
   FutureOr<Response> handleStream(
-      StreamRequest request, AbortSignal abortSignal) {
+    StreamRequest request,
+    AbortSignal abortSignal,
+  ) {
     _unsupportedRequest(request);
   }
 
   FutureOr<Response> handleOpenAdditionalConnection(
-      OpenAdditonalConnection request, AbortSignal abortSignal) {
+    OpenAdditonalConnection request,
+    AbortSignal abortSignal,
+  ) {
     _unsupportedRequest(request);
   }
 
   FutureOr<Response> handleCloseDatabase(
-      CloseDatabase request, AbortSignal abortSignal) {
+    CloseDatabase request,
+    AbortSignal abortSignal,
+  ) {
     _unsupportedRequest(request);
   }
 
   FutureOr<Response> handleFileSystemFlush(
-      FileSystemFlushRequest request, AbortSignal abortSignal) {
+    FileSystemFlushRequest request,
+    AbortSignal abortSignal,
+  ) {
     _unsupportedRequest(request);
   }
 
   FutureOr<Response> handleFileSystemExists(
-      FileSystemExistsQuery request, AbortSignal abortSignal) {
+    FileSystemExistsQuery request,
+    AbortSignal abortSignal,
+  ) {
     _unsupportedRequest(request);
   }
 
   FutureOr<Response> handleFileSystemAccess(
-      FileSystemAccess request, AbortSignal abortSignal) {
+    FileSystemAccess request,
+    AbortSignal abortSignal,
+  ) {
     _unsupportedRequest(request);
   }
 
@@ -265,7 +295,8 @@ sealed class Response extends Message {
 
   RemoteException interpretAsError() {
     return RemoteException(
-        message: 'Did not respond with expected type, got $this');
+      message: 'Did not respond with expected type, got $this',
+    );
   }
 }
 
@@ -321,10 +352,12 @@ final class OpenRequest extends Request {
   factory OpenRequest.deserialize(JSObject object) {
     return OpenRequest(
       storageMode: FileSystemImplementation.fromJS(
-          object[_UniqueFieldNames.storageMode] as JSString),
+        object[_UniqueFieldNames.storageMode] as JSString,
+      ),
       databaseName: (object[_UniqueFieldNames.databaseName] as JSString).toDart,
-      wasmUri:
-          Uri.parse((object[_UniqueFieldNames.wasmUri] as JSString).toDart),
+      wasmUri: Uri.parse(
+        (object[_UniqueFieldNames.wasmUri] as JSString).toDart,
+      ),
       requestId: object.requestId,
       // The onlyOpenVfs and transformedVfsName fields were not set in earlier
       // clients.
@@ -401,8 +434,8 @@ final class StartFileSystemServer extends Message {
 
   factory StartFileSystemServer.deserialize(JSObject object) {
     return StartFileSystemServer(
-        options:
-            object[_UniqueFieldNames.responseData] as wasm_vfs.WorkerOptions);
+      options: object[_UniqueFieldNames.responseData] as wasm_vfs.WorkerOptions,
+    );
   }
 
   @override
@@ -491,10 +524,7 @@ final class FileSystemFlushRequest extends Request {
   @override
   MessageType<Message> get type => MessageType.fileSystemFlush;
 
-  FileSystemFlushRequest({
-    required super.databaseId,
-    required super.requestId,
-  });
+  FileSystemFlushRequest({required super.databaseId, required super.requestId});
 
   factory FileSystemFlushRequest.deserialize(JSObject object) {
     return FileSystemFlushRequest(
@@ -620,12 +650,16 @@ final class RunQuery extends Request {
 }
 
 final class RequestExclusiveLock extends Request {
-  RequestExclusiveLock(
-      {required super.requestId, required int super.databaseId});
+  RequestExclusiveLock({
+    required super.requestId,
+    required int super.databaseId,
+  });
 
   factory RequestExclusiveLock.deserialize(JSObject object) {
     return RequestExclusiveLock(
-        requestId: object.requestId, databaseId: object.databaseId);
+      requestId: object.requestId,
+      databaseId: object.databaseId,
+    );
   }
 
   @override
@@ -674,7 +708,9 @@ final class CloseDatabase extends Request {
 
   factory CloseDatabase.deserialize(JSObject object) {
     return CloseDatabase(
-        requestId: object.requestId, databaseId: object.databaseId);
+      requestId: object.requestId,
+      databaseId: object.databaseId,
+    );
   }
 
   @override
@@ -687,10 +723,7 @@ final class CloseDatabase extends Request {
 }
 
 final class OpenAdditonalConnection extends Request {
-  OpenAdditonalConnection({
-    required super.requestId,
-    super.databaseId,
-  });
+  OpenAdditonalConnection({required super.requestId, super.databaseId});
 
   factory OpenAdditonalConnection.deserialize(JSObject object) {
     return OpenAdditonalConnection(
@@ -780,9 +813,10 @@ enum TypeCode {
     return switch (this) {
       TypeCode.unknown => column.dartify(),
       TypeCode.integer => (column as JSNumber).toDartInt,
-      TypeCode.bigInt => hasNativeInts
-          ? (column as JsBigInt).asDartInt
-          : (column as JsBigInt).asDartBigInt,
+      TypeCode.bigInt =>
+        hasNativeInts
+            ? (column as JsBigInt).asDartInt
+            : (column as JsBigInt).asDartBigInt,
       TypeCode.float => (column as JSNumber).toDartDouble,
       TypeCode.text => (column as JSString).toDart,
       TypeCode.blob => (column as JSUint8Array).toDart,
@@ -853,8 +887,9 @@ enum TypeCode {
 
     final parameters = List<Object?>.filled(rawParameters.length, null);
     for (var i = 0; i < parameters.length; i++) {
-      final typeCode =
-          typeVector != null ? TypeCode.of(typeVector[i]) : TypeCode.unknown;
+      final typeCode = typeVector != null
+          ? TypeCode.of(typeVector[i])
+          : TypeCode.unknown;
       parameters[i] = typeCode.decodeColumn(rawParameters[i]);
     }
 
@@ -884,7 +919,7 @@ final class RowsResponse extends Response {
           (object[_UniqueFieldNames.autocommit] as JSBoolean?)?.toDart ?? false,
       lastInsertRowId:
           (object[_UniqueFieldNames.lastInsertRowid] as JSNumber?)?.toDartInt ??
-              0,
+          0,
     );
   }
 
@@ -912,7 +947,10 @@ final class RowsResponse extends Response {
   }
 
   static void serializeResultSet(
-      JSObject object, List<JSObject> transferred, ResultSet resultSet) {
+    JSObject object,
+    List<JSObject> transferred,
+    ResultSet resultSet,
+  ) {
     final jsRows = <JSArray>[];
     final columns = resultSet.columnNames.length;
     final typeVector = Uint8List(resultSet.length * columns);
@@ -938,9 +976,7 @@ final class RowsResponse extends Response {
 
     object[_UniqueFieldNames.rows] = <JSArray>[
       for (final row in resultSet.rows)
-        <JSAny?>[
-          for (final column in row) column.jsify(),
-        ].toJS,
+        <JSAny?>[for (final column in row) column.jsify()].toJS,
     ].toJS;
 
     object[_UniqueFieldNames.columnNames] = <JSString>[
@@ -960,13 +996,13 @@ final class RowsResponse extends Response {
     final columnNames = [
       for (final entry
           in (object[_UniqueFieldNames.columnNames] as JSArray).toDart)
-        (entry as JSString).toDart
+        (entry as JSString).toDart,
     ];
     final rawTableNames = object[_UniqueFieldNames.tableNames];
     final tableNames = rawTableNames != null
         ? [
             for (final entry in (rawTableNames as JSArray).toDart)
-              (entry as JSString).toDart
+              (entry as JSString).toDart,
           ]
         : null;
 
@@ -980,8 +1016,9 @@ final class RowsResponse extends Response {
       final dartRow = <Object?>[];
 
       for (final column in (row as JSArray).toDart) {
-        final typeCode =
-            typeVector != null ? TypeCode.of(typeVector[i]) : TypeCode.unknown;
+        final typeCode = typeVector != null
+            ? TypeCode.of(typeVector[i])
+            : TypeCode.unknown;
         dartRow.add(typeCode.decodeColumn(column));
         i++;
       }
@@ -1010,14 +1047,16 @@ final class ErrorResponse extends Response {
   factory ErrorResponse.deserialize(JSObject object) {
     Object? serializedException;
     if (object.has(_UniqueFieldNames.serializedExceptionType)) {
-      serializedException = switch (
-          (object[_UniqueFieldNames.serializedExceptionType] as JSNumber)
+      serializedException =
+          switch ((object[_UniqueFieldNames.serializedExceptionType]
+                  as JSNumber)
               .toDartInt) {
-        _typeSqliteException => deserializeSqliteException(
-            object[_UniqueFieldNames.serializedException] as JSArray),
-        _typeAbortException => const AbortException(),
-        _ => null,
-      };
+            _typeSqliteException => deserializeSqliteException(
+              object[_UniqueFieldNames.serializedException] as JSArray,
+            ),
+            _typeAbortException => const AbortException(),
+            _ => null,
+          };
     }
 
     return ErrorResponse(
@@ -1038,8 +1077,9 @@ final class ErrorResponse extends Response {
     if (serializedException case final SqliteException e?) {
       object[_UniqueFieldNames.serializedExceptionType] =
           _typeSqliteException.toJS;
-      object[_UniqueFieldNames.serializedException] =
-          serializeSqliteException(e);
+      object[_UniqueFieldNames.serializedException] = serializeSqliteException(
+        e,
+      );
     } else if (serializedException is AbortException) {
       object[_UniqueFieldNames.serializedExceptionType] =
           _typeAbortException.toJS;
@@ -1064,6 +1104,7 @@ final class ErrorResponse extends Response {
       causingStatement,
       paramData,
       paramTypes,
+      offset,
       ..._,
     ] = data.toDart;
 
@@ -1075,15 +1116,19 @@ final class ErrorResponse extends Response {
     }
 
     return SqliteException(
-      (extendedResultCode as JSNumber).toDartInt,
-      (message as JSString).toDart,
-      decodeNullableString(explanation),
-      decodeNullableString(causingStatement),
-      paramData.isDefinedAndNotNull && paramTypes.isDefinedAndNotNull
+      extendedResultCode: (extendedResultCode as JSNumber).toDartInt,
+      message: (message as JSString).toDart,
+      explanation: decodeNullableString(explanation),
+      causingStatement: decodeNullableString(causingStatement),
+      parametersToStatement:
+          paramData.isDefinedAndNotNull && paramTypes.isDefinedAndNotNull
           ? TypeCode.decodeValues(
-              paramData as JSArray, paramTypes as JSArrayBuffer)
+              paramData as JSArray,
+              paramTypes as JSArrayBuffer,
+            )
           : null,
-      decodeNullableString(operation),
+      operation: decodeNullableString(operation),
+      offset: (offset as JSNumber?)?.toDartInt,
     );
   }
 
@@ -1101,6 +1146,7 @@ final class ErrorResponse extends Response {
       e.causingStatement?.toJS,
       params?.$1,
       params?.$2,
+      e.offset?.toJS,
     ].toJS;
   }
 
@@ -1127,7 +1173,9 @@ final class StreamRequest extends Request {
   });
 
   factory StreamRequest.deserialize(
-      MessageType<Message> type, JSObject object) {
+    MessageType<Message> type,
+    JSObject object,
+  ) {
     return StreamRequest(
       type: type,
       action: (object[_UniqueFieldNames.action] as JSBoolean).toDart,
@@ -1161,7 +1209,9 @@ class CompatibilityCheck extends Request {
   });
 
   factory CompatibilityCheck.deserialize(
-      MessageType<CompatibilityCheck> type, JSObject object) {
+    MessageType<CompatibilityCheck> type,
+    JSObject object,
+  ) {
     return CompatibilityCheck(
       type: type,
       requestId: object.requestId,
@@ -1273,7 +1323,7 @@ final class CompatibilityResult {
     final encodedDatabases = <JSString>[
       for (final existing in existingDatabases) ...[
         existing.$1.name.toJS,
-        existing.$2.toJS
+        existing.$2.toJS,
       ],
     ];
 
@@ -1297,8 +1347,9 @@ final class UpdateNotification extends Notification {
   factory UpdateNotification.deserialize(JSObject object) {
     return UpdateNotification(
       update: SqliteUpdate(
-        SqliteUpdateKind.values[
-            (object[_UniqueFieldNames.updateKind] as JSNumber).toDartInt],
+        SqliteUpdateKind.values[(object[_UniqueFieldNames.updateKind]
+                as JSNumber)
+            .toDartInt],
         (object[_UniqueFieldNames.updateTableName] as JSString).toDart,
         (object[_UniqueFieldNames.updateRowId] as JSNumber).toDartInt,
       ),
@@ -1329,11 +1380,10 @@ final class EmptyNotification extends Notification {
   EmptyNotification({required this.type, required this.databaseId});
 
   factory EmptyNotification.deserialize(
-      MessageType<Message> type, JSObject object) {
-    return EmptyNotification(
-      type: type,
-      databaseId: object.databaseId,
-    );
+    MessageType<Message> type,
+    JSObject object,
+  ) {
+    return EmptyNotification(type: type, databaseId: object.databaseId);
   }
 
   @override
@@ -1353,9 +1403,7 @@ final class AbortRequest extends Message {
   AbortRequest({required this.requestId});
 
   factory AbortRequest.deserialize(JSObject object) {
-    return AbortRequest(
-      requestId: object.requestId,
-    );
+    return AbortRequest(requestId: object.requestId);
   }
 
   @override

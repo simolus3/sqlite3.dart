@@ -12,20 +12,9 @@ extension type WasmInstance._(JSObject _) implements JSObject {
 
   static Future<WasmInstance> load(
     web.Response response,
-    Map<String, Map<String, JSAny?>> imports,
+    JSObject imports,
   ) async {
-    final importsJs = JSObject();
-
-    imports.forEach((module, moduleImports) {
-      final moduleJs = JSObject();
-      importsJs[module] = moduleJs;
-
-      moduleImports.forEach((name, value) {
-        moduleJs[name] = value;
-      });
-    });
-
-    final native = await _instantiateStreaming(response, importsJs).toDart;
+    final native = await _instantiateStreaming(response, imports).toDart;
 
     // If the module has an `_initialize` export, it needs to be called to run
     // C constructors and set up memory.
@@ -44,7 +33,9 @@ extension type _ResultObject._(JSObject _) implements JSObject {
 
 @JS('WebAssembly.instantiateStreaming')
 external JSPromise<_ResultObject> _instantiateStreaming(
-    JSAny? source, JSObject imports);
+  JSAny? source,
+  JSObject imports,
+);
 
 @JS()
 extension type MemoryDescriptor._(JSObject _) implements JSObject {

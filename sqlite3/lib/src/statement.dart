@@ -123,7 +123,18 @@ abstract class CommonPreparedStatement {
   void reset();
 
   /// Disposes this statement and releases associated memory.
+  @Deprecated('Use close() instead')
   void dispose();
+
+  /// Closes this prepared statement.
+  ///
+  /// On native platforms, a native finalizer will also close statements
+  /// automatically. On the web, finalizers are less reliable. For this reason,
+  /// closing statements explicitly is still recommended.
+  ///
+  /// See also:
+  ///  - `sqlite3_finalize`: https://www.sqlite.org/c3ref/finalize.html
+  void close();
 }
 
 /// A set of values that can be used to bind [parameters] in a SQL query.
@@ -166,7 +177,8 @@ sealed class StatementParameters {
   /// indicate that you are fully responsible for binding parameters and don't
   /// need any validation checks.
   const factory StatementParameters.bindCustom(
-      void Function(CommonPreparedStatement stmt) bind) = CustomParameters;
+    void Function(CommonPreparedStatement stmt) bind,
+  ) = CustomParameters;
 }
 
 @internal

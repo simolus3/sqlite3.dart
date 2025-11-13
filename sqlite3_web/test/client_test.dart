@@ -20,7 +20,7 @@ void main() {
       DatabaseImplementation.indexedDbUnsafeWorker,
       DatabaseImplementation.indexedDbUnsafeLocal,
       DatabaseImplementation.inMemoryShared,
-      DatabaseImplementation.inMemoryLocal
+      DatabaseImplementation.inMemoryLocal,
     ]);
   });
 }

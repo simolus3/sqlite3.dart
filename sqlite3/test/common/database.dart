@@ -10,13 +10,14 @@ import 'utils.dart';
 void testDatabase(
   FutureOr<CommonSqlite3> Function() loadSqlite, {
   bool hasColumnMetadata = false,
+  bool hasSharedCache = false,
 }) {
   late CommonSqlite3 sqlite3;
   late CommonDatabase database;
 
   setUpAll(() async => sqlite3 = await loadSqlite());
   setUp(() => database = sqlite3.openInMemory());
-  tearDown(() => database.dispose());
+  tearDown(() => database.close());
 
   test('user version', () {
     expect(database.userVersion, 0);
@@ -24,15 +25,15 @@ void testDatabase(
     expect(database.userVersion, 1);
   });
 
-  test("database can't be used after dispose", () {
-    database.dispose();
+  test("database can't be used after close", () {
+    database.close();
 
     expect(() => database.execute('SELECT 1;'), throwsStateError);
   });
 
-  test('disposing multiple times works', () {
-    database.dispose();
-    database.dispose(); // shouldn't throw or crash
+  test('closing multiple times works', () {
+    database.close();
+    database.close(); // shouldn't throw or crash
   });
 
   test('updated rows', () {
@@ -77,13 +78,18 @@ void testDatabase(
       database.execute('CREATE TABLE foo (a);');
 
       expect(
-          () => database.execute(
-              'INSERT INTO foo VALUES (?); INSERT INTO foo VALUES (?);', [123]),
-          throwsArgumentError);
+        () => database.execute(
+          'INSERT INTO foo VALUES (?); INSERT INTO foo VALUES (?);',
+          [123],
+        ),
+        throwsArgumentError,
+      );
     });
 
-    test('inner join with toTableColumnMap and computed column', () {
-      database.execute('''
+    test(
+      'inner join with toTableColumnMap and computed column',
+      () {
+        database.execute('''
       CREATE TABLE foo (
         a INT
       );
@@ -93,36 +99,38 @@ void testDatabase(
         FOREIGN KEY (a_ref) REFERENCES foo (a)
       );
       ''');
-      database.execute('INSERT INTO foo(a) VALUES (1), (2), (3);');
-      database.execute(
-          "INSERT INTO bar(b, a_ref) VALUES ('1', NULL), ('2', 2), ('3', 3);");
+        database.execute('INSERT INTO foo(a) VALUES (1), (2), (3);');
+        database.execute(
+          "INSERT INTO bar(b, a_ref) VALUES ('1', NULL), ('2', 2), ('3', 3);",
+        );
 
-      final result = database.select(
-        'SELECT *, foo.a > 2 is_greater_than_2 FROM foo'
-        ' INNER JOIN bar bar_alias ON bar_alias.a_ref = foo.a;',
-      );
+        final result = database.select(
+          'SELECT *, foo.a > 2 is_greater_than_2 FROM foo'
+          ' INNER JOIN bar bar_alias ON bar_alias.a_ref = foo.a;',
+        );
 
-      expect(result, [
-        {'a': 2, 'b': '2', 'a_ref': 2, 'is_greater_than_2': 0},
-        {'a': 3, 'b': '3', 'a_ref': 3, 'is_greater_than_2': 1},
-      ]);
+        expect(result, [
+          {'a': 2, 'b': '2', 'a_ref': 2, 'is_greater_than_2': 0},
+          {'a': 3, 'b': '3', 'a_ref': 3, 'is_greater_than_2': 1},
+        ]);
 
-      expect(result.map((row) => row.toTableColumnMap()), [
-        {
-          null: {'is_greater_than_2': 0},
-          'foo': {'a': 2},
-          'bar': {'b': '2', 'a_ref': 2},
-        },
-        {
-          null: {'is_greater_than_2': 1},
-          'foo': {'a': 3},
-          'bar': {'b': '3', 'a_ref': 3},
-        },
-      ]);
-    },
-        skip: hasColumnMetadata
-            ? null
-            : 'sqlite3 was compiled without column metadata');
+        expect(result.map((row) => row.toTableColumnMap()), [
+          {
+            null: {'is_greater_than_2': 0},
+            'foo': {'a': 2},
+            'bar': {'b': '2', 'a_ref': 2},
+          },
+          {
+            null: {'is_greater_than_2': 1},
+            'foo': {'a': 3},
+            'bar': {'b': '3', 'a_ref': 3},
+          },
+        ]);
+      },
+      skip: hasColumnMetadata
+          ? null
+          : 'sqlite3 was compiled without column metadata',
+    );
   });
 
   group('throws', () {
@@ -131,17 +139,24 @@ void testDatabase(
 
       expect(
         () => database.execute('INSERT INTO foo VALUES (3);'),
-        throwsA(const TypeMatcher<SqliteException>().having(
-            (e) => e.message, 'message', contains('CHECK constraint failed'))),
+        throwsA(
+          const TypeMatcher<SqliteException>().having(
+            (e) => e.message,
+            'message',
+            contains('CHECK constraint failed'),
+          ),
+        ),
       );
     });
 
     test('when preparing an invalid statement', () {
       expect(
         () => database.prepare('INSERT INTO foo VALUES (3);'),
-        throwsA(const TypeMatcher<SqliteException>()
-            .having((e) => e.operation, 'operation', 'preparing statement')
-            .having((e) => e.message, 'message', contains('no such table'))),
+        throwsA(
+          const TypeMatcher<SqliteException>()
+              .having((e) => e.operation, 'operation', 'preparing statement')
+              .having((e) => e.message, 'message', contains('no such table')),
+        ),
       );
     });
 
@@ -159,14 +174,24 @@ void testDatabase(
         );
       });
 
-      Matcher sqlite3Exception(dynamic operation, dynamic causingStatement,
-          dynamic parameters, dynamic toString) {
+      Matcher sqlite3Exception(
+        dynamic operation,
+        dynamic causingStatement,
+        dynamic parameters,
+        dynamic toString,
+      ) {
         return isA<SqliteException>()
             .having((e) => e.operation, 'operation', operation)
             .having(
-                (e) => e.causingStatement, 'causingStatement', causingStatement)
-            .having((e) => e.parametersToStatement, 'parametersToStatement',
-                parameters)
+              (e) => e.causingStatement,
+              'causingStatement',
+              causingStatement,
+            )
+            .having(
+              (e) => e.parametersToStatement,
+              'parametersToStatement',
+              parameters,
+            )
             .having((e) => e.toString(), 'toString()', toString);
       }
 
@@ -255,17 +280,16 @@ void testDatabase(
 
         expect(cursor.moveNext(), isTrue);
         expect(
-            () => cursor.moveNext(),
-            throwsA(
-              sqlite3Exception(
-                'iterating through statement',
-                sql,
-                [1, 3],
-                contains(
-                  'Causing statement: $sql, parameters: 1, 3',
-                ),
-              ),
-            ));
+          () => cursor.moveNext(),
+          throwsA(
+            sqlite3Exception(
+              'iterating through statement',
+              sql,
+              [1, 3],
+              contains('Causing statement: $sql, parameters: 1, 3'),
+            ),
+          ),
+        );
       });
     });
   });
@@ -279,39 +303,48 @@ void testDatabase(
       statement.execute,
       throwsA(
         isA<SqliteException>().having(
-            (e) => e.explanation, 'explanation', endsWith(' (code 1299)')),
+          (e) => e.explanation,
+          'explanation',
+          endsWith(' (code 1299)'),
+        ),
       ),
     );
   });
 
-  test('open shared in-memory instances', () {
-    final db1 = sqlite3.open('file:test?mode=memory&cache=shared', uri: true);
-    final db2 = sqlite3.open('file:test?mode=memory&cache=shared', uri: true);
-    addTearDown(() {
-      db1.dispose();
-      db2.dispose();
-    });
+  test(
+    'open shared in-memory instances',
+    () {
+      final db1 = sqlite3.open('file:test?mode=memory&cache=shared', uri: true);
+      final db2 = sqlite3.open('file:test?mode=memory&cache=shared', uri: true);
+      addTearDown(() {
+        db1.close();
+        db2.close();
+      });
 
-    db1
-      ..execute('CREATE TABLE tbl (a INTEGER NOT NULL);')
-      ..execute('INSERT INTO tbl VALUES (1), (2), (3);');
+      db1
+        ..execute('CREATE TABLE tbl (a INTEGER NOT NULL);')
+        ..execute('INSERT INTO tbl VALUES (1), (2), (3);');
 
-    final result = db2.select('SELECT * FROM tbl');
-    expect(result, hasLength(3));
-  });
+      final result = db2.select('SELECT * FROM tbl');
+      expect(result, hasLength(3));
+    },
+    skip: hasSharedCache ? null : 'Test requires shared cache',
+  );
 
   test('locked exceptions', () {
     final db1 = sqlite3.open('file:busy?mode=memory&cache=shared', uri: true);
     final db2 = sqlite3.open('file:busy?mode=memory&cache=shared', uri: true);
     addTearDown(() {
-      db1.dispose();
-      db2.dispose();
+      db1.close();
+      db2.close();
     });
 
     db1.execute('BEGIN EXCLUSIVE TRANSACTION');
-    expect(() => db2.execute('BEGIN EXCLUSIVE TRANSACTION'),
-        throwsSqlError(SqlError.SQLITE_LOCKED, 262));
-  });
+    expect(
+      () => db2.execute('BEGIN EXCLUSIVE TRANSACTION'),
+      throwsSqlError(SqlError.SQLITE_LOCKED, 262),
+    );
+  }, skip: hasSharedCache ? null : 'Test requires shared cache');
 
   test('result sets are lists', () {
     final result = database.select('SELECT 1, 2 UNION ALL SELECT 3, 4;');
@@ -328,230 +361,241 @@ void testDatabase(
     expect(result[0]['2'], 2);
   });
 
-  group(
-    'user-defined functions',
-    () {
-      test('can read arguments of user defined functions', () {
-        late List<Object?> readArguments;
+  group('user-defined functions', () {
+    test('can read arguments of user defined functions', () {
+      late List<Object?> readArguments;
 
+      database.createFunction(
+        functionName: 'test_fun',
+        argumentCount: const AllowedArgumentCount(6),
+        function: (args) {
+          // copy since the args become invalid as soon as this function
+          // finishes.
+          readArguments = List.of(args);
+          return null;
+        },
+      );
+
+      database.execute(
+        r'''SELECT test_fun(1, 2.5, 'hello world', X'ff00ff', X'', NULL)''',
+      );
+
+      expect(readArguments, <dynamic>[
+        1,
+        2.5,
+        'hello world',
+        Uint8List.fromList([255, 0, 255]),
+        Uint8List(0),
+        null,
+      ]);
+    });
+
+    test('throws when using a long function name', () {
+      expect(
+        () => database.createFunction(
+          functionName: 'foo' * 100,
+          function: (args) => null,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    group('scalar return', () {
+      test('null', () {
         database.createFunction(
-          functionName: 'test_fun',
-          argumentCount: const AllowedArgumentCount(6),
-          function: (args) {
-            // copy since the args become invalid as soon as this function
-            // finishes.
-            readArguments = List.of(args);
-            return null;
-          },
+          functionName: 'test_null',
+          function: (args) => null,
+          argumentCount: const AllowedArgumentCount(0),
         );
+        final stmt = database.prepare('SELECT test_null() AS result');
 
-        database.execute(
-            r'''SELECT test_fun(1, 2.5, 'hello world', X'ff00ff', X'', NULL)''');
-
-        expect(readArguments, <dynamic>[
-          1,
-          2.5,
-          'hello world',
-          Uint8List.fromList([255, 0, 255]),
-          Uint8List(0),
-          null,
+        expect(stmt.select(), [
+          {'result': null},
         ]);
       });
 
-      test('throws when using a long function name', () {
-        expect(
-          () => database.createFunction(
-              functionName: 'foo' * 100, function: (args) => null),
-          throwsArgumentError,
+      test('integers', () {
+        database.createFunction(
+          functionName: 'test_int',
+          function: (args) => 420,
+          argumentCount: const AllowedArgumentCount(0),
         );
+        final stmt = database.prepare('SELECT test_int() AS result');
+
+        expect(stmt.select(), [
+          {'result': 420},
+        ]);
       });
 
-      group('scalar return', () {
-        test('null', () {
-          database.createFunction(
-            functionName: 'test_null',
-            function: (args) => null,
-            argumentCount: const AllowedArgumentCount(0),
-          );
-          final stmt = database.prepare('SELECT test_null() AS result');
+      test('big int', () {
+        database.createFunction(
+          functionName: 'test_int',
+          function: (args) => BigInt.from(12),
+          argumentCount: const AllowedArgumentCount(0),
+        );
+        final stmt = database.prepare('SELECT test_int() AS result');
 
-          expect(stmt.select(), [
-            {'result': null}
-          ]);
-        });
-
-        test('integers', () {
-          database.createFunction(
-            functionName: 'test_int',
-            function: (args) => 420,
-            argumentCount: const AllowedArgumentCount(0),
-          );
-          final stmt = database.prepare('SELECT test_int() AS result');
-
-          expect(stmt.select(), [
-            {'result': 420}
-          ]);
-        });
-
-        test('big int', () {
-          database.createFunction(
-            functionName: 'test_int',
-            function: (args) => BigInt.from(12),
-            argumentCount: const AllowedArgumentCount(0),
-          );
-          final stmt = database.prepare('SELECT test_int() AS result');
-
-          expect(stmt.select(), [
-            {'result': 12}
-          ]);
-        });
-
-        test('doubles', () {
-          database.createFunction(
-            functionName: 'test_double',
-            function: (args) => 133.7,
-            argumentCount: const AllowedArgumentCount(0),
-          );
-          final stmt = database.prepare('SELECT test_double() AS result');
-
-          expect(stmt.select(), [
-            {'result': 133.7}
-          ]);
-        });
-
-        test('bytes', () {
-          database.createFunction(
-            functionName: 'test_blob',
-            function: (args) => [1, 2, 3],
-            argumentCount: const AllowedArgumentCount(0),
-          );
-          final stmt = database.prepare('SELECT test_blob() AS result');
-
-          expect(stmt.select(), [
-            {
-              'result': [1, 2, 3]
-            }
-          ]);
-        });
-
-        test('text', () {
-          database.createFunction(
-            functionName: 'test_text',
-            function: (args) => 'hello from Dart',
-            argumentCount: const AllowedArgumentCount(0),
-          );
-          final stmt = database.prepare('SELECT test_text() AS result');
-
-          expect(stmt.select(), [
-            {'result': 'hello from Dart'}
-          ]);
-        });
-
-        test('can return subtypes', () {
-          const int $J = 0x4A;
-          database.createFunction(
-            functionName: 'dart_json_function',
-            function: (_) => SubtypedValue(json.encode({'hello': 'dart'}), $J),
-            subtype: true,
-          );
-
-          final stmt = database.prepare(
-              "SELECT json_object('foo', dart_json_function()) AS result");
-
-          expect(stmt.select(), [
-            {
-              // Importantly, the returned JSON object should be embedded
-              // directly (instead of being a string) because we're including
-              // the JSON subtype.
-              'result': json.encode({
-                'foo': {'hello': 'dart'}
-              })
-            }
-          ]);
-        });
-
-        test('can read subtypes', () {
-          database.createFunction(
-            functionName: 'dart_get_subtype',
-            function: (args) {
-              return switch (args.subtypeOf(0)) {
-                0 => null,
-                final other => String.fromCharCode(other)
-              };
-            },
-            argumentCount: const AllowedArgumentCount(1),
-            subtype: true,
-          );
-
-          final [row] =
-              database.select('SELECT dart_get_subtype(json_object()) AS r');
-          expect(row, {'r': 'J'});
-        });
+        expect(stmt.select(), [
+          {'result': 12},
+        ]);
       });
 
-      test('aggregate functions', () {
-        database
-          ..execute('CREATE TABLE test (a INT, b TEXT);')
-          ..execute('INSERT INTO test VALUES '
-              "(1, 'hello world'), "
-              "(2, 'foo'), "
-              "(1, 'another'), "
-              "(2, 'bar');");
+      test('doubles', () {
+        database.createFunction(
+          functionName: 'test_double',
+          function: (args) => 133.7,
+          argumentCount: const AllowedArgumentCount(0),
+        );
+        final stmt = database.prepare('SELECT test_double() AS result');
 
-        database.createAggregateFunction(
-          functionName: 'sum_lengths',
-          function: const _SummedStringLength(),
+        expect(stmt.select(), [
+          {'result': 133.7},
+        ]);
+      });
+
+      test('bytes', () {
+        database.createFunction(
+          functionName: 'test_blob',
+          function: (args) => [1, 2, 3],
+          argumentCount: const AllowedArgumentCount(0),
+        );
+        final stmt = database.prepare('SELECT test_blob() AS result');
+
+        expect(stmt.select(), [
+          {
+            'result': [1, 2, 3],
+          },
+        ]);
+      });
+
+      test('text', () {
+        database.createFunction(
+          functionName: 'test_text',
+          function: (args) => 'hello from Dart',
+          argumentCount: const AllowedArgumentCount(0),
+        );
+        final stmt = database.prepare('SELECT test_text() AS result');
+
+        expect(stmt.select(), [
+          {'result': 'hello from Dart'},
+        ]);
+      });
+
+      test('can return subtypes', () {
+        const int $J = 0x4A;
+        database.createFunction(
+          functionName: 'dart_json_function',
+          function: (_) => SubtypedValue(json.encode({'hello': 'dart'}), $J),
+          subtype: true,
+        );
+
+        final stmt = database.prepare(
+          "SELECT json_object('foo', dart_json_function()) AS result",
+        );
+
+        expect(stmt.select(), [
+          {
+            // Importantly, the returned JSON object should be embedded
+            // directly (instead of being a string) because we're including
+            // the JSON subtype.
+            'result': json.encode({
+              'foo': {'hello': 'dart'},
+            }),
+          },
+        ]);
+      });
+
+      test('can read subtypes', () {
+        database.createFunction(
+          functionName: 'dart_get_subtype',
+          function: (args) {
+            return switch (args.subtypeOf(0)) {
+              0 => null,
+              final other => String.fromCharCode(other),
+            };
+          },
           argumentCount: const AllowedArgumentCount(1),
+          subtype: true,
         );
 
-        expect(
-          database.select('SELECT a, sum_lengths(b) AS l FROM test GROUP BY a '
-              'ORDER BY 2;'),
-          [
-            {'a': 2, 'l': 6 /* foo + bar */},
-            {'a': 1, 'l': 18 /* hello world + another */},
-          ],
+        final [row] = database.select(
+          'SELECT dart_get_subtype(json_object()) AS r',
         );
+        expect(row, {'r': 'J'});
       });
+    });
 
-      test('window functions', () {
-        // Dart port of https://www.sqlite.org/windowfunctions.html#udfwinfunc
-        database
-          ..execute('CREATE TABLE t3 (x, y);')
-          ..execute('INSERT INTO t3 VALUES '
-              "('a', 4), "
-              "('b', 5), "
-              "('c', 3), "
-              "('d', 8), "
-              "('e', 1)");
-
-        database.createAggregateFunction(
-          functionName: 'sumint',
-          function: _SumInt(),
-          argumentCount: const AllowedArgumentCount(1),
+    test('aggregate functions', () {
+      database
+        ..execute('CREATE TABLE test (a INT, b TEXT);')
+        ..execute(
+          'INSERT INTO test VALUES '
+          "(1, 'hello world'), "
+          "(2, 'foo'), "
+          "(1, 'another'), "
+          "(2, 'bar');",
         );
 
-        expect(
-          database.select('SELECT x, sumint(y) OVER ('
-              '  ORDER BY x ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING'
-              ') AS sum_y FROM t3 ORDER BY x'),
-          [
-            {'x': 'a', 'sum_y': 9},
-            {'x': 'b', 'sum_y': 12},
-            {'x': 'c', 'sum_y': 16},
-            {'x': 'd', 'sum_y': 12},
-            {'x': 'e', 'sum_y': 9},
-          ],
+      database.createAggregateFunction(
+        functionName: 'sum_lengths',
+        function: const _SummedStringLength(),
+        argumentCount: const AllowedArgumentCount(1),
+      );
+
+      expect(
+        database.select(
+          'SELECT a, sum_lengths(b) AS l FROM test GROUP BY a '
+          'ORDER BY 2;',
+        ),
+        [
+          {'a': 2, 'l': 6 /* foo + bar */},
+          {'a': 1, 'l': 18 /* hello world + another */},
+        ],
+      );
+    });
+
+    test('window functions', () {
+      // Dart port of https://www.sqlite.org/windowfunctions.html#udfwinfunc
+      database
+        ..execute('CREATE TABLE t3 (x, y);')
+        ..execute(
+          'INSERT INTO t3 VALUES '
+          "('a', 4), "
+          "('b', 5), "
+          "('c', 3), "
+          "('d', 8), "
+          "('e', 1)",
         );
-      });
-    },
-  );
+
+      database.createAggregateFunction(
+        functionName: 'sumint',
+        function: _SumInt(),
+        argumentCount: const AllowedArgumentCount(1),
+      );
+
+      expect(
+        database.select(
+          'SELECT x, sumint(y) OVER ('
+          '  ORDER BY x ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING'
+          ') AS sum_y FROM t3 ORDER BY x',
+        ),
+        [
+          {'x': 'a', 'sum_y': 9},
+          {'x': 'b', 'sum_y': 12},
+          {'x': 'c', 'sum_y': 16},
+          {'x': 'd', 'sum_y': 12},
+          {'x': 'e', 'sum_y': 9},
+        ],
+      );
+    });
+  });
 
   test('createCollation', () {
     database
       ..execute('CREATE TABLE foo2 (bar)')
       ..execute(
-          "INSERT INTO foo2 VALUES ('AaAaaaAA'), ('BBBbBb'),('cCCCcc    '), ('  dD   ')")
+        "INSERT INTO foo2 VALUES ('AaAaaaAA'), ('BBBbBb'),('cCCCcc    '), ('  dD   ')",
+      )
       ..createCollation(
         name: "RTRIMNOCASE",
         function: (String? a, String? b) {
@@ -574,7 +618,8 @@ void testDatabase(
 
     expect(
       database.select(
-          "SELECT * FROM foo2 WHERE bar = 'aaaaAaAa   ' COLLATE RTRIMNOCASE"),
+        "SELECT * FROM foo2 WHERE bar = 'aaaaAaAa   ' COLLATE RTRIMNOCASE",
+      ),
       [
         {'bar': 'AaAaaaAA'},
       ],
@@ -582,7 +627,8 @@ void testDatabase(
 
     expect(
       database.select(
-          "SELECT * FROM foo2 WHERE bar = 'bbbbbb' COLLATE RTRIMNOCASE"),
+        "SELECT * FROM foo2 WHERE bar = 'bbbbbb' COLLATE RTRIMNOCASE",
+      ),
       [
         {'bar': 'BBBbBb'},
       ],
@@ -590,15 +636,17 @@ void testDatabase(
 
     expect(
       database.select(
-          "SELECT * FROM foo2 WHERE bar = 'cCcccC' COLLATE RTRIMNOCASE"),
+        "SELECT * FROM foo2 WHERE bar = 'cCcccC' COLLATE RTRIMNOCASE",
+      ),
       [
         {'bar': 'cCCCcc    '},
       ],
     );
 
     expect(
-      database
-          .select("SELECT * FROM foo2 WHERE bar = 'dd' COLLATE RTRIMNOCASE"),
+      database.select(
+        "SELECT * FROM foo2 WHERE bar = 'dd' COLLATE RTRIMNOCASE",
+      ),
       isEmpty,
     );
   });
@@ -609,8 +657,10 @@ void testDatabase(
   });
 
   test('prepare throws with checkNoTail', () {
-    expect(() => database.prepare('SELECT 1; SELECT 2', checkNoTail: true),
-        throwsArgumentError);
+    expect(
+      () => database.prepare('SELECT 1; SELECT 2', checkNoTail: true),
+      throwsArgumentError,
+    );
   });
 
   group('prepareMultiple', () {
@@ -620,13 +670,17 @@ void testDatabase(
     });
 
     test('fails for trailing syntax error', () {
-      expect(() => database.prepareMultiple('SELECT 1; error here '),
-          throwsA(isA<SqliteException>()));
+      expect(
+        () => database.prepareMultiple('SELECT 1; error here '),
+        throwsA(isA<SqliteException>()),
+      );
     });
 
     test('fails for syntax error in the middle', () {
-      expect(() => database.prepareMultiple('SELECT 1; error here; SELECT 2;'),
-          throwsA(isA<SqliteException>()));
+      expect(
+        () => database.prepareMultiple('SELECT 1; error here; SELECT 2;'),
+        throwsA(isA<SqliteException>()),
+      );
     });
 
     group('edge-cases', () {
@@ -644,14 +698,18 @@ void testDatabase(
       });
 
       test('leading whitespace', () {
-        final stmt =
-            database.prepare('  /*wait for it*/ SELECT 1;', checkNoTail: true);
+        final stmt = database.prepare(
+          '  /*wait for it*/ SELECT 1;',
+          checkNoTail: true,
+        );
         expect(stmt.sql, '  /*wait for it*/ SELECT 1;');
       });
 
       test('trailing comment', () {
-        final stmt =
-            database.prepare('SELECT 1; /* done! */', checkNoTail: true);
+        final stmt = database.prepare(
+          'SELECT 1; /* done! */',
+          checkNoTail: true,
+        );
         expect(stmt.sql, 'SELECT 1;');
       });
 
@@ -666,10 +724,12 @@ void testDatabase(
       test('BigInt bounds', () {
         database.execute('CREATE TABLE foo (a INTEGER);');
 
-        database.execute('INSERT INTO foo VALUES (?)',
-            [BigInt.parse('-9223372036854775808')]);
-        database.execute('INSERT INTO foo VALUES (?)',
-            [BigInt.parse('9223372036854775807')]);
+        database.execute('INSERT INTO foo VALUES (?)', [
+          BigInt.parse('-9223372036854775808'),
+        ]);
+        database.execute('INSERT INTO foo VALUES (?)', [
+          BigInt.parse('9223372036854775807'),
+        ]);
 
         final result = database.select('SELECT * FROM foo');
         expect(result, hasLength(2));
@@ -677,21 +737,29 @@ void testDatabase(
         expect(result.rows[1][0].toString(), '9223372036854775807');
 
         expect(
-          () => database.execute('INSERT INTO foo VALUES (?)',
-              [BigInt.parse('-9223372036854775809')]),
-          throwsA(const TypeMatcher<Exception>().having(
+          () => database.execute('INSERT INTO foo VALUES (?)', [
+            BigInt.parse('-9223372036854775809'),
+          ]),
+          throwsA(
+            const TypeMatcher<Exception>().having(
               (e) => e.toString(),
               'message',
-              contains('BigInt value exceeds the range of 64 bits'))),
+              contains('BigInt value exceeds the range of 64 bits'),
+            ),
+          ),
         );
 
         expect(
-          () => database.execute('INSERT INTO foo VALUES (?)',
-              [BigInt.parse('9223372036854775808')]),
-          throwsA(const TypeMatcher<Exception>().having(
+          () => database.execute('INSERT INTO foo VALUES (?)', [
+            BigInt.parse('9223372036854775808'),
+          ]),
+          throwsA(
+            const TypeMatcher<Exception>().having(
               (e) => e.toString(),
               'message',
-              contains('BigInt value exceeds the range of 64 bits'))),
+              contains('BigInt value exceeds the range of 64 bits'),
+            ),
+          ),
         );
       });
     });
@@ -703,8 +771,10 @@ void testDatabase(
     });
 
     test('emits event after insert', () {
-      expect(database.updates,
-          emits(_update(SqliteUpdate(SqliteUpdateKind.insert, 'tbl', 1))));
+      expect(
+        database.updates,
+        emits(_update(SqliteUpdate(SqliteUpdateKind.insert, 'tbl', 1))),
+      );
 
       database.execute("INSERT INTO tbl VALUES ('', 1);");
     });
@@ -712,8 +782,10 @@ void testDatabase(
     test('emits event after update', () {
       database.execute("INSERT INTO tbl VALUES ('', 1);");
 
-      expect(database.updates,
-          emits(_update(SqliteUpdate(SqliteUpdateKind.update, 'tbl', 1))));
+      expect(
+        database.updates,
+        emits(_update(SqliteUpdate(SqliteUpdateKind.update, 'tbl', 1))),
+      );
 
       database.execute("UPDATE tbl SET b = b + 1;");
     });
@@ -721,8 +793,10 @@ void testDatabase(
     test('emits event after delete', () {
       database.execute("INSERT INTO tbl VALUES ('', 1);");
 
-      expect(database.updates,
-          emits(_update(SqliteUpdate(SqliteUpdateKind.delete, 'tbl', 1))));
+      expect(
+        database.updates,
+        emits(_update(SqliteUpdate(SqliteUpdateKind.delete, 'tbl', 1))),
+      );
 
       database.execute("DELETE FROM tbl WHERE b = 1;");
     });
@@ -730,8 +804,9 @@ void testDatabase(
     test('removes callback when no listener exists', () async {
       database.execute("INSERT INTO tbl VALUES ('', 1);");
 
-      final subscription =
-          database.updates.listen(expectAsync1((data) {}, count: 0));
+      final subscription = database.updates.listen(
+        expectAsync1((data) {}, count: 0),
+      );
 
       // Pause the subscription, cause an update and resume. As no listener
       // exists, no event should have been received and buffered.
@@ -745,7 +820,7 @@ void testDatabase(
 
     test('closes when disposing the database', () {
       expect(database.updates.listen(null).asFuture(null), completes);
-      database.dispose();
+      database.close();
     });
 
     test('can listen synchronously', () async {
@@ -812,23 +887,34 @@ void testDatabase(
 
     test('explicit commits with always fails filter raises exception', () {
       database.commitFilter = () => false;
-      expect(() {
-        database.execute('BEGIN TRANSACTION;');
-        database.execute("INSERT INTO tbl VALUES ('', 1);");
-        database.execute("COMMIT;");
-      },
-          throwsA(predicate<SqliteException>((e) =>
-              e.operation == 'executing' &&
-              e.message.startsWith('constraint failed'))));
+      expect(
+        () {
+          database.execute('BEGIN TRANSACTION;');
+          database.execute("INSERT INTO tbl VALUES ('', 1);");
+          database.execute("COMMIT;");
+        },
+        throwsA(
+          predicate<SqliteException>(
+            (e) =>
+                e.operation == 'executing' &&
+                e.message.startsWith('constraint failed'),
+          ),
+        ),
+      );
     });
 
     test('implicit commits with always fails filter raises exception', () {
       database.commitFilter = () => false;
       expect(
-          () => database.execute("INSERT INTO tbl VALUES ('', 1);"),
-          throwsA(predicate<SqliteException>((e) =>
-              e.operation == 'executing' &&
-              e.message.startsWith('constraint failed'))));
+        () => database.execute("INSERT INTO tbl VALUES ('', 1);"),
+        throwsA(
+          predicate<SqliteException>(
+            (e) =>
+                e.operation == 'executing' &&
+                e.message.startsWith('constraint failed'),
+          ),
+        ),
+      );
     });
 
     test('side effects run on explicit commit', () {
@@ -842,8 +928,10 @@ void testDatabase(
       database.execute("INSERT INTO tbl VALUES ('', 1);");
       database.execute("COMMIT;");
       // ensure the transaction committed correctly
-      expect(database.select('SELECT COUNT(*) AS c FROM tbl;').first['c'],
-          equals(1));
+      expect(
+        database.select('SELECT COUNT(*) AS c FROM tbl;').first['c'],
+        equals(1),
+      );
       // ensure side-effects ran
       expect(sideEffects, equals(1));
     });
@@ -857,8 +945,10 @@ void testDatabase(
 
       database.execute("INSERT INTO tbl VALUES ('', 1);");
       // ensure the transaction committed correctly
-      expect(database.select('SELECT COUNT(*) AS c FROM tbl;').first['c'],
-          equals(1));
+      expect(
+        database.select('SELECT COUNT(*) AS c FROM tbl;').first['c'],
+        equals(1),
+      );
       // ensure side-effects ran
       expect(sideEffects, equals(1));
     });
@@ -904,7 +994,7 @@ void testDatabase(
 
       // Disposing the database here so that the stream closes and neverEmits
       // completes.
-      database.dispose();
+      database.close();
     });
   });
 
@@ -924,20 +1014,20 @@ void testDatabase(
       final cursor = statement.selectCursor();
       expect(cursor.moveNext(), isTrue);
 
-      database.dispose();
+      database.close();
     });
 
     test('return value of function', () {
       database.createFunction(functionName: 'test', function: (args) => 'télé');
 
       expect(database.select('SELECT test() AS r'), [
-        {'r': 'télé'}
+        {'r': 'télé'},
       ]);
     });
 
     test('parameter', () {
       expect(database.select('SELECT ? AS r', ['télé']), [
-        {'r': 'télé'}
+        {'r': 'télé'},
       ]);
     });
   });
@@ -949,10 +1039,7 @@ void testDatabase(
       database.config.doubleQuotedStringLiterals = true;
 
       expect(database.select(query), [
-        {
-          'double': 'foo',
-          'single': 'bar',
-        }
+        {'double': 'foo', 'single': 'bar'},
       ]);
     });
 

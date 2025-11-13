@@ -131,21 +131,24 @@ void main() {
     final resultSet = response.resultSet!;
 
     expect(resultSet.length, 4);
-    expect(
-      resultSet.map((e) => e['a']),
-      [1, Uint8List(10), null, 'string value'],
-    );
+    expect(resultSet.map((e) => e['a']), [
+      1,
+      Uint8List(10),
+      null,
+      'string value',
+    ]);
   });
 
   test('can serialize SqliteExceptions', () async {
     server.handleRequestFunction = expectAsync1((req) {
       throw SqliteException(
-        42,
-        'test exception',
-        'explanation',
-        'causingStatement',
-        [1, null, 'a'],
-        'operation',
+        extendedResultCode: 42,
+        message: 'test exception',
+        explanation: 'explanation',
+        causingStatement: 'causingStatement',
+        parametersToStatement: [1, null, 'a'],
+        operation: 'operation',
+        offset: 3,
       );
     });
 
@@ -171,10 +174,17 @@ void main() {
               .having((e) => e.message, 'message', 'test exception')
               .having((e) => e.explanation, 'explanation', 'explanation')
               .having((e) => e.operation, 'operation', 'operation')
-              .having((e) => e.causingStatement, 'causingStatement',
-                  'causingStatement')
-              .having((e) => e.parametersToStatement, 'parametersToStatement',
-                  [1, null, 'a']),
+              .having(
+                (e) => e.causingStatement,
+                'causingStatement',
+                'causingStatement',
+              )
+              .having((e) => e.offset, 'offset', 3)
+              .having((e) => e.parametersToStatement, 'parametersToStatement', [
+                1,
+                null,
+                'a',
+              ]),
         ),
       ),
     );
@@ -187,8 +197,8 @@ final class TestServer extends ProtocolChannel {
   final StreamController<Notification> _notifications = StreamController();
   Future<Response> Function(Request request) handleRequestFunction =
       (req) async {
-    throw 'unsupported';
-  };
+        throw 'unsupported';
+      };
 
   TestServer(super.channel);
 

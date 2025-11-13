@@ -101,6 +101,7 @@ extension type FileSystemCreateSyncAccessHandleOptions._(JSObject _)
 
   static FileSystemCreateSyncAccessHandleOptions unsafeReadWrite() {
     return FileSystemCreateSyncAccessHandleOptions(
-        mode: 'readwrite-unsafe'.toJS);
+      mode: 'readwrite-unsafe'.toJS,
+    );
   }
 }

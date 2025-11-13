@@ -1,19 +1,14 @@
 import 'dart:ffi';
 
-import '../../open.dart';
 import '../database.dart';
 import '../sqlite3.dart';
 import '../statement.dart';
 import 'implementation.dart';
 
-Sqlite3? _sqlite3;
-
 /// Provides access to `sqlite3` functions, such as opening new databases.
 ///
 /// {@category native}
-Sqlite3 get sqlite3 {
-  return _sqlite3 ??= FfiSqlite3(open.openSqlite());
-}
+const Sqlite3 sqlite3 = FfiSqlite3();
 
 /// Provides access to `sqlite3` functions, such as opening new databases.
 ///
@@ -46,6 +41,18 @@ abstract interface class Sqlite3 implements CommonSqlite3 {
   /// For a more in-depth discussion, including links to an example, see the
   /// documentation for [SqliteExtension].
   void ensureExtensionLoaded(SqliteExtension extension);
+
+  /// Whether the option, specified by its name, was defined at compile-time.
+  ///
+  /// The `SQLITE_` prefix may be omitted from the option [name].
+  ///
+  /// See also: https://sqlite.org/c3ref/compileoption_get.html
+  bool usedCompileOption(String name);
+
+  /// An iterable over the list of options that were defined at compile time.
+  ///
+  /// See also: https://sqlite.org/c3ref/compileoption_get.html
+  Iterable<String> get compileOptions;
 }
 
 /// Information used to load an extension through `sqlite3_auto_extension`,
@@ -73,27 +80,13 @@ abstract interface class SqliteExtension {
   /// For the exact signature of [extensionEntrypoint], see
   /// [sqlite3_auto_extension](https://www.sqlite.org/c3ref/auto_extension.html).
   factory SqliteExtension(Pointer<Void> extensionEntrypoint) {
-    return SqliteExtensionImpl((_) => extensionEntrypoint);
+    return SqliteExtensionImpl(() => extensionEntrypoint);
   }
 
   /// A sqlite extension from another library with a given symbol as an
   /// entrypoint.
   factory SqliteExtension.inLibrary(DynamicLibrary library, String symbol) {
-    return SqliteExtensionImpl((_) => library.lookup(symbol));
-  }
-
-  /// A sqlite extension assumed to be statically linked into the sqlite3
-  /// library loaded by this package.
-  ///
-  /// In most sqlite3 distributions, including the one from `sqlite3_flutter_libs`,
-  /// no extensions are available this way.
-  ///
-  /// One example where an extension would be available is if you added a
-  /// native dependency on the `sqlite3/spellfix1` pod on iOS or macOS. On those
-  /// platforms, you could then load the  [spellfix](https://www.sqlite.org/spellfix1.html)
-  /// extension with `SqliteExtension.staticallyLinked('sqlite3_spellfix_init')`.
-  factory SqliteExtension.staticallyLinked(String symbol) {
-    return SqliteExtensionImpl((library) => library!.lookup(symbol));
+    return SqliteExtensionImpl(() => library.lookup(symbol));
   }
 }
 
@@ -112,12 +105,19 @@ abstract class Database extends CommonDatabase {
 
   // override for more specific subtype
   @override
-  PreparedStatement prepare(String sql,
-      {bool persistent = false, bool vtab = true, bool checkNoTail = false});
+  PreparedStatement prepare(
+    String sql, {
+    bool persistent = false,
+    bool vtab = true,
+    bool checkNoTail = false,
+  });
 
   @override
-  List<PreparedStatement> prepareMultiple(String sql,
-      {bool persistent = false, bool vtab = true});
+  List<PreparedStatement> prepareMultiple(
+    String sql, {
+    bool persistent = false,
+    bool vtab = true,
+  });
 
   /// Create a backup of the current database (this) into another database
   /// ([toDatabase]) on memory or disk.

@@ -1,3 +1,21 @@
+## 3.0.0
+
+- __Breaking change__: Use [build hooks](https://dart.dev/tools/hooks) to load
+  SQLite instead of `DynamicLibrary`.
+  - The SQLite library can only be customized with user defines.
+  - You should drop your dependencies on `sqlite3_flutter_libs` and
+    `sqlcipher_flutter_libs` when upgrading.
+  - You can also remove dependencies on `sqlite3_native_assets`, since that
+    package is now part of `package:sqlite3`.
+- __Breaking change__: Parameters to `SqliteException`s are now named.
+- Deprecated `dispose()` on `CommonDatabase` and `CommonPreparedStatement`. Use `close()`
+  instead.
+- On native platforms, use native finalizers to reliably clear statements and databases.
+- On the web, use regular finalizers more consistently.
+- Refactor binding text and blob values to reduce the chance of memory leaks.
+- On the web, use `externref`s to call Dart functions from compiled WebAssembly sources.
+- Add `busyHandler` setter to install a custom `sqlite3_busy_handler` on databases.
+
 ## 2.9.4
 
 - `SimpleOpfsFileSystem`: Allow opening with `readwrite-unsafe`, which can be used to implement

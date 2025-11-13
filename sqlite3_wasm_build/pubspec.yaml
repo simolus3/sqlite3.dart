@@ -1,0 +1,13 @@
+name: sqlite3_wasm_build
+description: Buildscripts for sqlite3.wasm
+
+environment:
+  sdk: '>=3.10.0-0 <4.0.0'
+
+topics:
+  - sql
+  - database
+  - ffi
+  - sqlite
+
+dev_dependencies:

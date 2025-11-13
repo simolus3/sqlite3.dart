@@ -1,6 +1,6 @@
 name: sqlite3_test
 description: Integration of fake clocks and other test utilities for SQLite databases.
-version: 0.1.1
+version: 0.2.0
 homepage: https://github.com/simolus3/sqlite3.dart/tree/main/sqlite3_test
 repository: https://github.com/simolus3/sqlite3.dart
 resolution: workspace
@@ -9,12 +9,13 @@ topics:
   - sqlite
 
 environment:
-  sdk: ^3.5.4
+  # We want >=3.10, but Flutter 3.38 somehow ships with a beta Dart SDK that rejects >=3.10 deps.
+  sdk: '>=3.9.999 <4.0.0'
 
 dependencies:
   clock: ^1.1.2
   file: ^7.0.1
-  sqlite3: ^2.5.0
+  sqlite3: ^3.0.0-0
 
 dev_dependencies:
   fake_async: ^1.3.2

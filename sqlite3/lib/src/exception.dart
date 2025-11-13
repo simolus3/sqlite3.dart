@@ -43,17 +43,15 @@ final class SqliteException implements Exception {
   /// parameters used to run that statement.
   final List<Object?>? parametersToStatement;
 
-  SqliteException(
-    this.extendedResultCode,
-    this.message,
-    // todo: migrate to named parameters in next breaking release
-    [
+  SqliteException({
+    required this.extendedResultCode,
+    required this.message,
     this.explanation,
     this.causingStatement,
     this.parametersToStatement,
     this.operation,
     this.offset,
-  ]);
+  });
 
   @override
   String toString() {
@@ -77,13 +75,15 @@ final class SqliteException implements Exception {
         ..write(causingStatement);
 
       if (parametersToStatement != null) {
-        final params = parametersToStatement!.map((e) {
-          if (e is Uint8List) {
-            return 'blob (${e.length} bytes)';
-          } else {
-            return e.toString();
-          }
-        }).join(', ');
+        final params = parametersToStatement!
+            .map((e) {
+              if (e is Uint8List) {
+                return 'blob (${e.length} bytes)';
+              } else {
+                return e.toString();
+              }
+            })
+            .join(', ');
         buffer.write(', parameters: $params');
       }
     }

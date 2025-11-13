@@ -1,0 +1,83 @@
+name: Publish to pub.dev
+
+on:
+  push:
+    tags:
+      - 'sqlite3-[0-9]+.[0-9]+.[0-9]+*'
+      - 'sqlite3_test-[0-9]+.[0-9]+.[0-9]+*'
+      - 'sqlite3_web-[0-9]+.[0-9]+.[0-9]+*'
+
+jobs:
+  fetch_sqlite:
+    uses: ./.github/workflows/compile_sqlite.yml
+
+  prepare_release:
+    needs: [fetch_sqlite]
+    permissions:
+      packages: write
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - uses: dart-lang/setup-dart@v1
+    - name: Pub get
+      run: dart pub get
+    - name: Download compiled sqlite3
+      uses: actions/download-artifact@v5
+      with:
+        github-token: ${{ github.token }}
+        artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
+        path: sqlite-compiled
+    - name: Set tag name
+      if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
+      id: tag
+      run: |
+        tag=$(basename "${{ github.ref }}")
+        echo "tag=$tag" >> $GITHUB_OUTPUT
+
+    - name: Verify asset hashes
+      run: dart run tool/write_asset_hashes.dart "${{ steps.tag.outputs.tag }}"
+    - name: List libraries
+      run: ls -al sqlite-compiled
+
+    - name: Create Release
+      if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        tag="${{ steps.tag.outputs.tag }}"
+        body="Pending release for $tag"
+        gh release create --draft "$tag" --title "$tag" --notes "$body"
+
+        gh release upload "$tag" sqlite-compiled/*
+
+  publish_sqlite3:
+    needs: [prepare_release]
+    permissions:
+      id-token: write
+    if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      environment: 'pub.dev'
+      working-directory: sqlite3/
+
+  publish_sqlite3_test:
+    needs: [prepare_release]
+    permissions:
+      id-token: write
+    if: "${{ startsWith(github.ref_name, 'sqlite3_test-') }}"
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      environment: 'pub.dev'
+      working-directory: sqlite3_test/
+
+  publish_sqlite3_web:
+    needs: [prepare_release]
+    permissions:
+      id-token: write
+    if: "${{ startsWith(github.ref_name, 'sqlite3_web-') }}"
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      environment: 'pub.dev'
+      working-directory: sqlite3_web/
