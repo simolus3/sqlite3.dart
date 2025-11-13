@@ -36,6 +36,7 @@ jobs:
         echo "tag=$tag" >> $GITHUB_OUTPUT
 
     - name: Verify asset hashes
+      if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
       run: dart run tool/write_asset_hashes.dart "${{ steps.tag.outputs.tag }}"
     - name: List libraries
       run: ls -al sqlite-compiled
