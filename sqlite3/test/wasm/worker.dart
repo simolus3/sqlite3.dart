@@ -153,7 +153,7 @@ Future<void> _runTest<T extends VirtualFileSystem>({
     'Should find 200 rows',
   );
 
-  database.dispose();
+  database.close();
 
   // file-system should save reasonably quickly
   await close(fileSystem).timeout(const Duration(seconds: 1));
@@ -168,5 +168,5 @@ Future<void> _runTest<T extends VirtualFileSystem>({
     database2.select('SELECT * FROM users').length == 200,
     'Should find 200 rows',
   );
-  database2.dispose();
+  database2.close();
 }

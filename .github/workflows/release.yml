@@ -4,13 +4,15 @@ on:
   push:
     tags:
       - 'sqlite3-[0-9]+.[0-9]+.[0-9]+*'
+      - 'sqlite3_test-[0-9]+.[0-9]+.[0-9]+*'
+      - 'sqlite3_web-[0-9]+.[0-9]+.[0-9]+*'
 
 jobs:
-  #fetch_sqlite:
-  #  uses: ./.github/workflows/compile_sqlite.yml
+  fetch_sqlite:
+    uses: ./.github/workflows/compile_sqlite.yml
 
   prepare_release:
-    #needs: [fetch_sqlite]
+    needs: [fetch_sqlite]
     permissions:
       packages: write
       contents: write
@@ -18,36 +20,29 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - uses: dart-lang/setup-dart@v1
-      with:
-        sdk: beta
     - name: Pub get
       run: dart pub get
     - name: Download compiled sqlite3
       uses: actions/download-artifact@v5
       with:
-        #artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
-        # TODO: Ideally we'd use the artifacts compiled in this run. That should work once this has been merged to
-        # the default branch, but it's unstable at the moment. fetch_sqlite will always re-compile on this branch
-        # because caches from non-default branches aren't visible to runs on tags.
-        # On windows, the sqlite3 build is not reproducible. So to avoid a hash mismatch, we temporarily use artifacts
-        # built for a test run for releases as well.
-        artifact-ids: "4333315590"
-        repository: simolus3/sqlite3.dart
-        run-id: "18697403389"
         github-token: ${{ github.token }}
-        path: sqlite/out
+        artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
+        path: sqlite-compiled
     - name: Set tag name
+      if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
       id: tag
       run: |
         tag=$(basename "${{ github.ref }}")
         echo "tag=$tag" >> $GITHUB_OUTPUT
 
     - name: Verify asset hashes
+      if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
       run: dart run tool/write_asset_hashes.dart "${{ steps.tag.outputs.tag }}"
     - name: List libraries
-      run: ls -al sqlite/out
+      run: ls -al sqlite-compiled
 
     - name: Create Release
+      if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
@@ -56,13 +51,34 @@ jobs:
         body="Pending release for $tag"
         gh release create --draft "$tag" --title "$tag" --notes "$body"
 
-        gh release upload "$tag" sqlite/out/*
+        gh release upload "$tag" sqlite-compiled/*
 
-  publish:
+  publish_sqlite3:
     needs: [prepare_release]
     permissions:
       id-token: write
+    if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
     uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
     with:
       environment: 'pub.dev'
       working-directory: sqlite3/
+
+  publish_sqlite3_test:
+    needs: [prepare_release]
+    permissions:
+      id-token: write
+    if: "${{ startsWith(github.ref_name, 'sqlite3_test-') }}"
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      environment: 'pub.dev'
+      working-directory: sqlite3_test/
+
+  publish_sqlite3_web:
+    needs: [prepare_release]
+    permissions:
+      id-token: write
+    if: "${{ startsWith(github.ref_name, 'sqlite3_web-') }}"
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      environment: 'pub.dev'
+      working-directory: sqlite3_web/

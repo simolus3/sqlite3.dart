@@ -22,17 +22,17 @@ void testVfs(FutureOr<CommonSqlite3> Function() loadSqlite) {
     database.execute('INSERT INTO foo (bar) VALUES (?)', ['first row']);
     expect(vfs.xAccess('/database', 0), isPositive);
 
-    database.dispose();
+    database.close();
     database = sqlite3.open('/database', vfs: 'dart');
     expect(database.select('SELECT * FROM foo'), hasLength(1));
-    database.dispose();
+    database.close();
   });
 
   test("can't use vfs after unregistering it", () {
     final vfs = InMemoryFileSystem(name: 'dart');
     sqlite3.registerVirtualFileSystem(vfs);
 
-    sqlite3.open('/database', vfs: 'dart').dispose();
+    sqlite3.open('/database', vfs: 'dart').close();
     sqlite3.unregisterVirtualFileSystem(vfs);
 
     expect(() => sqlite3.open('/database', vfs: 'dart'), throwsSqlError(1, 1));
@@ -47,7 +47,7 @@ void testVfs(FutureOr<CommonSqlite3> Function() loadSqlite) {
     addTearDown(() => sqlite3.unregisterVirtualFileSystem(vfs));
 
     final database = sqlite3.openInMemory(vfs: 'dart');
-    addTearDown(database.dispose);
+    addTearDown(database.close);
 
     expect(database.select('SELECT CURRENT_TIMESTAMP AS r'), [
       {'r': '2024-11-19 00:00:00'},
@@ -60,7 +60,7 @@ void testVfs(FutureOr<CommonSqlite3> Function() loadSqlite) {
     addTearDown(() => sqlite3.unregisterVirtualFileSystem(memory));
 
     final db = sqlite3.open('/db', vfs: 'dart-tmp');
-    addTearDown(db.dispose);
+    addTearDown(db.close);
 
     db.execute('CREATE TEMP TABLE foo (bar TEXT);');
     final insert = db.prepare('INSERT INTO foo (bar) VALUES (?);');
@@ -68,7 +68,7 @@ void testVfs(FutureOr<CommonSqlite3> Function() loadSqlite) {
     for (var i = 0; i < 10000; i++) {
       insert.execute([data]);
     }
-    insert.dispose();
+    insert.close();
   });
 }
 

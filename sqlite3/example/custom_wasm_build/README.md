@@ -40,13 +40,13 @@ To download and compile sqlite3 as well as the patched `sqlite3_os_init` functio
 for this example, run
 
 ```
-WASI_SYSROOT=/path/to/wasi/ CC=/path/to/clang cargo build --target wasm32-wasi
+WASI_SYSROOT=/path/to/wasi/ CC=/path/to/clang cargo build --target wasm32-unknown-unknown
 ```
 
 Or, to compile a release build optimized for size:
 
 ```
-WASI_SYSROOT=/path/to/wasi/ CC=/path/to/clang cargo build --target wasm32-wasi --release
+WASI_SYSROOT=/path/to/wasi/ CC=/path/to/clang cargo build --target wasm32-unknown-unknown --release
 ```
 
 Cargo compiles sqlite3 to WASM object files, the Rust part is compiled into a static
@@ -55,8 +55,8 @@ A Dart script (`link.dart`) can be used to link them together into a `sqlite3.wa
 file loadable by the `sqlite3` package:
 
 ```
-CC=/path/to/clang dart run link.dart target/wasm32-wasi/debug
-CC=/path/to/clang dart run link.dart target/wasm32-wasi/release
+CC=/path/to/clang dart run link.dart target/wasm32-unknown-unknown/debug
+CC=/path/to/clang dart run link.dart target/wasm32-unknown-unknown/release
 ```
 
 As an additional transformation step, running `wasm-opt -O4` on the resulting

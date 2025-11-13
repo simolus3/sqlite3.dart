@@ -86,4 +86,36 @@ These options behave as follows:
 
 ## Custom SQLite builds
 
-Custom SQLite builds are not currently supported, but will be in a future version of this package.
+If you want to customize the SQLite build to use with `package:sqlite3`, you can
+also use user defines for that.
+
+First, download the `sqlite3.c` file you want to use into your workspace. Then,
+add this section to your pubspec:
+
+```yaml
+hooks:
+  user_defines:
+    sqlite3:
+      source: source
+      path: path/to/sqlite3.c # relative to your workspace root
+      defines: # optional
+        default_options: false # optional, to disable default compile-time options used by package:sqlite3
+        defines:
+          - SQLITE_THREADSAFE=1
+          - SQLITE_LIKE_DOESNT_MATCH_BLOBS
+```
+
+### Alternatives
+
+Using the `source` mode to compile SQLite from sources in build hook can't
+cover all customization needs you may have. When building SQLCipher for
+instance, you may want to pass custom linker options to the build process.
+
+There is no good way to support arbitrary customization in build hooks today.
+However, `package:sqlite3` will work with all SQLite builds that are ABI-compatible
+with standard SQLite (it also runs checks at runtime before using methods that
+are not commonly enabled on all builds).
+If you control the build process of your application, you can use an external
+build system (like SwiftPM or CMake) to statically link SQLite into your application.
+Then, use `source: executable` to make `package:sqlite3` use that copy instead
+of building its own.

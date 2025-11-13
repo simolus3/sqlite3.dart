@@ -18,7 +18,7 @@ void main() {
   tearDown(() => sqlite3.unregisterVirtualFileSystem(vfs));
 
   Database withDatabase(Database db) {
-    addTearDown(db.dispose);
+    addTearDown(db.close);
     return db;
   }
 

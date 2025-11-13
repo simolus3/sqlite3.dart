@@ -10,14 +10,12 @@ import 'utils.dart';
 
 final class SessionImplementation implements Session {
   final RawSqliteBindings bindings;
+  // Note: Implementations of this have platform-specific finalizers on them.
   final RawSqliteSession session;
-  final FinalizableDatabase database;
 
   bool _deleted = false;
 
-  SessionImplementation(this.bindings, this.session, this.database) {
-    database.dartCleanup.add(delete);
-  }
+  SessionImplementation(this.bindings, this.session);
 
   static SessionImplementation createSession(
     DatabaseImplementation db,
@@ -25,7 +23,7 @@ final class SessionImplementation implements Session {
   ) {
     final bindings = db.bindings;
     final result = bindings.sqlite3session_create(db.database, name);
-    return SessionImplementation(bindings, result, db.finalizable);
+    return SessionImplementation(bindings, result);
   }
 
   void _checkNotDeleted() {
@@ -53,7 +51,6 @@ final class SessionImplementation implements Session {
     if (!_deleted) {
       _deleted = true;
       session.sqlite3session_delete();
-      database.dartCleanup.remove(delete);
     }
   }
 
@@ -190,22 +187,16 @@ final class ChangesetIteratorImplementation implements ChangesetIterator {
       final kind = SqliteUpdateKind.fromCode(op.operation)!;
 
       final oldColumns = kind != SqliteUpdateKind.insert
-          ? List.generate(
-              op.columnCount,
-              (i) => raw
-                  .sqlite3changeset_old(i)
-                  .okOrThrowOutsideOfDatabase(bindings)
-                  ?.read(),
-            )
+          ? List.generate(op.columnCount, (i) {
+              final rawValue = raw.sqlite3changeset_old(i);
+              return _readChangesetValue(rawValue);
+            })
           : null;
       final newColumns = kind != SqliteUpdateKind.delete
-          ? List.generate(
-              op.columnCount,
-              (i) => raw
-                  .sqlite3changeset_new(i)
-                  .okOrThrowOutsideOfDatabase(bindings)
-                  ?.read(),
-            )
+          ? List.generate(op.columnCount, (i) {
+              final rawValue = raw.sqlite3changeset_new(i);
+              return _readChangesetValue(rawValue);
+            })
           : null;
       current = ChangesetOperation(
         table: op.tableName,
@@ -220,6 +211,13 @@ final class ChangesetIteratorImplementation implements ChangesetIterator {
 
     finalize();
     return false;
+  }
+
+  Object? _readChangesetValue(SqliteResult<RawSqliteValue?> result) {
+    return switch (result.resultCode) {
+      0 => result.result?.read(),
+      _ => throw createExceptionOutsideOfDatabase(bindings, result.resultCode),
+    };
   }
 
   @override

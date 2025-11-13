@@ -10,13 +10,14 @@ import 'utils.dart';
 void testDatabase(
   FutureOr<CommonSqlite3> Function() loadSqlite, {
   bool hasColumnMetadata = false,
+  bool hasSharedCache = false,
 }) {
   late CommonSqlite3 sqlite3;
   late CommonDatabase database;
 
   setUpAll(() async => sqlite3 = await loadSqlite());
   setUp(() => database = sqlite3.openInMemory());
-  tearDown(() => database.dispose());
+  tearDown(() => database.close());
 
   test('user version', () {
     expect(database.userVersion, 0);
@@ -24,15 +25,15 @@ void testDatabase(
     expect(database.userVersion, 1);
   });
 
-  test("database can't be used after dispose", () {
-    database.dispose();
+  test("database can't be used after close", () {
+    database.close();
 
     expect(() => database.execute('SELECT 1;'), throwsStateError);
   });
 
-  test('disposing multiple times works', () {
-    database.dispose();
-    database.dispose(); // shouldn't throw or crash
+  test('closing multiple times works', () {
+    database.close();
+    database.close(); // shouldn't throw or crash
   });
 
   test('updated rows', () {
@@ -316,8 +317,8 @@ void testDatabase(
       final db1 = sqlite3.open('file:test?mode=memory&cache=shared', uri: true);
       final db2 = sqlite3.open('file:test?mode=memory&cache=shared', uri: true);
       addTearDown(() {
-        db1.dispose();
-        db2.dispose();
+        db1.close();
+        db2.close();
       });
 
       db1
@@ -327,15 +328,15 @@ void testDatabase(
       final result = db2.select('SELECT * FROM tbl');
       expect(result, hasLength(3));
     },
-    skip: 'Broken with native assets, to investigate',
+    skip: hasSharedCache ? null : 'Test requires shared cache',
   );
 
   test('locked exceptions', () {
     final db1 = sqlite3.open('file:busy?mode=memory&cache=shared', uri: true);
     final db2 = sqlite3.open('file:busy?mode=memory&cache=shared', uri: true);
     addTearDown(() {
-      db1.dispose();
-      db2.dispose();
+      db1.close();
+      db2.close();
     });
 
     db1.execute('BEGIN EXCLUSIVE TRANSACTION');
@@ -343,7 +344,7 @@ void testDatabase(
       () => db2.execute('BEGIN EXCLUSIVE TRANSACTION'),
       throwsSqlError(SqlError.SQLITE_LOCKED, 262),
     );
-  }, skip: 'Broken with native assets, to investigate');
+  }, skip: hasSharedCache ? null : 'Test requires shared cache');
 
   test('result sets are lists', () {
     final result = database.select('SELECT 1, 2 UNION ALL SELECT 3, 4;');
@@ -819,7 +820,7 @@ void testDatabase(
 
     test('closes when disposing the database', () {
       expect(database.updates.listen(null).asFuture(null), completes);
-      database.dispose();
+      database.close();
     });
 
     test('can listen synchronously', () async {
@@ -993,7 +994,7 @@ void testDatabase(
 
       // Disposing the database here so that the stream closes and neverEmits
       // completes.
-      database.dispose();
+      database.close();
     });
   });
 
@@ -1013,7 +1014,7 @@ void testDatabase(
       final cursor = statement.selectCursor();
       expect(cursor.moveNext(), isTrue);
 
-      database.dispose();
+      database.close();
     });
 
     test('return value of function', () {

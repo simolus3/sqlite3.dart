@@ -10,6 +10,7 @@ import 'package:sqlite3_web/sqlite3_web.dart';
 import 'package:sqlite3_web/src/channel.dart';
 import 'package:sqlite3_web/src/protocol.dart';
 import 'package:test/test.dart';
+import 'package:web/src/dom/dom.dart';
 
 void main() {
   late TestServer server;
@@ -77,6 +78,8 @@ void main() {
         requestId: 0,
         databaseId: 0,
         sql: 'sql',
+        checkInTransaction: false,
+        lockId: null,
         parameters: [
           1,
           1.0,
@@ -108,6 +111,8 @@ void main() {
             ['string value'],
           ],
         ),
+        autocommit: false,
+        lastInsertRowId: 0,
       );
     });
 
@@ -116,12 +121,14 @@ void main() {
         requestId: 0,
         databaseId: 0,
         sql: 'sql',
+        lockId: null,
         parameters: [],
         returnRows: true,
+        checkInTransaction: false,
       ),
       MessageType.rowsResponse,
     );
-    final resultSet = response.resultSet;
+    final resultSet = response.resultSet!;
 
     expect(resultSet.length, 4);
     expect(resultSet.map((e) => e['a']), [
@@ -151,8 +158,10 @@ void main() {
           requestId: 0,
           databaseId: 0,
           sql: 'sql',
+          lockId: null,
           parameters: [],
           returnRows: true,
+          checkInTransaction: false,
         ),
         MessageType.rowsResponse,
       ),
@@ -201,7 +210,7 @@ final class TestServer extends ProtocolChannel {
   }
 
   @override
-  Future<Response> handleRequest(Request request) {
+  FutureOr<Response> handleRunQuery(RunQuery request, AbortSignal abortSignal) {
     return handleRequestFunction(request);
   }
 }
@@ -211,9 +220,4 @@ final class TestClient extends ProtocolChannel {
 
   @override
   void handleNotification(Notification notification) {}
-
-  @override
-  Future<Response> handleRequest(Request request) {
-    throw UnimplementedError();
-  }
 }

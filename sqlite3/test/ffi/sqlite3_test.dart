@@ -28,7 +28,7 @@ void main() {
         ..execute('PRAGMA temp_store = FILE;')
         ..execute('CREATE TEMP TABLE my_tbl (foo, bar);')
         ..userVersion = 3
-        ..dispose();
+        ..close();
     } finally {
       sqlite3.tempDirectory = old;
     }
@@ -88,7 +88,7 @@ void main() {
       );
 
       final db = sqlite3.openInMemory();
-      addTearDown(db.dispose);
+      addTearDown(db.close);
       expect(db.select('SELECT my_function() AS r'), [
         {'r': 'my custom extension'},
       ]);

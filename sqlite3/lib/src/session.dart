@@ -14,6 +14,18 @@ import 'sqlite3.dart';
 ///
 /// {@category common}
 abstract interface class Session {
+  /// Creates a new session on the given [CommonDatabase] and the optional
+  /// [name] of the schema to track.
+  ///
+  /// __Important__: While `package:sqlite3` uses native finalizers on both the
+  /// database and the session object to ensure they're cleared automatically
+  /// once they're no longer used in Dart, the order in which the objects are
+  /// cleared matters. It is important that the session is closed is before the
+  /// database, closing it afterwards may crash.
+  ///
+  /// This ordering can't be guaranteed with native finalizers alone. For this
+  /// reason, returned [Session]s should be [Session.delete]d explicitly as soon
+  /// as they're no longer needed.
   factory Session(CommonDatabase database, {String name = 'main'}) {
     final asImpl = database as DatabaseImplementation;
     return SessionImplementation.createSession(asImpl, name);

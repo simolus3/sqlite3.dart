@@ -1,4 +1,3 @@
-
 targets:
   # This setup exists so that the main entrypoint (web/main.dart) gets compiled
   # with dartdevc for debug builds while the worker is compiled with dart2js

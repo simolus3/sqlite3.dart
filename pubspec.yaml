@@ -7,11 +7,22 @@ environment:
 dependencies:
   path: ^1.9.1
   crypto: ^3.0.6
-  pool: ^1.5.2
   collection: ^1.19.1
+  file: ^7.0.1
+  pool: ^1.5.2
+  hooks: ^1.0.0
 
 workspace:
   - sqlite3
   - sqlite3/example/custom_extension
   - sqlite3_web
   - sqlite3_test
+
+dependency_overrides:
+  # We need https://github.com/dart-lang/native/pull/2736 to build Android libraries in CI.
+  # This is only used to fix tool/build_sqlite.dart.
+  native_toolchain_c:
+    git:
+      url: https://github.com/simolus3/dart-native.git
+      ref: 473d7d0e69214a5611e2b2707dd99ba6f559aa4b
+      path: pkgs/native_toolchain_c

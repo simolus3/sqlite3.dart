@@ -6,6 +6,8 @@ import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
+// ignore: implementation_imports
+import 'package:sqlite3/src/wasm/js_interop/new_file_system_access.dart';
 import 'package:web/web.dart';
 
 /// Checks whether IndexedDB is working in the current browser.
@@ -62,28 +64,44 @@ Future<void> deleteDatabaseInIndexedDb(String databaseName) async {
   await idb.deleteDatabase(databaseName).complete<JSAny?>();
 }
 
-/// A single asynchronous lock implemented by future-chaining.
-class Lock {
-  Future<void>? _last;
+/// Collects all drift OPFS databases.
+Future<List<String>> opfsDatabases() async {
+  final storage = storageManager;
+  if (storage == null) return const [];
 
-  /// Waits for previous [synchronized]-calls on this [Lock] to complete, and
-  /// then calls [block] before further [synchronized] calls are allowed.
-  Future<T> synchronized<T>(FutureOr<T> Function() block) {
-    final previous = _last;
-    // This completer may not be sync: It must complete just after
-    // callBlockAndComplete completes.
-    final blockCompleted = Completer<void>();
-    _last = blockCompleted.future;
+  var directory = await storage.directory;
+  try {
+    directory = await directory.getDirectory('drift_db');
+  } on Object {
+    // The drift_db folder doesn't exist, so there aren't any databases.
+    return const [];
+  }
 
-    Future<T> callBlockAndComplete() {
-      return Future.sync(block).whenComplete(blockCompleted.complete);
-    }
+  return [
+    await for (final entry in directory.list())
+      if (entry.isDirectory) entry.name,
+  ];
+}
 
-    if (previous != null) {
-      return previous.then((_) => callBlockAndComplete());
-    } else {
-      return callBlockAndComplete();
-    }
+/// Constructs the path used by drift to store a database in the origin-private
+/// section of the agent's file system.
+String pathForOpfs(String databaseName) {
+  return 'drift_db/$databaseName';
+}
+
+/// Deletes the OPFS folder storing a database with the given [databaseName] if
+/// such folder exists.
+Future<void> deleteDatabaseInOpfs(String databaseName) async {
+  final storage = storageManager;
+  if (storage == null) return;
+
+  var directory = await storage.directory;
+  try {
+    directory = await directory.getDirectory('drift_db');
+    await directory.remove(databaseName, recursive: true);
+  } on Object {
+    // fine, an error probably means that the database didn't exist in the first
+    // place.
   }
 }
 

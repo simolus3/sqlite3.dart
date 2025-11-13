@@ -26,7 +26,7 @@ Future<void> main() async {
       ..execute('pragma user_version = 1')
       ..execute('CREATE TABLE foo (bar INTEGER NOT NULL);')
       ..execute('INSERT INTO foo (bar) VALUES (?)', [3])
-      ..dispose();
+      ..close();
 
     final db = sqlite3.open('/database');
     print(db.select('SELECT * FROM foo'));
@@ -43,16 +43,16 @@ Future<void> main() async {
     startEncryption.remove();
     final sqlite3 = await WasmSqlite3.loadFromUrl(Uri.parse('sqlite3mc.wasm'));
 
-    sqlite3.registerVirtualFileSystem(InMemoryFileSystem(), makeDefault: true);
+    sqlite3.registerVirtualFileSystem(InMemoryFileSystem(name: 'testing'));
 
-    sqlite3.open('/database')
+    sqlite3.open('/database', vfs: 'multipleciphers-testing')
       ..execute("pragma key = 'test';")
       ..execute('pragma user_version = 1')
       ..execute('CREATE TABLE foo (bar INTEGER NOT NULL);')
       ..execute('INSERT INTO foo (bar) VALUES (?)', [3])
-      ..dispose();
+      ..close();
 
-    final db = sqlite3.open('/database');
+    final db = sqlite3.open('/database', vfs: 'multipleciphers-testing');
     try {
       db.select('SELECT * FROM foo');
     } on SqliteException {

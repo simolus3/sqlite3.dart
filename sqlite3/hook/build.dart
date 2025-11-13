@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
+import 'package:native_toolchain_c/native_toolchain_c.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:sqlite3/src/hook/description.dart';
+import 'package:sqlite3/src/hook/used_symbols.dart';
 
 void main(List<String> args) async {
   await build(args, (input, output) async {
@@ -42,9 +44,59 @@ void main(List<String> args) async {
             file: target.uri,
           ),
         );
-      case CompileSqlite():
-        // TODO: Handle this case.
-        throw UnimplementedError();
+      case CompileSqlite(:final sourceFile, :final defines):
+        // With Flutter on Linux (which already dynamically links SQLite through
+        // its libgtk dependency), we run into issues where loading our SQLite
+        // build causes internal symbols to be resolved against the already
+        // loaded library from the system.
+        // This is terrible and not what we ever want. A proper solution may be
+        // to use namespaces or RTLD_DEEPBIND, but hooks don't support that yet.
+        // An alternative that seems to work is to pass -Bsymbolic-functions to
+        // the linker.
+        // For the full discussion, see https://github.com/dart-lang/native/issues/2724
+
+        String? linkerScript;
+        if (input.config.code.targetOS == OS.linux) {
+          linkerScript = input.outputDirectory.resolve('sqlite.map').path;
+
+          await File(linkerScript).writeAsString('''
+{
+  global:
+${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
+  local:
+    *;
+};
+''');
+        }
+
+        final library = CBuilder.library(
+          name: 'sqlite3',
+          packageName: 'sqlite3',
+          assetName: name,
+          sources: [sourceFile],
+          includes: [p.dirname(sourceFile)],
+          defines: defines,
+          flags: [
+            if (input.config.code.targetOS == OS.linux) ...[
+              // This avoids loading issues on Linux, see comment above.
+              '-Wl,-Bsymbolic',
+              // And since we already have a designated list of symbols to
+              // export, we might as well strip the rest.
+              // TODO: Port this to other targets too.
+              '-Wl,--version-script=$linkerScript',
+              '-ffunction-sections',
+              '-fdata-sections',
+              '-Wl,--gc-sections',
+            ],
+          ],
+          libraries: [
+            if (input.config.code.targetOS == OS.android)
+              // We need to link the math library on Android.
+              'm',
+          ],
+        );
+
+        await library.run(input: input, output: output);
       case SimpleBinary():
         output.assets.code.add(
           CodeAsset(

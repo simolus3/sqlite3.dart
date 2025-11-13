@@ -72,7 +72,7 @@ void main() {
       expect(e.extendedResultCode, 2067);
       expect(e.resultCode, 19);
     }
-    db.dispose();
+    db.close();
   });
 
   test('busy exception', () async {
@@ -88,8 +88,8 @@ void main() {
       expect(e.extendedResultCode, 5);
       expect(e.resultCode, 5);
     }
-    db1.dispose();
-    db2.dispose();
+    db1.close();
+    db2.close();
   });
 
   test('invalid format', () async {
@@ -106,14 +106,14 @@ void main() {
       expect(e.extendedResultCode, 26);
       expect(e.resultCode, 26);
     }
-    db.dispose();
+    db.close();
   });
 
   group('reports the causing SQL statement', () {
     late Database db;
 
     setUp(() => db = sqlite3.openInMemory());
-    tearDown(() => db.dispose());
+    tearDown(() => db.close());
 
     test('in execute()', () {
       expect(
@@ -189,7 +189,7 @@ SqliteException(1): message
       'reports position',
       () {
         final db = sqlite3.openInMemory();
-        addTearDown(db.dispose);
+        addTearDown(db.close);
 
         expect(
           () => db.select('SELECT totally invalid syntax;'),

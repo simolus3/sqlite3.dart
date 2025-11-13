@@ -19,15 +19,24 @@ void testSession(FutureOr<CommonSqlite3> Function() loadSqlite) {
         'CREATE TABLE other (id INTEGER PRIMARY KEY, content INTEGER);',
       );
   });
-  tearDown(() => database.dispose());
+  tearDown(() => database.close());
+
+  Session createSession() {
+    final session = Session(database);
+    // Ensure we close the session before disposing the database. SQLite
+    // mentions that session objects should be closed before the database, and
+    // that closing them afterwards is UB.
+    addTearDown(session.delete);
+    return session;
+  }
 
   test('enabled by default', () {
-    final session = Session(database);
+    final session = createSession();
     expect(session.enabled, isTrue);
   });
 
   test('isEmpty', () {
-    final session = Session(database);
+    final session = createSession();
     expect(session.isEmpty, isTrue);
     expect(session.isNotEmpty, isFalse);
 
@@ -45,7 +54,7 @@ void testSession(FutureOr<CommonSqlite3> Function() loadSqlite) {
   });
 
   test('attaching to some tables only', () {
-    final session = Session(database);
+    final session = createSession();
     expect(session.isEmpty, isTrue);
     session.attach('entries');
     database.execute('INSERT INTO other (content) VALUES (?);', [
@@ -56,7 +65,7 @@ void testSession(FutureOr<CommonSqlite3> Function() loadSqlite) {
   });
 
   test('iterator', () {
-    final session = Session(database)..attach();
+    final session = createSession()..attach();
     database
       ..execute('INSERT INTO entries (content) VALUES (?);', ['a'])
       ..execute('UPDATE entries SET content = ?', ['b']);
@@ -89,7 +98,7 @@ void testSession(FutureOr<CommonSqlite3> Function() loadSqlite) {
   });
 
   test('changeset invert', () {
-    final session = Session(database)..attach();
+    final session = createSession()..attach();
     database.execute('INSERT INTO entries (content) VALUES (?);', ['a']);
 
     final changeset = session.changeset();
@@ -111,7 +120,7 @@ void testSession(FutureOr<CommonSqlite3> Function() loadSqlite) {
   });
 
   test('apply changeset', () {
-    final session = Session(database)..attach();
+    final session = createSession()..attach();
     database.execute('INSERT INTO entries (content) VALUES (?);', ['a']);
     final changeset = session.changeset();
     session.delete();
@@ -126,7 +135,7 @@ void testSession(FutureOr<CommonSqlite3> Function() loadSqlite) {
   });
 
   test('apply patchset', () {
-    final session = Session(database)..attach();
+    final session = createSession()..attach();
     database.execute('INSERT INTO entries (content) VALUES (?);', ['a']);
     final patchset = session.patchset();
     session.delete();
@@ -140,7 +149,7 @@ void testSession(FutureOr<CommonSqlite3> Function() loadSqlite) {
   });
 
   test('diff', () {
-    var session = Session(database);
+    var session = createSession();
     database.execute('INSERT INTO entries (content) VALUES (?);', ['a']);
 
     database
@@ -150,9 +159,9 @@ void testSession(FutureOr<CommonSqlite3> Function() loadSqlite) {
       )
       ..execute('INSERT INTO another.entries (content) VALUES (?);', ['b']);
 
-    session = Session(database)..diff('another', 'entries');
+    session = createSession()..diff('another', 'entries');
     final changeset = session.changeset();
-    expect(changeset, [
+    expect(changeset.toList(), [
       isOp(
         operation: SqliteUpdateKind.update,
         oldValues: [1, 'b'],

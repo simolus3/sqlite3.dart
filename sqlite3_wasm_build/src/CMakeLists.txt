@@ -12,20 +12,18 @@ include(FetchContent)
 FetchContent_Declare(
     sqlite3
     # NOTE: When changing this, also update `test/wasm/sqlite3_test.dart`
-    URL https://sqlite.org/2025/sqlite-autoconf-3500400.tar.gz
+    URL https://sqlite.org/2025/sqlite-autoconf-3510000.tar.gz
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
 )
 
 FetchContent_Declare(
     sqlite3mc
-    URL https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.2.4/sqlite3mc-2.2.4-sqlite-3.50.4-amalgamation.zip
+    URL https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.2.5/sqlite3mc-2.2.5-sqlite-3.51.0-amalgamation.zip
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
 )
 
 FetchContent_MakeAvailable(sqlite3)
 FetchContent_MakeAvailable(sqlite3mc)
-
-file(DOWNLOAD https://raw.githubusercontent.com/sqlite/sqlite/master/src/test_vfstrace.c "${CMAKE_BINARY_DIR}/vfstrace.c")
 
 # Generate symbols we need to export from the sqlite3.wasm build
 add_custom_command(
@@ -45,6 +43,7 @@ macro(base_sqlite3_target name debug crypto)
   set(sources
     ${CMAKE_CURRENT_SOURCE_DIR}/os_web.c
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/external_objects.c
   )
   set(flags -Wall -Wextra -Wno-unused-parameter -Wno-unused-function)
 
@@ -54,7 +53,6 @@ macro(base_sqlite3_target name debug crypto)
     # We only want to support the chacha20 cipher, some of the others are tricky to
     # compile to webassembly.
     list(APPEND flags
-      "-DSQLITE_OMIT_AUTOINIT"
       "-DHAVE_CIPHER_AES_128_CBC=0"
       "-DHAVE_CIPHER_AES_256_CBC=0"
       "-DHAVE_CIPHER_SQLCIPHER=0"
@@ -68,7 +66,6 @@ macro(base_sqlite3_target name debug crypto)
   endif()
 
   if(${debug})
-    list(APPEND sources "${CMAKE_BINARY_DIR}/vfstrace.c")
     list(APPEND flags "-g" "-DDEBUG")
   else()
     list(APPEND flags "-Oz" "-DNDEBUG" "-flto")
@@ -87,7 +84,6 @@ macro(base_sqlite3_target name debug crypto)
       -mcpu=generic
       -mexec-model=reactor
       -fno-stack-protector -fno-stack-clash-protection
-      -Wl,--import-memory
       --sysroot ${wasi_sysroot}
       ${sources}
       @${CMAKE_CURRENT_BINARY_DIR}/required_symbols.txt
@@ -125,3 +121,4 @@ add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY
 add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_debug.init.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3.debug.wasm)
 add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3mc.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3mc.wasm)
 add_dependencies(output sqlite3_debug sqlite3_opt sqlite3mc)
+add_dependencies(output sqlite3_debug)

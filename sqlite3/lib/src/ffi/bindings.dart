@@ -6,7 +6,6 @@ import 'dart:ffi';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart' as ffi;
-import 'package:meta/meta.dart';
 
 import '../constants.dart';
 import '../exception.dart';
@@ -33,6 +32,9 @@ const int _firstVersionForErrorOffset = 3038000;
 final supportsPrepareV3 = sqlite3_libversion_number() >= _firstVersionForV3;
 final supportsErrorOffset =
     sqlite3_libversion_number() >= _firstVersionForErrorOffset;
+
+final databaseFinalizer = NativeFinalizer(addresses.sqlite3_close_v2.cast());
+final statementFinalizer = NativeFinalizer(addresses.sqlite3_finalize.cast());
 
 final sessionDeleteFinalizer = NativeFinalizer(
   addresses.sqlite3session_delete.cast(),
@@ -225,7 +227,10 @@ final class FfiBindings implements RawSqliteBindings {
       flags,
       vfsPtr,
     );
-    final result = SqliteResult(resultCode, FfiDatabase(outDb.value));
+    final result = (
+      resultCode: resultCode,
+      result: outDb.value.isNullPointer ? null : FfiDatabase(outDb.value),
+    );
 
     namePtr.free();
     outDb.free();
@@ -740,7 +745,10 @@ final class FfiChangesetIterator implements RawChangesetIterator, Finalizable {
     final value = outValue.value;
     outValue.free();
 
-    return SqliteResult(result, value.isNullPointer ? null : FfiValue(value));
+    return (
+      resultCode: result,
+      result: value.isNullPointer ? null : FfiValue(value),
+    );
   }
 
   @override
@@ -759,7 +767,10 @@ final class FfiChangesetIterator implements RawChangesetIterator, Finalizable {
     final value = outValue.value;
     outValue.free();
 
-    return SqliteResult(result, value.isNullPointer ? null : FfiValue(value));
+    return (
+      resultCode: result,
+      result: value.isNullPointer ? null : FfiValue(value),
+    );
   }
 
   @override
@@ -800,18 +811,65 @@ final class FfiChangesetIterator implements RawChangesetIterator, Finalizable {
   }
 }
 
-final class FfiDatabase implements RawSqliteDatabase {
+/// For user-defined functions, SQLite hooks, or virtual file systems, we
+/// register function pointers as [NativeCallable]s.
+///
+/// To avoid leaking resources, we should [NativeCallable.close] those once
+/// they're no longer used. SQLite provides the `xDestroy` callback for this.
+/// For a long time, this package used an additional callable for `xDestroy`
+/// that closed the original callables and itself.
+///
+/// After migrating to native finalizers however, this approach stopped working.
+/// Because native finalizers can run as the Dart isolate is shutting down, we
+/// can't invoke Dart code anymore. There is no good way to close callables from
+/// C (https://dartbug.com/61887), so we can't use `xDestroy` callbacks from
+/// SQLite.
+///
+/// Instead, we:
+///
+///  - Manually close callables when the database is closed in Dart.
+///  - Use (regular, non-native) finalizers to asynchronously close callbacks
+///    for databases that haven't been closed manually.
+final class _FunctionFinalizers {
+  final List<NativeCallable> _callables = [];
+
+  void closeAll() {
+    for (final callable in _callables) {
+      callable.close();
+    }
+  }
+
+  static final Finalizer<_FunctionFinalizers> finalizer = Finalizer(
+    (f) => f.closeAll(),
+  );
+}
+
+final class FfiDatabase implements RawSqliteDatabase, Finalizable {
   final Pointer<sqlite3> db;
+  final _FunctionFinalizers _functions = _FunctionFinalizers();
+  final Object _detachToken = Object();
 
   NativeCallable<_UpdateHook>? _installedUpdateHook;
   NativeCallable<_CommitHook>? _installedCommitHook;
   NativeCallable<_RollbackHook>? _installedRollbackHook;
 
-  FfiDatabase(this.db);
+  FfiDatabase(this.db) {
+    databaseFinalizer.attach(this, db.cast(), detach: _detachToken);
+    _FunctionFinalizers.finalizer.attach(
+      this,
+      _functions,
+      detach: _detachToken,
+    );
+  }
 
   @override
   int sqlite3_close_v2() {
-    return libsqlite3.sqlite3_close_v2(db);
+    final rc = libsqlite3.sqlite3_close_v2(db);
+
+    _functions.closeAll();
+    _FunctionFinalizers.finalizer.detach(_detachToken);
+    databaseFinalizer.detach(_detachToken);
+    return rc;
   }
 
   @override
@@ -862,16 +920,13 @@ final class FfiDatabase implements RawSqliteDatabase {
   }
 
   @override
-  void deallocateAdditionalMemory() {}
-
-  @override
   int sqlite3_create_collation_v2({
     required Uint8List collationName,
     required int eTextRep,
     required RawCollation collation,
   }) {
     final name = allocateBytes(collationName, additionalLength: 1);
-    final compare = collation.toNative();
+    final compare = collation.toNative(_functions);
 
     final result = libsqlite3.sqlite3_create_collation_v2(
       db,
@@ -879,7 +934,7 @@ final class FfiDatabase implements RawSqliteDatabase {
       eTextRep,
       nullPtr(),
       compare.nativeFunction,
-      _xDestroy([compare]),
+      nullPtr(),
     );
     name.free();
 
@@ -898,10 +953,10 @@ final class FfiDatabase implements RawSqliteDatabase {
   }) {
     final functionNamePtr = allocateBytes(functionName, additionalLength: 1);
 
-    final step = xStep.toNative();
-    final $final = xFinal.toNative(true);
-    final value = xValue.toNative(false);
-    final inverse = xInverse.toNative();
+    final step = xStep.toNative(_functions);
+    final $final = xFinal.toNative(clean: true, finalizers: _functions);
+    final value = xValue.toNative(clean: false, finalizers: _functions);
+    final inverse = xInverse.toNative(_functions);
 
     final result = libsqlite3.sqlite3_create_window_function(
       db,
@@ -913,7 +968,7 @@ final class FfiDatabase implements RawSqliteDatabase {
       $final.nativeFunction,
       value.nativeFunction,
       inverse.nativeFunction,
-      _xDestroy([step, $final, value, inverse]),
+      nullPtr(),
     );
     functionNamePtr.free();
     return result;
@@ -930,9 +985,9 @@ final class FfiDatabase implements RawSqliteDatabase {
   }) {
     final functionNamePtr = allocateBytes(functionName, additionalLength: 1);
 
-    final func = xFunc?.toNative();
-    final step = xStep?.toNative();
-    final $final = xFinal?.toNative(true);
+    final func = xFunc?.toNative(_functions);
+    final step = xStep?.toNative(_functions);
+    final $final = xFinal?.toNative(clean: true, finalizers: _functions);
 
     final result = libsqlite3.sqlite3_create_function_v2(
       db,
@@ -943,11 +998,7 @@ final class FfiDatabase implements RawSqliteDatabase {
       func?.nativeFunction ?? nullPtr(),
       step?.nativeFunction ?? nullPtr(),
       $final?.nativeFunction ?? nullPtr(),
-      _xDestroy([
-        if (func != null) func,
-        if (step != null) step,
-        if ($final != null) $final,
-      ]),
+      nullPtr(),
     );
     functionNamePtr.free();
     return result;
@@ -961,7 +1012,7 @@ final class FfiDatabase implements RawSqliteDatabase {
       _installedUpdateHook = null;
       libsqlite3.sqlite3_update_hook(db, nullPtr(), nullPtr());
     } else {
-      final native = _installedUpdateHook = hook.toNative();
+      final native = _installedUpdateHook = hook.toNative(_functions);
       libsqlite3.sqlite3_update_hook(db, native.nativeFunction, nullPtr());
     }
 
@@ -976,7 +1027,7 @@ final class FfiDatabase implements RawSqliteDatabase {
       _installedCommitHook = null;
       libsqlite3.sqlite3_commit_hook(db, nullPtr(), nullPtr());
     } else {
-      final native = _installedCommitHook = hook.toNative();
+      final native = _installedCommitHook = hook.toNative(_functions);
       libsqlite3.sqlite3_commit_hook(db, native.nativeFunction, nullPtr());
     }
 
@@ -990,7 +1041,7 @@ final class FfiDatabase implements RawSqliteDatabase {
     if (hook == null) {
       libsqlite3.sqlite3_rollback_hook(db, nullPtr(), nullPtr());
     } else {
-      final native = _installedRollbackHook = hook.toNative();
+      final native = _installedRollbackHook = hook.toNative(_functions);
       libsqlite3.sqlite3_rollback_hook(db, native.nativeFunction, nullPtr());
     }
 
@@ -1009,25 +1060,31 @@ final class FfiDatabase implements RawSqliteDatabase {
   }
 
   @override
-  RawStatementCompiler newCompiler(List<int> utf8EncodedSql) {
-    return FfiStatementCompiler(this, allocateBytes(utf8EncodedSql));
+  int sqlite3_busy_handler(int Function(int)? callback) {
+    if (callback == null) {
+      return libsqlite3.sqlite3_busy_handler(db, nullPtr(), nullPtr());
+    } else {
+      final callable =
+          NativeCallable<Int Function(Pointer<Void>, Int)>.isolateLocal((
+              Pointer<void> _,
+              int amount,
+            ) {
+              return callback(amount);
+            }, exceptionalReturn: 0)
+            ..keepIsolateAlive = false
+            ..closeIn(_functions);
+
+      return libsqlite3.sqlite3_busy_handler(
+        db,
+        callable.nativeFunction,
+        nullPtr(),
+      );
+    }
   }
 
-  static Pointer<NativeFunction<Void Function(Pointer<Void>)>> _xDestroy(
-    List<NativeCallable> callables,
-  ) {
-    void destroy(Pointer<Void> _) {
-      for (final callable in callables) {
-        callable.close();
-      }
-    }
-
-    final callable = NativeCallable<Void Function(Pointer<Void>)>.isolateLocal(
-      destroy,
-    )..keepIsolateAlive = false;
-    callables.add(callable);
-
-    return callable.nativeFunction;
+  @override
+  RawStatementCompiler newCompiler(List<int> utf8EncodedSql) {
+    return FfiStatementCompiler(this, allocateBytes(utf8EncodedSql));
   }
 }
 
@@ -1050,7 +1107,7 @@ final class FfiStatementCompiler implements RawStatementCompiler {
   int get endOffset => pzTail.value.address - sql.address;
 
   @override
-  SqliteResult<RawSqliteStatement?> sqlite3_prepare(
+  SqliteResult<RawSqliteStatement> sqlite3_prepare(
     int byteOffset,
     int length,
     int prepFlag,
@@ -1085,39 +1142,28 @@ final class FfiStatementCompiler implements RawStatementCompiler {
     final stmt = stmtOut.value;
     final libraryStatement = stmt.isNullPointer ? null : FfiStatement(stmt);
 
-    return SqliteResult(result, libraryStatement);
+    return (resultCode: result, result: libraryStatement);
   }
 }
 
-final class FfiStatement implements RawSqliteStatement {
+final class FfiStatement implements RawSqliteStatement, Finalizable {
   final Pointer<sqlite3_stmt> stmt;
+  final Object _detachToken = Object();
 
-  final List<Pointer> _allocatedArguments = [];
-
-  FfiStatement(this.stmt);
-
-  @visibleForTesting
-  List<Pointer> get allocatedArguments => _allocatedArguments;
-
-  @override
-  void deallocateArguments() {
-    for (final arg in _allocatedArguments) {
-      arg.free();
-    }
-    _allocatedArguments.clear();
+  FfiStatement(this.stmt) {
+    statementFinalizer.attach(this, stmt.cast(), detach: _detachToken);
   }
 
   @override
   int sqlite3_bind_blob64(int index, List<int> value) {
     final ptr = allocateBytes(value);
-    _allocatedArguments.add(ptr);
 
     return libsqlite3.sqlite3_bind_blob64(
       stmt,
       index,
       ptr.cast(),
       value.length,
-      nullPtr(),
+      allocate.nativeFree,
     );
   }
 
@@ -1170,14 +1216,13 @@ final class FfiStatement implements RawSqliteStatement {
   int sqlite3_bind_text(int index, String value) {
     final bytes = utf8.encode(value);
     final ptr = allocateBytes(bytes);
-    _allocatedArguments.add(ptr);
 
     return libsqlite3.sqlite3_bind_text(
       stmt,
       index,
       ptr.cast(),
       bytes.length,
-      nullPtr(),
+      allocate.nativeFree,
     );
   }
 
@@ -1239,6 +1284,7 @@ final class FfiStatement implements RawSqliteStatement {
   @override
   void sqlite3_finalize() {
     libsqlite3.sqlite3_finalize(stmt);
+    statementFinalizer.detach(_detachToken);
   }
 
   @override
@@ -1443,72 +1489,93 @@ typedef _UpdateHook =
 typedef _CommitHook = Int Function(Pointer<Void>);
 typedef _RollbackHook = Void Function(Pointer<Void>);
 
+extension on NativeCallable {
+  void closeIn(_FunctionFinalizers finalizers) {
+    finalizers._callables.add(this);
+  }
+}
+
 extension on RawXFunc {
-  NativeCallable<_XFunc> toNative() {
+  NativeCallable<_XFunc> toNative(_FunctionFinalizers finalizers) {
     return NativeCallable.isolateLocal((
-      Pointer<sqlite3_context> ctx,
-      int nArgs,
-      Pointer<Pointer<sqlite3_value>> args,
-    ) {
-      this(FfiContext(ctx), _ValueList(nArgs, args));
-    })..keepIsolateAlive = false;
+        Pointer<sqlite3_context> ctx,
+        int nArgs,
+        Pointer<Pointer<sqlite3_value>> args,
+      ) {
+        this(FfiContext(ctx), _ValueList(nArgs, args));
+      })
+      ..closeIn(finalizers)
+      ..keepIsolateAlive = false;
   }
 }
 
 extension on RawXFinal {
-  NativeCallable<_XFinal> toNative(bool clean) {
+  NativeCallable<_XFinal> toNative({
+    required bool clean,
+    required _FunctionFinalizers finalizers,
+  }) {
     return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx) {
-      final context = FfiContext(ctx);
-      this(context);
-      if (clean) context.freeContext();
-    })..keepIsolateAlive = false;
+        final context = FfiContext(ctx);
+        this(context);
+        if (clean) context.freeContext();
+      })
+      ..closeIn(finalizers)
+      ..keepIsolateAlive = false;
   }
 }
 
 extension on RawCollation {
-  NativeCallable<_XCompare> toNative() {
+  NativeCallable<_XCompare> toNative(_FunctionFinalizers finalizers) {
     return NativeCallable.isolateLocal((
-      Pointer<Void> _,
-      int lengthA,
-      Pointer<Void> a,
-      int lengthB,
-      Pointer<Void> b,
-    ) {
-      final dartA = a.cast<sqlite3_char>().readNullableString(lengthA);
-      final dartB = b.cast<sqlite3_char>().readNullableString(lengthB);
+        Pointer<Void> _,
+        int lengthA,
+        Pointer<Void> a,
+        int lengthB,
+        Pointer<Void> b,
+      ) {
+        final dartA = a.cast<sqlite3_char>().readNullableString(lengthA);
+        final dartB = b.cast<sqlite3_char>().readNullableString(lengthB);
 
-      return this(dartA, dartB);
-    }, exceptionalReturn: 0)..keepIsolateAlive = false;
+        return this(dartA, dartB);
+      }, exceptionalReturn: 0)
+      ..closeIn(finalizers)
+      ..keepIsolateAlive = false;
   }
 }
 
 extension on RawUpdateHook {
-  NativeCallable<_UpdateHook> toNative() {
+  NativeCallable<_UpdateHook> toNative(_FunctionFinalizers finalizers) {
     return NativeCallable.isolateLocal((
-      Pointer<Void> _,
-      int kind,
-      Pointer<sqlite3_char> db,
-      Pointer<sqlite3_char> table,
-      int rowid,
-    ) {
-      final tableName = table.readString();
-      this(kind, tableName, rowid);
-    })..keepIsolateAlive = false;
+        Pointer<Void> _,
+        int kind,
+        Pointer<sqlite3_char> db,
+        Pointer<sqlite3_char> table,
+        int rowid,
+      ) {
+        final tableName = table.readString();
+        this(kind, tableName, rowid);
+      })
+      ..closeIn(finalizers)
+      ..keepIsolateAlive = false;
   }
 }
 
 extension on RawCommitHook {
-  NativeCallable<_CommitHook> toNative() {
+  NativeCallable<_CommitHook> toNative(_FunctionFinalizers finalizers) {
     return NativeCallable.isolateLocal((Pointer<Void> _) {
-      return this();
-    }, exceptionalReturn: 1)..keepIsolateAlive = false;
+        return this();
+      }, exceptionalReturn: 1)
+      ..closeIn(finalizers)
+      ..keepIsolateAlive = false;
   }
 }
 
 extension on RawRollbackHook {
-  NativeCallable<_RollbackHook> toNative() {
+  NativeCallable<_RollbackHook> toNative(_FunctionFinalizers finalizers) {
     return NativeCallable.isolateLocal((Pointer<Void> _) {
-      this();
-    })..keepIsolateAlive = false;
+        this();
+      })
+      ..closeIn(finalizers)
+      ..keepIsolateAlive = false;
   }
 }

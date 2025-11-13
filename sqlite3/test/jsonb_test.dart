@@ -154,7 +154,7 @@ void main() {
       }
     });
 
-    tearDownAll(() => database.dispose());
+    tearDownAll(() => database.close());
 
     void check(Object? value, {String? expectDecodesAs}) {
       final valueMatcher = switch (value) {

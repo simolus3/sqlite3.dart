@@ -26,13 +26,21 @@ enum LibraryType {
 }
 
 enum TargetOperatingSystem {
-  windows,
-  macos,
-  linux,
-  ios,
-  iosSimulator,
-  android,
-  unknown;
+  windows(OS.windows),
+  macos(OS.macOS),
+  linux(OS.linux),
+  ios(OS.iOS),
+  iosSimulator(OS.iOS, customName: 'ios_sim'),
+  android(OS.android),
+  unknown(OS.linux, customName: 'unknown');
+
+  final OS hookOS;
+  final String? _nameOverride;
+
+  const TargetOperatingSystem(this.hookOS, {String? customName})
+    : _nameOverride = customName;
+
+  String get name => _nameOverride ?? hookOS.name;
 
   static TargetOperatingSystem forConfig(CodeConfig config) {
     return switch (config.targetOS) {
@@ -84,27 +92,9 @@ final class PrebuiltSqliteLibrary {
       throw StateError('Unsupported binary does not have a filename');
     }
 
-    final (prefix, extension) = switch (os) {
-      TargetOperatingSystem.windows => ('win', 'dll'),
-      TargetOperatingSystem.macos => ('macos', 'dylib'),
-      TargetOperatingSystem.ios => ('ios', 'dylib'),
-      TargetOperatingSystem.iosSimulator => ('ios-sim', 'dylib'),
-      TargetOperatingSystem.linux => ('linux', 'so'),
-      TargetOperatingSystem.android => ('android', 'so'),
-      TargetOperatingSystem.unknown => throw AssertionError(),
-    };
-
-    final architectureName = switch (architecture) {
-      Architecture.arm when os == TargetOperatingSystem.android => 'armv7a',
-      Architecture.arm when os == TargetOperatingSystem.linux => 'armv7',
-      Architecture.arm64 => 'aarch64',
-      Architecture.riscv64 => 'riscv64gc',
-      Architecture.ia32 => 'x86',
-      Architecture.x64 => 'x64',
-      _ => throw AssertionError('Unreachable, unknown target architecture'),
-    };
-
-    return '$prefix-$architectureName-${type.basename}.$extension';
+    return os.hookOS.dylibFileName(
+      '${type.basename}.${architecture.name}.${os.name}',
+    );
   }
 
   /// The directory under [HookInput.outputDirectoryShared] used to download
