@@ -157,7 +157,7 @@ final class _LocalPool extends PoolImplementation {
   Future<void> close() {
     Future<void> closeWriter() {
       _writerClosed = true;
-      return _writerMutex.withCriticalSection(_writer.dispose);
+      return _writerMutex.withCriticalSection(_writer.close);
     }
 
     Future<void> closeReaders() {
@@ -165,7 +165,7 @@ final class _LocalPool extends PoolImplementation {
 
       return _readers.withPermits(_readers.poolSize, (dbs) {
         for (final reader in dbs) {
-          reader.dispose();
+          reader.close();
         }
       });
     }

@@ -62,8 +62,10 @@ final class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
   }
 
   @override
-  Database fromPointer(Pointer<void> database) {
-    return wrapDatabase(FfiDatabase(database.cast()));
+  Database fromPointer(Pointer<void> database, {bool attachFinalizer = true}) {
+    return wrapDatabase(
+      FfiDatabase(database.cast(), attachFinalizer: attachFinalizer),
+    );
   }
 
   @override

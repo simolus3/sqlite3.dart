@@ -27,7 +27,12 @@ abstract interface class Sqlite3 implements CommonSqlite3 {
   ///
   /// The [database] must be a pointer towards an open sqlite3 database
   /// connection [handle](https://www.sqlite.org/c3ref/sqlite3.html).
-  Database fromPointer(Pointer<void> database);
+  ///
+  /// When [attachFinalizer] is true (the default), a native finalizer will be
+  /// attached to the database to close it when it's no longer referenced. This
+  /// should be disabled if the database pointer represents a "borrowed"
+  /// reference that Dart isn't supposed to [Database.close].
+  Database fromPointer(Pointer<void> database, {bool attachFinalizer});
 
   @override
   Database openInMemory({String? vfs});

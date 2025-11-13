@@ -229,7 +229,9 @@ final class FfiBindings implements RawSqliteBindings {
     );
     final result = (
       resultCode: resultCode,
-      result: outDb.value.isNullPointer ? null : FfiDatabase(outDb.value),
+      result: outDb.value.isNullPointer
+          ? null
+          : FfiDatabase(outDb.value, attachFinalizer: true),
     );
 
     namePtr.free();
@@ -853,8 +855,11 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
   NativeCallable<_CommitHook>? _installedCommitHook;
   NativeCallable<_RollbackHook>? _installedRollbackHook;
 
-  FfiDatabase(this.db) {
-    databaseFinalizer.attach(this, db.cast(), detach: _detachToken);
+  FfiDatabase(this.db, {required bool attachFinalizer}) {
+    if (attachFinalizer) {
+      databaseFinalizer.attach(this, db.cast(), detach: _detachToken);
+    }
+
     _FunctionFinalizers.finalizer.attach(
       this,
       _functions,

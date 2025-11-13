@@ -46,7 +46,7 @@ final class LeasedDatabase {
   /// This method is very easy to misuse, and should be used carefully. In
   /// particular, all of the following can trigger undefined behavior:
   ///
-  ///  1. Calling [Database.dispose].
+  ///  1. Calling [Database.close].
   ///  2. Calling any method on [Database] after [computation] (or, if it's
   ///     asynchronous, its future) completes.
   Future<T> unsafeAccess<T>(FutureOr<T> Function(Database) computation) async {
@@ -138,5 +138,9 @@ Future<T> wrapWithLeases<T>(
 }
 
 Database pointerToDatabase(int address) {
-  return const FfiSqlite3().fromPointer(Pointer.fromAddress(address));
+  return const FfiSqlite3().fromPointer(
+    Pointer.fromAddress(address),
+    // This isolate doesn't own the connection and shouldn't close it.
+    attachFinalizer: false,
+  );
 }
