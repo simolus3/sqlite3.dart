@@ -77,6 +77,8 @@ To use this package on the web, you need:
   [GitHub releases](https://github.com/simolus3/sqlite3.dart/releases) of this package.
   Note that, for this package, __sqlite3 has to be compiled in a special way__.
   Existing WebAssembly files from e.g. sql.js will not work with `package:sqlite3/wasm.dart`.
+  You can also see [this directory](https://github.com/simolus3/sqlite3.dart/tree/main/sqlite3_wasm_build)
+  for the build files to compile this yourself.
 - A file system implementation, since websites can't by default access the host's file system.
  This package provides `InMemoryFileSystem` and an `IndexedDbFileSystem` implementation.
 
