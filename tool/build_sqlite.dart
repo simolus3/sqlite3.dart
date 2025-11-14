@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:code_assets/code_assets.dart';
 import 'package:file/local.dart';
 import 'package:hooks/hooks.dart';
 import 'package:pool/pool.dart';
+import 'package:path/path.dart' as p;
 
 import '../sqlite3/hook/build.dart' as hook;
 
@@ -55,10 +57,30 @@ void main(List<String> args) async {
     Future<void> buildAndCopy(OS os, Architecture architecture,
         {IOSCodeConfig? iOS, String? osNameOverride}) async {
       final osName = osNameOverride ?? os.name;
+      CCompilerConfig? compilerConfig;
+
+      if (os == OS.iOS || os == OS.macOS) {
+        // Ensure we use an XCode toolchain to avoid issues when uploading apps
+        // to AppStore connect.
+        final xcode = Process.runSync('xcode-select', ['-p']);
+        final [path] = const LineSplitter().convert(xcode.stdout);
+
+        Uri tool(String name) {
+          return Uri.file(p.join(
+              path, 'Toolchains/XcodeDefault.xctoolchain/usr/bin/$name'));
+        }
+
+        compilerConfig = CCompilerConfig(
+          archiver: tool('ar'),
+          compiler: tool('clang'),
+          linker: tool('ld'),
+        );
+      }
 
       await testBuildHook(
         extensions: [
           CodeAssetExtension(
+            cCompiler: compilerConfig,
             targetArchitecture: architecture,
             targetOS: os,
             linkModePreference: LinkModePreference.dynamic,
@@ -68,6 +90,7 @@ void main(List<String> args) async {
                 os == OS.android ? AndroidCodeConfig(targetNdkApi: 24) : null,
           )
         ],
+        linkingEnabled: true,
         mainMethod: hook.main,
         check: (_, output) async {
           final name =
@@ -95,7 +118,7 @@ void main(List<String> args) async {
 
     for (final os in operatingSystems) {
       for (final architecture in _osToAbis[os]!) {
-        // Compiling sqlite3mc for x86 on Linxu does not work.
+        // Compiling sqlite3mc for x86 on Linux does not work.
         if (mode == 'sqlite3mc' &&
             os == OS.linux &&
             architecture == Architecture.ia32) {
@@ -103,13 +126,13 @@ void main(List<String> args) async {
         }
 
         scheduleTask(() => buildAndCopy(os, architecture,
-            iOS: IOSCodeConfig(targetSdk: IOSSdk.iPhoneOS, targetVersion: 13)));
+            iOS: IOSCodeConfig(targetSdk: IOSSdk.iPhoneOS, targetVersion: 12)));
       }
 
       if (os == OS.iOS) {
         // Also compile for iOS simulators
         final simulatorConfig =
-            IOSCodeConfig(targetSdk: IOSSdk.iPhoneSimulator, targetVersion: 13);
+            IOSCodeConfig(targetSdk: IOSSdk.iPhoneSimulator, targetVersion: 12);
 
         scheduleTask(() => buildAndCopy(os, Architecture.arm64,
             iOS: simulatorConfig, osNameOverride: 'ios_sim'));

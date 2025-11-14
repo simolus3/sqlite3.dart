@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+void main() {
+  runApp(SqliteDiagnostics());
+}
+
 class SqliteDiagnostics extends StatelessWidget {
   const SqliteDiagnostics({super.key});
 
