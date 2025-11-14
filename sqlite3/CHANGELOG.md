@@ -1,3 +1,7 @@
+## 3.0.1
+
+- Build hook: Use clang from XCode when pre-compiling SQLite for iOS and macOS.
+
 ## 3.0.0
 
 - __Breaking change__: Use [build hooks](https://dart.dev/tools/hooks) to load
