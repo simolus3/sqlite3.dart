@@ -80,6 +80,8 @@ These options behave as follows:
 
 1. "system" instructs the Dart embedder to lookup SQLite from the operating system, e.g. with a
    `dlopen("libsqlite3.so")` on Linux.
+   When using `source: system`, you can also add a `name` key to customize the name of the library.
+   For instance, `name: sqlcipher` would load `libsqlcipher.dylib` on macOS.
 2. "process" looks for SQLite symbols in the current [process](https://api.dart.dev/dart-ffi/DynamicLibrary/DynamicLibrary.process.html), which can be useful when your executable already depends on
   SQLite (instead of explicitly requesting it with `dlopen`).
 3. "executable" looks for SQLite symbols in the current [executable](https://api.dart.dev/dart-ffi/DynamicLibrary/DynamicLibrary.executable.html), which is useful when linking SQLite statically.

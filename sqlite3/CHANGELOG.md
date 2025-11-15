@@ -1,3 +1,8 @@
+## 3.1.0-wip
+
+- Build hook: Allow using `name` key with `source: system` to load SQLite
+  libraries under a different name (e.g. `name: sqlcipher` to load SQLCipher).
+
 ## 3.0.1
 
 - Build hook: Use clang from XCode when pre-compiling SQLite for iOS and macOS.

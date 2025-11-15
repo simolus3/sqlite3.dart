@@ -97,7 +97,7 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
         );
 
         await library.run(input: input, output: output);
-      case SimpleBinary():
+      case ExternalSqliteBinary():
         output.assets.code.add(
           CodeAsset(
             package: package,

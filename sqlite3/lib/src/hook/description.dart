@@ -26,7 +26,7 @@ sealed class SqliteBinary {
       case 'test-sqlite3mc':
         return PrecompiledForTesting(LibraryType.sqlite3mc);
       case 'system':
-        return SimpleBinary.fromSystem;
+        return LookupSystem((userDefines['name'] as String?) ?? 'sqlite3');
       case 'process':
         return SimpleBinary.fromProcess;
       case 'executable':
@@ -52,34 +52,40 @@ sealed class SqliteBinary {
   }
 }
 
-/// Options for resolving a sqlite binary that don't require nested options.
-enum SimpleBinary implements SqliteBinary {
-  /// Use the `sqlite3` shipping with the operating system.
-  fromSystem,
+/// A [SqliteBinary] not built or downloaded by the hook.
+sealed class ExternalSqliteBinary implements SqliteBinary {
+  LinkMode resolveLinkMode(BuildInput input);
+}
 
+/// Load a `sqlite3` library via `dlopen('libsqlite3.so')` or another platform-
+/// specific name,
+final class LookupSystem implements ExternalSqliteBinary {
+  /// The base name, used to construct an OS-specific library name.
+  final String name;
+
+  const LookupSystem(this.name);
+
+  @override
+  LinkMode resolveLinkMode(BuildInput input) {
+    final targetOS = input.config.code.targetOS;
+
+    return DynamicLoadingSystem(
+      Uri.parse(targetOS.libraryFileName(name, DynamicLoadingBundled())),
+    );
+  }
+}
+
+/// Options for resolving a sqlite binary that don't require nested options.
+enum SimpleBinary implements ExternalSqliteBinary {
   /// Lookup a `sqlite3` library that has already been loaded into the process.
   fromProcess,
 
   /// Lookup `sqlite3` symbols in the current executable.
   fromExecutable;
 
+  @override
   LinkMode resolveLinkMode(BuildInput input) {
     switch (this) {
-      case SimpleBinary.fromSystem:
-        final targetOS = input.config.code.targetOS;
-
-        return DynamicLoadingSystem(
-          Uri.parse(switch (targetOS) {
-            OS.windows => 'sqlite3.dll',
-            OS.macOS || OS.iOS => 'libsqlite3.dylib',
-            OS.linux => 'libsqlite3.so',
-            _ => throw ArgumentError.value(
-              targetOS,
-              'targetOS',
-              'Does not have sqlite3 in its system libraries',
-            ),
-          }),
-        );
       case SimpleBinary.fromProcess:
         return LookupInProcess();
       case SimpleBinary.fromExecutable:
