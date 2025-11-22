@@ -90,7 +90,7 @@ jobs:
         id: cache_build
         with:
           path: sqlite3_wasm_build/out/
-          key: sqlite-prebuilt-wasm-${{ hashFiles('tool/sqlite_build_id') }}
+          key: sqlite-prebuilt-wasm-${{ hashFiles('tool/sqlite_build_id', 'sqlite3_wasm_build/src/*') }}
 
       # clang 18 that ships on ubuntu crashes when compiling the wasm sources
       - name: Install LLVM and Clang
