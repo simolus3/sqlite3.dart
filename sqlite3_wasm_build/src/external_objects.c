@@ -11,11 +11,11 @@ static __externref_t host_objects[0];
 // Note: Inlining these functions seems to cause linker errors (something about
 // clang attempting to take the address of host_objects).
 void host_table_set(size_t index, __externref_t value) {
-  __builtin_wasm_table_set(host_objects, (int) index, value);
+  __builtin_wasm_table_set(host_objects, (int)index, value);
 }
 
 static __externref_t host_table_get(size_t index) {
-  return __builtin_wasm_table_get(host_objects, (int) index);
+  return __builtin_wasm_table_get(host_objects, (int)index);
 }
 
 static size_t host_table_grow(size_t delta) {
