@@ -8,7 +8,6 @@ import 'package:ffigen/src/code_generator.dart';
 import 'package:ffigen/src/context.dart';
 import 'package:ffigen/src/header_parser.dart' as ffigen;
 import 'package:logging/logging.dart';
-import 'package:pub_semver/pub_semver.dart';
 
 import '../../sqlite3_wasm_build/tool/wasm_symbols.dart';
 
