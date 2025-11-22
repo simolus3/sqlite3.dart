@@ -18,9 +18,9 @@ static __externref_t host_table_get(int index) {
   return __builtin_wasm_table_get(host_objects, index);
 }
 
-static int host_table_grow(int size) {
+static int host_table_grow(int delta) {
   return __builtin_wasm_table_grow(host_objects,
-                                   __builtin_wasm_ref_null_extern(), size);
+                                   __builtin_wasm_ref_null_extern(), delta);
 }
 
 static int host_table_size() { return __builtin_wasm_table_size(host_objects); }
@@ -29,6 +29,11 @@ static int host_table_size() { return __builtin_wasm_table_size(host_objects); }
 typedef struct {
   // Index of the next available slot in the slab, or set to capacity if full.
   size_t first_free_slot;
+#if DEBUG
+  // Always equal to host_table_size(), only used to assert that invariant in
+  // debug builds.
+  size_t capacity;
+#endif
   // A capacity-length array storing indexing information.
   //
   // If host_object[i] is unoccupied, freelist[i] contains the next value for
@@ -39,26 +44,45 @@ typedef struct {
   size_t* freelist;
 } slab;
 
-static slab host_objects_slab = {.first_free_slot = 0, .freelist = nullptr};
+static slab host_objects_slab = {.first_free_slot = 0,
+#if DEBUG
+                                 .capacity = 0,
+#endif
+                                 .freelist = nullptr};
 
 void* host_object_insert(__externref_t ref) {
+#if DEBUG
+  if (__builtin_wasm_ref_is_null_extern(ref)) {
+    __builtin_trap();
+  }
+#endif
+
   auto slot = host_objects_slab.first_free_slot;
   auto old_capacity = host_table_size();
+#if DEBUG
+  if (old_capacity != host_objects_slab.capacity) {
+    __builtin_trap();
+  }
+#endif
+
   if (slot == old_capacity) {  // Table full?
     auto target_size = old_capacity * 2;
-    if (target_size < 16) {
+    if (target_size == 0) {
       // It's 0 initially, grow it to a reasonable initial size we're unlikely
       // to exceed.
       target_size = 16;
     }
 
-    auto grow_result = host_table_grow(target_size);
+    auto grow_result = host_table_grow(target_size - old_capacity);
     if (grow_result != old_capacity) {
       __builtin_trap();
     }
 
     size_t* freelist =
         realloc(host_objects_slab.freelist, target_size * sizeof(size_t));
+    if (!freelist) {
+      __builtin_trap();
+    }
     for (size_t i = old_capacity; i < target_size; i++) {
       freelist[i] = i + 1;
     }
@@ -66,10 +90,20 @@ void* host_object_insert(__externref_t ref) {
     // old_capacity + 1 and so on.
     host_objects_slab.freelist = freelist;
     host_objects_slab.first_free_slot = slot + 1;
+#if DEBUG
+    host_objects_slab.capacity = target_size;
+#endif
   } else {
     // Pop freelist.
     host_objects_slab.first_free_slot = host_objects_slab.freelist[slot];
   }
+
+#if DEBUG
+  // Assert that target slot is also vacant in table.
+  if (!__builtin_wasm_ref_is_null_extern(host_table_get(slot))) {
+    __builtin_trap();
+  }
+#endif
 
   // Persist reference into table.
   host_table_set(slot, ref);
@@ -83,6 +117,12 @@ __externref_t host_object_get(void* ptr) {
 
 void host_object_free(void* ptr) {
   size_t index = (size_t)ptr;
+
+#if DEBUG
+  if (__builtin_wasm_ref_is_null_extern(host_table_get(index))) {
+    __builtin_trap();
+  }
+#endif
 
   // Remove external reference from table.
   host_table_set(index, __builtin_wasm_ref_null_extern());

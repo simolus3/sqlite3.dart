@@ -2,6 +2,8 @@
 
 - Build hook: Allow using `name` key with `source: system` to load SQLite
   libraries under a different name (e.g. `name: sqlcipher` to load SQLCipher).
+- Wasm: Fix an internal memory corruption issue when more than 16 Dart handles
+  are referenced from C. 
 
 ## 3.0.1
 

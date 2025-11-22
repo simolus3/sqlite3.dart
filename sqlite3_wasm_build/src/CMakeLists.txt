@@ -37,8 +37,7 @@ add_custom_target(required_symbols DEPENDS required_symbols.txt)
 
 macro(base_sqlite3_target name debug crypto)
   set(clang_output ${name}.clang.wasm)
-  set(init_output ${name}.init.wasm)
-  set(output ${init_output})
+  set(output ${clang_output})
 
   set(sources
     ${CMAKE_CURRENT_SOURCE_DIR}/os_web.c
@@ -91,16 +90,16 @@ macro(base_sqlite3_target name debug crypto)
     VERBATIM
   )
 
-  add_custom_command(
-    OUTPUT ${init_output}
-    COMMAND wasm-ctor-eval -c _initialize ${clang_output} -o ${init_output}
-    VERBATIM
-    DEPENDS ${clang_output}
-  )
-
   if(NOT ${debug})
+    set(init_output ${name}.init.wasm)
     set(output ${name}.wasm)
 
+    add_custom_command(
+      OUTPUT ${init_output}
+      COMMAND wasm-ctor-eval -c _initialize ${clang_output} -o ${init_output}
+      VERBATIM
+      DEPENDS ${clang_output}
+    )
     add_custom_command(
         OUTPUT ${output}
         COMMAND wasm-opt --strip --strip-producers -c -O4 ${init_output} -o ${output}
@@ -118,7 +117,7 @@ base_sqlite3_target(sqlite3mc false true)
 
 add_custom_target(output)
 add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_opt.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3.wasm)
-add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_debug.init.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3.debug.wasm)
+add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3_debug.clang.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3.debug.wasm)
 add_custom_command(TARGET output COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/sqlite3mc.wasm ${PROJECT_SOURCE_DIR}/../out/sqlite3mc.wasm)
 add_dependencies(output sqlite3_debug sqlite3_opt sqlite3mc)
 add_dependencies(output sqlite3_debug)
