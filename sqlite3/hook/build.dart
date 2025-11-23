@@ -88,6 +88,14 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               '-fdata-sections',
               '-Wl,--gc-sections',
             ],
+            if (input.config.code.targetOS case OS.iOS || OS.macOS) ...[
+              '-headerpad_max_install_names',
+              // clang would use the temporary directory passed by
+              // native_toolchain_c otherwise. So this makes improves
+              // reproducibility.
+              '-install_name',
+              '@rpath/libsqlite3.dylib',
+            ],
           ],
           libraries: [
             if (input.config.code.targetOS == OS.android)

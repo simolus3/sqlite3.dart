@@ -18,7 +18,7 @@ jobs:
         with:
           path: sqlite-src/
           # TODO: Migrate back to ${{ hashFiles('tool/sqlite_build_id') }} after https://github.com/orgs/community/discussions/180160 gets fixed.
-          key: sqlite-src-5fecfe0668c6580f390a5bf1a2485e989cab0094b3b9725a8bd2ee3f0d378701
+          key: sqlite-src-v10
 
       - uses: dart-lang/setup-dart@v1
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -51,7 +51,7 @@ jobs:
         with:
           path: sqlite-compiled
           # TODO: Migrate back to ${{ hashFiles('tool/sqlite_build_id') }} after https://github.com/orgs/community/discussions/180160 gets fixed.
-          key: sqlite-prebuilt-${{ runner.os }}-5fecfe0668c6580f390a5bf1a2485e989cab0094b3b9725a8bd2ee3f0d378701
+          key: sqlite-prebuilt-${{ runner.os }}-v10
 
       - name: Download sqlite3 sources
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -93,7 +93,7 @@ jobs:
         with:
           path: sqlite3_wasm_build/out/
           # TODO: Migrate back to ${{ hashFiles('tool/sqlite_build_id') }} after https://github.com/orgs/community/discussions/180160 gets fixed.
-          key: sqlite-prebuilt-wasm-5fecfe0668c6580f390a5bf1a2485e989cab0094b3b9725a8bd2ee3f0d378701
+          key: sqlite-prebuilt-wasm-v10
 
       # clang 18 that ships on ubuntu crashes when compiling the wasm sources
       - name: Install LLVM and Clang
