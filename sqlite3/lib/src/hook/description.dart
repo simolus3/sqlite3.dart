@@ -171,7 +171,12 @@ final class PrecompiledFromGithubAssets extends PrecompiledBinary {
     BuildOutputBuilder output,
     String filename,
   ) async* {
-    final client = HttpClient();
+    final client = HttpClient()
+      // From Dart 3.11, proxy-related environment variables are passed to
+      // hooks. We respect them to ensure we can download these binaries in
+      // environments where that's required
+      // https://github.com/simolus3/sqlite3.dart/issues/335
+      ..findProxy = HttpClient.findProxyFromEnvironment;
     final request = await client.getUrl(
       Uri.https(
         'github.com',

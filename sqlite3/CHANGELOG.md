@@ -1,3 +1,8 @@
+## 3.1.1-wip
+
+- Hooks: Respect `HTTPS_PROXY` and related environment variables when
+  downloading SQLite (requires Dart 3.11 or later).
+
 ## 3.1.0
 
 - Build hook: Allow using `name` key with `source: system` to load SQLite
