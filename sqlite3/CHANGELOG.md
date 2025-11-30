@@ -2,6 +2,7 @@
 
 - Hooks: Respect `HTTPS_PROXY` and related environment variables when
   downloading SQLite (requires Dart 3.11 or later).
+- Update SQLite to version 3.51.1.
 
 ## 3.1.0
 

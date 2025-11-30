@@ -12,13 +12,13 @@ include(FetchContent)
 FetchContent_Declare(
     sqlite3
     # NOTE: When changing this, also update `test/wasm/sqlite3_test.dart`
-    URL https://sqlite.org/2025/sqlite-autoconf-3510000.tar.gz
+    URL https://sqlite.org/2025/sqlite-autoconf-3510100.tar.gz
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
 )
 
 FetchContent_Declare(
     sqlite3mc
-    URL https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.2.5/sqlite3mc-2.2.5-sqlite-3.51.0-amalgamation.zip
+    URL https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.2.6/sqlite3mc-2.2.6-sqlite-3.51.1-amalgamation.zip
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
 )
 
