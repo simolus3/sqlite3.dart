@@ -1,9 +1,11 @@
 import 'dart:io';
 
-const sqlitePath = 'sqlite-amalgamation-3510000';
+// Note: When updating these sources, also change
+// sqlite3_wasm_build/src/CMakeLists.txt
+const sqlitePath = 'sqlite-amalgamation-3510100';
 const sqliteSource = 'https://sqlite.org/2025/$sqlitePath.zip';
 const sqliteMultipleCiphersSource =
-    'https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.2.5/sqlite3mc-2.2.5-sqlite-3.51.0-amalgamation.zip';
+    'https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.2.6/sqlite3mc-2.2.6-sqlite-3.51.1-amalgamation.zip';
 
 const tmpDir = 'tmp';
 
