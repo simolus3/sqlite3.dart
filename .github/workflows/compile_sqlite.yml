@@ -49,7 +49,7 @@ jobs:
         id: cache_build
         with:
           path: sqlite-compiled
-          key: sqlite-prebuilt-${{ runner.os }}-${{ hashFiles('tool/download_sqlite.dart', 'sqlite3/lib/src/hook/**') }}
+          key: sqlite-prebuilt-${{ runner.os }}-${{ hashFiles('tool/**', 'sqlite3/lib/src/hook/description.dart', 'sqlite3/lib/src/hook/used_symbols.dart') }}
 
       - name: Download sqlite3 sources
         if: steps.cache_build.outputs.cache-hit != 'true'
