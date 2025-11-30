@@ -1,3 +1,7 @@
+## 0.5.41
+
+- Upgrade sqlite to version `3.51.1`.
+
 ## 0.5.40
 
 - iOS and macOS: Compile to a shared library when SwiftPM is used to avoid
