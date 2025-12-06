@@ -150,6 +150,29 @@ final class RemoteDatabase implements Database {
   }
 
   @override
+  Future<void> executeMultiple(
+    String sql, {
+    bool checkInTransaction = false,
+    LockToken? token,
+    Future<void>? abortTrigger,
+  }) async {
+    await connection.sendRequest(
+      RunQuery(
+        requestId: 0,
+        databaseId: databaseId,
+        lockId: token == null ? null : lockTokenToId(token),
+        sql: sql,
+        parameters: const [],
+        returnRows: false,
+        checkInTransaction: checkInTransaction,
+        multipleStatements: true,
+      ),
+      MessageType.simpleSuccessResponse,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  @override
   Future<T> requestLock<T>(Future<T> Function(LockToken token) body,
       {Future<void>? abortTrigger}) async {
     final response = await connection.sendRequest(

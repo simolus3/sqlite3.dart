@@ -137,6 +137,30 @@ void main() {
     );
   });
 
+  test('serializes multipleStatements flag', () async {
+    server.handleRequestFunction = expectAsync1((request) async {
+      final run = request as RunQuery;
+      expect(run.sql, 'CREATE TABLE a (x); CREATE TABLE b (y);');
+      expect(run.multipleStatements, true);
+      expect(run.returnRows, false);
+      return SimpleSuccessResponse(requestId: request.requestId, response: null);
+    });
+
+    await client.sendRequest(
+      RunQuery(
+        requestId: 0,
+        databaseId: 0,
+        sql: 'CREATE TABLE a (x); CREATE TABLE b (y);',
+        checkInTransaction: false,
+        lockId: null,
+        parameters: [],
+        returnRows: false,
+        multipleStatements: true,
+      ),
+      MessageType.simpleSuccessResponse,
+    );
+  });
+
   test('can serialize SqliteExceptions', () async {
     server.handleRequestFunction = expectAsync1((req) {
       throw SqliteException(

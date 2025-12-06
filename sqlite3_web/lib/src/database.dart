@@ -112,6 +112,24 @@ abstract class Database {
     Future<void>? abortTrigger,
   });
 
+  /// Prepares each statement [sql] and executes them each, sequentially. If
+  /// any sequence fails, the execution is aborted without running the
+  /// remaining statements.
+  ///
+  /// If [checkInTransaction] is enabled, the host will verify that the
+  /// autocommit mode is disabled before running the statements (and report an
+  /// exception otherwise).
+  ///
+  /// The [abortTrigger] can be used to abort the request. When that future
+  /// completes before the lock has been granted, the future may complete
+  /// with a [AbortException] without running the statements.
+  Future<void> executeMultiple(
+    String sql, {
+    bool checkInTransaction = false,
+    LockToken? token,
+    Future<void>? abortTrigger,
+  });
+
   /// Prepares [sql], executes it with the given [parameters] and returns the
   /// [ResultSet].
   ///

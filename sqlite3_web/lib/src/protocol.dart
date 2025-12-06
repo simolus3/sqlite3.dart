@@ -123,6 +123,7 @@ class _UniqueFieldNames {
   static const autocommit = 'x';
   static const lastInsertRowid = 'y';
   static const lockId = 'z';
+  static const multipleStatements = 'm';
 }
 
 sealed class Message {
@@ -563,6 +564,7 @@ final class RunQuery extends Request {
   final int? lockId;
   final bool returnRows;
   final bool checkInTransaction;
+  final bool multipleStatements;
 
   RunQuery({
     required super.requestId,
@@ -572,6 +574,7 @@ final class RunQuery extends Request {
     required this.lockId,
     required this.returnRows,
     required this.checkInTransaction,
+    this.multipleStatements = false,
   });
 
   factory RunQuery.deserialize(JSObject object) {
@@ -587,6 +590,9 @@ final class RunQuery extends Request {
       returnRows: (object[_UniqueFieldNames.returnRows] as JSBoolean).toDart,
       checkInTransaction:
           (object[_UniqueFieldNames.checkInTransaction] as JSBoolean).toDart,
+      multipleStatements:
+          (object[_UniqueFieldNames.multipleStatements] as JSBoolean?)?.toDart ??
+              false,
     );
   }
 
@@ -611,6 +617,7 @@ final class RunQuery extends Request {
     }
 
     object[_UniqueFieldNames.checkInTransaction] = checkInTransaction.toJS;
+    object[_UniqueFieldNames.multipleStatements] = multipleStatements.toJS;
   }
 
   @override

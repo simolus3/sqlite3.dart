@@ -331,6 +331,11 @@ final class _ClientConnection extends ProtocolChannel
     final database = _requireDatabase(request);
     final openedDatabase = await database.database.opened;
 
+    if (request.returnRows && request.multipleStatements) {
+      throw ArgumentError(
+          'Cannot return rows when executing multiple statements');
+    }
+
     return database.useLock(request.lockId, abortSignal, () {
       final db = openedDatabase.database;
 
@@ -341,6 +346,17 @@ final class _ClientConnection extends ProtocolChannel
       ResultSet? resultSet;
       if (request.returnRows) {
         resultSet = db.select(request.sql, request.parameters);
+      } else if (request.multipleStatements) {
+        final statements = db.prepareMultiple(request.sql);
+        try {
+          for (var statement in statements) {
+            statement.execute();
+          }
+        } finally {
+          for (var statement in statements) {
+            statement.dispose();
+          }
+        }
       } else {
         db.execute(request.sql, request.parameters);
       }
