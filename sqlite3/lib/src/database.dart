@@ -112,13 +112,19 @@ abstract class CommonDatabase {
   ///   - [Commit Hooks](https://www.sqlite.org/c3ref/commit_hook.html)
   Stream<void> get rollbacks;
 
-  /// Executes the [sql] statement with the provided [parameters], ignoring any
-  /// rows returned by the statement.
+  /// Executes the [sql] statement(s) with the provided [parameters], ignoring
+  /// any rows returned by the statement(s).
   ///
   /// For the types supported in [parameters], see [StatementParameters].
   /// To view rows returned by a statement, run it with [select]. Statements
   /// that aren't `SELECT`s in SQL but still return rows (such as updates with
   /// a `RETURNING` clause) can still be safely executed with [select].
+  ///
+  /// When no [parameters] are passed to [execute], [sql] is allowed to contain
+  /// multiple SQL statements (separated by a semicolon). Those statements will
+  /// be executed in order, but [execute] will not start a transaction for them
+  /// automatically. If any statement fails, that exception will be thrown and
+  /// subsequent statements will not be executed.
   void execute(String sql, [List<Object?> parameters = const []]);
 
   /// Prepares the [sql] statement and runs it with the provided [parameters],
