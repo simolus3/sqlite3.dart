@@ -24,5 +24,5 @@ dependency_overrides:
   native_toolchain_c:
     git:
       url: https://github.com/simolus3/dart-native.git
-      ref: 9ed0184b867252ceaf8f071fd83dd0e75ff8e245
+      ref: android-home
       path: pkgs/native_toolchain_c
