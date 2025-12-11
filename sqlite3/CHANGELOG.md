@@ -1,3 +1,8 @@
+## 3.1.2
+
+- `Database.select()` will now throw an exception if the SQL string contains
+  invalid text after the first statement.
+
 ## 3.1.1
 
 - Hooks: Respect `HTTPS_PROXY` and related environment variables when

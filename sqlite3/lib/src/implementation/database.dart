@@ -462,7 +462,7 @@ base class DatabaseImplementation implements CommonDatabase {
 
   @override
   ResultSet select(String sql, [List<Object?> parameters = const []]) {
-    final stmt = prepare(sql);
+    final stmt = prepare(sql, checkNoTail: true);
     try {
       return stmt.select(parameters);
     } finally {

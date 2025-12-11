@@ -160,6 +160,18 @@ void testDatabase(
       );
     });
 
+    test('when selecting multiple statements', () {
+      expect(() => database.select('SELECT 1; SELECT 2;'), throwsArgumentError);
+      expect(
+        () => database.select('SELECT 1; invalid text'),
+        throwsArgumentError,
+      );
+
+      database.select('SELECT 1         ');
+      database.select('SELECT 1;        ');
+      database.select('SELECT 1; /* SELECT 2; SELECT 3; */');
+    });
+
     group('with statement and args', () {
       setUp(() {
         database.createFunction(
