@@ -23,6 +23,6 @@ dependency_overrides:
   # This is only used to fix tool/build_sqlite.dart.
   native_toolchain_c:
     git:
-      url: https://github.com/simolus3/dart-native.git
-      ref: android-home
+      url: https://github.com/dart-lang/native.git
+      ref: 0d48d27d14ff5b0416dd5587a1551cf401f63e24
       path: pkgs/native_toolchain_c
