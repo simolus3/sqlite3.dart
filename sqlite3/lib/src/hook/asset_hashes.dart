@@ -6,7 +6,7 @@
 
 // dart format off
 // ignore: unnecessary_nullable_for_final_variable_declarations
-const String? releaseTag = 'sqlite3-3.1.1';
+const String? releaseTag = 'sqlite3-3.1.2';
 
 const Map<String, String> assetNameToSha256Hash = {
   'libsqlite3.arm.android.so': 'bc5dd4eb18d39db37c2749b1d3d2972a671a2fb4d89fb75724be1ad7943d5b50',
@@ -36,13 +36,13 @@ const Map<String, String> assetNameToSha256Hash = {
   'libsqlite3mc.x64.ios_sim.dylib': 'e5a4135b7b36d9186007e172fe16ed79289c06b669dbda89011f67e31ed2a71c',
   'libsqlite3mc.x64.linux.so': '32b4a05320a08857aca68ab71da22952d4dc87aafdaa1cd94e1ce20fc71ccd0a',
   'libsqlite3mc.x64.macos.dylib': 'd0d7cb8e80168a168f0af73a5d5fa4be6193804169baae46a4b0a099f98e8735',
-  'sqlite3.arm64.windows.dll': '8904e614faa14b6c7f005f6d2c032b7fd6911d1e0064d51018fd7a65598111b0',
+  'sqlite3.arm64.windows.dll': '871801cd558b0b0154498a0da0ee7d796804d20395613fe1e4c5e990112cf500',
   'sqlite3.debug.wasm': '2df6abf2fd8df5d6cc79da4c7511f21445c360ff11180811f68690b55e8858de',
-  'sqlite3.ia32.windows.dll': '58492c622e6a7eee7d5a808979d65379ec363d91a69f242ae840b87088fb1a72',
+  'sqlite3.ia32.windows.dll': 'adb04951352bfe7d725ff11aca161d06c851a81f2014c7962a7a0ab48e7bdd98',
   'sqlite3.wasm': '8766db025f5d5b6f24c6a51cc9dec843ab7a7720e3dfa5b47d70d33db96d506b',
-  'sqlite3.x64.windows.dll': '40b6855384cb46d56e7b33dbc3a54d99f5112c9cd13d33438099f0510fe92266',
-  'sqlite3mc.arm64.windows.dll': '42ff5e20d1dce5a911f06ce9ce2243d97086ff8a9130375049b7f8c3ddb8ba70',
-  'sqlite3mc.ia32.windows.dll': 'f894171c5d6d9e705908bd19c20b1abc94d6a9b0e13fe90a44d1e5c8ffd317c3',
+  'sqlite3.x64.windows.dll': '770ac5e34eb4d2f9ecb42356901293b23a3a4b60da84e0d696c768faf88d2db6',
+  'sqlite3mc.arm64.windows.dll': 'd5b0c877c7102b1062ab717824e800912f740e295d138720b4fe14998bdb151c',
+  'sqlite3mc.ia32.windows.dll': '90867106fbfadf0095221ae0a76fb4cdeaa7d9e1a0996f6fdd6d789e3a4258f3',
   'sqlite3mc.wasm': 'e03d66db171f3a565c02faf118bc8fb95d6f95bf8507cc12f2e68e4854835164',
-  'sqlite3mc.x64.windows.dll': '90b38e220b114e94dc5097d9f3522879e8464f114fbdb665e1e00900d5b2ad98',
+  'sqlite3mc.x64.windows.dll': '0a710177b69601172b5308f259c363007b83a0f15db9aab645a7ed7b374e9473',
 };
