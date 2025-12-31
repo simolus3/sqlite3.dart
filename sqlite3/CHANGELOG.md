@@ -2,6 +2,7 @@
 
 - `Database.select()` will now throw an exception if the SQL string contains
   invalid text after the first statement.
+- Build hook: Support OS-specific names when using `source: system`.
 
 ## 3.1.1
 

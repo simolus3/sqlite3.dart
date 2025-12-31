@@ -86,6 +86,26 @@ These options behave as follows:
   SQLite (instead of explicitly requesting it with `dlopen`).
 3. "executable" looks for SQLite symbols in the current [executable](https://api.dart.dev/dart-ffi/DynamicLibrary/DynamicLibrary.executable.html), which is useful when linking SQLite statically.
 
+### With custom library names
+
+When using `source: system`, you can also add a `name` key to customize the name of the name of the
+library.
+For instance, `name: sqlcipher` would load `libsqlcipher.dylib` on macOS, `libsqlcipher.so` on Linux
+and `sqlcipher.dll` on Windows.
+To further customize the name for specific operating systems, you can use `name_$os` keys, where `$os`
+is the [target operating system](https://pub.dev/documentation/code_assets/latest/code_assets/OS-class.html)
+passed to hooks:
+
+```yaml
+hooks:
+  user_defines:
+    sqlite3:
+      source: system
+      # Use winsqlite3.dll on Windows, libsqlite3.{so,dylib} on Linux and macOS
+      name_windows: winsqlite3
+      name: sqlite3
+```
+
 ## Custom SQLite builds
 
 If you want to customize the SQLite build to use with `package:sqlite3`, you can

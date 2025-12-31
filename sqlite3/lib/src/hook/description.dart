@@ -26,7 +26,12 @@ sealed class SqliteBinary {
       case 'test-sqlite3mc':
         return PrecompiledForTesting(LibraryType.sqlite3mc);
       case 'system':
-        return LookupSystem((userDefines['name'] as String?) ?? 'sqlite3');
+        final osSpecificNameKey = 'name_${input.config.code.targetOS.name}';
+
+        return LookupSystem(
+          ((userDefines[osSpecificNameKey] ?? userDefines['name'] ?? 'sqlite3')
+              as String),
+        );
       case 'process':
         return SimpleBinary.fromProcess;
       case 'executable':

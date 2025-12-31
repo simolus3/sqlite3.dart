@@ -18,6 +18,17 @@ hooks:
     sqlite3:
       source: system
 ''');
+      case 'system-os-specific':
+        out.write('''
+hooks:
+  user_defines:
+    sqlite3:
+      source: system
+      name_linux: sqlite3
+      name_macos: sqlite3
+      name_windows: winsqlite3
+      name: bogus_value_to_fail_if_selected
+''');
       case 'compiled':
         final outPath = p.relative('sqlite-compiled', from: p.dirname(path));
 
@@ -39,7 +50,8 @@ hooks:
       directory: $outPath/
 ''');
       default:
-        throw 'Unsupported mode, can use system, compiled, compiled-ciphers';
+        throw 'Unsupported mode, can use system, system-os-specific, '
+            'compiled, compiled-ciphers';
     }
 
     await out.flush();
