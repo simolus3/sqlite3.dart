@@ -1,3 +1,7 @@
+## 3.1.3
+
+- Update to SQLite version 3.51.2.
+
 ## 3.1.2
 
 - `Database.select()` will now throw an exception if the SQL string contains
