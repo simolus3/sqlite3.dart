@@ -48,7 +48,7 @@ pragma legacy = 4;
 pragma key = '...your key...';
 ```
 
-For details, see [hook options](./sqlite3/doc/hook.md).
+For details, see [hook options](./sqlite3/doc/hook.md) and [sqlite3mc documentation](https://utelle.github.io/SQLite3MultipleCiphers/docs/ciphers/cipher_sqlcipher/).
 
 ## Custom SQLite builds
 
