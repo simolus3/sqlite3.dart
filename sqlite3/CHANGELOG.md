@@ -1,3 +1,7 @@
+## 3.1.4
+
+- Build hook: Fix paths not resolving on Windows when building from source.
+
 ## 3.1.3
 
 - Update to SQLite version 3.51.2.
