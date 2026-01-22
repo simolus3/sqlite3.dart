@@ -38,9 +38,7 @@ sealed class SqliteBinary {
         return SimpleBinary.fromExecutable;
       case 'source':
         return CompileSqlite(
-          sourceFile: Platform.isWindows
-              ? userDefines.path('path')!.toString()
-              : userDefines.path('path')!.toFilePath(),
+          sourceFile: userDefines.path('path')!.toFilePath(),
           defines: CompilerDefines.parse(
             userDefines,
             input.config.code.targetOS,
