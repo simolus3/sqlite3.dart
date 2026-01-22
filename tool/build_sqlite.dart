@@ -105,7 +105,7 @@ void main(List<String> args) async {
             workspacePubspec: PackageUserDefinesSource(
           defines: {
             'source': 'source',
-            'path': sourcePath,
+            'path': p.relative(sourcePath, from: fs.currentDirectory.path),
           },
           basePath: fs.currentDirectory.uri,
         )),
