@@ -7,15 +7,12 @@ import 'dart:js_interop';
 import 'package:sqlite3/common.dart';
 import 'package:sqlite3/src/wasm/sqlite3.dart';
 import 'package:sqlite3_web/sqlite3_web.dart';
-import 'package:sqlite3_web/src/channel.dart';
 import 'package:sqlite3_web/src/client.dart';
-import 'package:sqlite3_web/src/protocol.dart';
-import 'package:sqlite3_web/src/worker.dart';
 import 'package:test/test.dart';
 
 void main() {
   late Uri sqlite3WasmUri;
-  late Local localEnv;
+  late FakeWorkerEnvironment fakeWorkers;
 
   setUpAll(() async {
     final channel = spawnHybridUri('/test/asset_server.dart');
@@ -24,35 +21,26 @@ void main() {
   });
 
   setUp(() {
-    localEnv = Local();
-    WorkerRunner(_TestController(), environment: localEnv).handleRequests();
+    fakeWorkers = FakeWorkerEnvironment();
+    WebSqlite.workerEntrypoint(
+      controller: _TestController(),
+      environment: fakeWorkers,
+    );
   });
 
   tearDown(() {
-    localEnv.close();
+    fakeWorkers.close();
   });
-
-  Future<WorkerConnection> connectTo(Local local) async {
-    final (endpoint, channel) = await createChannel();
-    local.addTopLevelMessage(ConnectRequest(requestId: 0, endpoint: endpoint));
-    final conn = WorkerConnection(channel, (_) async => null);
-
-    addTearDown(() => conn.close());
-    return conn;
-  }
 
   Future<RemoteDatabase> requestDatabase(
     String name,
     DatabaseImplementation implementation,
   ) async {
-    final conn = await connectTo(localEnv);
-    return await conn.requestDatabase(
-      wasmUri: sqlite3WasmUri,
-      databaseName: name,
-      implementation: implementation,
-      onlyOpenVfs: false,
-      additionalOptions: null,
+    final client = WebSqlite.open(
+      workers: _FakeWorkerConnector(fakeWorkers),
+      wasmModule: sqlite3WasmUri,
     );
+    return (await client.connect(name, implementation)) as RemoteDatabase;
   }
 
   test('can open database', () async {
@@ -281,6 +269,22 @@ void main() {
       await lockA;
     });
   });
+}
+
+final class _FakeWorkerConnector implements WorkerConnector {
+  final FakeWorkerEnvironment _env;
+
+  _FakeWorkerConnector(this._env);
+
+  @override
+  WorkerHandle? spawnDedicatedWorker() {
+    return _env;
+  }
+
+  @override
+  WorkerHandle? spawnSharedWorker() {
+    return _env;
+  }
 }
 
 final class _TestController extends DatabaseController {

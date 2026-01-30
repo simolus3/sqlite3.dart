@@ -154,10 +154,6 @@ sealed class Message {
     sender(serialized, transfer.toJS);
   }
 
-  void sendToWorker(Worker worker) {
-    sendTo((msg, transfer) => worker.postMessage(msg, transfer));
-  }
-
   void sendToPort(MessagePort port) {
     sendTo((msg, transfer) => port.postMessage(msg, transfer));
   }

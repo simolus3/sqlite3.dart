@@ -12,10 +12,6 @@ import 'package:web/web.dart'
         FileSystemDirectoryHandle,
         FileSystemFileHandle,
         FileSystemSyncAccessHandle,
-        MessageEvent,
-        MessagePort,
-        SharedWorkerGlobalScope,
-        Worker,
         AbortController;
 // ignore: implementation_imports
 import 'package:sqlite3/src/wasm/js_interop/new_file_system_access.dart';
@@ -26,108 +22,19 @@ import 'locks.dart';
 import 'protocol.dart';
 import 'shared.dart';
 import 'types.dart';
+import 'worker_connector.dart';
 
-sealed class WorkerEnvironment {
-  WorkerEnvironment._();
-
-  factory WorkerEnvironment() {
-    final context = globalContext;
-    if (context.instanceOfString('DedicatedWorkerGlobalScope')) {
-      return Dedicated();
-    } else {
-      return Shared();
-    }
-  }
-
+extension on WorkerEnvironment {
   /// Messages outside of a connection being posted to the worker or a connect
   /// port of a shared worker.
   ///
   /// We're not using them for actual channels, but instead have clients
   /// setup message ports which are then forwarded to workers using these
   /// top-level requests.
-  Stream<Message> get topLevelRequests;
-}
-
-final class Dedicated extends WorkerEnvironment {
-  final DedicatedWorkerGlobalScope scope;
-
-  Dedicated() : scope = globalContext as DedicatedWorkerGlobalScope, super._();
-
-  @override
   Stream<Message> get topLevelRequests {
-    return EventStreamProviders.messageEvent.forTarget(scope).map((event) {
+    return incomingMessages.map((event) {
       return Message.deserialize(event.data as JSObject);
     });
-  }
-}
-
-final class Shared extends WorkerEnvironment {
-  final SharedWorkerGlobalScope scope;
-
-  Shared() : scope = globalContext as SharedWorkerGlobalScope, super._();
-
-  @override
-  Stream<Message> get topLevelRequests {
-    // Listen for connect events, then watch each connected port to send a a
-    // connect message.
-    // Tabs will only use one message port to this worker, but may use multiple
-    // connections for different databases. So we're not using the connect port
-    // for the actual connection and instead wait for clients to send message
-    // ports through the connect port.
-    return Stream.multi((listener) {
-      final connectPorts = <MessagePort>[];
-      final subscriptions = <StreamSubscription>[];
-
-      void handlePort(MessagePort port) {
-        connectPorts.add(port);
-        port.start();
-
-        subscriptions.add(
-          EventStreamProviders.messageEvent.forTarget(port).listen((event) {
-            listener.addSync(Message.deserialize(event.data as JSObject));
-          }),
-        );
-      }
-
-      subscriptions.add(
-        EventStreamProviders.connectEvent.forTarget(scope).listen((event) {
-          for (final port in (event as MessageEvent).ports.toDart) {
-            handlePort(port);
-          }
-        }),
-      );
-
-      listener.onCancel = () {
-        for (final subscription in subscriptions) {
-          subscription.cancel();
-        }
-      };
-    });
-  }
-}
-
-/// A fake worker environment running in the same context as the main
-/// application.
-///
-/// This allows using a communication channel based on message ports regardless
-/// of where the database is hosted. While that adds overhead, a local
-/// environment is only used as a fallback if workers are unavailable.
-final class Local extends WorkerEnvironment {
-  final StreamController<Message> _messages = StreamController();
-
-  Local() : super._();
-
-  void addTopLevelMessage(Message message) {
-    _messages.add(message);
-  }
-
-  void close() {
-    _messages.close();
-  }
-
-  @override
-  Stream<Message> get topLevelRequests {
-    return _messages.stream;
   }
 }
 
@@ -280,11 +187,13 @@ final class _ClientConnection extends ProtocolChannel
     ConnectRequest request,
     AbortSignal abortSignal,
   ) async {
-    final inner = _runner.useOrSpawnInnerWorker();
+    // This is only used to let clients connect to a dedicated worker hosted in
+    // this shared worker.
+    final inner = _runner._innerWorker!;
     ConnectRequest(
       endpoint: request.endpoint,
       requestId: 0,
-    ).sendToWorker(inner);
+    ).sendTo(inner.postMessage);
 
     return SimpleSuccessResponse(response: null, requestId: request.requestId);
   }
@@ -629,12 +538,14 @@ final class DatabaseState {
       switch (mode) {
         case FileSystemImplementation.opfsAtomics:
           final options = WasmVfs.createOptions(root: pathForOpfs(name));
-          final worker = Worker(Uri.base.toString().toJS);
+          final worker = runner._environment.connector.spawnDedicatedWorker()!;
 
-          StartFileSystemServer(options: options).sendToWorker(worker);
+          StartFileSystemServer(options: options).sendTo(worker.postMessage);
 
           // Wait for the server worker to report that it's ready
-          await EventStreamProviders.messageEvent.forTarget(worker).first;
+          await EventStreamProviders.messageEvent
+              .forTarget(worker.targetForErrorEvents)
+              .first;
 
           final wasmVfs = _resolvedVfs = WasmVfs(
             workerOptions: options,
@@ -731,10 +642,10 @@ final class WorkerRunner {
 
   /// For shared workers, a dedicated inner worker allowing tabs to connect to
   /// a shared context that can use synchronous JS APIs.
-  Worker? _innerWorker;
+  late final WorkerHandle? _innerWorker = _environment.connector
+      .spawnDedicatedWorker();
 
-  WorkerRunner(this._controller, {WorkerEnvironment? environment})
-    : _environment = environment ?? WorkerEnvironment();
+  WorkerRunner(this._controller, this._environment);
 
   void handleRequests() async {
     await for (final message in _environment.topLevelRequests) {
@@ -744,13 +655,13 @@ final class WorkerRunner {
       } else if (message is StartFileSystemServer) {
         final worker = await VfsWorker.create(message.options);
         // Inform the requester that the VFS is ready
-        (_environment as Dedicated).scope.postMessage(true.toJS);
+        (globalContext as DedicatedWorkerGlobalScope).postMessage(true.toJS);
         await worker.start();
       } else if (message is CompatibilityCheck) {
         // A compatibility check message is sent to dedicated workers inside of
         // shared workers, we respond through the top-level port.
         final result = await checkCompatibility(message);
-        (_environment as Dedicated).scope.postMessage(result.toJS);
+        (globalContext as DedicatedWorkerGlobalScope).postMessage(result.toJS);
       }
     }
   }
@@ -793,18 +704,17 @@ final class WorkerRunner {
       final existingDatabases = <ExistingDatabase>{};
 
       if (check.type == MessageType.sharedCompatibilityCheck) {
-        if (globalContext.has('Worker')) {
+        if (_innerWorker case final innerWorker?) {
           sharedCanSpawnDedicated = true;
 
-          final worker = useOrSpawnInnerWorker();
           CompatibilityCheck(
             databaseName: databaseName,
             type: MessageType.dedicatedInSharedCompatibilityCheck,
             requestId: 0,
-          ).sendToWorker(worker);
+          ).sendTo(innerWorker.postMessage);
 
           final response = await EventStreamProviders.messageEvent
-              .forTarget(worker)
+              .forTarget(innerWorker.targetForErrorEvents)
               .first;
           final result = CompatibilityResult.fromJS(response.data as JSObject);
 
@@ -882,10 +792,6 @@ final class WorkerRunner {
       mode: mode,
       additionalOptions: additionalOptions,
     );
-  }
-
-  Worker useOrSpawnInnerWorker() {
-    return _innerWorker ??= Worker(Uri.base.toString().toJS);
   }
 }
 

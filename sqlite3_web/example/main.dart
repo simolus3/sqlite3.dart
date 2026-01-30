@@ -5,7 +5,7 @@ import 'package:sqlite3_web/sqlite3_web.dart';
 
 void main() async {
   final sqlite = WebSqlite.open(
-    worker: Uri.parse('worker.dart.js'),
+    workers: WorkerConnector.defaultWorkers(Uri.parse('worker.dart.js')),
     wasmModule: Uri.parse('sqlite3.wasm'),
   );
 

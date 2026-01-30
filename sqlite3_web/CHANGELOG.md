@@ -1,3 +1,8 @@
+## 0.6.0
+
+- Replace `worker` URI parameter with `WorkerConnector` interface. Use
+  `WorkerConnector.defaultWorkers` to keep passing an URI.
+
 ## 0.5.0
 
 - Use version 3 of `package:sqlite3`.

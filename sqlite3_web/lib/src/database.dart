@@ -7,6 +7,7 @@ import 'package:web/web.dart' hide FileSystem;
 import 'types.dart';
 import 'client.dart';
 import 'worker.dart';
+import 'worker_connector.dart';
 
 /// A controller responsible for opening databases in the worker.
 abstract base class DatabaseController {
@@ -292,13 +293,19 @@ abstract class WebSqlite {
     JSAny? additionalOptions,
   });
 
-  /// Entrypoints for workers hosting datbases.
-  static void workerEntrypoint({required DatabaseController controller}) {
-    WorkerRunner(controller).handleRequests();
+  /// Entrypoints for workers hosting databases.
+  static void workerEntrypoint({
+    required DatabaseController controller,
+    WorkerEnvironment? environment,
+  }) {
+    WorkerRunner(
+      controller,
+      environment ?? WorkerEnvironment(),
+    ).handleRequests();
   }
 
-  /// Opens a [WebSqlite] instance by connecting to the given [worker] and
-  /// using the [wasmModule] url to load sqlite3.
+  /// Opens a [WebSqlite] instance by connecting to workers with the given
+  /// [workers] connector and using the [wasmModule] url to load sqlite3.
   ///
   /// The [controller] is used when connecting to a sqlite3 database without
   /// using workers. It should typically be the same implementation as the one
@@ -308,13 +315,13 @@ abstract class WebSqlite {
   /// sends a custom request to the client (via [ClientConnection.customRequest]).
   /// If it's absent, the default is to throw an exception when called.
   static WebSqlite open({
-    required Uri worker,
+    required WorkerConnector workers,
     required Uri wasmModule,
     DatabaseController? controller,
     Future<JSAny?> Function(JSAny?)? handleCustomRequest,
   }) {
     return DatabaseClient(
-      worker,
+      workers,
       wasmModule,
       controller ?? const _DefaultDatabaseController(),
       handleCustomRequest,
@@ -341,7 +348,7 @@ abstract class WebSqlite {
     Future<JSAny?> Function(JSAny?)? handleCustomRequest,
   }) {
     final client = DatabaseClient(
-      Uri.base,
+      const WorkerConnector.unsupported(),
       Uri.base,
       const _DefaultDatabaseController(),
       handleCustomRequest,

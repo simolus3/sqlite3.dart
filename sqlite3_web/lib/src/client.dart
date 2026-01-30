@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:js_interop';
-import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
 import 'package:sqlite3/wasm.dart' hide WorkerOptions;
@@ -14,7 +13,7 @@ import 'channel.dart';
 import 'database.dart';
 import 'protocol.dart';
 import 'shared.dart';
-import 'worker.dart';
+import 'worker_connector.dart';
 
 final class _CommitOrRollbackStream {
   StreamSubscription<Notification>? workerSubscription;
@@ -340,7 +339,7 @@ final class WorkerConnection extends ProtocolChannel {
 }
 
 final class DatabaseClient implements WebSqlite {
-  final Uri workerUri;
+  final WorkerConnector workers;
   final Uri wasmUri;
   final DatabaseController _localController;
   final Future<JSAny?> Function(JSAny?) _handleCustomRequest;
@@ -356,7 +355,7 @@ final class DatabaseClient implements WebSqlite {
   final Set<MissingBrowserFeature> _missingFeatures = {};
 
   DatabaseClient(
-    this.workerUri,
+    this.workers,
     this.wasmUri,
     this._localController,
     Future<JSAny?> Function(JSAny?)? handleCustomRequest,
@@ -383,46 +382,49 @@ final class DatabaseClient implements WebSqlite {
   }
 
   Future<void> _startDedicated() async {
-    if (globalContext.has('Worker')) {
-      final Worker dedicated;
-      try {
-        dedicated = Worker(
-          workerUri.toString().toJS,
-          WorkerOptions(name: 'sqlite3_worker'),
-        );
-      } on Object {
-        _missingFeatures.add(MissingBrowserFeature.dedicatedWorkers);
-        return;
-      }
-
-      final (endpoint, channel) = await createChannel();
-      ConnectRequest(endpoint: endpoint, requestId: 0).sendToWorker(dedicated);
-
-      _connectionToDedicated = _connection(channel.injectErrorsFrom(dedicated));
-    } else {
-      _missingFeatures.add(MissingBrowserFeature.dedicatedWorkers);
+    WorkerHandle? dedicated;
+    try {
+      dedicated = workers.spawnDedicatedWorker();
+    } on Object {
+      // Add missing feature and move on.
     }
+
+    if (dedicated == null) {
+      _missingFeatures.add(MissingBrowserFeature.dedicatedWorkers);
+      return;
+    }
+
+    final (endpoint, channel) = await createChannel();
+    ConnectRequest(
+      endpoint: endpoint,
+      requestId: 0,
+    ).sendTo(dedicated.postMessage);
+
+    _connectionToDedicated = _connection(
+      channel.injectErrorsFrom(dedicated.targetForErrorEvents),
+    );
   }
 
   Future<void> _startShared() async {
-    if (globalContext.has('SharedWorker')) {
-      final SharedWorker shared;
-      try {
-        shared = SharedWorker(workerUri.toString().toJS);
-      } on Object {
-        _missingFeatures.add(MissingBrowserFeature.sharedWorkers);
-        return;
-      }
-
-      shared.port.start();
-
-      final (endpoint, channel) = await createChannel();
-      ConnectRequest(endpoint: endpoint, requestId: 0).sendToPort(shared.port);
-
-      _connectionToShared = _connection(channel.injectErrorsFrom(shared));
-    } else {
-      _missingFeatures.add(MissingBrowserFeature.sharedWorkers);
+    WorkerHandle? shared;
+    try {
+      shared = workers.spawnSharedWorker();
+    } on Object {
+      // Add missing feature and move on.
     }
+
+    if (shared == null) {
+      _missingFeatures.add(MissingBrowserFeature.sharedWorkers);
+      return;
+    }
+
+    final (endpoint, channel) = await createChannel();
+
+    ConnectRequest(endpoint: endpoint, requestId: 0).sendTo(shared.postMessage);
+
+    _connectionToShared = _connection(
+      channel.injectErrorsFrom(shared.targetForErrorEvents),
+    );
   }
 
   Future<WorkerConnection> _connectToDedicatedInShared() {
@@ -447,12 +449,17 @@ final class DatabaseClient implements WebSqlite {
         return conn;
       }
 
-      final local = Local();
+      final local = FakeWorkerEnvironment();
       final (endpoint, channel) = await createChannel();
-      WorkerRunner(_localController, environment: local).handleRequests();
-      local.addTopLevelMessage(
-        ConnectRequest(requestId: 0, endpoint: endpoint),
+      WebSqlite.workerEntrypoint(
+        controller: _localController,
+        environment: local,
       );
+
+      ConnectRequest(
+        requestId: 0,
+        endpoint: endpoint,
+      ).sendTo(local.postMessage);
 
       return _connectionToLocal = _connection(channel);
     });

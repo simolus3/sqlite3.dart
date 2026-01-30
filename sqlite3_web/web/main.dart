@@ -180,7 +180,7 @@ void _addCallbackForWebDriver(
 
 WebSqlite initializeSqlite() {
   return webSqlite ??= WebSqlite.open(
-    worker: workerUri,
+    workers: WorkerConnector.defaultWorkers(workerUri),
     wasmModule: sqlite3WasmUri,
     controller: ExampleController(isInWorker: false),
     handleCustomRequest: (request) async {
