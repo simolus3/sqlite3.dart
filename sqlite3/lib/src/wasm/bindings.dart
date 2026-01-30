@@ -823,7 +823,7 @@ final class WasmSession implements RawSqliteSession {
 
   @override
   void sqlite3session_delete() {
-    _bindings.sessionFinalizer?.detach(this);
+    _bindings.sessionFinalizer?.detach(detach);
     _bindings.sqlite3session_delete(pointer);
   }
 
