@@ -116,7 +116,7 @@ final class FakeWorkerEnvironment implements WorkerEnvironment, WorkerHandle {
 
   /// Adds a message that will show up in [incomingMessages].
   @override
-  void postMessage(JSAny? message, JSObject options) {
+  void postMessage(JSAny? message, [JSObject? options]) {
     _messages.add(MessageEvent('message', MessageEventInit(data: message)));
   }
 

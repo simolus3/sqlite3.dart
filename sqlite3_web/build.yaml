@@ -22,8 +22,7 @@ targets:
       build_web_compilers:entrypoint:
         enabled: true
         generate_for:
-          - example/worker.dart
-          - web/worker.dart
+          - "**/worker.dart"
         options:
           compiler: dart2js
       build_web_compilers:dart2js_archive_extractor:
@@ -34,12 +33,12 @@ targets:
       build_web_compilers:entrypoint:
         generate_for:
           include:
-            - "example/**"
+            - example/**
+            - benchmark/**
             - web/**
-          # This one is compiled in the other target
+          # Workers are compiled by the other target.
           exclude:
-            - "example/worker.dart"
-            - web/worker.dart
+            - "**/worker.dart"
         options:
           compilers:
             dart2js:
