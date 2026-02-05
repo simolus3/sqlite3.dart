@@ -197,6 +197,144 @@ final class ProtocolMessageType {
     ..field('wasmUri', _UniqueFieldNames.wasmUri, .uri)
     ..field('onlyOpenVfs', _UniqueFieldNames.onlyOpenVfs, .boolean)
     ..field('additionalData', _UniqueFieldNames.additionalData, .any);
+
+  static final connectRequest = ProtocolMessageType('ConnectRequest')
+    ..parent = request
+    // TODO transfer endpoint.port
+    ..field('endpoint', _UniqueFieldNames.responseData, .webEndpoint);
+
+  static final startFileSystemServer =
+      ProtocolMessageType('StartFileSystemServer')
+        ..parent = message
+        ..field('options', _UniqueFieldNames.responseData, .workerOptions);
+
+  static final customRequest = ProtocolMessageType('CustomRequest')
+    ..parent = request
+    ..field('payload', _UniqueFieldNames.responseData, .any);
+
+  static final fileSystemExistsQuery =
+      ProtocolMessageType('FileSystemExistsQuery')
+        ..parent = request
+        ..field('fsType', _UniqueFieldNames.fileType, .fileType);
+
+  static final fileSystemFlushRequest = ProtocolMessageType(
+    'FileSystemFlushRequest',
+  )..parent = request;
+
+  static final fileSystemAccess = ProtocolMessageType('FileSystemAccess')
+    ..parent = request
+    ..field(
+      'buffer',
+      _UniqueFieldNames.buffer,
+      .transferredArrayBuffer,
+      nullable: true,
+    )
+    ..field('fsType', _UniqueFieldNames.fileType, .fileType);
+
+  static final runQuery = ProtocolMessageType('RunQuery')
+    ..parent = request
+    ..field('sql', _UniqueFieldNames.sql, .string)
+    ..field('parameters', _UniqueFieldNames.parameters, .parameterArray)
+    ..field('lockId', _UniqueFieldNames.lockId, .integer, nullable: true)
+    ..field('returnRows', _UniqueFieldNames.returnRows, .boolean)
+    ..field(
+      'checkInTransaction',
+      _UniqueFieldNames.checkInTransaction,
+      .boolean,
+    );
+
+  static final requestExclusiveLock = ProtocolMessageType(
+    'RequestExclusiveLock',
+  )..parent = request;
+
+  static final releaseLock = ProtocolMessageType('ReleaseLock')
+    ..parent = request
+    ..field('lockId', _UniqueFieldNames.lockId, .integer);
+
+  static final closeDatabase = ProtocolMessageType('CloseDatabase')
+    ..parent = request;
+
+  static final openAdditionalConnection = ProtocolMessageType(
+    'OpenAdditionalConnection',
+  )..parent = request;
+
+  static final response = ProtocolMessageType('Response')
+    ..parent = message
+    ..field('requestId', _UniqueFieldNames.id, .integer);
+
+  static final simpleSuccessResponse =
+      ProtocolMessageType('SimpleSuccessResponse')
+        ..parent = response
+        ..field(
+          'response',
+          _UniqueFieldNames.responseData,
+          .any,
+          nullable: true,
+        );
+
+  static final endpointResponse = ProtocolMessageType('EndpointResponse')
+    ..parent = response;
+
+  static final errorResponse = ProtocolMessageType('ErrorResponse')
+    ..parent = response
+    ..field('message', _UniqueFieldNames.errorMessage, .string)
+    ..field(
+      'serializedException',
+      _UniqueFieldNames.serializedException,
+      .any,
+      nullable: true,
+    )
+    ..field(
+      'serializedExceptionType',
+      _UniqueFieldNames.serializedExceptionType,
+      .integer,
+      nullable: true,
+    );
+
+  static final notification = ProtocolMessageType('Notification')
+    ..parent = message;
+
+  static final streamRequest = ProtocolMessageType('StreamRequest')
+    ..parent = request
+    ..field('action', _UniqueFieldNames.action, .boolean);
+
+  static final compatibilityCheck = ProtocolMessageType('CompatibilityCheck')
+    ..parent = response
+    ..field(
+      'databaseName',
+      _UniqueFieldNames.databaseName,
+      .string,
+      nullable: true,
+    );
+
+  static final compatibilityResult = ProtocolMessageType('CompatibilityResult')
+    ..parent = response
+    ..field('encodedDatabases', 'a', .existingDatabaseArray)
+    ..field('sharedCanSpawnDedicated', 'b', .boolean)
+    ..field('canUseOpfs', 'c', .boolean)
+    ..field('canUseIndexedDb', 'd', .boolean)
+    ..field('supportsSharedArrayBuffers', 'e', .boolean)
+    ..field('dedicatedWorkersCanNest', 'f', .boolean)
+    ..field('opfsSupportsReadWriteUnsafe', 'g', .boolean);
+
+  static final notifyUpdate = ProtocolMessageType('NotifyUpdate')
+    ..parent = notification
+    ..field('databaseId', _UniqueFieldNames.databaseId, .integer)
+    ..field('updateKind', _UniqueFieldNames.updateKind, .integer)
+    ..field('updateTableName', _UniqueFieldNames.updateTableName, .string)
+    ..field('updateTableRowId', _UniqueFieldNames.updateRowId, .integer);
+
+  static final notifyCommit = ProtocolMessageType('NotifyCommit')
+    ..parent = notification
+    ..field('databaseId', _UniqueFieldNames.databaseId, .integer);
+
+  static final notifyRollback = ProtocolMessageType('NotifyRollback')
+    ..parent = notification
+    ..field('databaseId', _UniqueFieldNames.databaseId, .integer);
+
+  static final abortRequest = ProtocolMessageType('AbortRequest')
+    ..parent = message
+    ..field('requestId', _UniqueFieldNames.id, .integer);
 }
 
 final class ProtocolMessageField {
@@ -228,7 +366,13 @@ enum FieldType {
   integer,
   string,
   uri,
-  fileSystemImplementation;
+  fileSystemImplementation,
+  webEndpoint,
+  workerOptions,
+  fileType,
+  transferredArrayBuffer,
+  parameterArray,
+  existingDatabaseArray;
 
   bool get needsWrapper {
     return switch (this) {
@@ -242,7 +386,12 @@ enum FieldType {
       .any => 'JSAny',
       .boolean => 'bool',
       .integer => 'int',
-      .string || .uri || .fileSystemImplementation => 'String',
+      .string || .uri || .fileSystemImplementation || .fileType => 'String',
+      .webEndpoint => 'WebEndpoint',
+      .workerOptions => 'WorkerOptions',
+      .transferredArrayBuffer => 'JSArrayBuffer',
+      .parameterArray => 'JSArray',
+      .existingDatabaseArray => 'JSArray',
     };
   }
 
@@ -254,6 +403,12 @@ enum FieldType {
       .string => 'String',
       .uri => 'Uri',
       .fileSystemImplementation => 'FileSystemImplementation',
+      .webEndpoint => 'WebEndpoint',
+      .workerOptions => 'WorkerOptions',
+      .fileType => 'FileType',
+      .transferredArrayBuffer => 'JSArrayBuffer',
+      .parameterArray => 'List<Object?>',
+      .existingDatabaseArray => 'List<ExistingDatabase>',
     };
   }
 
@@ -261,6 +416,7 @@ enum FieldType {
     return switch (this) {
       FieldType.uri => '$dartExpr.toString()',
       FieldType.fileSystemImplementation => '$dartExpr.name',
+      .fileType => '$dartExpr.index',
       _ => dartExpr,
     };
   }
