@@ -87,7 +87,8 @@ final class PrebuiltSqliteLibrary {
     return !unsupportedCiphersBuild;
   }
 
-  String get filename {
+  /// The name of this prebuilt library in GitHub releases.
+  String get sourceFilename {
     if (!isSupported) {
       throw StateError('Unsupported binary does not have a filename');
     }

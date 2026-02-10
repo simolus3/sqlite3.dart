@@ -1,3 +1,7 @@
+## 3.1.5
+
+- Build hook: Ensure we use consistent filenames to fix issues on Apple platforms.
+
 ## 3.1.4
 
 - Build hook: Fix paths not resolving on Windows when building from source.
