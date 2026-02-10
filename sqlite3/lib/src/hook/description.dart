@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:code_assets/code_assets.dart';
 import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
+import 'package:path/path.dart' as p;
 
 import 'assets.dart';
 import 'asset_hashes.dart';
@@ -149,7 +150,7 @@ sealed class PrecompiledBinary implements SqliteBinary {
   }
 
   (String, String) _filenameAndHash(PrebuiltSqliteLibrary library) {
-    final filename = library.filename;
+    final filename = library.sourceFilename;
     final expectedHash = assetNameToSha256Hash[filename];
     if (expectedHash == null) {
       throw UnsupportedError(
@@ -160,6 +161,52 @@ sealed class PrecompiledBinary implements SqliteBinary {
     }
 
     return (filename, expectedHash);
+  }
+
+  /// Downloads this file into [BuildInput.outputDirectoryShared].
+  Future<File> downloadIntoOutputDirectoryShared(
+    BuildInput input,
+    BuildOutputBuilder output,
+    PrebuiltSqliteLibrary library,
+  ) async {
+    // Use a subdirectory of shared outputs to allow caching.
+    final dir = Directory(
+      input.outputDirectoryShared.resolve(library.dirname).toFilePath(),
+    );
+    if (!dir.existsSync()) {
+      dir.createSync();
+    }
+
+    // Note: There are name conflicts here, e.g. an Android build will typically
+    // generate a number of libsqlite3.so file names. This is not an issue
+    // because the parent directory is unique per ABI.
+    // We need the file name to be the same because of constraints on Apple
+    // platforms, see https://github.com/flutter/website/pull/13047.
+    final fileName = input.config.code.targetOS.libraryFileName(
+      library.type.basename,
+      DynamicLoadingBundled(),
+    );
+
+    final downloadedFile = File(p.join(dir.path, fileName));
+    if (downloadedFile.existsSync()) {
+      // Hook is re-run with an existing cache. Does the file match what we
+      // expect?
+      final (_, expectedHash) = _filenameAndHash(library);
+      final actualHash = await downloadedFile
+          .openRead()
+          .transform(sha256)
+          .first;
+
+      if (actualHash.toString() == expectedHash) {
+        // We can reuse the file!
+        return downloadedFile;
+      }
+    }
+
+    final tmp = File('${downloadedFile.path}.tmp');
+    await fetch(input, output, library).cast<List<int>>().pipe(tmp.openWrite());
+    tmp.renameSync(downloadedFile.path);
+    return downloadedFile;
   }
 }
 

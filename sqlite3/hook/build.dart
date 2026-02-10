@@ -20,28 +20,18 @@ void main(List<String> args) async {
         final library = sqlite.resolveLibrary(input.config.code);
         library.checkSupported();
 
-        final dir = Directory(
-          input.outputDirectoryShared.resolve(library.dirname).toFilePath(),
+        final downloaded = await sqlite.downloadIntoOutputDirectoryShared(
+          input,
+          output,
+          library,
         );
-        if (!dir.existsSync()) {
-          dir.createSync();
-        }
-
-        final target = File(p.join(dir.path, library.filename));
-        final tmp = File('${target.path}.tmp');
-
-        await sqlite
-            .fetch(input, output, library)
-            .cast<List<int>>()
-            .pipe(tmp.openWrite());
-        tmp.renameSync(target.path);
 
         output.assets.code.add(
           CodeAsset(
             package: package,
             name: name,
             linkMode: DynamicLoadingBundled(),
-            file: target.uri,
+            file: downloaded.uri,
           ),
         );
       case CompileSqlite(:final sourceFile, :final defines):
