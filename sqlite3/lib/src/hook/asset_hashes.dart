@@ -43,4 +43,6 @@ const Map<String, String> assetNameToSha256Hash = {
   'sqlite3.x64.windows.dll': 'c7421f36b1398ec211319cc2570f95f4435fb9b27ac9c5931c7e5cacb8fa20d8',
   'sqlite3mc.arm64.windows.dll': 'bd17eecd909bfc70e38b410b307cb80db87107a04b1bed70464bb51323a8ee92',
   'sqlite3mc.ia32.windows.dll': '7d035b30ba1d6712fd1a060574eebeabbfd47981e4a34dd039cb77149e36e1b6',
+  'sqlite3mc.wasm': 'c0d7031175e4fc8611191ea54b03af69fc8442a2e6430b8981444aaa9e644db8',
+  'sqlite3mc.x64.windows.dll': '8c6aed11867bd5b5f7e75e3fff200086c5bfa42b6600970750ed592930691701',
 };
