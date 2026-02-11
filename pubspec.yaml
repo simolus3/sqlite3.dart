@@ -18,6 +18,9 @@ workspace:
   - sqlite3_web
   - sqlite3_test
 
+  - legacy/sqlcipher_flutter_libs
+  - legacy/sqlite3_flutter_libs
+
 dependency_overrides:
   # We need https://github.com/dart-lang/native/pull/2736 to build Android libraries in CI.
   # This is only used to fix tool/build_sqlite.dart.

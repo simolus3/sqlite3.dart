@@ -1,0 +1,9 @@
+name: sqlite3_flutter_libs
+description: "Not used anymore, update to version 3.x of package:sqlite3 instead"
+version: 0.6.0+eol
+homepage: https://github.com/simolus3/sqlite3.dart/tree/main/legacy/sqlite3_flutter_libs
+issue_tracker: https://github.com/simolus3/sqlite3.dart/issues
+resolution: workspace
+
+environment:
+  sdk: ">=3.10.0 <4.0.0"
