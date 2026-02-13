@@ -868,8 +868,12 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
 
     _functions.closeAll();
     _FunctionFinalizers.finalizer.detach(_detachToken);
-    databaseFinalizer.detach(_detachToken);
+    detachFinalizer();
     return rc;
+  }
+
+  void detachFinalizer() {
+    databaseFinalizer.detach(_detachToken);
   }
 
   @override

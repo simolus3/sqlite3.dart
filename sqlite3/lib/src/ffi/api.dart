@@ -3,6 +3,7 @@ import 'dart:ffi';
 import '../database.dart';
 import '../sqlite3.dart';
 import '../statement.dart';
+import 'libsqlite3.g.dart' as libsqlite3;
 import 'implementation.dart';
 
 /// Provides access to `sqlite3` functions, such as opening new databases.
@@ -53,6 +54,16 @@ abstract interface class Sqlite3 implements CommonSqlite3 {
   ///
   /// See also: https://sqlite.org/c3ref/compileoption_get.html
   Iterable<String> get compileOptions;
+
+  /// A function pointer to `sqlite3_close_v2`.
+  ///
+  /// This typically shouldn't be used directly since this library attaches
+  /// native finalizers to databases by default, but can be used for custom
+  /// connection management if necessary.
+  ///
+  /// See also: https://sqlite.org/c3ref/close.html
+  static Pointer<NativeFunction<Int Function(Pointer<Void>)>>
+  get sqliteCloseV2 => libsqlite3.addresses.sqlite3_close_v2.cast();
 }
 
 /// Information used to load an extension through `sqlite3_auto_extension`,
@@ -101,7 +112,23 @@ abstract class Database extends CommonDatabase {
   ///
   /// This returns a pointer towards the opaque sqlite3 structure as defined
   /// [here](https://www.sqlite.org/c3ref/sqlite3.html).
+  ///
+  /// Note that the connection is still owned by this Dart object, and will be
+  /// closed once it becomes unreachable. In other words, the returned handle is
+  /// a logical reference to this object.
+  /// To transfer ownership of the connection out of this object, use [leak]
+  /// instead.
   Pointer<void> get handle;
+
+  /// Like [handle], this returns the native `sqlite3*` pointer wrapped by this
+  /// instance.
+  ///
+  /// Additionally, this also detaches native finalizers that would close the
+  /// connection once this object becomes unreachable.
+  ///
+  /// This is an advanced and low-level API that can be used to transfer
+  /// ownership of connections originally opened in Dart to native code.
+  Pointer<void> leak();
 
   // override for more specific subtype
   @override

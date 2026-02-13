@@ -121,6 +121,12 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
   Pointer<void> get handle => ffiDatabase.db;
 
   @override
+  Pointer<void> leak() {
+    ffiDatabase.detachFinalizer();
+    return handle;
+  }
+
+  @override
   PreparedStatement prepare(
     String sql, {
     bool persistent = false,
