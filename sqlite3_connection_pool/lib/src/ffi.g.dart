@@ -69,6 +69,26 @@ external ffi.Pointer<PoolRequest> pkg_sqlite3_connection_pool_obtain_exclusive(
   int port,
 );
 
+@ffi.Native<ffi.UintPtr Function(ffi.Pointer<ConnectionPool>)>()
+external int pkg_sqlite3_connection_pool_query_read_connection_count(
+  ffi.Pointer<ConnectionPool> pool,
+);
+
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ConnectionPool>,
+    ffi.Pointer<ffi.Pointer<ffi.Void>>,
+    ffi.Pointer<ffi.Pointer<ffi.Void>>,
+    ffi.UintPtr,
+  )
+>()
+external void pkg_sqlite3_connection_pool_query_connections(
+  ffi.Pointer<ConnectionPool> pool,
+  ffi.Pointer<ffi.Pointer<ffi.Void>> writer,
+  ffi.Pointer<ffi.Pointer<ffi.Void>> readers,
+  int reader_count,
+);
+
 @ffi.Native<ffi.Void Function(ffi.Pointer<PoolRequest>)>()
 external void pkg_sqlite3_connection_pool_request_close(
   ffi.Pointer<PoolRequest> request,

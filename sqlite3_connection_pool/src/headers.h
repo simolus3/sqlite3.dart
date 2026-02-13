@@ -35,4 +35,7 @@ PoolRequest* pkg_sqlite3_connection_pool_obtain_exclusive(const ConnectionPool *
                                                   int64_t tag,
                                                   DartPort port);
 
+uintptr_t pkg_sqlite3_connection_pool_query_read_connection_count(const ConnectionPool *pool);
+void pkg_sqlite3_connection_pool_query_connections(const ConnectionPool *pool, Connection *writer, Connection *readers, uintptr_t reader_count);
+
 void pkg_sqlite3_connection_pool_request_close(PoolRequest *request);

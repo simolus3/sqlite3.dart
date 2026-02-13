@@ -28,7 +28,13 @@ abstract interface class Sqlite3 implements CommonSqlite3 {
   ///
   /// The [database] must be a pointer towards an open sqlite3 database
   /// connection [handle](https://www.sqlite.org/c3ref/sqlite3.html).
-  Database fromPointer(Pointer<void> database);
+  ///
+  /// When [borrowed] is set (it defaults to `false`), the returned [Database]
+  /// connection acts as a view of the underlying `sqlite3*` pointer. The
+  /// library will not attach a native finalizer calling `sqlite3_close_v2`, and
+  /// calling [Database.close] in it will only prevent further interactions from
+  /// Dart.
+  Database fromPointer(Pointer<void> database, {bool borrowed = false});
 
   @override
   Database openInMemory({String? vfs});

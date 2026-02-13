@@ -4,6 +4,7 @@ import 'dart:ffi';
 import 'dart:isolate';
 
 import 'package:ffi/ffi.dart';
+import 'package:meta/meta.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 import 'ffi.g.dart';
@@ -16,6 +17,7 @@ final _requestFinalizer = NativeFinalizer(
   addresses.pkg_sqlite3_connection_pool_request_close.cast(),
 );
 
+@internal
 final class RawSqliteConnectionPool implements Finalizable {
   var _requestCounter = 0;
   final Map<int, Completer<_PoolLease>> _outstandingRequests = {};
@@ -92,20 +94,26 @@ final class RawSqliteConnectionPool implements Finalizable {
 
   /// May only be called if the caller has an active exclusive request on this
   /// pool.
-  List<Pointer<Void>> unsafeGetRead() {
-    throw '';
-  }
+  ({Pointer<Void> writer, List<Pointer<Void>> readers}) queryConnections() {
+    final amountOfReaders =
+        pkg_sqlite3_connection_pool_query_read_connection_count(_pool);
+    return using((alloc) {
+      final writeConnectionPointer = alloc<Pointer<Void>>();
+      final readConnectionPointers = alloc<Pointer<Void>>(amountOfReaders);
 
-  /// May only be called if the caller has an active exclusive request on this
-  /// pool.
-  Pointer<Void> unsafeGetWrite() {
-    throw '';
-  }
+      pkg_sqlite3_connection_pool_query_connections(
+        _pool,
+        writeConnectionPointer,
+        readConnectionPointers,
+        amountOfReaders,
+      );
 
-  /// May only be called if the caller has an active exclusive request on this
-  /// pool.
-  void unsafeAddConnection(Pointer<Void> connection) {
-    throw '';
+      final readers = List.generate(
+        amountOfReaders,
+        (i) => readConnectionPointers[i],
+      );
+      return (writer: writeConnectionPointer.value, readers: readers);
+    });
   }
 
   void close() {
@@ -181,6 +189,7 @@ final class PoolConnections {
   PoolConnections(this.writer, this.readers);
 }
 
+@internal
 final class RawPoolRequest implements Finalizable {
   final int _dartTag;
   final RawSqliteConnectionPool _pool;

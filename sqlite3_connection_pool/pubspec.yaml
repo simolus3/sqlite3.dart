@@ -16,6 +16,7 @@ topics:
 
 dependencies:
   ffi: ^2.2.0
+  meta: ^1.18.1
   sqlite3: ^3.1.5
 
 dev_dependencies:

@@ -187,6 +187,13 @@ impl PoolState {
         self.register_waiter(pool, msg, Waiter::Exclusive(Default::default()), true, true)
     }
 
+    pub fn view_connections(&self) -> (&Connection, &[Connection]) {
+        let writer = &self.writes.connection;
+        let readers = self.reads.connections.as_slice();
+
+        (writer, readers)
+    }
+
     fn register_waiter(
         &mut self,
         pool: ConnectionPool,

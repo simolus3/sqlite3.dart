@@ -1,8 +1,8 @@
+use crate::connection::Connection;
 use crate::dart::DartPort;
-use crate::pool::{
-    ConnectionPool, PendingMessage, PoolRequestHandle, PoolState,
-};
+use crate::pool::{ConnectionPool, PendingMessage, PoolRequestHandle, PoolState};
 use crate::registry::{PoolInitializer, PoolRegistry};
+use std::mem::MaybeUninit;
 use std::ptr::NonNull;
 use std::sync::{Arc, Mutex};
 use std::{ptr, slice};
@@ -82,4 +82,33 @@ extern "C" fn pkg_sqlite3_connection_pool_obtain_exclusive(
 #[unsafe(no_mangle)]
 extern "C" fn pkg_sqlite3_connection_pool_request_close(request: *mut PoolRequestHandle) {
     drop(unsafe { Box::from_raw(request) });
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_query_read_connection_count(
+    pool: &Mutex<PoolState>,
+) -> usize {
+    let state = pool.lock().unwrap();
+    let (_, readers) = state.view_connections();
+    readers.len()
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_query_connections(
+    pool: &Mutex<PoolState>,
+    writer: &mut MaybeUninit<Connection>,
+    readers: *mut Connection,
+    reader_count: usize,
+) {
+    let state = pool.lock().unwrap();
+    let (pool_writer, pool_readers) = state.view_connections();
+
+    writer.write(*pool_writer);
+    for (i, conn) in pool_readers.iter().enumerate() {
+        if i >= reader_count {
+            break;
+        }
+
+        unsafe { readers.add(i).write(*conn) };
+    }
 }
