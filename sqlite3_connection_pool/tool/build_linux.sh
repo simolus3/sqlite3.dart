@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 function compile() {
@@ -10,9 +10,7 @@ function compile() {
         --target $triple
 }
 
-compile aarch64-apple-darwin
-compile x86_64-apple-darwin
-
-compile aarch64-apple-ios
-compile aarch64-apple-ios-sim
-compile x86_64-apple-ios
+compile x86_64-unknown-linux-gnu
+compile aarch64-unknown-linux-gnu
+compile armv7-unknown-linux-gnueabihf
+compile riscv64gc-unknown-linux-gnu

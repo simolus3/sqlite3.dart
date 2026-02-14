@@ -147,16 +147,15 @@ jobs:
       - name: Build for Linux
         working-directory: sqlite3_connection_pool
         run: |
-          cargo build --release --target x86_64-unknown-linux-gnu
-          cargo build --release --target aarch64-unknown-linux-gnu
-          cargo build --release --target armv7-unknown-linux-gnueabihf
-          cargo build --release --target riscv64gc-unknown-linux-gnu
+          ./tool/build_linux.sh
       - name: Build Android libs
         working-directory: sqlite3_connection_pool
-        run: cargo ndk -t armeabi-v7a -t arm64-v8a -t x86_64 -o target/android build --release
-      
+        env:
+          RUSTFLAGS: "-Zlocation-detail=none -Zfmt-debug=none -Zunstable-options -Cpanic=immediate-abort"
+        run: cargo +nightly ndk -t armeabi-v7a -t arm64-v8a -t x86_64 -o target/android build --release -Zbuild-std=std,panic_abort -Zbuild-std-features=
+
       - name: Copy libraries
-        working-directory: weblocks/native
+        working-directory: sqlite3_connection_pool
         run: |
           mkdir out
           cp target/x86_64-unknown-linux-gnu/release/libsqlite3_connection_pool.so out/libsqlite3_connection_pool.linux_x64.so
@@ -185,12 +184,7 @@ jobs:
       - name: Build for macOS and iOS
         working-directory: sqlite3_connection_pool
         run: |
-          cargo build --release --target x86_64-apple-darwin
-          cargo build --release --target aarch64-apple-darwin
-
-          cargo build --release --target aarch64-apple-ios
-          cargo build --release --target aarch64-apple-ios-sim
-          cargo build --release --target x86_64-apple-ios
+          ./tool/build_apple.sh
       - name: Copy libraries
         working-directory: sqlite3_connection_pool
         run: |
@@ -216,9 +210,13 @@ jobs:
           targets: x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
       - name: Build for Windows
         working-directory: sqlite3_connection_pool
+        env:
+          toolchain: nightly-2026-02-13
+          components: rust-src
+          RUSTFLAGS: "-Zlocation-detail=none -Zfmt-debug=none -Zunstable-options -Cpanic=immediate-abort"
         run: |
-          cargo build --release --target x86_64-pc-windows-msvc
-          cargo build --release --target aarch64-pc-windows-msvc
+          cargo +nightly build --release -Z build-std=std,panic_abort -Z build-std-features= --target x86_64-pc-windows-msvc
+          cargo +nightly build --release -Z build-std=std,panic_abort -Z build-std-features= --target aarch64-pc-windows-msvc
       - name: Copy libraries
         working-directory: sqlite3_connection_pool
         run: |
