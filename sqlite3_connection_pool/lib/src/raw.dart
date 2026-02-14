@@ -7,6 +7,7 @@ import 'package:ffi/ffi.dart';
 import 'package:meta/meta.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+import 'abort_exception.dart';
 import 'ffi.g.dart';
 
 final _poolFinalizer = NativeFinalizer(
@@ -23,8 +24,7 @@ final class RawSqliteConnectionPool implements Finalizable {
   final Map<int, Completer<_PoolLease>> _outstandingRequests = {};
 
   final Pointer<ConnectionPool> _pool;
-  final RawReceivePort _receivePort = RawReceivePort()
-    ..keepIsolateAlive = false;
+  final RawReceivePort _receivePort = RawReceivePort();
   final Object _detachToken = Object();
 
   int get _nativePort => _receivePort.sendPort.nativePort;
@@ -43,7 +43,7 @@ final class RawSqliteConnectionPool implements Finalizable {
       completer.complete(
         isExclusive
             ? const _ExclusiveLease()
-            : _SingleConnectionLease(Pointer.fromAddress(message[1] as int)),
+            : _SingleConnectionLease(Pointer.fromAddress(message[2] as int)),
       );
     };
   }
@@ -201,11 +201,15 @@ final class RawPoolRequest implements Finalizable {
     _requestFinalizer.attach(this, _handle.cast(), detach: _detachToken);
   }
 
+  bool get isCompleted => !_pool._outstandingRequests.containsKey(_dartTag);
+
   void close() {
     _requestFinalizer.detach(_detachToken);
     pkg_sqlite3_connection_pool_request_close(_handle);
 
-    _pool._outstandingRequests.remove(_dartTag);
+    _pool._outstandingRequests
+        .remove(_dartTag)
+        ?.completeError(PoolAbortException());
   }
 }
 

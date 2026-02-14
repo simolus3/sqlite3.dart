@@ -36,8 +36,11 @@ final class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
   }
 
   @override
-  Database wrapDatabase(RawSqliteDatabase rawDb) {
-    return FfiDatabaseImplementation(rawDb as FfiDatabase);
+  Database wrapDatabase(RawSqliteDatabase rawDb, {bool isBorrowed = false}) {
+    return FfiDatabaseImplementation(
+      rawDb as FfiDatabase,
+      isBorrowed: isBorrowed,
+    );
   }
 
   @override
@@ -63,7 +66,10 @@ final class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
 
   @override
   Database fromPointer(Pointer<void> database, {bool borrowed = false}) {
-    return wrapDatabase(FfiDatabase(database.cast(), borrowed: borrowed));
+    return wrapDatabase(
+      FfiDatabase(database.cast(), borrowed: borrowed),
+      isBorrowed: borrowed,
+    );
   }
 
   @override
@@ -97,7 +103,8 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
     implements Database {
   final FfiDatabase ffiDatabase;
 
-  FfiDatabaseImplementation(this.ffiDatabase) : super(ffiBindings, ffiDatabase);
+  FfiDatabaseImplementation(this.ffiDatabase, {required super.isBorrowed})
+    : super(ffiBindings, ffiDatabase);
 
   @override
   FfiStatementImplementation wrapStatement(

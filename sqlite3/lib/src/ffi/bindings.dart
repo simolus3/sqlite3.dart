@@ -848,7 +848,6 @@ final class _FunctionFinalizers {
 
 final class FfiDatabase implements RawSqliteDatabase, Finalizable {
   final Pointer<sqlite3> db;
-  final bool _borrowed;
 
   final _FunctionFinalizers _functions = _FunctionFinalizers();
   final Object _detachToken = Object();
@@ -857,7 +856,7 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
   NativeCallable<_CommitHook>? _installedCommitHook;
   NativeCallable<_RollbackHook>? _installedRollbackHook;
 
-  FfiDatabase(this.db, {required bool borrowed}) : _borrowed = borrowed {
+  FfiDatabase(this.db, {required bool borrowed}) {
     if (!borrowed) {
       // This object owns the `sqlite3` connection, so close it once the object
       // is GCed.
@@ -872,17 +871,13 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
 
   @override
   int sqlite3_close_v2() {
-    if (_borrowed) {
-      final rc = libsqlite3.sqlite3_close_v2(db);
+    final rc = libsqlite3.sqlite3_close_v2(db);
 
-      _functions.closeAll();
-      _FunctionFinalizers.finalizer.detach(_detachToken);
+    _functions.closeAll();
+    _FunctionFinalizers.finalizer.detach(_detachToken);
 
-      detachFinalizer();
-      return rc;
-    } else {
-      return 0;
-    }
+    detachFinalizer();
+    return rc;
   }
 
   void detachFinalizer() {
