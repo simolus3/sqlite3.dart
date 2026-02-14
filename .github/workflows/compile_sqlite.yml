@@ -149,6 +149,7 @@ jobs:
       - name: Build for Linux
         working-directory: sqlite3_connection_pool
         run: |
+          rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
           ./tool/build_linux.sh
       - name: Build Android libs
         working-directory: sqlite3_connection_pool
@@ -186,6 +187,7 @@ jobs:
       - name: Build for macOS and iOS
         working-directory: sqlite3_connection_pool
         run: |
+          rustup component add rust-src --toolchain nightly-aarch64-apple-darwin
           ./tool/build_apple.sh
       - name: Copy libraries
         working-directory: sqlite3_connection_pool
@@ -219,6 +221,7 @@ jobs:
           components: rust-src
           RUSTFLAGS: "-Zlocation-detail=none -Zfmt-debug=none -Zunstable-options -Cpanic=immediate-abort"
         run: |
+          rustup component add rust-src --toolchain nightly-x86_64-pc-windows-msvc
           cargo +nightly build --release -Z build-std=std,panic_abort -Z build-std-features= --target x86_64-pc-windows-msvc
           cargo +nightly build --release -Z build-std=std,panic_abort -Z build-std-features= --target aarch64-pc-windows-msvc
       - name: Copy libraries
