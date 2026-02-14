@@ -131,6 +131,104 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  compile_pool_linux_android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu,x86_64-unknown-linux-gnu,riscv64gc-unknown-linux-gnu,armv7-unknown-linux-gnueabihf,aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+      - run: cargo install cargo-ndk
+      - name: Install cross-compiling GCC
+        run: |
+          sudo apt update
+          sudo apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-arm-linux-gnueabihf      
+
+      - name: Build for Linux
+        working-directory: sqlite3_connection_pool
+        run: |
+          cargo build --release --target x86_64-unknown-linux-gnu
+          cargo build --release --target aarch64-unknown-linux-gnu
+          cargo build --release --target armv7-unknown-linux-gnueabihf
+          cargo build --release --target riscv64gc-unknown-linux-gnu
+      - name: Build Android libs
+        working-directory: sqlite3_connection_pool
+        run: cargo ndk -t armeabi-v7a -t arm64-v8a -t x86_64 -o target/android build --release
+      
+      - name: Copy libraries
+        working-directory: weblocks/native
+        run: |
+          mkdir out
+          cp target/x86_64-unknown-linux-gnu/release/libsqlite3_connection_pool.so out/libsqlite3_connection_pool.linux_x64.so
+          cp target/aarch64-unknown-linux-gnu/release/libsqlite3_connection_pool.so out/libsqlite3_connection_pool.linux_aarch64.so
+          cp target/armv7-unknown-linux-gnueabihf/release/libsqlite3_connection_pool.so out/libsqlite3_connection_pool.linux_arm7.so
+          cp target/riscv64gc-unknown-linux-gnu/release/libsqlite3_connection_pool.so out/libsqlite3_connection_pool.linux_riscv.so
+
+          cp target/android/x86_64/libsqlite3_connection_pool.so out/libsqlite3_connection_pool.android_x86_64.so
+          cp target/android/armeabi-v7a/libsqlite3_connection_pool.so out/libsqlite3_connection_pool.android_v7a.so
+          cp target/android/arm64-v8a/libsqlite3_connection_pool.so out/libsqlite3_connection_pool.android_v8a.so
+      - uses: actions/upload-artifact@v4
+        with:
+          name: connection-pool-linux
+          retention-days: 1
+          path: sqlite3_connection_pool/out
+
+  compile_pool_apple:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin,aarch64-apple-darwin,aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+      - name: Build for macOS and iOS
+        working-directory: sqlite3_connection_pool
+        run: |
+          cargo build --release --target x86_64-apple-darwin
+          cargo build --release --target aarch64-apple-darwin
+
+          cargo build --release --target aarch64-apple-ios
+          cargo build --release --target aarch64-apple-ios-sim
+          cargo build --release --target x86_64-apple-ios
+      - name: Copy libraries
+        working-directory: sqlite3_connection_pool
+        run: |
+          mkdir out
+          cp target/x86_64-apple-darwin/release/libsqlite3_connection_pool.dylib out/libsqlite3_connection_pool.macos_x64.dylib
+          cp target/aarch64-apple-darwin/release/libsqlite3_connection_pool.dylib out/libsqlite3_connection_pool.macos_aarch64.dylib
+
+          cp target/aarch64-apple-ios/release/libsqlite3_connection_pool.dylib out/libsqlite3_connection_pool.ios_aarch64.dylib
+          cp target/aarch64-apple-ios-sim/release/libsqlite3_connection_pool.dylib out/libsqlite3_connection_pool.ios_sim_aarch64.dylib
+          cp target/x86_64-apple-ios/release/libsqlite3_connection_pool.dylib out/libsqlite3_connection_pool.ios_sim_x64.dylib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: connection-pool-apple
+          retention-days: 1
+          path: sqlite3_connection_pool/out
+
+  compile_pool_windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
+      - name: Build for Windows
+        working-directory: sqlite3_connection_pool
+        run: |
+          cargo build --release --target x86_64-pc-windows-msvc
+          cargo build --release --target aarch64-pc-windows-msvc
+      - name: Copy libraries
+        working-directory: sqlite3_connection_pool
+        run: |
+          mkdir out
+          cp target/x86_64-pc-windows-msvc/release/sqlite3_connection_pool.dll out/sqlite3_connection_pool.win_x64.dll
+          cp target/aarch64-pc-windows-msvc/release/sqlite3_connection_pool.dll out/sqlite3_connection_pool.win_aarch64.dll
+      - uses: actions/upload-artifact@v4
+        with:
+          name: connection-pool-windows
+          retention-days: 1
+          path: sqlite3_connection_pool/out
+
   merge_assets:
     runs-on: ubuntu-latest
     needs: [build_sqlite, compile_wasm]
