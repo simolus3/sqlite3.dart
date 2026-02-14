@@ -137,7 +137,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2026-02-13
+          toolchain: nightly
           components: rust-src
           targets: aarch64-unknown-linux-gnu,x86_64-unknown-linux-gnu,riscv64gc-unknown-linux-gnu,armv7-unknown-linux-gnueabihf,aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
       - run: cargo install cargo-ndk
@@ -181,7 +181,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2026-02-13
+          toolchain: nightly
           components: rust-src
           targets: x86_64-apple-darwin,aarch64-apple-darwin
       - name: Build for macOS and iOS
@@ -211,13 +211,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2026-02-13
+          toolchain: nightly
           components: rust-src
           targets: x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
       - name: Build for Windows
         working-directory: sqlite3_connection_pool
         env:
-          toolchain: nightly-2026-02-13
+          toolchain: nightly
           components: rust-src
           RUSTFLAGS: "-Zlocation-detail=none -Zfmt-debug=none -Zunstable-options -Cpanic=immediate-abort"
         run: |
