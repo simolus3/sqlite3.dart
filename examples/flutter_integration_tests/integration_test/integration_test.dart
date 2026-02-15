@@ -3,6 +3,7 @@
 import 'package:integration_test/integration_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart';
+import 'package:sqlite3_connection_pool/sqlite3_connection_pool.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +13,16 @@ void main() {
 
     final db = sqlite3.openInMemory()..closeWhenDone();
     print(db.select('pragma compile_options'));
+  });
+
+  test('pool smoke test', () async {
+    final pool = SqliteConnectionPool.open(
+      name: 'test-pool',
+      openConnections: () => PoolConnections(sqlite3.openInMemory(), []),
+    );
+
+    pool.execute('CREATE TABLE foo (bar TEXT)');
+    pool.close();
   });
 
   test('can open databases', () {

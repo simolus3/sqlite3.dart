@@ -304,6 +304,11 @@ jobs:
         with:
           artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
           path: sqlite-compiled
+      - name: Download connection pool libraries
+        uses: actions/download-artifact@v5
+        with:
+          artifact-ids: ${{ needs.fetch_sqlite.outputs.pool_libs_artifact_id }}
+          path: sqlite3_connection_pool/lib/src/precompiled/
 
       - uses: actions/cache@v4
         with:

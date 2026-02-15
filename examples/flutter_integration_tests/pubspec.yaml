@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   sqlite3:
+  sqlite3_connection_pool:
 
 dev_dependencies:
   flutter_test:
