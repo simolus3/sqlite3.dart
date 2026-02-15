@@ -13,6 +13,11 @@ pub type ConnectionPool = Arc<Mutex<PoolState>>;
 pub struct PoolState {
     reads: ReadState,
     writes: WriteState,
+
+    /// Function pointers provided from Dart when initializing the pool.
+    ///
+    /// We assume those to be static within a process, so we don't need to track them on a
+    /// per-client basis.
     functions: ExternalFunctions,
 }
 
@@ -37,16 +42,19 @@ struct LinkedList<E: ExtractEntry> {
 unsafe impl<E: ExtractEntry> Send for LinkedList<E> {}
 unsafe impl<E: ExtractEntry> Sync for LinkedList<E> {}
 
+/// A node waiting for access to the connection pool.
+///
+/// A single node can be part of both the read and the write queue of a pool.
 struct WaitNode {
+    /// If this node is part of the read queue, pointers to the next and previous entry.
     read_entry: Option<QueueEntry>,
+    /// If this node is part of the write queue, pointers to the next and previous entry.
     write_entry: Option<QueueEntry>,
 
+    /// The message to send to the Dart client once the connection is obtained.
     port: PendingMessage,
     waiter: Waiter,
 }
-
-unsafe impl Send for WaitNode {}
-unsafe impl Sync for WaitNode {}
 
 pub struct PendingMessage {
     pub tag: i64,
@@ -57,6 +65,10 @@ struct QueueEntry {
     prev: Option<NonNull<WaitNode>>,
     next: Option<NonNull<WaitNode>>,
 }
+
+// These are only mutated when we have a mutex on the pool, so we can pretend they're send and sync.
+unsafe impl Send for QueueEntry {}
+unsafe impl Sync for QueueEntry {}
 
 enum Waiter {
     Reader(ReadPoolRequest),
@@ -177,6 +189,7 @@ impl PoolState {
         self.register_waiter(pool, msg, Waiter::Exclusive(Default::default()), true, true)
     }
 
+    /// Returns the write and all read connections of this pool.
     pub fn view_connections(&self) -> (&Connection, &[Connection]) {
         let writer = &self.writes.connection;
         let readers = self.reads.connections.as_slice();
@@ -219,6 +232,10 @@ impl PoolState {
         }
     }
 
+    /// Attempts to assign a connection to the given waiter, if one is available.
+    ///
+    /// Returns whether the node is completed and no longer waiting (in which case this function
+    /// would have notified the Dart port). The node can be removed from its queues in that case.
     fn try_complete(&mut self, waiter: &mut WaitNode) -> bool {
         match &mut waiter.waiter {
             Waiter::Reader(reads) => {
@@ -284,6 +301,8 @@ impl PoolState {
 
 impl Drop for PoolState {
     fn drop(&mut self) {
+        // Pool request handles have a reference to the pool and should be dropped first. Still,
+        // let's assert we're not about to close a connection that might still be in use.
         assert!(
             !self.writes.acquired,
             "Tried to drop with leased write connection"
@@ -302,6 +321,7 @@ impl Drop for PoolState {
 }
 
 impl PendingMessage {
+    /// Sends a `[tag, true]` message to this port.
     fn send_did_obtain_exclusive(&self, api: &ExternalFunctions) {
         let list_values: &mut [*mut RawDartCObject] = &mut [
             &mut RawDartCObject::from(self.tag),
@@ -320,6 +340,7 @@ impl PendingMessage {
         (api.dart_post_c_object)(self.port, &mut array);
     }
 
+    /// Sends a `[tag, false, connection_ptr]` message to this port.
     fn send_did_obtain_connection(&self, connection: Connection, api: &ExternalFunctions) {
         let list_values: &mut [*mut RawDartCObject] = &mut [
             &mut RawDartCObject::from(self.tag),
@@ -336,10 +357,7 @@ impl PendingMessage {
             },
         };
 
-        let x = (api.dart_post_c_object)(self.port, &mut array);
-        if !x {
-            panic!("todo: failed isolate message post")
-        }
+        (api.dart_post_c_object)(self.port, &mut array);
     }
 }
 
@@ -387,7 +405,7 @@ impl<E: ExtractEntry> LinkedList<E> {
         };
 
         let slot_on_node = E::extract_entry(unsafe { node.as_mut() });
-        debug_assert!(slot_on_node.is_none());
+        debug_assert!(slot_on_node.is_none()); // We're about to insert it...
         *slot_on_node = Some(QueueEntry { prev, next: None });
         self.last = Some(node);
     }
@@ -404,7 +422,10 @@ impl<E: ExtractEntry> LinkedList<E> {
                 E::extract_entry(prev).as_mut().unwrap().next = slot.next;
             }
             // This was the first node
-            None => self.first = slot.next,
+            None => {
+                debug_assert!(slot.prev.is_none());
+                self.first = slot.next
+            }
         };
 
         match slot.next {
@@ -413,7 +434,10 @@ impl<E: ExtractEntry> LinkedList<E> {
                 E::extract_entry(next).as_mut().unwrap().prev = slot.prev;
             }
             // This was the last node
-            None => self.last = slot.prev,
+            None => {
+                debug_assert!(slot.next.is_none());
+                self.last = slot.prev
+            }
         }
     }
 }
@@ -438,5 +462,5 @@ impl Drop for PoolRequestHandle {
 #[repr(C)]
 pub struct ExternalFunctions {
     pub sqlite3_close_v2: extern "C" fn(Connection) -> c_int,
-    pub dart_post_c_object: extern "C" fn(port: DartPort, message: *mut RawDartCObject) -> bool,
+    pub dart_post_c_object: extern "C" fn(port: DartPort, message: &mut RawDartCObject) -> bool,
 }
