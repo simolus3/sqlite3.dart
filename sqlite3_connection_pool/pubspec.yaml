@@ -19,7 +19,7 @@ dependencies:
   ffi: ^2.2.0
   hooks: ^1.0.0
   meta: ^1.17.0
-  sqlite3: ^3.1.6-wip
+  sqlite3: ^3.1.6
 
 dev_dependencies:
   lints: ^6.1.0

@@ -6,7 +6,7 @@
 
 // dart format off
 // ignore: unnecessary_nullable_for_final_variable_declarations
-const String? releaseTag = 'sqlite3-3.1.5';
+const String? releaseTag = 'sqlite3-3.1.6';
 
 const Map<String, String> assetNameToSha256Hash = {
   'libsqlite3.arm.android.so': '1c5a8a32d83ddfd24c0301e9b02ed3ccb6526210b26543077f43f7821d83c53b',
