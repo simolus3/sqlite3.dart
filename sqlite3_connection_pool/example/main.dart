@@ -25,20 +25,5 @@ void main() async {
     exclusive.close();
   }
 
-  final connectionDistribution = <String, int>{};
-  final futures = <Future<void>>[];
-  for (var i = 0; i < 10_000; i++) {
-    futures.add(
-      Future(() async {
-        final results = await pool.readQuery('SELECT id FROM conn');
-        final id = results.single.columnAt(0) as String;
-        connectionDistribution[id] = (connectionDistribution[id] ?? 0) + 1;
-      }),
-    );
-  }
-
-  await Future.wait(futures);
-  print(connectionDistribution);
-
   pool.close();
 }

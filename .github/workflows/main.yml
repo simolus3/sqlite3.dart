@@ -74,6 +74,12 @@ jobs:
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
         path: sqlite-compiled
+    - name: Download connection pool libraries
+      uses: actions/download-artifact@v5
+      with:
+        artifact-ids: ${{ needs.fetch_sqlite.outputs.pool_libs_artifact_id }}
+        path: sqlite3_connection_pool/lib/src/precompiled/
+
     - uses: actions/cache@v4
       with:
         path: "${{ env.PUB_CACHE }}"
@@ -95,6 +101,11 @@ jobs:
       run: |
         dart test --test-randomize-ordering-seed "random" -P ci --reporter expanded --concurrency 1
       working-directory: sqlite3/
+
+    - name: Test sqlite3_connection_pool package
+      run: |
+        dart test
+      working-directory: sqlite3_connection_pool/
 
     - name: Setup OS-specific system override
       if: matrix.sqlite == 'system'
