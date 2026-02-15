@@ -229,7 +229,9 @@ final class FfiBindings implements RawSqliteBindings {
     );
     final result = (
       resultCode: resultCode,
-      result: outDb.value.isNullPointer ? null : FfiDatabase(outDb.value),
+      result: outDb.value.isNullPointer
+          ? null
+          : FfiDatabase(outDb.value, borrowed: false),
     );
 
     namePtr.free();
@@ -846,6 +848,7 @@ final class _FunctionFinalizers {
 
 final class FfiDatabase implements RawSqliteDatabase, Finalizable {
   final Pointer<sqlite3> db;
+
   final _FunctionFinalizers _functions = _FunctionFinalizers();
   final Object _detachToken = Object();
 
@@ -853,13 +856,17 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
   NativeCallable<_CommitHook>? _installedCommitHook;
   NativeCallable<_RollbackHook>? _installedRollbackHook;
 
-  FfiDatabase(this.db) {
-    databaseFinalizer.attach(this, db.cast(), detach: _detachToken);
-    _FunctionFinalizers.finalizer.attach(
-      this,
-      _functions,
-      detach: _detachToken,
-    );
+  FfiDatabase(this.db, {required bool borrowed}) {
+    if (!borrowed) {
+      // This object owns the `sqlite3` connection, so close it once the object
+      // is GCed.
+      databaseFinalizer.attach(this, db.cast(), detach: _detachToken);
+      _FunctionFinalizers.finalizer.attach(
+        this,
+        _functions,
+        detach: _detachToken,
+      );
+    }
   }
 
   @override
@@ -868,8 +875,13 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
 
     _functions.closeAll();
     _FunctionFinalizers.finalizer.detach(_detachToken);
-    databaseFinalizer.detach(_detachToken);
+
+    detachFinalizer();
     return rc;
+  }
+
+  void detachFinalizer() {
+    databaseFinalizer.detach(_detachToken);
   }
 
   @override

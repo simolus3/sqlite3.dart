@@ -11,3 +11,5 @@ workspace:
 dependency_overrides:
   sqlite3:
     path: ../sqlite3
+  sqlite3_connection_pool:
+    path: ../sqlite3_connection_pool

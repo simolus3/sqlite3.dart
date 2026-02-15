@@ -1,3 +1,11 @@
+## 3.1.6
+
+- Expose the address of `sqlite3_close_v2` as static field on `Sqlite3` class.
+- Allow wrapping databases without closing them with the `borrowed` parameter
+  on `Sqlite3.fromPointer`.
+- Add `Database.leak()`, which extracts a `sqlite3*` pointer and disables
+  finalizers.
+
 ## 3.1.5
 
 - Build hook: Ensure we use consistent filenames to fix issues on Apple platforms.

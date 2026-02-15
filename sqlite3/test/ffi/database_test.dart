@@ -88,6 +88,39 @@ void main() {
     expect(busyHandlerInvocations, [0, 1, 2, 3]);
   });
 
+  group('borrowed connections', () {
+    test('fromPointer', () {
+      final originalConnection = sqlite3.openInMemory();
+      originalConnection.execute('CREATE TABLE foo (bar);');
+      final ptr = originalConnection.handle;
+
+      final borrowed = sqlite3.fromPointer(ptr, borrowed: true);
+      expect(borrowed.select('SELECT * FROM foo'), isEmpty);
+      borrowed.close();
+      expect(() => borrowed.select('SELECT 1'), throwsStateError);
+
+      // Closing a borrowed connection should keep the actual connection active.
+      expect(originalConnection.select('SELECT * FROM foo'), isEmpty);
+      originalConnection.close();
+    });
+
+    test('leak', () {
+      final originalConnection = sqlite3.openInMemory();
+      originalConnection.execute('CREATE TABLE foo (bar);');
+      final ptr = originalConnection.leak();
+
+      // originalConnection no longer owns the underlying connection at this
+      // point.
+      originalConnection.close();
+      expect(() => originalConnection.execute('SELECT 1'), throwsStateError);
+
+      // But the connection is still open!
+      final sameConnection = sqlite3.fromPointer(ptr);
+      expect(sameConnection.select('SELECT * FROM foo'), isEmpty);
+      sameConnection.close();
+    });
+  });
+
   group('backup', () {
     late String path;
 

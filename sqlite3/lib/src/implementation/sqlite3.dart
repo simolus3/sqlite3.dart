@@ -15,8 +15,11 @@ base class Sqlite3Implementation implements CommonSqlite3 {
   const Sqlite3Implementation(this.bindings);
 
   @visibleForOverriding
-  CommonDatabase wrapDatabase(RawSqliteDatabase rawDb) {
-    return DatabaseImplementation(bindings, rawDb);
+  CommonDatabase wrapDatabase(
+    RawSqliteDatabase rawDb, {
+    bool isBorrowed = false,
+  }) {
+    return DatabaseImplementation(bindings, rawDb, isBorrowed: isBorrowed);
   }
 
   @override

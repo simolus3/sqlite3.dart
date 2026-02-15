@@ -21,6 +21,13 @@ base class DatabaseImplementation implements CommonDatabase {
   // Note: Implementations of this have platform-specific finalizers on them.
   final RawSqliteDatabase database;
 
+  /// Whether the raw [database] represents a borrowed SQLite connection not
+  /// owned by this Dart object.
+  ///
+  /// This mainly means that [close] will not call `sqlite3_close_v2`
+  /// internally.
+  bool isBorrowed;
+
   _StreamHandlers<SqliteUpdate, void Function()>? _updates;
   _StreamHandlers<void, void Function()>? _rollbacks;
   _StreamHandlers<void, VoidPredicate>? _commits;
@@ -49,7 +56,11 @@ base class DatabaseImplementation implements CommonDatabase {
     execute('PRAGMA user_version = $value;');
   }
 
-  DatabaseImplementation(this.bindings, this.database);
+  DatabaseImplementation(
+    this.bindings,
+    this.database, {
+    required this.isBorrowed,
+  });
 
   @visibleForOverriding
   StatementImplementation wrapStatement(String sql, RawSqliteStatement stmt) {
@@ -250,6 +261,11 @@ base class DatabaseImplementation implements CommonDatabase {
     _updates?.close();
     _commits?.close();
     _rollbacks?.close();
+
+    if (isBorrowed) {
+      // Keep the connection open for the actual owner of it to use.
+      return;
+    }
 
     database.sqlite3_update_hook(null);
     database.sqlite3_commit_hook(null);
