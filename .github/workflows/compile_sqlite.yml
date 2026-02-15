@@ -199,16 +199,19 @@ jobs:
           path: sqlite3_connection_pool/out
           key: pool-helper-${{ runner.os }}-${{ hashFiles('sqlite3_connection_pool/src/**', 'sqlite3_connection_pool/Cargo.toml', 'sqlite3_connection_pool/.cargo/**') }}
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.cache_build.outputs.cache-hit != 'true'
         with:
           toolchain: nightly
           components: rust-src
           targets: x86_64-apple-darwin,aarch64-apple-darwin
       - name: Build for macOS and iOS
+        if: steps.cache_build.outputs.cache-hit != 'true'
         working-directory: sqlite3_connection_pool
         run: |
           rustup component add rust-src --toolchain nightly-aarch64-apple-darwin
           ./tool/build_apple.sh
       - name: Copy libraries
+        if: steps.cache_build.outputs.cache-hit != 'true'
         working-directory: sqlite3_connection_pool
         run: |
           mkdir out
