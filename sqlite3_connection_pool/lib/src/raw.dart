@@ -182,6 +182,7 @@ final class RawSqliteConnectionPool implements Finalizable {
   }
 }
 
+/// A write and a collection of read connections to put into a connection pool.
 final class PoolConnections {
   final Database writer;
   final List<Database> readers;

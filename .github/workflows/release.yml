@@ -6,6 +6,7 @@ on:
       - 'sqlite3-[0-9]+.[0-9]+.[0-9]+*'
       - 'sqlite3_test-[0-9]+.[0-9]+.[0-9]+*'
       - 'sqlite3_web-[0-9]+.[0-9]+.[0-9]+*'
+      - 'sqlite3_connection_pool-[0-9]+.[0-9]+.[0-9]+*'
 
 jobs:
   fetch_sqlite:
@@ -82,3 +83,31 @@ jobs:
     with:
       environment: 'pub.dev'
       working-directory: sqlite3_web/
+
+  publish_sqlite3_connection_pool:
+    needs: [fetch_sqlite, prepare_release]
+    permissions:
+      id-token: write
+    if: "${{ startsWith(github.ref_name, 'sqlite3_connection_pool-') }}"
+    runs-on: ubuntu-latest
+    environment: 'pub.dev'
+    # This can't use the workflow because we need to download assets to include in
+    # the package.
+    steps:
+    - uses: actions/checkout@v5
+    - uses: dart-lang/setup-dart@v1 # This will request an OIDC token for pub.dev
+
+    - name: Download connection pool libraries
+      uses: actions/download-artifact@v5
+      with:
+        artifact-ids: ${{ needs.fetch_sqlite.outputs.pool_libs_artifact_id }}
+        path: sqlite3_connection_pool/lib/src/precompiled/
+
+    - name: Pub get
+      run: dart pub get
+    - name: Publish - dry run
+      run: dart pub publish --dry-run
+      working-directory: sqlite3_connection_pool
+    - name: Publish to pub.dev
+      run: dart pub publish -f
+      working-directory: sqlite3_connection_pool

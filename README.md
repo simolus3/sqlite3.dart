@@ -20,6 +20,9 @@ returned by `package:clock`.
 `package:sqlite3_web` contains helpers for running SQLite on the web, including code to compile web workers
 that help with the process.
 
+`package:sqlite3_connection_pool` provides an asynchronous connection pool for SQLite that works well across
+isolates.
+
 ## Example Usage
 
 A file with basic usage examples for pure Dart can be found [here](sqlite3/example/main.dart).

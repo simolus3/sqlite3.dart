@@ -13,10 +13,29 @@ import 'raw.dart';
 /// The result of calling [ConnectionLease.execute]. This provides access to the
 /// `autocommit` state (indicating whether the database is in a transaction) as
 /// well as the changes and last insert rowid.
-///
-/// {@category native}
 typedef ExecuteResult = ({bool autoCommit, int changes, int lastInsertRowId});
 
+/// A pool giving out SQLite connections asynchronously.
+///
+/// Pools are identified by name and managed by native code, which means that
+/// even two isolates without a communication channel can safely share pools.
+///
+/// To open a pool, use [SqliteConnectionPool.open]. Pools are closed with
+/// [SqliteConnectionPool.close] (or by just not referencing them any longer),
+/// but the underlying connections are only closed once all pool instances
+/// across isolates are closed.
+///
+/// You can query pools directly, [readQuery] runs a read-only select statement
+/// and [execute] runs writes (including writes with a `RETURNING` statement).
+///
+/// Additionally, [reader] and [writer] return a [ConnectionLease] which allows
+/// running multiple statements on the same connection (useful e.g. for
+/// transactions). Obtained leases must be returned to the pool with
+/// [ConnectionLease.returnLease].
+///
+/// Finally, [exclusiveAccess] gives you exclusive access to the pool. This is
+/// useful in some cases where a schema update needs to be applied to read
+/// connections explicitly.
 final class SqliteConnectionPool {
   final RawSqliteConnectionPool _raw;
   bool _isClosed = false;
@@ -105,7 +124,7 @@ final class SqliteConnectionPool {
     await future;
 
     final (:writer, :readers) = _raw.queryConnections();
-    return ExclusivePoolAccess(request, writer, readers);
+    return ExclusivePoolAccess._(request, writer, readers);
   }
 
   /// Executes the [sql] statement on the write connection.
@@ -150,6 +169,38 @@ final class SqliteConnectionPool {
     }
   }
 
+  /// Opens a connection pool, initializing it with connections if this is the
+  /// first instance of that pool.
+  ///
+  /// The [name] uniquely identifies the pool in this process. If two isolates
+  /// call [open] with the same name, they'll get access to the same physical
+  /// pool.
+  ///
+  /// [openConnections] should return a [PoolConnections] instance with a writer
+  /// and a list of read connections. The exact configuration of those
+  /// connections is up to the user, but connections should be configured to use
+  /// `WAL` mode and there should be at least one read connection:
+  ///
+  ///```dart
+  /// final pool = SqliteConnectionPool.open(
+  ///   name: '/path/to/database.db',
+  ///   openConnections: () {
+  ///     // Open one write and multiple read connections.
+  ///     return PoolConnections(
+  ///       openDatabase(true),
+  ///       [for (var i = 0; i < 4; i++) openDatabase(false)]
+  ///     );
+  ///   },
+  /// );
+  ///
+  /// Database openDatabase(bool writer) {
+  ///   final db = sqlite3.open('/path/to/database.db');
+  ///   db.execute('pragma journal_mode = wal;');
+  ///   if (!writer) {
+  ///     db.execute('pragma query_only = true');
+  ///   }
+  /// }
+  /// ```
   static SqliteConnectionPool open({
     required String name,
     required PoolConnections Function() openConnections,
@@ -160,6 +211,12 @@ final class SqliteConnectionPool {
   }
 }
 
+/// A database connection with utilities to safely use it asynchronously.
+///
+/// This provides asynchronous access to the underlying database. The database
+/// can be used directly (through [unsafeAccess]). Typically however, one would
+/// use the [select] and [execute] methods to automatically run statements and
+/// queries in short-lived background isolates.
 base class AsyncConnection {
   /// The leased database connection.
   final Database _database;
@@ -257,12 +314,11 @@ base class AsyncConnection {
 }
 
 /// A SQLite database connection that has been leased from a connection pool and
-/// must be returned.
+/// must be returned to it with [returnLease].
 ///
-/// This provides asynchronous access to the underlying database. The database
-/// can be used directly (through [unsafeAccess]). Typically however, one would
-/// use the [select] and [execute] methods to automatically run statements and
-/// queries in short-lived background isolates.
+/// If this object is no longer referenced, or if the isolate with exclusive
+/// access is closed for any reason, the lease is also automatically returned.
+
 final class ConnectionLease extends AsyncConnection {
   // The native request from which the database has been obtained. Closing this
   // will return the connection to the pool.
@@ -280,7 +336,9 @@ final class ConnectionLease extends AsyncConnection {
     );
   }
 
-  /// Returns the leased connection back to the pool.
+  /// Returns this leased connection back to the pool.
+  ///
+  /// This connection may not be used after calling this method.
   void returnLease() {
     _closed = true;
     // This doesn't call sqlite3_close_v2 because the connection has been opened
@@ -291,12 +349,22 @@ final class ConnectionLease extends AsyncConnection {
   }
 }
 
+/// Provides access to all connections of a database pool.
+///
+/// After obtaining this instance, it must eventually be [close]d to allow other
+/// readers and writers to progress.
+///
+/// If this object is no longer referenced, or if the isolate with exclusive
+/// access is closed for any reason, the handle is also automatically returned.
 final class ExclusivePoolAccess {
+  /// The single write connection of the connection pool.
   final AsyncConnection writer;
+
+  /// All read connections in the pool.
   final List<AsyncConnection> readers;
   final RawPoolRequest _request;
 
-  ExclusivePoolAccess(
+  ExclusivePoolAccess._(
     this._request,
     Pointer<Void> writer,
     List<Pointer<Void>> readers,
