@@ -37,70 +37,91 @@ final class RemoteDatabase implements Database {
       ..onListen = (() {
         _updateNotificationSubscription ??= connection.notifications.stream
             .listen((notification) {
-              if (notification case UpdateNotification()) {
+              if (notification.type == MessageType.notifyUpdate.name) {
                 if (notification.databaseId == databaseId) {
-                  _updates.add(notification.update);
+                  final rawUpdate = notification as UpdateNotification;
+                  _updates.add(rawUpdate.sqliteUpdate);
                 }
               }
             });
-        _requestStreamUpdates(MessageType.updateRequest, true);
+        if (!_isClosed) {
+          connection.sendRequest(
+            newUpdateStreamRequest(
+              action: true,
+              requestId: 0,
+              databaseId: databaseId,
+            ),
+            MessageType.simpleSuccessResponse,
+          );
+        }
       })
       ..onCancel = (() {
         _updateNotificationSubscription?.cancel();
         _updateNotificationSubscription = null;
-        _requestStreamUpdates(MessageType.updateRequest, false);
+        if (!_isClosed) {
+          connection.sendRequest(
+            newUpdateStreamRequest(
+              action: false,
+              requestId: 0,
+              databaseId: databaseId,
+            ),
+            MessageType.simpleSuccessResponse,
+          );
+        }
       });
 
     _setupCommitOrRollbackStream(
       _commits,
-      MessageType.commitRequest,
-      MessageType.notifyCommit,
+      (action) => newCommitsStreamRequest(
+        action: action,
+        requestId: 0,
+        databaseId: databaseId,
+      ),
+      MessageType.notifyCommit.name,
     );
     _setupCommitOrRollbackStream(
       _rollbacks,
-      MessageType.rollbackRequest,
-      MessageType.notifyRollback,
+      (action) => newRollbackStreamRequest(
+        action: action,
+        requestId: 0,
+        databaseId: databaseId,
+      ),
+      MessageType.notifyRollback.name,
     );
   }
 
   void _setupCommitOrRollbackStream(
     _CommitOrRollbackStream stream,
-    MessageType requestSubscription,
-    MessageType notificationType,
+    StreamRequest Function(bool action) generateRequest,
+    String notificationType,
   ) {
     stream.controller
       ..onListen = (() {
         stream.workerSubscription ??= connection.notifications.stream.listen((
           notification,
         ) {
-          if (notification case EmptyNotification(type: final type)) {
-            if (notification.databaseId == databaseId &&
-                type == notificationType) {
-              stream.controller.add(null);
-            }
+          if (notification.type == notificationType &&
+              notification.databaseId == databaseId) {
+            stream.controller.add(null);
           }
         });
-        _requestStreamUpdates(requestSubscription, true);
+        if (!_isClosed) {
+          connection.sendRequest(
+            generateRequest(true),
+            MessageType.simpleSuccessResponse,
+          );
+        }
       })
       ..onCancel = (() {
         stream.workerSubscription?.cancel();
         stream.workerSubscription = null;
-        _requestStreamUpdates(requestSubscription, false);
+        if (!_isClosed) {
+          connection.sendRequest(
+            generateRequest(false),
+            MessageType.simpleSuccessResponse,
+          );
+        }
       });
-  }
-
-  void _requestStreamUpdates(MessageType streamType, bool subscribe) {
-    if (!_isClosed) {
-      connection.sendRequest(
-        StreamRequest(
-          type: streamType,
-          action: subscribe,
-          requestId: 0, // filled out in sendRequest
-          databaseId: databaseId,
-        ),
-        MessageType.simpleSuccessResponse,
-      );
-    }
   }
 
   @override
@@ -116,7 +137,7 @@ final class RemoteDatabase implements Database {
       _rollbacks.controller.close(),
       _commits.controller.close(),
       connection.sendRequest(
-        CloseDatabase(requestId: 0, databaseId: databaseId),
+        newCloseDatabase(requestId: 0, databaseId: databaseId),
         MessageType.simpleSuccessResponse,
       ),
     ).wait;
@@ -125,7 +146,7 @@ final class RemoteDatabase implements Database {
   @override
   Future<JSAny?> customRequest(JSAny? request) async {
     final response = await connection.sendRequest(
-      CustomRequest(requestId: 0, payload: request, databaseId: databaseId),
+      newCustomRequest(payload: request, requestId: 0, databaseId: databaseId),
       MessageType.simpleSuccessResponse,
     );
     return response.response;
@@ -139,13 +160,17 @@ final class RemoteDatabase implements Database {
     LockToken? token,
     Future<void>? abortTrigger,
   }) async {
+    final (serializedParameters, typeVector) = TypeCode.encodeValues(
+      parameters,
+    );
     final response = await connection.sendRequest(
-      RunQuery(
+      newRunQuery(
         requestId: 0,
         databaseId: databaseId,
         lockId: token == null ? null : lockTokenToId(token),
         sql: sql,
-        parameters: parameters,
+        parameters: serializedParameters,
+        typeVector: typeVector,
         returnRows: false,
         checkInTransaction: checkInTransaction,
       ),
@@ -153,7 +178,11 @@ final class RemoteDatabase implements Database {
       abortTrigger: abortTrigger,
     );
 
-    return response.asResultWithResultSet();
+    return (
+      autocommit: response.autoCommit,
+      lastInsertRowid: response.lastInsertRowId,
+      result: null,
+    );
   }
 
   @override
@@ -162,7 +191,7 @@ final class RemoteDatabase implements Database {
     Future<void>? abortTrigger,
   }) async {
     final response = await connection.sendRequest(
-      RequestExclusiveLock(requestId: 0, databaseId: databaseId),
+      newRequestExclusiveLock(requestId: 0, databaseId: databaseId),
       MessageType.simpleSuccessResponse,
       abortTrigger: abortTrigger,
     );
@@ -172,7 +201,7 @@ final class RemoteDatabase implements Database {
       return await body(lockTokenFromId(lockId));
     } finally {
       await connection.sendRequest(
-        ReleaseLock(requestId: 0, databaseId: databaseId, lockId: lockId),
+        newReleaseLock(requestId: 0, databaseId: databaseId, lockId: lockId),
         MessageType.simpleSuccessResponse,
       );
     }
@@ -189,13 +218,18 @@ final class RemoteDatabase implements Database {
     LockToken? token,
     Future<void>? abortTrigger,
   }) async {
+    final (serializedParameters, typeVector) = TypeCode.encodeValues(
+      parameters,
+    );
+
     final response = await connection.sendRequest(
-      RunQuery(
+      newRunQuery(
         requestId: 0,
         databaseId: databaseId,
         lockId: token == null ? null : lockTokenToId(token),
         sql: sql,
-        parameters: parameters,
+        parameters: serializedParameters,
+        typeVector: typeVector,
         returnRows: true,
         checkInTransaction: checkInTransaction,
       ),
@@ -203,7 +237,11 @@ final class RemoteDatabase implements Database {
       abortTrigger: abortTrigger,
     );
 
-    return response.asResultWithResultSet();
+    return (
+      autocommit: response.autoCommit,
+      lastInsertRowid: response.lastInsertRowId,
+      result: response.readResultSet()!,
+    );
   }
 
   @override
@@ -218,7 +256,7 @@ final class RemoteDatabase implements Database {
   @override
   Future<SqliteWebEndpoint> additionalConnection() async {
     final response = await connection.sendRequest(
-      OpenAdditonalConnection(requestId: 0, databaseId: databaseId),
+      newOpenAdditionalConnection(requestId: 0, databaseId: databaseId),
       MessageType.endpointResponse,
     );
     final endpoint = response.endpoint;
@@ -234,9 +272,9 @@ final class RemoteFileSystem implements FileSystem {
   @override
   Future<bool> exists(FileType type) async {
     final response = await database.connection.sendRequest(
-      FileSystemExistsQuery(
+      newFileSystemExistsQuery(
         databaseId: database.databaseId,
-        fsType: type,
+        fsType: type.index,
         requestId: 0,
       ),
       MessageType.simpleSuccessResponse,
@@ -248,7 +286,7 @@ final class RemoteFileSystem implements FileSystem {
   @override
   Future<void> flush() async {
     await database.connection.sendRequest(
-      FileSystemFlushRequest(databaseId: database.databaseId, requestId: 0),
+      newFileSystemFlushRequest(databaseId: database.databaseId, requestId: 0),
       MessageType.simpleSuccessResponse,
     );
   }
@@ -256,11 +294,11 @@ final class RemoteFileSystem implements FileSystem {
   @override
   Future<Uint8List> readFile(FileType type) async {
     final response = await database.connection.sendRequest(
-      FileSystemAccess(
+      newFileSystemAccess(
         databaseId: database.databaseId,
         requestId: 0,
         buffer: null,
-        fsType: type,
+        fsType: type.index,
       ),
       MessageType.simpleSuccessResponse,
     );
@@ -275,11 +313,11 @@ final class RemoteFileSystem implements FileSystem {
     final copy = Uint8List(content.length)..setAll(0, content);
 
     await database.connection.sendRequest(
-      FileSystemAccess(
+      newFileSystemAccess(
         databaseId: database.databaseId,
         requestId: 0,
         buffer: copy.buffer.toJS,
-        fsType: type,
+        fsType: type.index,
       ),
       MessageType.simpleSuccessResponse,
     );
@@ -301,7 +339,7 @@ final class WorkerConnection extends ProtocolChannel {
     AbortSignal abortSignal,
   ) async {
     final response = await handleCustomRequest(request.payload);
-    return SimpleSuccessResponse(
+    return newSimpleSuccessResponse(
       response: response,
       requestId: request.requestId,
     );
@@ -315,11 +353,11 @@ final class WorkerConnection extends ProtocolChannel {
     required JSAny? additionalOptions,
   }) async {
     final response = await sendRequest(
-      OpenRequest(
+      newOpenRequest(
         requestId: 0,
-        wasmUri: wasmUri,
+        wasmUri: wasmUri.toString(),
         databaseName: databaseName,
-        storageMode: implementation.resolveToVfs(),
+        storageMode: implementation.resolveToVfs().toJS,
         onlyOpenVfs: onlyOpenVfs,
         additionalData: additionalOptions,
       ),
@@ -395,10 +433,11 @@ final class DatabaseClient implements WebSqlite {
     }
 
     final (endpoint, channel) = await createChannel();
-    ConnectRequest(
+    newConnectRequest(
       endpoint: endpoint,
       requestId: 0,
-    ).sendTo(dedicated.postMessage);
+      databaseId: null,
+    ).sendToWorker(dedicated);
 
     _connectionToDedicated = _connection(
       channel.injectErrorsFrom(dedicated.targetForErrorEvents),
@@ -420,7 +459,11 @@ final class DatabaseClient implements WebSqlite {
 
     final (endpoint, channel) = await createChannel();
 
-    ConnectRequest(endpoint: endpoint, requestId: 0).sendTo(shared.postMessage);
+    newConnectRequest(
+      endpoint: endpoint,
+      requestId: 0,
+      databaseId: null,
+    ).sendToWorker(shared);
 
     _connectionToShared = _connection(
       channel.injectErrorsFrom(shared.targetForErrorEvents),
@@ -435,7 +478,7 @@ final class DatabaseClient implements WebSqlite {
 
       final (endpoint, channel) = await createChannel();
       await _connectionToShared!.sendRequest(
-        ConnectRequest(requestId: 0, endpoint: endpoint),
+        newConnectRequest(requestId: 0, endpoint: endpoint, databaseId: null),
         MessageType.simpleSuccessResponse,
       );
 
@@ -456,10 +499,11 @@ final class DatabaseClient implements WebSqlite {
         environment: local,
       );
 
-      ConnectRequest(
+      newConnectRequest(
         requestId: 0,
         endpoint: endpoint,
-      ).sendTo(local.postMessage);
+        databaseId: null,
+      ).sendToWorker(local);
 
       return _connectionToLocal = _connection(channel);
     });
@@ -496,9 +540,8 @@ final class DatabaseClient implements WebSqlite {
       try {
         response = await connection
             .sendRequest(
-              CompatibilityCheck(
+              newDedicatedCompatibilityCheck(
                 requestId: 0,
-                type: MessageType.dedicatedCompatibilityCheck,
                 databaseName: databaseName,
               ),
               MessageType.simpleSuccessResponse,
@@ -556,9 +599,8 @@ final class DatabaseClient implements WebSqlite {
       try {
         response = await connection
             .sendRequest(
-              CompatibilityCheck(
+              newSharedCompatibilityCheck(
                 requestId: 0,
-                type: MessageType.sharedCompatibilityCheck,
                 databaseName: databaseName,
               ),
               MessageType.simpleSuccessResponse,

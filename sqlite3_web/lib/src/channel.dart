@@ -75,7 +75,7 @@ StreamChannel<Message> _channel(
       // Other end has closed the connection
       controller.local.sink.close();
     } else {
-      controller.local.sink.add(Message.deserialize(message as JSObject));
+      controller.local.sink.add(message as Message);
     }
   });
 
@@ -126,43 +126,42 @@ abstract base class ProtocolChannel extends RequestHandler {
 
   /// Handle an incoming message from the client.
   void _handleIncoming(Message message) async {
-    switch (message) {
-      case Response(:final requestId):
-        _responses.remove(requestId)?.complete(message);
-        break;
-      case Request():
+    dispatchMessage(
+      message,
+      whenResponse: (response) {
+        _responses.remove(response.requestId)?.complete(response);
+      },
+      whenRequest: (request) async {
         Response response;
 
-        final abortController = _handlingRequests[message.requestId] =
+        final requestId = request.requestId;
+        final abortController = _handlingRequests[requestId] =
             AbortController();
 
         try {
-          response = await message.dispatchTo(this, abortController.signal);
+          response = await dispatchRequest(request, abortController.signal);
         } catch (e, s) {
           if (e is! AbortException) {
             console.error('Error in worker: ${e.toString()}'.toJS);
             console.error('Original trace: $s'.toJS);
           }
 
-          response = ErrorResponse(
-            message: e.toString(),
-            requestId: message.requestId,
-            serializedException: e,
-          );
+          response = ErrorResponseUtils.wrapException(requestId, e);
         } finally {
-          _handlingRequests.remove(message.requestId);
+          _handlingRequests.remove(requestId);
         }
 
         _channel.sink.add(response);
-      case Notification():
-        handleNotification(message);
-      case AbortRequest(:final requestId):
-        if (_handlingRequests.remove(requestId) case final token?) {
+      },
+      whenNotification: handleNotification,
+      whenAbortRequest: (abort) {
+        if (_handlingRequests.remove(abort.requestId) case final token?) {
           token.abort();
         }
-      case StartFileSystemServer():
-        throw StateError('Should only be a top-level message');
-    }
+      },
+      whenStartFileSystemServer: (_) =>
+          throw StateError('Should only be a top-level message'),
+    );
   }
 
   /// Sends a request to the other end and expects a response of the
@@ -189,7 +188,7 @@ abstract base class ProtocolChannel extends RequestHandler {
     if (abortTrigger != null) {
       abortTrigger.whenComplete(() {
         if (!hasResponse) {
-          _channel.sink.add(AbortRequest(requestId: id));
+          _channel.sink.add(newAbortRequest(requestId: id));
         }
       });
     }
@@ -197,7 +196,7 @@ abstract base class ProtocolChannel extends RequestHandler {
     final response = await completer.future;
     hasResponse = true;
     hasResponse = true;
-    if (response.type == expectedType) {
+    if (response.type == expectedType.name) {
       return response as Res;
     } else {
       throw response.interpretAsError();

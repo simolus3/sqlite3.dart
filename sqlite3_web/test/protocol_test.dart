@@ -49,7 +49,8 @@ void main() {
     server.handleRequestFunction = expectAsync1((request) async {
       final run = request as RunQuery;
       expect(run.sql, 'sql');
-      expect(run.parameters, [
+      final parameters = TypeCode.decodeValues(run.parameters, run.typeVector);
+      expect(parameters, [
         1,
         1.0,
         true,
@@ -63,34 +64,36 @@ void main() {
       if (isDart2Wasm) {
         // Make sure we don't loose type information in the js conversion across
         // the message ports.
-        expect(run.parameters[0].runtimeType, int);
-        expect(run.parameters[1].runtimeType, double);
+        expect(parameters[0].runtimeType, int);
+        expect(parameters[1].runtimeType, double);
       }
 
-      return SimpleSuccessResponse(
+      return newSimpleSuccessResponse(
         requestId: request.requestId,
         response: null,
       );
     });
 
+    final (serializedParams, typeVector) = TypeCode.encodeValues([
+      1,
+      1.0,
+      true,
+      false,
+      'a string',
+      Uint8List(10),
+      BigInt.from(100),
+      null,
+      {'custom': 'object'},
+    ]);
     await client.sendRequest(
-      RunQuery(
+      newRunQuery(
         requestId: 0,
         databaseId: 0,
         sql: 'sql',
         checkInTransaction: false,
         lockId: null,
-        parameters: [
-          1,
-          1.0,
-          true,
-          false,
-          'a string',
-          Uint8List(10),
-          BigInt.from(100),
-          null,
-          {'custom': 'object'},
-        ],
+        parameters: serializedParams,
+        typeVector: typeVector,
         returnRows: true,
       ),
       MessageType.simpleSuccessResponse,
@@ -99,8 +102,8 @@ void main() {
 
   test('serializes types in response', () async {
     server.handleRequestFunction = expectAsync1((request) async {
-      return RowsResponse(
-        requestId: request.requestId,
+      return RowsResponseUtils.wrapResultSet(
+        request.requestId,
         resultSet: ResultSet(
           ['a'],
           null,
@@ -111,24 +114,25 @@ void main() {
             ['string value'],
           ],
         ),
-        autocommit: false,
+        autoCommit: false,
         lastInsertRowId: 0,
       );
     });
 
     final response = await client.sendRequest(
-      RunQuery(
+      newRunQuery(
         requestId: 0,
         databaseId: 0,
         sql: 'sql',
         lockId: null,
-        parameters: [],
+        parameters: JSArray(),
+        typeVector: null,
         returnRows: true,
         checkInTransaction: false,
       ),
       MessageType.rowsResponse,
     );
-    final resultSet = response.resultSet!;
+    final resultSet = response.readResultSet()!;
 
     expect(resultSet.length, 4);
     expect(resultSet.map((e) => e['a']), [
@@ -154,12 +158,13 @@ void main() {
 
     await expectLater(
       () => client.sendRequest(
-        RunQuery(
+        newRunQuery(
           requestId: 0,
           databaseId: 0,
           sql: 'sql',
           lockId: null,
-          parameters: [],
+          parameters: JSArray(),
+          typeVector: null,
           returnRows: true,
           checkInTransaction: false,
         ),

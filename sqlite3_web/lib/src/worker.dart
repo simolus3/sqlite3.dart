@@ -33,7 +33,7 @@ extension on WorkerEnvironment {
   /// top-level requests.
   Stream<Message> get topLevelRequests {
     return incomingMessages.map((event) {
-      return Message.deserialize(event.data as JSObject);
+      return event.data as Message;
     });
   }
 }
@@ -171,15 +171,38 @@ final class _ClientConnection extends ProtocolChannel
     });
   }
 
-  @override
-  Future<Response> handleCompatibilityCheck(
+  Future<Response> _handleCompatibilityCheck(
     CompatibilityCheck request,
     AbortSignal abortSignal,
   ) async {
-    return SimpleSuccessResponse(
+    return newSimpleSuccessResponse(
       response: (await _runner.checkCompatibility(request)).toJS,
       requestId: request.requestId,
     );
+  }
+
+  @override
+  FutureOr<Response> handleDedicatedCompatibilityCheck(
+    DedicatedCompatibilityCheck request,
+    AbortSignal abortSignal,
+  ) {
+    return _handleCompatibilityCheck(request, abortSignal);
+  }
+
+  @override
+  FutureOr<Response> handleDedicatedInSharedCompatibilityCheck(
+    DedicatedInSharedCompatibilityCheck request,
+    AbortSignal abortSignal,
+  ) {
+    return _handleCompatibilityCheck(request, abortSignal);
+  }
+
+  @override
+  FutureOr<Response> handleSharedCompatibilityCheck(
+    SharedCompatibilityCheck request,
+    AbortSignal abortSignal,
+  ) {
+    return _handleCompatibilityCheck(request, abortSignal);
   }
 
   @override
@@ -190,12 +213,16 @@ final class _ClientConnection extends ProtocolChannel
     // This is only used to let clients connect to a dedicated worker hosted in
     // this shared worker.
     final inner = _runner._innerWorker!;
-    ConnectRequest(
+    newConnectRequest(
       endpoint: request.endpoint,
       requestId: 0,
-    ).sendTo(inner.postMessage);
+      databaseId: null,
+    ).sendToWorker(inner);
 
-    return SimpleSuccessResponse(response: null, requestId: request.requestId);
+    return newSimpleSuccessResponse(
+      response: null,
+      requestId: request.requestId,
+    );
   }
 
   @override
@@ -216,7 +243,7 @@ final class _ClientConnection extends ProtocolChannel
       );
     }
 
-    return SimpleSuccessResponse(
+    return newSimpleSuccessResponse(
       requestId: request.requestId,
       response: response,
     );
@@ -227,14 +254,14 @@ final class _ClientConnection extends ProtocolChannel
     OpenRequest request,
     AbortSignal abortSignal,
   ) async {
-    await _runner.loadWasmModule(request.wasmUri);
+    await _runner.loadWasmModule(Uri.parse(request.wasmUri));
     DatabaseState? database;
     _ConnectionDatabase? connectionDatabase;
 
     try {
       database = _runner.findDatabase(
         request.databaseName,
-        request.storageMode,
+        FileSystemImplementation.fromJS(request.storageMode),
         request.additionalData,
       );
 
@@ -243,7 +270,7 @@ final class _ClientConnection extends ProtocolChannel
       connectionDatabase = _ConnectionDatabase(database);
       _openedDatabases.add(connectionDatabase);
 
-      return SimpleSuccessResponse(
+      return newSimpleSuccessResponse(
         response: database.id.toJS,
         requestId: request.requestId,
       );
@@ -272,19 +299,34 @@ final class _ClientConnection extends ProtocolChannel
         throw StateError('Database is not in a transaction');
       }
 
+      final parameters = TypeCode.decodeValues(
+        request.parameters,
+        request.typeVector,
+      );
+
       ResultSet? resultSet;
       if (request.returnRows) {
-        resultSet = db.select(request.sql, request.parameters);
-      } else {
-        db.execute(request.sql, request.parameters);
-      }
+        resultSet = db.select(request.sql, parameters);
 
-      return RowsResponse(
-        resultSet: resultSet,
-        requestId: request.requestId,
-        autocommit: db.autocommit,
-        lastInsertRowId: db.lastInsertRowId,
-      );
+        return RowsResponseUtils.wrapResultSet(
+          request.requestId,
+          resultSet: resultSet,
+          autoCommit: db.autocommit,
+          lastInsertRowId: db.lastInsertRowId,
+        );
+      } else {
+        db.execute(request.sql, parameters);
+
+        return newRowsResponse(
+          columnNames: null,
+          tableNames: null,
+          typeVector: null,
+          rows: null,
+          autoCommit: db.autocommit,
+          lastInsertRowId: db.lastInsertRowId,
+          requestId: request.requestId,
+        );
+      }
     });
   }
 
@@ -295,7 +337,7 @@ final class _ClientConnection extends ProtocolChannel
   ) async {
     final database = _requireDatabase(request);
     final lock = await database.obtainLockAsync(abortSignal);
-    return SimpleSuccessResponse(
+    return newSimpleSuccessResponse(
       response: lock.toJS,
       requestId: request.requestId,
     );
@@ -305,66 +347,82 @@ final class _ClientConnection extends ProtocolChannel
   Response handleReleaseLock(ReleaseLock request, AbortSignal abortSignal) {
     final database = _requireDatabase(request);
     database.releaseLock(request.lockId);
-    return SimpleSuccessResponse(response: null, requestId: request.requestId);
+    return newSimpleSuccessResponse(
+      response: null,
+      requestId: request.requestId,
+    );
   }
 
   @override
-  Future<Response> handleStream(
-    StreamRequest request,
+  FutureOr<Response> handleCommitRequest(
+    CommitsStreamRequest request,
     AbortSignal abortSignal,
   ) async {
     final database = _requireDatabase(request);
-
     if (request.action) {
-      // Subscribe.
-      switch (request.type) {
-        case MessageType.updateRequest:
-          return await subscribe(database.updates, () async {
-            final rawDatabase = await database.database.opened;
-            return rawDatabase.database.updates.listen((event) {
-              sendNotification(
-                UpdateNotification(update: event, databaseId: database.id),
-              );
-            });
-          }, request);
-        case MessageType.commitRequest:
-          return await subscribe(database.commits, () async {
-            final rawDatabase = await database.database.opened;
-            return rawDatabase.database.commits.listen((event) {
-              sendNotification(
-                EmptyNotification(
-                  type: MessageType.notifyCommit,
-                  databaseId: database.id,
-                ),
-              );
-            });
-          }, request);
-        case MessageType.rollbackRequest:
-          return await subscribe(database.rollbacks, () async {
-            final rawDatabase = await database.database.opened;
-            return rawDatabase.database.rollbacks.listen((event) {
-              sendNotification(
-                EmptyNotification(
-                  type: MessageType.notifyRollback,
-                  databaseId: database.id,
-                ),
-              );
-            });
-          }, request);
-        default:
-          throw ArgumentError('Unknown stream to subscribe to');
-      }
+      return await subscribe(database.commits, () async {
+        final rawDatabase = await database.database.opened;
+        return rawDatabase.database.commits.listen((event) {
+          sendNotification(newCommitNotification(databaseId: database.id));
+        });
+      }, request);
     } else {
-      // Unsubscribe.
-      final handler = switch (request.type) {
-        MessageType.updateRequest => database.updates,
-        MessageType.rollbackRequest => database.rollbacks,
-        MessageType.commitRequest => database.commits,
-        _ => throw ArgumentError('Unknown stream to unsubscribe from'),
-      };
-      handler.cancel();
+      database.commits.cancel();
 
-      return SimpleSuccessResponse(
+      return newSimpleSuccessResponse(
+        response: null,
+        requestId: request.requestId,
+      );
+    }
+  }
+
+  @override
+  FutureOr<Response> handleRollbackRequest(
+    RollbackStreamRequest request,
+    AbortSignal abortSignal,
+  ) async {
+    final database = _requireDatabase(request);
+    if (request.action) {
+      return await subscribe(database.rollbacks, () async {
+        final rawDatabase = await database.database.opened;
+        return rawDatabase.database.rollbacks.listen((event) {
+          sendNotification(newRollbackNotification(databaseId: database.id));
+        });
+      }, request);
+    } else {
+      database.rollbacks.cancel();
+
+      return newSimpleSuccessResponse(
+        response: null,
+        requestId: request.requestId,
+      );
+    }
+  }
+
+  @override
+  FutureOr<Response> handleUpdateRequest(
+    UpdateStreamRequest request,
+    AbortSignal abortSignal,
+  ) async {
+    final database = _requireDatabase(request);
+    if (request.action) {
+      return await subscribe(database.updates, () async {
+        final rawDatabase = await database.database.opened;
+        return rawDatabase.database.updates.listen((event) {
+          sendNotification(
+            newUpdateNotification(
+              updateKind: event.kind.index,
+              rowId: event.rowId,
+              updateTableName: event.tableName,
+              databaseId: database.id,
+            ),
+          );
+        });
+      }, request);
+    } else {
+      database.updates.cancel();
+
+      return newSimpleSuccessResponse(
         response: null,
         requestId: request.requestId,
       );
@@ -373,7 +431,7 @@ final class _ClientConnection extends ProtocolChannel
 
   @override
   Future<Response> handleOpenAdditionalConnection(
-    OpenAdditonalConnection request,
+    OpenAdditionalConnection request,
     AbortSignal abortSignal,
   ) async {
     final database = _requireDatabase(request).database;
@@ -383,7 +441,10 @@ final class _ClientConnection extends ProtocolChannel
     final client = _runner._accept(channel);
     client._openedDatabases.add(_ConnectionDatabase(database, 0));
 
-    return EndpointResponse(requestId: request.requestId, endpoint: endpoint);
+    return newEndpointResponse(
+      requestId: request.requestId,
+      endpoint: endpoint,
+    );
   }
 
   @override
@@ -394,7 +455,10 @@ final class _ClientConnection extends ProtocolChannel
     final database = _requireDatabase(request);
     _openedDatabases.remove(database);
     await database.close();
-    return SimpleSuccessResponse(response: null, requestId: request.requestId);
+    return newSimpleSuccessResponse(
+      response: null,
+      requestId: request.requestId,
+    );
   }
 
   @override
@@ -407,7 +471,10 @@ final class _ClientConnection extends ProtocolChannel
       await idb.flush();
     }
 
-    return SimpleSuccessResponse(response: null, requestId: request.requestId);
+    return newSimpleSuccessResponse(
+      response: null,
+      requestId: request.requestId,
+    );
   }
 
   @override
@@ -416,7 +483,7 @@ final class _ClientConnection extends ProtocolChannel
     AbortSignal abortSignal,
   ) async {
     final database = _requireDatabase(request);
-    final fsType = request.fsType;
+    final fsType = FileType.values[request.fsType];
     final buffer = request.buffer;
 
     final vfs = await database.database.vfs;
@@ -430,7 +497,7 @@ final class _ClientConnection extends ProtocolChannel
         file.xTruncate(asDartBuffer.lengthInBytes);
         file.xWrite(asDartBuffer.asUint8List(), 0);
 
-        return SimpleSuccessResponse(
+        return newSimpleSuccessResponse(
           response: null,
           requestId: request.requestId,
         );
@@ -438,7 +505,7 @@ final class _ClientConnection extends ProtocolChannel
         final buffer = Uint8List(file.xFileSize());
         file.xRead(buffer, 0);
 
-        return SimpleSuccessResponse(
+        return newSimpleSuccessResponse(
           response: buffer.buffer.toJS,
           requestId: request.requestId,
         );
@@ -455,9 +522,10 @@ final class _ClientConnection extends ProtocolChannel
   ) async {
     final database = _requireDatabase(request);
     final vfs = await database.database.vfs;
-    final exists = vfs.xAccess(request.fsType.pathInVfs, 0) == 1;
+    final exists =
+        vfs.xAccess(FileType.values[request.fsType].pathInVfs, 0) == 1;
 
-    return SimpleSuccessResponse(
+    return newSimpleSuccessResponse(
       response: exists.toJS,
       requestId: request.requestId,
     );
@@ -469,7 +537,10 @@ final class _ClientConnection extends ProtocolChannel
     StreamRequest request,
   ) async {
     state.subscription ??= await subscribeInternally();
-    return SimpleSuccessResponse(response: null, requestId: request.requestId);
+    return newSimpleSuccessResponse(
+      response: null,
+      requestId: request.requestId,
+    );
   }
 
   @override
@@ -480,7 +551,7 @@ final class _ClientConnection extends ProtocolChannel
   @override
   Future<JSAny?> customRequest(JSAny? request) async {
     final response = await sendRequest(
-      CustomRequest(requestId: 0, payload: request),
+      newCustomRequest(requestId: 0, payload: request, databaseId: null),
       MessageType.simpleSuccessResponse,
     );
     return response.response;
@@ -540,7 +611,7 @@ final class DatabaseState {
           final options = WasmVfs.createOptions(root: pathForOpfs(name));
           final worker = runner._environment.connector.spawnDedicatedWorker()!;
 
-          StartFileSystemServer(options: options).sendTo(worker.postMessage);
+          newStartFileSystemServer(options: options).sendToWorker(worker);
 
           // Wait for the server worker to report that it's ready
           await EventStreamProviders.messageEvent
@@ -649,18 +720,20 @@ final class WorkerRunner {
 
   void handleRequests() async {
     await for (final message in _environment.topLevelRequests) {
-      if (message is ConnectRequest) {
-        final channel = message.endpoint.connect();
+      if (message.type == MessageType.connect.name) {
+        final channel = (message as ConnectRequest).endpoint.connect();
         _accept(channel);
-      } else if (message is StartFileSystemServer) {
-        final worker = await VfsWorker.create(message.options);
+      } else if (message.type == MessageType.startFileSystemServer.name) {
+        final worker = await VfsWorker.create(
+          (message as StartFileSystemServer).options,
+        );
         // Inform the requester that the VFS is ready
         (globalContext as DedicatedWorkerGlobalScope).postMessage(true.toJS);
         await worker.start();
-      } else if (message is CompatibilityCheck) {
+      } else if (isCompatibilityCheck(message.type)) {
         // A compatibility check message is sent to dedicated workers inside of
         // shared workers, we respond through the top-level port.
-        final result = await checkCompatibility(message);
+        final result = await checkCompatibility(message as CompatibilityCheck);
         (globalContext as DedicatedWorkerGlobalScope).postMessage(result.toJS);
       }
     }
@@ -703,15 +776,14 @@ final class WorkerRunner {
       var sharedCanSpawnDedicated = false;
       final existingDatabases = <ExistingDatabase>{};
 
-      if (check.type == MessageType.sharedCompatibilityCheck) {
+      if (check.type == MessageType.sharedCompatibilityCheck.name) {
         if (_innerWorker case final innerWorker?) {
           sharedCanSpawnDedicated = true;
 
-          CompatibilityCheck(
+          newDedicatedInSharedCompatibilityCheck(
             databaseName: databaseName,
-            type: MessageType.dedicatedInSharedCompatibilityCheck,
             requestId: 0,
-          ).sendTo(innerWorker.postMessage);
+          ).sendToWorker(innerWorker);
 
           final response = await EventStreamProviders.messageEvent
               .forTarget(innerWorker.targetForErrorEvents)
