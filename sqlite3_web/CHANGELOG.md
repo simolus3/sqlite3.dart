@@ -1,3 +1,8 @@
+## 0.6.1-wip
+
+- Refactor worker messages to use JS-interop objects directly instead of
+  serializing Dart objects. This makes the package slightly more efficient.
+
 ## 0.6.0
 
 - Replace `worker` URI parameter with `WorkerConnector` interface. Use
