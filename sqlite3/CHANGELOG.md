@@ -1,3 +1,7 @@
+## 3.1.7
+
+- Update to sqlite version 3.52.0.
+
 ## 3.1.6
 
 - Expose the address of `sqlite3_close_v2` as static field on `Sqlite3` class.
