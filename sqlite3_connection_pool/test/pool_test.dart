@@ -66,6 +66,17 @@ void main() {
     expect(await pool.readQuery('SELECT * FROM foo'), isEmpty);
   });
 
+  test('can catch exceptions from async opening', () async {
+    final path = p.join(sandbox, 'test.db');
+    expectLater(
+      SqliteConnectionPool.openAsync(
+        name: path,
+        openConnections: () => throw 'exception',
+      ),
+      throwsA('exception'),
+    );
+  });
+
   test('simple queries', () async {
     final pool = testPool();
     await pool.execute('CREATE TABLE foo (bar TEXT) STRICT;');

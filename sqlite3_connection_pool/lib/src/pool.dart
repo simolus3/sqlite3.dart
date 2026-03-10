@@ -272,7 +272,16 @@ final class SqliteConnectionPool {
       receiveOpenNotification.sendPort,
     ));
 
-    final closeIsolate = (await firstMessage) as SendPort;
+    final message = await firstMessage;
+    // This is either a send port, to which we send a message to close the
+    // isolate after we've opened the pool on this side, or an (error, trace)
+    // pair on exceptions.
+    if (message is! SendPort) {
+      final (error, trace) = message as (Object, StackTrace);
+      Error.throwWithStackTrace(error, trace);
+    }
+
+    final closeIsolate = message;
     final pool = open(
       name: name,
       openConnections: () {
@@ -290,7 +299,12 @@ final class SqliteConnectionPool {
     (String, PoolConnections Function(), SendPort) options,
   ) async {
     final (name, open, port) = options;
-    final pool = SqliteConnectionPool.open(name: name, openConnections: open);
+    SqliteConnectionPool pool;
+    try {
+      pool = SqliteConnectionPool.open(name: name, openConnections: open);
+    } catch (e, s) {
+      Isolate.exit(port, (e, s));
+    }
 
     // Now that we've opened the pool, inform the other isolate. It can open the
     // same pool and that's guaranteed not to open it.

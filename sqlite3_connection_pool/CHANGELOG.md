@@ -1,6 +1,7 @@
 ## 0.2.1
 
 - Export the `PoolConnection` class.
+- Fix errors in `openAsync` being unhandled.
 
 ## 0.2.0+1
 
