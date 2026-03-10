@@ -1,7 +1,9 @@
-use crate::connection::Connection;
+use crate::connection::{Connection, PreparedStatement, StatementCache};
 use crate::dart::{DartPort, RawDartCObject, RawDartCObjectArray, RawDartCObjectValue};
+use crate::update_hook::CollectedTableUpdates;
+use std::cell::UnsafeCell;
 use std::collections::VecDeque;
-use std::ffi::c_int;
+use std::ffi::{c_char, c_int, c_void};
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 use std::sync::{Arc, Mutex};
@@ -18,17 +20,32 @@ pub struct PoolState {
     ///
     /// We assume those to be static within a process, so we don't need to track them on a
     /// per-client basis.
-    functions: ExternalFunctions,
+    pub functions: ExternalFunctions,
+    /// Safety: The context having a write connection lease is assumed to have a mutable reference
+    /// to the updates collector.
+    ///
+    /// This allows not locking in update hooks (since the SQLite connection is never used
+    /// concurrently).
+    table_updates: Option<UnsafeCell<CollectedTableUpdates>>,
+    update_listeners: Vec<DartPort>,
+}
+
+#[repr(C)]
+pub struct PoolConnection {
+    /// The raw `sqlite3*` connection pointer.
+    pub raw: Connection,
+    /// If statement caches are enabled, an LRU cache storing prepared statements by their SQL text.
+    pub cached_statements: Option<StatementCache>,
 }
 
 struct ReadState {
-    connections: Vec<Connection>,
+    connections: Vec<PoolConnection>,
     idle_connections: VecDeque<usize>,
     waiters: LinkedList<Self>,
 }
 
 struct WriteState {
-    connection: Connection,
+    connection: PoolConnection,
     acquired: bool,
     waiters: LinkedList<Self>,
 }
@@ -93,19 +110,33 @@ struct ExclusivePoolRequest {
 }
 
 impl PoolState {
-    pub fn new(functions: ExternalFunctions, writer: Connection, reads: &[Connection]) -> Self {
+    pub fn new(
+        functions: ExternalFunctions,
+        writer: Connection,
+        reads: &[Connection],
+        cache_size: usize,
+    ) -> Self {
+        let wrap_connection = |conn: Connection| -> PoolConnection {
+            PoolConnection {
+                raw: conn,
+                cached_statements: StatementCache::new(cache_size),
+            }
+        };
+
         Self {
             reads: ReadState {
                 idle_connections: (0usize..reads.len()).collect(),
-                connections: reads.into(),
+                connections: reads.iter().copied().map(wrap_connection).collect(),
                 waiters: Default::default(),
             },
             writes: WriteState {
-                connection: writer,
+                connection: wrap_connection(writer),
                 acquired: false,
                 waiters: Default::default(),
             },
             functions,
+            table_updates: Default::default(),
+            update_listeners: Default::default(),
         }
     }
 
@@ -190,7 +221,7 @@ impl PoolState {
     }
 
     /// Returns the write and all read connections of this pool.
-    pub fn view_connections(&self) -> (&Connection, &[Connection]) {
+    pub fn view_connections(&self) -> (&PoolConnection, &[PoolConnection]) {
         let writer = &self.writes.connection;
         let readers = self.reads.connections.as_slice();
 
@@ -244,7 +275,7 @@ impl PoolState {
                 if let Some(conn_idx) = self.reads.idle_connections.pop_front() {
                     reads.assigned_connection = Some(conn_idx);
                     waiter.port.send_did_obtain_connection(
-                        self.reads.connections[conn_idx],
+                        &self.reads.connections[conn_idx],
                         &self.functions,
                     );
                     return true;
@@ -258,7 +289,7 @@ impl PoolState {
                 if self.try_assign_write(&mut writes.has_writer) {
                     waiter
                         .port
-                        .send_did_obtain_connection(self.writes.connection, &self.functions);
+                        .send_did_obtain_connection(&self.writes.connection, &self.functions);
                     return true;
                 }
 
@@ -294,8 +325,35 @@ impl PoolState {
         }
     }
 
-    fn drop_connection(&self, conn: Connection) {
-        (self.functions.sqlite3_close_v2)(conn);
+    fn drop_connection(conn: &mut PoolConnection, functions: &ExternalFunctions) {
+        if let Some(cache) = &mut conn.cached_statements {
+            cache.close_statements(&functions);
+        }
+
+        (functions.sqlite3_close_v2)(conn.raw);
+    }
+
+    pub fn register_update_listener(&mut self, update_listener: DartPort) {
+        self.update_listeners.push(update_listener);
+    }
+
+    pub fn remove_update_listeners(&mut self, removed_listeners: &[DartPort]) {
+        self.update_listeners
+            .retain(|l| !removed_listeners.contains(l));
+    }
+
+    pub fn update_listeners(&self) -> &[DartPort] {
+        self.update_listeners.as_slice()
+    }
+
+    pub fn register_hooks_on_writer(arc: &ConnectionPool) {
+        let mut pool = arc.lock().unwrap();
+        let updates_ptr = pool
+            .table_updates
+            .insert(UnsafeCell::new(CollectedTableUpdates::new(arc)))
+            .get();
+        let writer = &pool.writes.connection;
+        CollectedTableUpdates::attach_to(updates_ptr, &pool.functions, writer.raw);
     }
 }
 
@@ -313,9 +371,9 @@ impl Drop for PoolState {
             "Tried to drop with leased read connection"
         );
 
-        self.drop_connection(self.writes.connection);
-        for read in &self.reads.connections {
-            self.drop_connection(*read)
+        Self::drop_connection(&mut self.writes.connection, &self.functions);
+        for read in &mut self.reads.connections {
+            Self::drop_connection(read, &self.functions);
         }
     }
 }
@@ -341,11 +399,11 @@ impl PendingMessage {
     }
 
     /// Sends a `[tag, false, connection_ptr]` message to this port.
-    fn send_did_obtain_connection(&self, connection: Connection, api: &ExternalFunctions) {
+    fn send_did_obtain_connection(&self, connection: &PoolConnection, api: &ExternalFunctions) {
         let list_values: &mut [*mut RawDartCObject] = &mut [
             &mut RawDartCObject::from(self.tag),
             &mut RawDartCObject::from(false),
-            &mut RawDartCObject::from(connection.0 as i64),
+            &mut RawDartCObject::from(connection as *const PoolConnection as i64),
         ];
         let mut array = RawDartCObject {
             type_: RawDartCObject::TYPE_ARRAY,
@@ -461,6 +519,22 @@ impl Drop for PoolRequestHandle {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct ExternalFunctions {
+    pub sqlite3_update_hook: extern "C" fn(
+        Connection,
+        Option<extern "C" fn(NonNull<c_void>, c_int, *const c_char, *const c_char, i64)>,
+        *mut c_void,
+    ) -> *mut c_void,
+    pub sqlite3_commit_hook: extern "C" fn(
+        Connection,
+        Option<extern "C" fn(NonNull<c_void>) -> c_int>,
+        *mut c_void,
+    ) -> *mut c_void,
+    pub sqlite3_rollback_hook: extern "C" fn(
+        Connection,
+        Option<extern "C" fn(NonNull<c_void>)>,
+        *mut c_void,
+    ) -> *mut c_void,
+    pub sqlite3_finalize: extern "C" fn(PreparedStatement) -> c_int,
     pub sqlite3_close_v2: extern "C" fn(Connection) -> c_int,
     pub dart_post_c_object: extern "C" fn(port: DartPort, message: &mut RawDartCObject) -> bool,
 }

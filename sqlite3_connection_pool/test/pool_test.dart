@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:isolate';
 
+import 'package:async/async.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:sqlite3_connection_pool/sqlite3_connection_pool.dart';
 import 'package:path/path.dart' as p;
@@ -8,10 +9,14 @@ import 'package:test/test.dart';
 import 'package:test_descriptor/test_descriptor.dart';
 
 void main() {
-  SqliteConnectionPool testPool({int readConnections = 5}) {
+  SqliteConnectionPool testPool({
+    int readConnections = 5,
+    int preparedStatementCacheSize = 0,
+  }) {
     final pool = createPool(
       directory: sandbox,
       readConnections: readConnections,
+      preparedStatementCacheSize: preparedStatementCacheSize,
     );
     addTearDown(pool.close);
     return pool;
@@ -47,6 +52,18 @@ void main() {
     for (final port in closePorts) {
       port.send(null);
     }
+  });
+
+  test('can open pool asynchronously', () async {
+    final path = p.join(sandbox, 'test.db');
+    final pool = await SqliteConnectionPool.openAsync(
+      name: path,
+      openConnections: poolConnectionOpener(path, 5, 0),
+    );
+    addTearDown(pool.close);
+
+    await pool.execute('CREATE TABLE foo (bar TEXT) STRICT;');
+    expect(await pool.readQuery('SELECT * FROM foo'), isEmpty);
   });
 
   test('simple queries', () async {
@@ -145,6 +162,78 @@ void main() {
     db.returnLease();
   });
 
+  group('updates stream', () {
+    test('emits updates', () async {
+      final pool = testPool();
+      final updates = StreamQueue(pool.updatedTables);
+
+      await pool.execute('CREATE TABLE foo (id INTEGER NOT NULL PRIMARY KEY)');
+      await pool.execute('INSERT INTO foo DEFAULT VALUES;');
+      await expectLater(updates, emits(['foo']));
+    });
+
+    test('emits updates for isolate write', () async {
+      final pool = testPool();
+      final updates = StreamQueue(pool.updatedTables);
+      await pool.execute('CREATE TABLE foo (id INTEGER NOT NULL PRIMARY KEY)');
+      final name = pool.name;
+
+      await Isolate.run(() async {
+        final pool = SqliteConnectionPool.open(
+          name: name,
+          openConnections: () => throw StateError('should already be open'),
+        );
+        await pool.execute('INSERT INTO foo DEFAULT VALUES;');
+      });
+
+      await expectLater(updates, emits(['foo']));
+    });
+
+    test('does not emit update after rollback', () async {
+      final pool = testPool();
+      final updates = StreamQueue(pool.updatedTables);
+      await pool.execute('CREATE TABLE foo (id INTEGER NOT NULL PRIMARY KEY)');
+      await pool.execute('CREATE TABLE bar (id INTEGER NOT NULL PRIMARY KEY)');
+
+      await pool.execute('BEGIN; INSERT INTO foo DEFAULT VALUES; ROLLBACK;');
+      await pool.execute('INSERT INTO bar DEFAULT VALUES;');
+
+      await expectLater(updates, emits(['bar']));
+    });
+  });
+
+  test('prepared statement cache', () async {
+    final pool = testPool(preparedStatementCacheSize: 16);
+    final writer = await pool.writer();
+
+    for (var i = 0; i < 16; i++) {
+      await writer.select('SELECT $i');
+    }
+
+    await writer.unsafeAccess((connection) {
+      for (var i = 0; i < 16; i++) {
+        final statement = connection.lookupCachedStatement('SELECT $i');
+        expect(statement, isNotNull, reason: 'Should lookup $i');
+        expect(statement!.select(), [
+          {'$i': i},
+        ]);
+      }
+    });
+
+    // Prepare more statements replacing existing ones.
+    for (var i = 0; i < 16; i++) {
+      await writer.select('SELECT $i AS another');
+    }
+
+    await writer.unsafeAccess((connection) {
+      for (var i = 0; i < 16; i++) {
+        expect(connection.lookupCachedStatement('SELECT $i'), isNull);
+      }
+    });
+
+    writer.returnLease();
+  });
+
   group('aborting request', () {
     test('writer abort', () async {
       final pool = testPool();
@@ -208,7 +297,7 @@ void main() {
 
       expect(reader.select('SELECT 1'), throwsStateError);
       expect(
-        () => reader.unsafeRawDatabase.select('SELECT 1'),
+        () => reader.unsafeRawConnection.database.select('SELECT 1'),
         throwsStateError,
       );
     });
@@ -221,7 +310,7 @@ void main() {
       await pumpEventQueue(times: 1);
       expect(writer.select('SELECT 1'), throwsStateError);
       expect(
-        () => writer.unsafeRawDatabase.select('SELECT 1'),
+        () => writer.unsafeRawConnection.database.select('SELECT 1'),
         throwsStateError,
       );
     });
@@ -242,18 +331,30 @@ void main() {
 SqliteConnectionPool createPool({
   required String directory,
   int readConnections = 5,
+  int preparedStatementCacheSize = 0,
 }) {
-  Database openDatabase() {
-    return sqlite3.open(p.join(directory, 'test.db'))
-      ..execute('pragma journal_mode = wal;');
-  }
-
   return SqliteConnectionPool.open(
     name: directory,
-    openConnections: () => PoolConnections(openDatabase(), [
-      for (var i = 0; i < readConnections; i++) openDatabase(),
-    ]),
+    openConnections: poolConnectionOpener(
+      p.join(directory, 'test.db'),
+      readConnections,
+      preparedStatementCacheSize,
+    ),
   );
+}
+
+PoolConnections Function() poolConnectionOpener(
+  String path,
+  int readConnections,
+  int preparedStatementCacheSize,
+) {
+  Database openDatabase() {
+    return sqlite3.open(path)..execute('pragma journal_mode = wal;');
+  }
+
+  return () => PoolConnections(openDatabase(), [
+    for (var i = 0; i < readConnections; i++) openDatabase(),
+  ], preparedStatementCacheSize: preparedStatementCacheSize);
 }
 
 void _startIsolateForOpenTest(SendPort notify) {

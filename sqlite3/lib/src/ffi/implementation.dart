@@ -109,9 +109,25 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
   @override
   FfiStatementImplementation wrapStatement(
     String sql,
-    RawSqliteStatement stmt,
-  ) {
-    return FfiStatementImplementation(sql, this, stmt as FfiStatement);
+    RawSqliteStatement stmt, {
+    bool borrowed = false,
+  }) {
+    return FfiStatementImplementation(
+      sql,
+      this,
+      stmt as FfiStatement,
+      isBorrowed: borrowed,
+    );
+  }
+
+  @override
+  PreparedStatement statementFromPointer({
+    required Pointer<void> statement,
+    required String sql,
+    bool borrowed = false,
+  }) {
+    final raw = FfiStatement(statement.cast(), borrowed: borrowed);
+    return wrapStatement(sql, raw, borrowed: borrowed);
   }
 
   @override
@@ -285,9 +301,17 @@ final class FfiStatementImplementation extends StatementImplementation
   FfiStatementImplementation(
     String sql,
     FfiDatabaseImplementation db,
-    this.ffiStatement,
-  ) : super(sql, db, ffiStatement);
+    this.ffiStatement, {
+    super.isBorrowed,
+  }) : super(sql, db, ffiStatement);
 
   @override
   Pointer<void> get handle => ffiStatement.stmt;
+
+  @override
+  Pointer<void> leak() {
+    ffiStatement.detachFinalizer();
+    isBorrowed = true;
+    return handle;
+  }
 }

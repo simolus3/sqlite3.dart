@@ -16,6 +16,7 @@ pub struct RawDartCObject {
 impl RawDartCObject {
     pub const TYPE_BOOL: c_int = 1;
     pub const TYPE_INT64: c_int = 3;
+    pub const TYPE_STRING: c_int = 5;
     pub const TYPE_ARRAY: c_int = 6;
 }
 

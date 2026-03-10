@@ -67,12 +67,36 @@ Future<void> main(List<String> args) {
         throw StateError('Rust build failed: exit code $code');
       }
 
+      final library = sourceRoot.resolve('target/debug/$outputName');
+
+      final depsFile = File.fromUri(
+        library.resolve(
+          Platform.isWindows
+              ? 'sqlite3_connection_pool.d'
+              : 'libsqlite3_connection_pool.d',
+        ),
+      );
+
+      final depsContent = depsFile.readAsStringSync();
+      // Format: "target: dep1 dep2 ..."
+      final [_, depsList] = depsContent.split(': ');
+      // Paths with spaces are escaped as "\ " in the Makefile format.
+      final deps = depsList.split(RegExp(r'(?<!\\) '));
+      for (final dep in deps) {
+        final trimmed = dep.trim().replaceAll(r'\ ', ' ');
+        if (trimmed.isNotEmpty) {
+          output.dependencies.add(Uri.file(trimmed));
+        }
+      }
+      // Also invalidate build when Cargo.lock changes.
+      output.dependencies.add(Uri.file('Cargo.lock'));
+
       output.assets.code.add(
         CodeAsset(
           package: 'sqlite3_connection_pool',
           name: 'sqlite3_connection_pool.dart',
           linkMode: DynamicLoadingBundled(),
-          file: sourceRoot.resolve('target/debug/$outputName'),
+          file: library,
         ),
       );
     }

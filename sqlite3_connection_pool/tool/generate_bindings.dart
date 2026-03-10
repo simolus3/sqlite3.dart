@@ -17,11 +17,18 @@ void main() {
       include: (d) => d.originalName.startsWith('pkg_sqlite3_connection_pool'),
       // The obtain functions post completions to a port and don't obtain any
       // locks, so we can mark them as isLeaf.
-      isLeaf: (d) => d.originalName.contains('obtain'),
+      isLeaf: (d) =>
+          d.originalName.contains('obtain') ||
+          d.originalName.contains('stmt_cache'),
       // Close functions are used for native finalizers
       includeSymbolAddress: (d) => d.originalName.contains('close'),
     ),
-    structs: Structs(include: (d) => d.originalName == 'InitializedPool'),
+    structs: Structs(
+      include: Declarations.includeSet(const {
+        'InitializedPool',
+        'PoolConnection',
+      }),
+    ),
   );
   generator.generate();
 }

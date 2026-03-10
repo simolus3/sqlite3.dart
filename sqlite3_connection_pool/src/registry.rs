@@ -18,6 +18,7 @@ pub struct InitializedPool {
     write: Connection,
     reads: *const Connection,
     read_count: usize,
+    prepared_statement_cache_size: usize,
 }
 
 pub type PoolInitializer = extern "C" fn() -> Option<NonNull<InitializedPool>>;
@@ -41,11 +42,16 @@ impl PoolRegistry {
             initialized.as_ref()
         };
 
-        let state = PoolState::new(initialized.functions, initialized.write, unsafe {
-            slice::from_raw_parts(initialized.reads, initialized.read_count)
-        });
+        let state = PoolState::new(
+            initialized.functions,
+            initialized.write,
+            unsafe { slice::from_raw_parts(initialized.reads, initialized.read_count) },
+            initialized.prepared_statement_cache_size,
+        );
 
         let pool = ConnectionPool::new(Mutex::new(state));
+        PoolState::register_hooks_on_writer(&pool);
+
         pools.insert(name.to_string(), Arc::downgrade(&pool));
         Some(pool)
     }

@@ -1,32 +1,38 @@
-use crate::connection::Connection;
+use crate::client::PoolClient;
+use crate::connection::PreparedStatement;
 use crate::dart::DartPort;
-use crate::pool::{ConnectionPool, PendingMessage, PoolRequestHandle, PoolState};
+use crate::pool::{ConnectionPool, PendingMessage, PoolConnection, PoolRequestHandle, PoolState};
 use crate::registry::{PoolInitializer, PoolRegistry};
-use std::mem::MaybeUninit;
+use std::ffi::{c_int, c_void};
 use std::ptr::NonNull;
 use std::sync::{Arc, Mutex};
 use std::{ptr, slice};
 
+mod client;
 mod connection;
 mod dart;
 mod pool;
 mod registry;
+mod update_hook;
 
 #[unsafe(no_mangle)]
 extern "C" fn pkg_sqlite3_connection_pool_open(
     name: *const u8,
     name_len: usize,
     initialize: PoolInitializer,
-) -> Option<NonNull<Mutex<PoolState>>> {
+) -> Option<NonNull<PoolClient>> {
     let name = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(name, name_len)) };
 
-    PoolRegistry::lookup(name, initialize)
-        .map(|pool| unsafe { NonNull::new_unchecked(Arc::into_raw(pool).cast_mut()) })
+    PoolRegistry::lookup(name, initialize).map(|pool| {
+        let client = PoolClient::new(pool);
+
+        unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(client))) }
+    })
 }
 
 #[unsafe(no_mangle)]
-extern "C" fn pkg_sqlite3_connection_pool_close(pool: *const Mutex<PoolState>) {
-    let pool: ConnectionPool = unsafe { Arc::from_raw(pool) };
+extern "C" fn pkg_sqlite3_connection_pool_close(pool: *mut PoolClient) {
+    let pool = unsafe { Box::from_raw(pool) };
     drop(pool)
 }
 
@@ -39,10 +45,11 @@ fn clone_arc(pool: &Mutex<PoolState>) -> ConnectionPool {
 
 #[unsafe(no_mangle)]
 extern "C" fn pkg_sqlite3_connection_pool_obtain_read(
-    pool: &Mutex<PoolState>,
+    client: &PoolClient,
     tag: i64,
     port: DartPort,
 ) -> *mut PoolRequestHandle {
+    let pool = &client.pool;
     let mut state = pool.lock().unwrap();
     let pool = clone_arc(pool);
 
@@ -53,10 +60,11 @@ extern "C" fn pkg_sqlite3_connection_pool_obtain_read(
 
 #[unsafe(no_mangle)]
 extern "C" fn pkg_sqlite3_connection_pool_obtain_write(
-    pool: &Mutex<PoolState>,
+    client: &PoolClient,
     tag: i64,
     port: DartPort,
 ) -> *mut PoolRequestHandle {
+    let pool = &client.pool;
     let mut state = pool.lock().unwrap();
     let pool = clone_arc(pool);
 
@@ -67,10 +75,11 @@ extern "C" fn pkg_sqlite3_connection_pool_obtain_write(
 
 #[unsafe(no_mangle)]
 extern "C" fn pkg_sqlite3_connection_pool_obtain_exclusive(
-    pool: &Mutex<PoolState>,
+    client: &PoolClient,
     tag: i64,
     port: DartPort,
 ) -> *mut PoolRequestHandle {
+    let pool = &client.pool;
     let mut state = pool.lock().unwrap();
     let pool = clone_arc(pool);
 
@@ -86,29 +95,72 @@ extern "C" fn pkg_sqlite3_connection_pool_request_close(request: *mut PoolReques
 
 #[unsafe(no_mangle)]
 extern "C" fn pkg_sqlite3_connection_pool_query_read_connection_count(
-    pool: &Mutex<PoolState>,
+    client: &PoolClient,
 ) -> usize {
-    let state = pool.lock().unwrap();
+    let state = client.pool.lock().unwrap();
     let (_, readers) = state.view_connections();
     readers.len()
 }
 
 #[unsafe(no_mangle)]
 extern "C" fn pkg_sqlite3_connection_pool_query_connections(
-    pool: &Mutex<PoolState>,
-    writer: &mut MaybeUninit<Connection>,
-    readers: *mut Connection,
+    client: &PoolClient,
+    writer: &mut *const PoolConnection,
+    readers: *mut *const PoolConnection,
     reader_count: usize,
 ) {
-    let state = pool.lock().unwrap();
+    let state = client.pool.lock().unwrap();
     let (pool_writer, pool_readers) = state.view_connections();
 
-    writer.write(*pool_writer);
+    *writer = pool_writer;
     for (i, conn) in pool_readers.iter().enumerate() {
         if i >= reader_count {
             break;
         }
 
-        unsafe { readers.add(i).write(*conn) };
+        unsafe { readers.add(i).write(conn) };
+    }
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_update_listener(
+    client: &mut PoolClient,
+    add: bool,
+    listener: DartPort,
+) {
+    if add {
+        client.register_update_listener(listener)
+    } else {
+        client.remove_update_listener(listener)
+    }
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_stmt_cache_get(
+    connection: &mut PoolConnection,
+    sql: *const u8,
+    sql_len: usize,
+) -> Option<NonNull<c_void>> {
+    let sql = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(sql, sql_len)) };
+    connection
+        .cached_statements
+        .as_mut()
+        .and_then(|cache| cache.lookup(sql))
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_stmt_cache_put(
+    connection: &mut PoolConnection,
+    sql: *const u8,
+    sql_len: usize,
+    stmt: NonNull<c_void>,
+    finalize: extern "C" fn(PreparedStatement) -> c_int,
+) -> c_int {
+    let sql = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(sql, sql_len)) };
+    if let Some(cache) = connection.cached_statements.as_mut() {
+        cache.put(sql.to_owned(), PreparedStatement(stmt), finalize);
+        1
+    } else {
+        0
     }
 }

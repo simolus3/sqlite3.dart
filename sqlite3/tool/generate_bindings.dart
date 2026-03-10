@@ -37,14 +37,7 @@ FfiGenerator createGenerator(
     structs: Structs(include: filter),
     functions: Functions(
       include: filter,
-      includeSymbolAddress: (decl) => switch (decl.originalName) {
-        'sqlite3_close_v2' => true,
-        'sqlite3_finalize' => true,
-        'sqlite3changeset_finalize' => true,
-        'sqlite3session_delete' => true,
-        'sqlite3_free' => true,
-        _ => false,
-      },
+      includeSymbolAddress: Declarations.includeAll,
       varArgs: makeVarArgFunctionsMapping({
         'sqlite3_db_config': [
           RawVarArgFunction('', ['int', 'int*']),

@@ -10,6 +10,7 @@ base class StatementImplementation extends CommonPreparedStatement {
   // Note: Implementations of this have platform-specific finalizers on them.
   final RawSqliteStatement statement;
   final DatabaseImplementation database;
+  bool isBorrowed;
 
   @override
   final String sql;
@@ -19,7 +20,12 @@ base class StatementImplementation extends CommonPreparedStatement {
 
   _ActiveCursorIterator? _currentCursor;
 
-  StatementImplementation(this.sql, this.database, this.statement);
+  StatementImplementation(
+    this.sql,
+    this.database,
+    this.statement, {
+    this.isBorrowed = false,
+  });
 
   List<String> get _columnNames {
     final columnCount = statement.sqlite3_column_count();
@@ -268,7 +274,8 @@ base class StatementImplementation extends CommonPreparedStatement {
     if (!_closed) {
       _closed = true;
       reset();
-      statement.sqlite3_finalize();
+
+      if (!isBorrowed) statement.sqlite3_finalize();
     }
   }
 

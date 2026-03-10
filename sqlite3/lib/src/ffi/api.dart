@@ -68,6 +68,7 @@ abstract interface class Sqlite3 implements CommonSqlite3 {
   /// connection management if necessary.
   ///
   /// See also: https://sqlite.org/c3ref/close.html
+  @Deprecated("Import 'package:sqlite3/unstable/ffi_bindings.dart' instead")
   static Pointer<NativeFunction<Int Function(Pointer<Void>)>>
   get sqliteCloseV2 => libsqlite3.addresses.sqlite3_close_v2.cast();
 }
@@ -152,6 +153,20 @@ abstract class Database extends CommonDatabase {
     bool vtab = true,
   });
 
+  /// Creates a Dart [PreparedStatement] instance from the underlying
+  /// `sqlite3_stmt` pointer.
+  ///
+  /// When [borrowed] is set (it defaults to `false`), the returned [Database]
+  /// connection acts as a view of the underlying `sqlite3_stmt*` pointer. The
+  /// library will not attach a native finalizer calling `sqlite3_finalize`, and
+  /// calling [PreparedStatement.close] in it will only prevent further
+  /// interactions from Dart.
+  PreparedStatement statementFromPointer({
+    required Pointer<void> statement,
+    required String sql,
+    bool borrowed = false,
+  });
+
   /// Create a backup of the current database (this) into another database
   /// ([toDatabase]) on memory or disk.
   ///
@@ -180,5 +195,21 @@ abstract class PreparedStatement implements CommonPreparedStatement {
   ///
   /// Obtains the raw [statement](https://www.sqlite.org/c3ref/stmt.html) from
   /// the sqlite3 C-api that this [PreparedStatement] wraps.
+  ///
+  /// Note that the statement is still owned by this Dart object, and will be
+  /// finalized once it becomes unreachable. In other words, the returned handle
+  /// is a logical reference to this object.
+  /// To transfer ownership of the statement out of this object, use [leak]
+  /// instead.
   Pointer<void> get handle;
+
+  /// Like [handle], this returns the native `sqlite3_stmt*` pointer wrapped by
+  /// this instance.
+  ///
+  /// Additionally, this also detaches native finalizers that would close the
+  /// statement once this object becomes unreachable.
+  ///
+  /// This is an advanced and low-level API that can be used to transfer
+  /// ownership of statements originally opened in Dart to native code.
+  Pointer<void> leak();
 }

@@ -77,21 +77,61 @@ external int pkg_sqlite3_connection_pool_query_read_connection_count(
 @ffi.Native<
   ffi.Void Function(
     ffi.Pointer<ConnectionPool>,
-    ffi.Pointer<ffi.Pointer<ffi.Void>>,
-    ffi.Pointer<ffi.Pointer<ffi.Void>>,
+    ffi.Pointer<ffi.Pointer<PoolConnection>>,
+    ffi.Pointer<ffi.Pointer<PoolConnection>>,
     ffi.UintPtr,
   )
 >()
 external void pkg_sqlite3_connection_pool_query_connections(
   ffi.Pointer<ConnectionPool> pool,
-  ffi.Pointer<ffi.Pointer<ffi.Void>> writer,
-  ffi.Pointer<ffi.Pointer<ffi.Void>> readers,
+  ffi.Pointer<ffi.Pointer<PoolConnection>> writer,
+  ffi.Pointer<ffi.Pointer<PoolConnection>> readers,
   int reader_count,
 );
 
 @ffi.Native<ffi.Void Function(ffi.Pointer<PoolRequest>)>()
 external void pkg_sqlite3_connection_pool_request_close(
   ffi.Pointer<PoolRequest> request,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<ConnectionPool>, ffi.Int, ffi.Int64)
+>()
+external void pkg_sqlite3_connection_pool_update_listener(
+  ffi.Pointer<ConnectionPool> pool,
+  int add,
+  int listener,
+);
+
+@ffi.Native<
+  ffi.Pointer<ffi.Void> Function(
+    ffi.Pointer<PoolConnection>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.UintPtr,
+  )
+>(isLeaf: true)
+external ffi.Pointer<ffi.Void> pkg_sqlite3_connection_pool_stmt_cache_get(
+  ffi.Pointer<PoolConnection> connection,
+  ffi.Pointer<ffi.Uint8> sql,
+  int sql_len,
+);
+
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<PoolConnection>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.UintPtr,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>>,
+  )
+>(isLeaf: true)
+external int pkg_sqlite3_connection_pool_stmt_cache_put(
+  ffi.Pointer<PoolConnection> connection,
+  ffi.Pointer<ffi.Uint8> sql,
+  int sql_len,
+  ffi.Pointer<ffi.Void> stmt,
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>>
+  sqlite3_finalize,
 );
 
 const addresses = _SymbolAddresses();
@@ -112,7 +152,49 @@ final class ConnectionPool extends ffi.Opaque {}
 
 final class PoolRequest extends ffi.Opaque {}
 
+final class PoolConnection extends ffi.Struct {
+  external ffi.Pointer<ffi.Void> raw;
+}
+
 final class ExternalFunctions extends ffi.Struct {
+  external ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  sqlite3_update_hook;
+
+  external ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  sqlite3_commit_hook;
+
+  external ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  sqlite3_rollback_hook;
+
+  external ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>
+  >
+  sqlite3_finalize;
+
   external ffi.Pointer<
     ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>
   >
@@ -133,4 +215,7 @@ final class InitializedPool extends ffi.Struct {
 
   @ffi.UintPtr()
   external int read_count;
+
+  @ffi.UintPtr()
+  external int prepared_statement_cache_size;
 }

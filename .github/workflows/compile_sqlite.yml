@@ -295,6 +295,7 @@ jobs:
           pattern: connection-pool-*
 
       - run: ls -al out/
+      - run: ls -al sqlite3_connection_pool/lib/src/precompiled/
 
       - name: Upload sqlite3 binaries
         uses: actions/upload-artifact@v4

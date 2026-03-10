@@ -1,3 +1,9 @@
+## 3.2.0-wip
+
+- Add `package:sqlite3/unstable/ffi_bindings.dart` providing low-level access to generated `libsqlite3` bindings.
+- Add `PreparedStatement.leak` to transfer ownership of a prepared statement into native code.
+- Add `Database.statementFromPointer`, which can be used to access a statement prepared in native code from Dart.
+
 ## 3.1.7
 
 - Update to sqlite version 3.52.0.

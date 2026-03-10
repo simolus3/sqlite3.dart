@@ -3,5 +3,14 @@
 version = 4
 
 [[package]]
+name = "lru"
+version = "0.16.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1dc47f592c06f33f8e3aea9591776ec7c9f9e4124778ff8a3c3b87159f7e593"
+
+[[package]]
 name = "sqlite3_connection_pool"
 version = "0.1.0"
+dependencies = [
+ "lru",
+]

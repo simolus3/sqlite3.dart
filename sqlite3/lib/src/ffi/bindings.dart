@@ -1152,7 +1152,9 @@ final class FfiStatementCompiler implements RawStatementCompiler {
     }
 
     final stmt = stmtOut.value;
-    final libraryStatement = stmt.isNullPointer ? null : FfiStatement(stmt);
+    final libraryStatement = stmt.isNullPointer
+        ? null
+        : FfiStatement(stmt, borrowed: false);
 
     return (resultCode: result, result: libraryStatement);
   }
@@ -1162,8 +1164,16 @@ final class FfiStatement implements RawSqliteStatement, Finalizable {
   final Pointer<sqlite3_stmt> stmt;
   final Object _detachToken = Object();
 
-  FfiStatement(this.stmt) {
-    statementFinalizer.attach(this, stmt.cast(), detach: _detachToken);
+  FfiStatement(this.stmt, {required bool borrowed}) {
+    if (!borrowed) {
+      // This object owns the `sqlite_stmt` pointer, so make sure to dispose it
+      // when the object is GCed.
+      statementFinalizer.attach(this, stmt.cast(), detach: _detachToken);
+    }
+  }
+
+  void detachFinalizer() {
+    statementFinalizer.detach(_detachToken);
   }
 
   @override
@@ -1296,7 +1306,7 @@ final class FfiStatement implements RawSqliteStatement, Finalizable {
   @override
   void sqlite3_finalize() {
     libsqlite3.sqlite3_finalize(stmt);
-    statementFinalizer.detach(_detachToken);
+    detachFinalizer();
   }
 
   @override

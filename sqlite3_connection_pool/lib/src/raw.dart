@@ -6,6 +6,7 @@ import 'dart:isolate';
 import 'package:ffi/ffi.dart';
 import 'package:meta/meta.dart';
 import 'package:sqlite3/sqlite3.dart';
+import 'package:sqlite3/unstable/ffi_bindings.dart' as libsqlite3;
 
 import 'abort_exception.dart';
 import 'ffi.g.dart';
@@ -40,11 +41,17 @@ final class RawSqliteConnectionPool implements Finalizable {
         return;
       }
 
-      completer.complete(
-        isExclusive
-            ? const _ExclusiveLease()
-            : _SingleConnectionLease(Pointer.fromAddress(message[2] as int)),
-      );
+      _PoolLease parsed;
+      if (isExclusive) {
+        parsed = const _ExclusiveLease();
+      } else {
+        final poolConnection = Pointer<PoolConnection>.fromAddress(
+          message[2] as int,
+        );
+        parsed = _SingleConnectionLease(PoolConnectionRef(poolConnection));
+      }
+
+      completer.complete(parsed);
     };
   }
 
@@ -53,7 +60,7 @@ final class RawSqliteConnectionPool implements Finalizable {
     return (id, _outstandingRequests[id] = Completer());
   }
 
-  (RawPoolRequest, Future<Pointer<Void>>) requestRead() {
+  (RawPoolRequest, Future<PoolConnectionRef>) requestRead() {
     final (tag, completer) = _createRequest();
     final request = RawPoolRequest._(
       tag,
@@ -67,7 +74,7 @@ final class RawSqliteConnectionPool implements Finalizable {
     );
   }
 
-  (RawPoolRequest, Future<Pointer<Void>>) requestWrite() {
+  (RawPoolRequest, Future<PoolConnectionRef>) requestWrite() {
     final (tag, completer) = _createRequest();
     final request = RawPoolRequest._(
       tag,
@@ -94,12 +101,15 @@ final class RawSqliteConnectionPool implements Finalizable {
 
   /// May only be called if the caller has an active exclusive request on this
   /// pool.
-  ({Pointer<Void> writer, List<Pointer<Void>> readers}) queryConnections() {
+  ({PoolConnectionRef writer, List<PoolConnectionRef> readers})
+  queryConnections() {
     final amountOfReaders =
         pkg_sqlite3_connection_pool_query_read_connection_count(_pool);
     return using((alloc) {
-      final writeConnectionPointer = alloc<Pointer<Void>>();
-      final readConnectionPointers = alloc<Pointer<Void>>(amountOfReaders);
+      final writeConnectionPointer = alloc<Pointer<PoolConnection>>();
+      final readConnectionPointers = alloc<Pointer<PoolConnection>>(
+        amountOfReaders,
+      );
 
       pkg_sqlite3_connection_pool_query_connections(
         _pool,
@@ -110,10 +120,22 @@ final class RawSqliteConnectionPool implements Finalizable {
 
       final readers = List.generate(
         amountOfReaders,
-        (i) => readConnectionPointers[i],
+        (i) => PoolConnectionRef(readConnectionPointers[i]),
       );
-      return (writer: writeConnectionPointer.value, readers: readers);
+
+      return (
+        writer: PoolConnectionRef(writeConnectionPointer.value),
+        readers: readers,
+      );
     });
+  }
+
+  void addUpdateListener(SendPort port) {
+    pkg_sqlite3_connection_pool_update_listener(_pool, 1, port.nativePort);
+  }
+
+  void removeUpdateListener(SendPort port) {
+    pkg_sqlite3_connection_pool_update_listener(_pool, 0, port.nativePort);
   }
 
   void close() {
@@ -138,15 +160,30 @@ final class RawSqliteConnectionPool implements Finalizable {
             final initOptionsPtr = alloc<InitializedPool>();
             final initOptions = initOptionsPtr.ref;
             initOptions.functions
-              ..sqlite3_close_v2 = Sqlite3.sqliteCloseV2
+              ..sqlite3_update_hook = libsqlite3.addresses.sqlite3_update_hook
+                  .cast()
+              ..sqlite3_rollback_hook = libsqlite3
+                  .addresses
+                  .sqlite3_rollback_hook
+                  .cast()
+              ..sqlite3_commit_hook = libsqlite3.addresses.sqlite3_commit_hook
+                  .cast()
+              ..sqlite3_finalize = libsqlite3.addresses.sqlite3_finalize.cast()
+              ..sqlite3_close_v2 = libsqlite3.addresses.sqlite3_close_v2.cast()
               ..dart_post_c_object = NativeApi.postCObject.cast();
 
             try {
-              final PoolConnections(:readers, :writer) = open();
+              final PoolConnections(
+                :readers,
+                :writer,
+                :preparedStatementCacheSize,
+              ) = open();
 
               initOptions.write = writer.leak().cast();
               initOptions.read_count = readers.length;
               initOptions.reads = alloc(readers.length);
+              initOptions.prepared_statement_cache_size =
+                  preparedStatementCacheSize;
 
               for (final (i, reader) in readers.indexed) {
                 (initOptions.reads + i).value = reader.leak().cast();
@@ -187,7 +224,47 @@ final class PoolConnections {
   final Database writer;
   final List<Database> readers;
 
-  PoolConnections(this.writer, this.readers);
+  /// If set to a positive value, creates a cache of prepared statements for
+  /// each connection.
+  ///
+  /// The cache is a LRU map with the indicated size.
+  final int preparedStatementCacheSize;
+
+  PoolConnections(
+    this.writer,
+    this.readers, {
+    this.preparedStatementCacheSize = 0,
+  }) : assert(preparedStatementCacheSize >= 0);
+}
+
+extension type PoolConnectionRef(
+  /// The pool connection, used to manage cached prepared statements.
+  Pointer<PoolConnection>
+  connection
+) {
+  /// The `sqlite3*` connection pointer.
+  Pointer<Void> get rawDatabase => connection.ref.raw;
+
+  Pointer<Void> lookupCachedStatement(String sql) {
+    final encoded = utf8.encode(sql);
+    return pkg_sqlite3_connection_pool_stmt_cache_get(
+      connection,
+      encoded.address,
+      encoded.length,
+    );
+  }
+
+  bool putCachedStatement(String sql, Pointer<Void> statement) {
+    final encoded = utf8.encode(sql);
+    return pkg_sqlite3_connection_pool_stmt_cache_put(
+          connection,
+          encoded.address,
+          encoded.length,
+          statement,
+          libsqlite3.addresses.sqlite3_finalize.cast(),
+        ) !=
+        0;
+  }
 }
 
 @internal
@@ -220,7 +297,7 @@ sealed class _PoolLease {
 
 final class _SingleConnectionLease extends _PoolLease {
   /// The SQLite connection being leased.
-  final Pointer<Void> _connection;
+  final PoolConnectionRef _connection;
 
   _SingleConnectionLease(this._connection);
 }

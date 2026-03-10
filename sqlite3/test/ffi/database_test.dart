@@ -121,6 +121,51 @@ void main() {
     });
   });
 
+  group('borrowed statements', () {
+    test('fromPointer', () {
+      final db = sqlite3.openInMemory();
+      db.execute('CREATE TABLE foo (bar);');
+
+      final originalStatement = db.prepare('SELECT * FROM foo');
+      final ptr = originalStatement.handle;
+
+      final borrowed = db.statementFromPointer(
+        statement: ptr,
+        sql: 'unused',
+        borrowed: true,
+      );
+      expect(borrowed.select(), isEmpty);
+      borrowed.close();
+      expect(() => borrowed.select(), throwsStateError);
+
+      // Closing a borrowed statement should keep the actual statement active.
+      expect(originalStatement.select(), isEmpty);
+      originalStatement.close();
+    });
+
+    test('leak', () {
+      final db = sqlite3.openInMemory();
+      db.execute('CREATE TABLE foo (bar);');
+
+      final originalStatement = db.prepare('SELECT * FROM foo');
+      final ptr = originalStatement.leak();
+
+      // originalStatement no longer owns the underlying sqlite3_stmt at this
+      // point.
+      originalStatement.close();
+      expect(() => originalStatement.select(), throwsStateError);
+
+      // But the statement is still open!
+      final sameStatement = db.statementFromPointer(
+        statement: ptr,
+        sql: 'unused',
+      );
+      expect(sameStatement.select(), isEmpty);
+      sameStatement.close();
+      db.close();
+    });
+  });
+
   group('backup', () {
     late String path;
 

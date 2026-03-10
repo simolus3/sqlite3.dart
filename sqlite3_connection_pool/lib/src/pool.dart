@@ -7,6 +7,7 @@ import 'dart:isolate';
 
 import 'package:sqlite3/sqlite3.dart';
 
+import 'connection.dart';
 import 'mutex.dart';
 import 'raw.dart';
 
@@ -37,10 +38,36 @@ typedef ExecuteResult = ({bool autoCommit, int changes, int lastInsertRowId});
 /// useful in some cases where a schema update needs to be applied to read
 /// connections explicitly.
 final class SqliteConnectionPool {
+  /// The name identifying this pool.
+  ///
+  /// In a Dart process (across all isolates), there will at most be one pool
+  /// with a given name at the same time. Multiple instances with the same name
+  /// will always share the same underlying pool.
+  final String name;
   final RawSqliteConnectionPool _raw;
+  final StreamController<List<String>> _updatedTables =
+      StreamController.broadcast();
+  RawReceivePort? _receiveTableUpdates;
+
   bool _isClosed = false;
 
-  SqliteConnectionPool._(this._raw);
+  SqliteConnectionPool._(this.name, this._raw) {
+    _updatedTables.onListen = () {
+      assert(_receiveTableUpdates == null);
+      final port = _receiveTableUpdates = RawReceivePort(
+        (List<dynamic> msg) => _updatedTables.add(msg.cast()),
+        'Receive table updates',
+      );
+      _raw.addUpdateListener(port.sendPort);
+    };
+    _updatedTables.onCancel = () {
+      if (_receiveTableUpdates case final port?) {
+        port.close();
+        _raw.removeUpdateListener(port.sendPort);
+        _receiveTableUpdates = null;
+      }
+    };
+  }
 
   void _checkNotClosed() {
     if (_isClosed) {
@@ -57,6 +84,17 @@ final class SqliteConnectionPool {
       });
     }
   }
+
+  /// A broadcast stream of tables affected by write transactions on this
+  /// database.
+  ///
+  /// For each completed transaction that updated at least one table, this will
+  /// emit a [List] of affected tables. The stream emits updates asynchronously,
+  /// _after_ the source table has been changed.
+  ///
+  /// This stream will also emit items if the update is made by an independent
+  /// isolate or another Dart/Flutter engine in the same process.
+  Stream<List<String>> get updatedTables => _updatedTables.stream;
 
   /// Obtains a connection suitable for reads from the connection pool.
   ///
@@ -76,7 +114,10 @@ final class SqliteConnectionPool {
     _installAbortSignal(request, abortSignal);
 
     final connectionPointer = await future;
-    return ConnectionLease._fromPointer(connectionPointer, request);
+    return ConnectionLease._(
+      poolConnectionFromPointer(connectionPointer),
+      request,
+    );
   }
 
   /// Obtains a connection suitable for writes from the connection pool.
@@ -101,7 +142,10 @@ final class SqliteConnectionPool {
     _installAbortSignal(request, abortSignal);
 
     final connectionPointer = await future;
-    return ConnectionLease._fromPointer(connectionPointer, request);
+    return ConnectionLease._(
+      poolConnectionFromPointer(connectionPointer),
+      request,
+    );
   }
 
   /// Requests exclusive access to this pool.
@@ -165,6 +209,9 @@ final class SqliteConnectionPool {
   void close() {
     if (!_isClosed) {
       _raw.close();
+      _receiveTableUpdates?.close();
+      _receiveTableUpdates = null;
+      _updatedTables.close();
       _isClosed = true;
     }
   }
@@ -206,8 +253,53 @@ final class SqliteConnectionPool {
     required PoolConnections Function() openConnections,
   }) {
     return SqliteConnectionPool._(
+      name,
       RawSqliteConnectionPool.open(name, openConnections),
     );
+  }
+
+  /// Like open, but calls [openConnections] on a fresh isolate to avoid
+  /// blocking the current one in case the setup requires an IO operation.
+  static Future<SqliteConnectionPool> openAsync({
+    required String name,
+    required PoolConnections Function() openConnections,
+  }) async {
+    final receiveOpenNotification = ReceivePort();
+    final firstMessage = receiveOpenNotification.first;
+    await Isolate.spawn(_openAsyncEntrypoint, (
+      name,
+      openConnections,
+      receiveOpenNotification.sendPort,
+    ));
+
+    final closeIsolate = (await firstMessage) as SendPort;
+    final pool = open(
+      name: name,
+      openConnections: () {
+        throw AssertionError(
+          'The pool is open in the other isolate, so it should not be '
+          're-opened here.',
+        );
+      },
+    );
+    closeIsolate.send(null);
+    return pool;
+  }
+
+  static void _openAsyncEntrypoint(
+    (String, PoolConnections Function(), SendPort) options,
+  ) async {
+    final (name, open, port) = options;
+    final pool = SqliteConnectionPool.open(name: name, openConnections: open);
+
+    // Now that we've opened the pool, inform the other isolate. It can open the
+    // same pool and that's guaranteed not to open it.
+    final close = ReceivePort();
+    port.send(close.sendPort);
+    await close.first;
+
+    pool.close();
+    close.close();
   }
 }
 
@@ -218,25 +310,21 @@ final class SqliteConnectionPool {
 /// use the [select] and [execute] methods to automatically run statements and
 /// queries in short-lived background isolates.
 base class AsyncConnection {
-  /// The leased database connection.
-  final Database _database;
+  final PoolConnection _connection;
+
   // Because the database is used across multiple isolates (the current one and
   // the short-lived ones used for computations), we need to guard access to the
   // database with a mutex.
   final Mutex _mutex = Mutex();
   var _closed = false;
 
-  AsyncConnection._(this._database);
-
-  factory AsyncConnection._fromPointer(Pointer<Void> ptr) {
-    return AsyncConnection._(AsyncConnection._pointerToDatabase(ptr.address));
-  }
+  AsyncConnection._(this._connection);
 
   /// Gets unprotected acccess to the [Database] without a mutex.
   ///
   /// Calling this method is unsafe if another call on this [ConnectionLease] is
   /// operating concurrently.
-  Database get unsafeRawDatabase => _database;
+  PoolConnection get unsafeRawConnection => _connection;
 
   /// Calls [computation] as a critical section with the underlying database.
   ///
@@ -246,12 +334,14 @@ base class AsyncConnection {
   ///  1. Calling [Database.close].
   ///  2. Calling any method on [Database] after [computation] (or, if it's
   ///     asynchronous, its future) completes.
-  Future<T> unsafeAccess<T>(FutureOr<T> Function(Database) computation) async {
+  Future<T> unsafeAccess<T>(
+    FutureOr<T> Function(PoolConnection) computation,
+  ) async {
     if (_closed) {
       throw StateError('LeasedDatabase used after callback returned');
     }
 
-    return _mutex.withCriticalSection(() => computation(_database));
+    return _mutex.withCriticalSection(() => computation(_connection));
   }
 
   /// On a short-lived isolate, calls [computation] as a critical section with
@@ -260,13 +350,15 @@ base class AsyncConnection {
   /// See [unsafeAccess] for potential issues to be aware of when calling this
   /// method.
   Future<T> unsafeAccessOnIsolate<T>(
-    FutureOr<T> Function(Database) computation,
+    FutureOr<T> Function(PoolConnection) computation,
   ) {
-    return unsafeAccess((db) {
-      final address = db.handle.address;
+    return unsafeAccess((conn) {
+      final address = poolConnectionToPointer(conn).connection.address;
       return Isolate.run(() {
-        final database = _pointerToDatabase(address);
-        return computation(database);
+        final conn = poolConnectionFromPointer(
+          PoolConnectionRef(Pointer.fromAddress(address)),
+        );
+        return computation(conn);
       });
     });
   }
@@ -274,7 +366,7 @@ base class AsyncConnection {
   /// Returns the [Database.autocommit] status for the wrapped database.
   Future<bool> get autocommit {
     // the autocommit call is too cheap to justify a background isolate.
-    return unsafeAccess((db) => db.autocommit);
+    return unsafeAccess((conn) => conn.database.autocommit);
   }
 
   /// Runs [sql] with [parameters] and returns results (both the [ResultSet] and
@@ -283,9 +375,23 @@ base class AsyncConnection {
     String sql, [
     List<Object?> parameters = const [],
   ]) {
-    return unsafeAccessOnIsolate((db) {
-      final resultSet = db.select(sql, parameters);
-      return (resultSet, _execResult(db));
+    return unsafeAccessOnIsolate((conn) {
+      final cached = conn.lookupCachedStatement(sql);
+
+      final ResultSet resultSet;
+      if (cached != null) {
+        resultSet = cached.select(parameters);
+        cached.reset();
+      } else {
+        final stmt = conn.database.prepare(sql, checkNoTail: true);
+        resultSet = stmt.select(parameters);
+        stmt.reset();
+        if (!conn.storeCachedStatement(sql, stmt)) {
+          stmt.close();
+        }
+      }
+
+      return (resultSet, _execResult(conn.database));
     });
   }
 
@@ -294,10 +400,35 @@ base class AsyncConnection {
     String sql, [
     List<Object?> parameters = const [],
   ]) {
-    return unsafeAccessOnIsolate((db) {
-      db.execute(sql, parameters);
-      return _execResult(db);
+    return unsafeAccessOnIsolate((conn) {
+      if (conn.lookupCachedStatement(sql) case final cached?) {
+        cached
+          ..execute(parameters)
+          ..reset();
+      } else if (parameters.isNotEmpty) {
+        final stmt = conn.database.prepare(sql, checkNoTail: true);
+        stmt
+          ..execute(parameters)
+          ..reset();
+        if (!conn.storeCachedStatement(sql, stmt)) {
+          stmt.close();
+        }
+      } else {
+        // The sql text is allowed to contain multiple statements, so we can't
+        // cache them.
+        conn.database.execute(sql);
+      }
+
+      return _execResult(conn.database);
     });
+  }
+
+  void _close() {
+    _closed = true;
+    // This doesn't call sqlite3_close_v2 because the connection has been opened
+    // with borrowed: true. It just prevents using the connection object any
+    // further.
+    _connection.database.close();
   }
 
   static ExecuteResult _execResult(Database db) {
@@ -306,10 +437,6 @@ base class AsyncConnection {
       changes: db.updatedRows,
       lastInsertRowId: db.lastInsertRowId,
     );
-  }
-
-  static Database _pointerToDatabase(int address) {
-    return sqlite3.fromPointer(Pointer.fromAddress(address), borrowed: true);
   }
 }
 
@@ -324,27 +451,13 @@ final class ConnectionLease extends AsyncConnection {
   // will return the connection to the pool.
   final RawPoolRequest _request;
 
-  ConnectionLease._(super._database, this._request) : super._();
-
-  factory ConnectionLease._fromPointer(
-    Pointer<Void> ptr,
-    RawPoolRequest request,
-  ) {
-    return ConnectionLease._(
-      AsyncConnection._pointerToDatabase(ptr.address),
-      request,
-    );
-  }
+  ConnectionLease._(super._connection, this._request) : super._();
 
   /// Returns this leased connection back to the pool.
   ///
   /// This connection may not be used after calling this method.
   void returnLease() {
-    _closed = true;
-    // This doesn't call sqlite3_close_v2 because the connection has been opened
-    // with borrowed: true. It just prevents using the connection object any
-    // further.
-    _database.close();
+    _close();
     _request.close();
   }
 }
@@ -366,11 +479,12 @@ final class ExclusivePoolAccess {
 
   ExclusivePoolAccess._(
     this._request,
-    Pointer<Void> writer,
-    List<Pointer<Void>> readers,
-  ) : writer = AsyncConnection._fromPointer(writer),
+    PoolConnectionRef writer,
+    List<PoolConnectionRef> readers,
+  ) : writer = AsyncConnection._(poolConnectionFromPointer(writer)),
       readers = [
-        for (final reader in readers) AsyncConnection._fromPointer(reader),
+        for (final reader in readers)
+          AsyncConnection._(poolConnectionFromPointer(reader)),
       ];
 
   /// Returns this exclusive access instance, allowing other readers and writers
@@ -380,9 +494,9 @@ final class ExclusivePoolAccess {
       return;
     }
 
-    writer._closed = true;
+    writer._close();
     for (final reader in readers) {
-      reader._closed = true;
+      reader._close();
     }
 
     _request.close();

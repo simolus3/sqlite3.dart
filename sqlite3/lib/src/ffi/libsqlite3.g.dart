@@ -885,21 +885,672 @@ const addresses = _SymbolAddresses();
 
 class _SymbolAddresses {
   const _SymbolAddresses();
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function()>> get sqlite3_initialize =>
+      ffi.Native.addressOf(self.sqlite3_initialize);
   ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
   get sqlite3_free => ffi.Native.addressOf(self.sqlite3_free);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_char>,
+        ffi.Pointer<ffi.Pointer<sqlite3>>,
+        ffi.Int,
+        ffi.Pointer<sqlite3_char>,
+      )
+    >
+  >
+  get sqlite3_open_v2 => ffi.Native.addressOf(self.sqlite3_open_v2);
   ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3>)>>
   get sqlite3_close_v2 => ffi.Native.addressOf(self.sqlite3_close_v2);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Pointer<sqlite3_char> Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Pointer<sqlite3_char>,
+      )
+    >
+  >
+  get sqlite3_db_filename => ffi.Native.addressOf(self.sqlite3_db_filename);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_char>)>>
+  get sqlite3_compileoption_used =>
+      ffi.Native.addressOf(self.sqlite3_compileoption_used);
+  ffi.Pointer<ffi.NativeFunction<ffi.Pointer<sqlite3_char> Function(ffi.Int)>>
+  get sqlite3_compileoption_get =>
+      ffi.Native.addressOf(self.sqlite3_compileoption_get);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Pointer<
+          ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>, ffi.Int)>
+        >,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  get sqlite3_busy_handler => ffi.Native.addressOf(self.sqlite3_busy_handler);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3>, ffi.Int)>
+  >
+  get sqlite3_extended_result_codes =>
+      ffi.Native.addressOf(self.sqlite3_extended_result_codes);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3>)>>
+  get sqlite3_extended_errcode =>
+      ffi.Native.addressOf(self.sqlite3_extended_errcode);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3>)>
+  >
+  get sqlite3_errmsg => ffi.Native.addressOf(self.sqlite3_errmsg);
+  ffi.Pointer<ffi.NativeFunction<ffi.Pointer<sqlite3_char> Function(ffi.Int)>>
+  get sqlite3_errstr => ffi.Native.addressOf(self.sqlite3_errstr);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3>)>>
+  get sqlite3_error_offset => ffi.Native.addressOf(self.sqlite3_error_offset);
+  ffi.Pointer<ffi.NativeFunction<ffi.Pointer<sqlite3_char> Function()>>
+  get sqlite3_libversion => ffi.Native.addressOf(self.sqlite3_libversion);
+  ffi.Pointer<ffi.NativeFunction<ffi.Pointer<sqlite3_char> Function()>>
+  get sqlite3_sourceid => ffi.Native.addressOf(self.sqlite3_sourceid);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function()>>
+  get sqlite3_libversion_number =>
+      ffi.Native.addressOf(self.sqlite3_libversion_number);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int64 Function(ffi.Pointer<sqlite3>)>>
+  get sqlite3_last_insert_rowid =>
+      ffi.Native.addressOf(self.sqlite3_last_insert_rowid);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3>)>>
+  get sqlite3_changes => ffi.Native.addressOf(self.sqlite3_changes);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Pointer<sqlite3_char>,
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Pointer<sqlite3_char>>,
+      )
+    >
+  >
+  get sqlite3_exec => ffi.Native.addressOf(self.sqlite3_exec);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Pointer<ffi.Void> Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Pointer<
+          ffi.NativeFunction<
+            ffi.Void Function(
+              ffi.Pointer<ffi.Void>,
+              ffi.Int,
+              ffi.Pointer<sqlite3_char>,
+              ffi.Pointer<sqlite3_char>,
+              ffi.Int64,
+            )
+          >
+        >,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  get sqlite3_update_hook => ffi.Native.addressOf(self.sqlite3_update_hook);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Pointer<ffi.Void> Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Pointer<
+          ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>
+        >,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  get sqlite3_commit_hook => ffi.Native.addressOf(self.sqlite3_commit_hook);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Pointer<ffi.Void> Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Pointer<
+          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>
+        >,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  get sqlite3_rollback_hook => ffi.Native.addressOf(self.sqlite3_rollback_hook);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3>)>>
+  get sqlite3_get_autocommit =>
+      ffi.Native.addressOf(self.sqlite3_get_autocommit);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Pointer<sqlite3_char>,
+        ffi.Int,
+        ffi.Pointer<ffi.Pointer<sqlite3_stmt>>,
+        ffi.Pointer<ffi.Pointer<sqlite3_char>>,
+      )
+    >
+  >
+  get sqlite3_prepare_v2 => ffi.Native.addressOf(self.sqlite3_prepare_v2);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Pointer<sqlite3_char>,
+        ffi.Int,
+        ffi.UnsignedInt,
+        ffi.Pointer<ffi.Pointer<sqlite3_stmt>>,
+        ffi.Pointer<ffi.Pointer<sqlite3_char>>,
+      )
+    >
+  >
+  get sqlite3_prepare_v3 => ffi.Native.addressOf(self.sqlite3_prepare_v3);
   ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>>
   get sqlite3_finalize => ffi.Native.addressOf(self.sqlite3_finalize);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>>
+  get sqlite3_step => ffi.Native.addressOf(self.sqlite3_step);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>>
+  get sqlite3_reset => ffi.Native.addressOf(self.sqlite3_reset);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>>
+  get sqlite3_stmt_isexplain =>
+      ffi.Native.addressOf(self.sqlite3_stmt_isexplain);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>>
+  get sqlite3_stmt_readonly => ffi.Native.addressOf(self.sqlite3_stmt_readonly);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>>
+  get sqlite3_column_count => ffi.Native.addressOf(self.sqlite3_column_count);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>>
+  get sqlite3_bind_parameter_count =>
+      ffi.Native.addressOf(self.sqlite3_bind_parameter_count);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(ffi.Pointer<sqlite3_stmt>, ffi.Pointer<sqlite3_char>)
+    >
+  >
+  get sqlite3_bind_parameter_index =>
+      ffi.Native.addressOf(self.sqlite3_bind_parameter_index);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)
+    >
+  >
+  get sqlite3_column_name => ffi.Native.addressOf(self.sqlite3_column_name);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)
+    >
+  >
+  get sqlite3_column_table_name =>
+      ffi.Native.addressOf(self.sqlite3_column_table_name);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_stmt>,
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+        ffi.Uint64,
+        ffi.Pointer<
+          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>
+        >,
+      )
+    >
+  >
+  get sqlite3_bind_blob64 => ffi.Native.addressOf(self.sqlite3_bind_blob64);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(ffi.Pointer<sqlite3_stmt>, ffi.Int, ffi.Double)
+    >
+  >
+  get sqlite3_bind_double => ffi.Native.addressOf(self.sqlite3_bind_double);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(ffi.Pointer<sqlite3_stmt>, ffi.Int, ffi.Int64)
+    >
+  >
+  get sqlite3_bind_int64 => ffi.Native.addressOf(self.sqlite3_bind_int64);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)>
+  >
+  get sqlite3_bind_null => ffi.Native.addressOf(self.sqlite3_bind_null);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_stmt>,
+        ffi.Int,
+        ffi.Pointer<sqlite3_char>,
+        ffi.Int,
+        ffi.Pointer<
+          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>
+        >,
+      )
+    >
+  >
+  get sqlite3_bind_text => ffi.Native.addressOf(self.sqlite3_bind_text);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Pointer<ffi.Void> Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)
+    >
+  >
+  get sqlite3_column_blob => ffi.Native.addressOf(self.sqlite3_column_blob);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Double Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)>
+  >
+  get sqlite3_column_double => ffi.Native.addressOf(self.sqlite3_column_double);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Int64 Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)>
+  >
+  get sqlite3_column_int64 => ffi.Native.addressOf(self.sqlite3_column_int64);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)
+    >
+  >
+  get sqlite3_column_text => ffi.Native.addressOf(self.sqlite3_column_text);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)>
+  >
+  get sqlite3_column_bytes => ffi.Native.addressOf(self.sqlite3_column_bytes);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>, ffi.Int)>
+  >
+  get sqlite3_column_type => ffi.Native.addressOf(self.sqlite3_column_type);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Pointer<ffi.Void> Function(ffi.Pointer<sqlite3_value>)
+    >
+  >
+  get sqlite3_value_blob => ffi.Native.addressOf(self.sqlite3_value_blob);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Double Function(ffi.Pointer<sqlite3_value>)>
+  >
+  get sqlite3_value_double => ffi.Native.addressOf(self.sqlite3_value_double);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_value>)>>
+  get sqlite3_value_type => ffi.Native.addressOf(self.sqlite3_value_type);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Int64 Function(ffi.Pointer<sqlite3_value>)>
+  >
+  get sqlite3_value_int64 => ffi.Native.addressOf(self.sqlite3_value_int64);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3_value>)
+    >
+  >
+  get sqlite3_value_text => ffi.Native.addressOf(self.sqlite3_value_text);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_value>)>>
+  get sqlite3_value_bytes => ffi.Native.addressOf(self.sqlite3_value_bytes);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.UnsignedInt Function(ffi.Pointer<sqlite3_value>)>
+  >
+  get sqlite3_value_subtype => ffi.Native.addressOf(self.sqlite3_value_subtype);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Pointer<sqlite3_char>,
+        ffi.Int,
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<
+          ffi.NativeFunction<
+            ffi.Void Function(
+              ffi.Pointer<sqlite3_context>,
+              ffi.Int,
+              ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+            )
+          >
+        >,
+        ffi.Pointer<
+          ffi.NativeFunction<
+            ffi.Void Function(
+              ffi.Pointer<sqlite3_context>,
+              ffi.Int,
+              ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+            )
+          >
+        >,
+        ffi.Pointer<
+          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>
+        >,
+        ffi.Pointer<
+          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>
+        >,
+      )
+    >
+  >
+  get sqlite3_create_function_v2 =>
+      ffi.Native.addressOf(self.sqlite3_create_function_v2);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Pointer<sqlite3_char>,
+        ffi.Int,
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<
+          ffi.NativeFunction<
+            ffi.Void Function(
+              ffi.Pointer<sqlite3_context>,
+              ffi.Int,
+              ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+            )
+          >
+        >,
+        ffi.Pointer<
+          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>
+        >,
+        ffi.Pointer<
+          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>
+        >,
+        ffi.Pointer<
+          ffi.NativeFunction<
+            ffi.Void Function(
+              ffi.Pointer<sqlite3_context>,
+              ffi.Int,
+              ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+            )
+          >
+        >,
+        ffi.Pointer<
+          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>
+        >,
+      )
+    >
+  >
+  get sqlite3_create_window_function =>
+      ffi.Native.addressOf(self.sqlite3_create_window_function);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Pointer<ffi.Void> Function(ffi.Pointer<sqlite3_context>, ffi.Int)
+    >
+  >
+  get sqlite3_aggregate_context =>
+      ffi.Native.addressOf(self.sqlite3_aggregate_context);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Pointer<ffi.Void> Function(ffi.Pointer<sqlite3_context>)
+    >
+  >
+  get sqlite3_user_data => ffi.Native.addressOf(self.sqlite3_user_data);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Pointer<sqlite3_context>,
+        ffi.Pointer<ffi.Void>,
+        ffi.Uint64,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  get sqlite3_result_blob64 => ffi.Native.addressOf(self.sqlite3_result_blob64);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Double)
+    >
+  >
+  get sqlite3_result_double => ffi.Native.addressOf(self.sqlite3_result_double);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Pointer<sqlite3_context>,
+        ffi.Pointer<sqlite3_char>,
+        ffi.Int,
+      )
+    >
+  >
+  get sqlite3_result_error => ffi.Native.addressOf(self.sqlite3_result_error);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.Int64)
+    >
+  >
+  get sqlite3_result_int64 => ffi.Native.addressOf(self.sqlite3_result_int64);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_context>)>
+  >
+  get sqlite3_result_null => ffi.Native.addressOf(self.sqlite3_result_null);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Pointer<sqlite3_context>,
+        ffi.Pointer<sqlite3_char>,
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  get sqlite3_result_text => ffi.Native.addressOf(self.sqlite3_result_text);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Void Function(ffi.Pointer<sqlite3_context>, ffi.UnsignedInt)
+    >
+  >
+  get sqlite3_result_subtype =>
+      ffi.Native.addressOf(self.sqlite3_result_subtype);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Pointer<sqlite3_char>,
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<
+          ffi.NativeFunction<
+            ffi.Int Function(
+              ffi.Pointer<ffi.Void>,
+              ffi.Int,
+              ffi.Pointer<ffi.Void>,
+              ffi.Int,
+              ffi.Pointer<ffi.Void>,
+            )
+          >
+        >,
+        ffi.Pointer<
+          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>
+        >,
+      )
+    >
+  >
+  get sqlite3_create_collation_v2 =>
+      ffi.Native.addressOf(self.sqlite3_create_collation_v2);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Pointer<sqlite3_backup> Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Pointer<sqlite3_char>,
+        ffi.Pointer<sqlite3>,
+        ffi.Pointer<sqlite3_char>,
+      )
+    >
+  >
+  get sqlite3_backup_init => ffi.Native.addressOf(self.sqlite3_backup_init);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_backup>, ffi.Int)>
+  >
+  get sqlite3_backup_step => ffi.Native.addressOf(self.sqlite3_backup_step);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_backup>)>>
+  get sqlite3_backup_finish => ffi.Native.addressOf(self.sqlite3_backup_finish);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_backup>)>>
+  get sqlite3_backup_remaining =>
+      ffi.Native.addressOf(self.sqlite3_backup_remaining);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_backup>)>>
+  get sqlite3_backup_pagecount =>
+      ffi.Native.addressOf(self.sqlite3_backup_pagecount);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>>
+  get sqlite3_auto_extension =>
+      ffi.Native.addressOf(self.sqlite3_auto_extension);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Int,
+        ffi.VarArgs<(ffi.Int, ffi.Pointer<ffi.Int>)>,
+      )
+    >
+  >
+  get sqlite3_db_config => ffi.Native.addressOf(self.sqlite3_db_config);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_vfs>, ffi.Int)>
+  >
+  get sqlite3_vfs_register => ffi.Native.addressOf(self.sqlite3_vfs_register);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_vfs>)>>
+  get sqlite3_vfs_unregister =>
+      ffi.Native.addressOf(self.sqlite3_vfs_unregister);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Pointer<sqlite3_char>,
+        ffi.Pointer<ffi.Pointer<sqlite3_session>>,
+      )
+    >
+  >
+  get sqlite3session_create => ffi.Native.addressOf(self.sqlite3session_create);
   ffi.Pointer<
     ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3_session>)>
   >
   get sqlite3session_delete => ffi.Native.addressOf(self.sqlite3session_delete);
   ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_session>, ffi.Int)>
+  >
+  get sqlite3session_enable => ffi.Native.addressOf(self.sqlite3session_enable);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_session>, ffi.Int)>
+  >
+  get sqlite3session_indirect =>
+      ffi.Native.addressOf(self.sqlite3session_indirect);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<ffi.Pointer<sqlite3_changeset_iter>>,
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  get sqlite3changeset_start =>
+      ffi.Native.addressOf(self.sqlite3changeset_start);
+  ffi.Pointer<
     ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_changeset_iter>)>
   >
   get sqlite3changeset_finalize =>
       ffi.Native.addressOf(self.sqlite3changeset_finalize);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_changeset_iter>)>
+  >
+  get sqlite3changeset_next => ffi.Native.addressOf(self.sqlite3changeset_next);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_changeset_iter>,
+        ffi.Pointer<ffi.Pointer<sqlite3_char>>,
+        ffi.Pointer<ffi.Int>,
+        ffi.Pointer<ffi.Int>,
+        ffi.Pointer<ffi.Int>,
+      )
+    >
+  >
+  get sqlite3changeset_op => ffi.Native.addressOf(self.sqlite3changeset_op);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_changeset_iter>,
+        ffi.Int,
+        ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+      )
+    >
+  >
+  get sqlite3changeset_old => ffi.Native.addressOf(self.sqlite3changeset_old);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_changeset_iter>,
+        ffi.Int,
+        ffi.Pointer<ffi.Pointer<sqlite3_value>>,
+      )
+    >
+  >
+  get sqlite3changeset_new => ffi.Native.addressOf(self.sqlite3changeset_new);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<
+          ffi.NativeFunction<
+            ffi.Int Function(
+              ffi.Pointer<ffi.Void> pCtx,
+              ffi.Pointer<ffi.Char> zTab,
+            )
+          >
+        >,
+        ffi.Pointer<
+          ffi.NativeFunction<
+            ffi.Int Function(
+              ffi.Pointer<ffi.Void> pCtx,
+              ffi.Int eConflict,
+              ffi.Pointer<sqlite3_changeset_iter> p,
+            )
+          >
+        >,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  get sqlite3changeset_apply =>
+      ffi.Native.addressOf(self.sqlite3changeset_apply);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Int,
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Int>,
+        ffi.Pointer<ffi.Pointer<ffi.Void>>,
+      )
+    >
+  >
+  get sqlite3changeset_invert =>
+      ffi.Native.addressOf(self.sqlite3changeset_invert);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_session>,
+        ffi.Pointer<ffi.Int>,
+        ffi.Pointer<ffi.Pointer<ffi.Void>>,
+      )
+    >
+  >
+  get sqlite3session_patchset =>
+      ffi.Native.addressOf(self.sqlite3session_patchset);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_session>,
+        ffi.Pointer<ffi.Int>,
+        ffi.Pointer<ffi.Pointer<ffi.Void>>,
+      )
+    >
+  >
+  get sqlite3session_changeset =>
+      ffi.Native.addressOf(self.sqlite3session_changeset);
+  ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_session>)>
+  >
+  get sqlite3session_isempty =>
+      ffi.Native.addressOf(self.sqlite3session_isempty);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(ffi.Pointer<sqlite3_session>, ffi.Pointer<sqlite3_char>)
+    >
+  >
+  get sqlite3session_attach => ffi.Native.addressOf(self.sqlite3session_attach);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3_session>,
+        ffi.Pointer<sqlite3_char>,
+        ffi.Pointer<sqlite3_char>,
+        ffi.Pointer<ffi.Pointer<sqlite3_char>>,
+      )
+    >
+  >
+  get sqlite3session_diff => ffi.Native.addressOf(self.sqlite3session_diff);
 }
 
 final class sqlite3_char extends ffi.Opaque {}
