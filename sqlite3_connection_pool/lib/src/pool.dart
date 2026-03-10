@@ -258,7 +258,7 @@ final class SqliteConnectionPool {
     );
   }
 
-  /// Like open, but calls [openConnections] on a fresh isolate to avoid
+  /// Like [open], but calls [openConnections] on a fresh isolate to avoid
   /// blocking the current one in case the setup requires an IO operation.
   static Future<SqliteConnectionPool> openAsync({
     required String name,

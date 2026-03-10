@@ -1,6 +1,6 @@
 name: sqlite3_connection_pool
 description: High-performance async connection pool for SQLite on native platforms.
-version: 0.2.0+1
+version: 0.2.1
 homepage: https://github.com/simolus3/sqlite3.dart/tree/main/sqlite3_connection_pool
 issue_tracker: https://github.com/simolus3/sqlite3.dart/issues
 resolution: workspace

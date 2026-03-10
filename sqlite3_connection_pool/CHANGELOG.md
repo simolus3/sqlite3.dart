@@ -1,3 +1,7 @@
+## 0.2.1
+
+- Export the `PoolConnection` class.
+
 ## 0.2.0+1
 
 - Add `SqliteConnectionPool.openAsync` to open pools asynchronously.
