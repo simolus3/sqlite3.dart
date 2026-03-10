@@ -1,4 +1,4 @@
-## 0.2.0
+## 0.2.0+1
 
 - Add `SqliteConnectionPool.openAsync` to open pools asynchronously.
 - Add `SqliteConnectionPool.updatedTables` to listen for table updates.
