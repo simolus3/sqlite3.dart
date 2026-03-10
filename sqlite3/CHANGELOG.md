@@ -1,4 +1,4 @@
-## 3.2.0-wip
+## 3.2.0
 
 - Add `package:sqlite3/unstable/ffi_bindings.dart` providing low-level access to generated `libsqlite3` bindings.
 - Add `PreparedStatement.leak` to transfer ownership of a prepared statement into native code.
