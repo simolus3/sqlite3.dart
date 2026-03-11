@@ -1,3 +1,7 @@
+## 3.2.1-wip
+
+- Hook: Improve error message for failing downloads.
+
 ## 3.2.0
 
 - Add `package:sqlite3/unstable/ffi_bindings.dart` providing low-level access to generated `libsqlite3` bindings.

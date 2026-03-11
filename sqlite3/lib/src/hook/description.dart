@@ -227,13 +227,20 @@ final class PrecompiledFromGithubAssets extends PrecompiledBinary {
       // environments where that's required
       // https://github.com/simolus3/sqlite3.dart/issues/335
       ..findProxy = HttpClient.findProxyFromEnvironment;
-    final request = await client.getUrl(
-      Uri.https(
-        'github.com',
-        'simolus3/sqlite3.dart/releases/download/${releaseTag!}/$filename',
-      ),
+    final uri = Uri.https(
+      'github.com',
+      'simolus3/sqlite3.dart/releases/download/${releaseTag!}/$filename',
     );
-    final response = await request.close();
+
+    HttpClientResponse response;
+    try {
+      final request = await client.getUrl(uri);
+      response = await request.close();
+    } catch (e, s) {
+      // Improve error message by providing some context about why we download
+      // SQLite.
+      Error.throwWithStackTrace(CouldNotDownloadException(uri, e), s);
+    }
 
     await for (final chunk in response) {
       if (chunk is Uint8List) {
@@ -387,6 +394,52 @@ extension type const CompilerDefines(Map<String, String?> flags)
       defines['SQLITE_API'] = '__declspec(dllexport)';
     }
     return defines;
+  }
+}
+
+final class CouldNotDownloadException {
+  final Uri uri;
+  final Object inner;
+
+  CouldNotDownloadException(this.uri, this.inner);
+
+  @override
+  String toString() {
+    final message = StringBuffer(
+      'By default, this package downloads a pre-compiled SQLite library.',
+    );
+
+    void line(String line) => message
+      ..writeln()
+      ..write(line);
+
+    line('This failed (attepted to download $uri).');
+
+    if (inner is HandshakeException) {
+      line(
+        'This looks like a certificate issue. If you need to use proxies, note '
+        'that HTTP_PROXY and related environment variables are respected.',
+      );
+
+      if (Platform.isWindows) {
+        line(
+          'Windows loads trusted certificates dynamically, which can cause '
+          'issues in Dart (dartbug.com/52266).',
+        );
+        line(
+          'Try running this command in PowerShell, and re-build your app '
+          'afterwards: Invoke-WebRequest $uri',
+        );
+      }
+    }
+
+    line(
+      'For alternatives to downloading SQLite, see '
+      'https://pub.dev/documentation/sqlite3/latest/topics/hook-topic.html',
+    );
+    line('Original cause: $inner');
+
+    return message.toString();
   }
 }
 
