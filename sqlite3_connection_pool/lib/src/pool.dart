@@ -114,10 +114,12 @@ final class SqliteConnectionPool {
     _installAbortSignal(request, abortSignal);
 
     final connectionPointer = await future;
-    return ConnectionLease._(
+    final lease = ConnectionLease._(
       poolConnectionFromPointer(connectionPointer),
       request,
     );
+    await lease._rollbackPendingTransaction();
+    return lease;
   }
 
   /// Obtains a connection suitable for writes from the connection pool.
@@ -142,10 +144,12 @@ final class SqliteConnectionPool {
     _installAbortSignal(request, abortSignal);
 
     final connectionPointer = await future;
-    return ConnectionLease._(
+    final lease = ConnectionLease._(
       poolConnectionFromPointer(connectionPointer),
       request,
     );
+    await lease._rollbackPendingTransaction();
+    return lease;
   }
 
   /// Requests exclusive access to this pool.
@@ -168,7 +172,9 @@ final class SqliteConnectionPool {
     await future;
 
     final (:writer, :readers) = _raw.queryConnections();
-    return ExclusivePoolAccess._(request, writer, readers);
+    final exclusive = ExclusivePoolAccess._(request, writer, readers);
+    await exclusive._rollbackPendingTransactions();
+    return exclusive;
   }
 
   /// Executes the [sql] statement on the write connection.
@@ -333,6 +339,20 @@ base class AsyncConnection {
   var _closed = false;
 
   AsyncConnection._(this._connection);
+
+  /// If the connection is in a transaction, rolls that transaction back.
+  ///
+  /// If we receive a connection that hasn't been returned in an idle state
+  /// (for instance because the isolate originally using it didn't shut down
+  /// cleanly), we want to rollback pending transactions.
+  ///
+  /// This is meant to be called after a connection has been obtained from the
+  /// pool.
+  Future<void> _rollbackPendingTransaction() async {
+    if (!_connection.database.autocommit) {
+      await unsafeAccessOnIsolate((db) => db.database.execute('ROLLBACK'));
+    }
+  }
 
   /// Gets unprotected acccess to the [Database] without a mutex.
   ///
@@ -500,6 +520,13 @@ final class ExclusivePoolAccess {
         for (final reader in readers)
           AsyncConnection._(poolConnectionFromPointer(reader)),
       ];
+
+  Future<void> _rollbackPendingTransactions() async {
+    await Future.wait([
+      writer._rollbackPendingTransaction(),
+      for (final reader in readers) reader._rollbackPendingTransaction(),
+    ]);
+  }
 
   /// Returns this exclusive access instance, allowing other readers and writers
   /// to use the pool.

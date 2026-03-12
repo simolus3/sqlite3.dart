@@ -1,3 +1,7 @@
+## 0.2.2-wip
+
+- Rollback transactions potentially left from killed isolates previously using a connection.
+
 ## 0.2.1
 
 - Export the `PoolConnection` class.
