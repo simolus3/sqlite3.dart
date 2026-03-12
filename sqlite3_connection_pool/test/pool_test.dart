@@ -339,6 +339,7 @@ void main() {
       final conn = await pool.writer();
       expect(conn.unsafeRawConnection.database.autocommit, isTrue);
       expect((await conn.select('SELECT * FROM users')).$1, isEmpty);
+      conn.returnLease();
     });
 
     test('read connection', () async {
@@ -347,6 +348,7 @@ void main() {
 
       final conn = await pool.reader();
       expect(conn.unsafeRawConnection.database.autocommit, isTrue);
+      conn.returnLease();
     });
 
     test('exclusive access', () async {
@@ -359,6 +361,7 @@ void main() {
       for (final reader in exclusive.readers) {
         expect(reader.unsafeRawConnection.database.autocommit, isTrue);
       }
+      exclusive.close();
     });
   });
 
