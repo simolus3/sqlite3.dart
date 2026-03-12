@@ -300,6 +300,68 @@ void main() {
     });
   });
 
+  group('rolls back transactions', () {
+    Future<void> leaveInTransaction(
+      SqliteConnectionPool pool, {
+      required bool write,
+    }) async {
+      final port = ReceivePort();
+      final name = pool.name;
+      Isolate.spawn((SendPort port) async {
+        final pool = SqliteConnectionPool.open(
+          name: name,
+          openConnections: () => throw 'already open',
+        );
+        final connection = await (write ? pool.writer() : pool.reader());
+        connection.unsafeAccess((conn) {
+          conn.database.execute('BEGIN');
+          if (write) {
+            conn.database.execute('INSERT INTO users VALUES (?)', ['exit']);
+          }
+        });
+
+        // the connection is in a transaction at this point. Let's say we don't
+        // have a chance to commit.
+        Isolate.exit(port, 'done');
+      }, port.sendPort);
+
+      await port.first;
+    }
+
+    test('write connection', () async {
+      final pool = testPool();
+      await pool.execute('CREATE TABLE users (name TEXT);');
+
+      await leaveInTransaction(pool, write: true);
+
+      // Even though the connection was left in a transaction, it should be
+      // rolled back once we receive it.
+      final conn = await pool.writer();
+      expect(conn.unsafeRawConnection.database.autocommit, isTrue);
+      expect((await conn.select('SELECT * FROM users')).$1, isEmpty);
+    });
+
+    test('read connection', () async {
+      final pool = testPool(readConnections: 1);
+      await leaveInTransaction(pool, write: false);
+
+      final conn = await pool.reader();
+      expect(conn.unsafeRawConnection.database.autocommit, isTrue);
+    });
+
+    test('exclusive access', () async {
+      final pool = testPool(readConnections: 1);
+      await leaveInTransaction(pool, write: true);
+      await leaveInTransaction(pool, write: false);
+
+      final exclusive = await pool.exclusiveAccess();
+      expect(exclusive.writer.unsafeRawConnection.database.autocommit, isTrue);
+      for (final reader in exclusive.readers) {
+        expect(reader.unsafeRawConnection.database.autocommit, isTrue);
+      }
+    });
+  });
+
   group('cannot use database after returning lease', () {
     test('read', () async {
       final pool = testPool();
