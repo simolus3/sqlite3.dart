@@ -13,6 +13,8 @@ For almost all users, upgrading should be very simple:
    [latest releases](https://github.com/simolus3/sqlite3.dart/releases).
 5. If you had `open.overrideFor` code to customize how SQLite is loaded, that needs
    to be removed. The package exclusively uses hooks now.
+   This includes calls to `applyWorkaroundToOpenSqlite3OnOldAndroidVersions` which can
+   be removed after upgrading.
 
 Version 3.x relies on [hooks](https://dart.dev/tools/hooks) to automatically bundle
 a pre-compiled version of SQLite with your application. By default, these binaries
