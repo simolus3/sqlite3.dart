@@ -1,4 +1,4 @@
-## 0.2.2-wip
+## 0.2.2
 
 - Rollback transactions potentially left from killed isolates previously using a connection.
 
