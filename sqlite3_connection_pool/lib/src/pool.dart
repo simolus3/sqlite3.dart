@@ -115,7 +115,7 @@ final class SqliteConnectionPool {
 
     final connectionPointer = await future;
     final lease = ConnectionLease._(
-      poolConnectionFromPointer(connectionPointer),
+      PoolConnection.unsafeFromPointer(connectionPointer.connection),
       request,
     );
     await lease._rollbackPendingTransaction();
@@ -145,7 +145,7 @@ final class SqliteConnectionPool {
 
     final connectionPointer = await future;
     final lease = ConnectionLease._(
-      poolConnectionFromPointer(connectionPointer),
+      PoolConnection.unsafeFromPointer(connectionPointer.connection),
       request,
     );
     await lease._rollbackPendingTransaction();
@@ -387,10 +387,10 @@ base class AsyncConnection {
     FutureOr<T> Function(PoolConnection) computation,
   ) {
     return unsafeAccess((conn) {
-      final address = poolConnectionToPointer(conn).connection.address;
+      final address = conn.unsafePointer.address;
       return Isolate.run(() {
-        final conn = poolConnectionFromPointer(
-          PoolConnectionRef(Pointer.fromAddress(address)),
+        final conn = PoolConnection.unsafeFromPointer(
+          Pointer.fromAddress(address),
         );
         return computation(conn);
       });
@@ -410,21 +410,7 @@ base class AsyncConnection {
     List<Object?> parameters = const [],
   ]) {
     return unsafeAccessOnIsolate((conn) {
-      final cached = conn.lookupCachedStatement(sql);
-
-      final ResultSet resultSet;
-      if (cached != null) {
-        resultSet = cached.select(parameters);
-        cached.reset();
-      } else {
-        final stmt = conn.database.prepare(sql, checkNoTail: true);
-        resultSet = stmt.select(parameters);
-        stmt.reset();
-        if (!conn.storeCachedStatement(sql, stmt)) {
-          stmt.close();
-        }
-      }
-
+      final resultSet = conn.select(sql, parameters);
       return (resultSet, _execResult(conn.database));
     });
   }
@@ -435,23 +421,7 @@ base class AsyncConnection {
     List<Object?> parameters = const [],
   ]) {
     return unsafeAccessOnIsolate((conn) {
-      if (conn.lookupCachedStatement(sql) case final cached?) {
-        cached
-          ..execute(parameters)
-          ..reset();
-      } else if (parameters.isNotEmpty) {
-        final stmt = conn.database.prepare(sql, checkNoTail: true);
-        stmt
-          ..execute(parameters)
-          ..reset();
-        if (!conn.storeCachedStatement(sql, stmt)) {
-          stmt.close();
-        }
-      } else {
-        // The sql text is allowed to contain multiple statements, so we can't
-        // cache them.
-        conn.database.execute(sql);
-      }
+      conn.execute(sql, parameters);
 
       return _execResult(conn.database);
     });
@@ -515,10 +485,14 @@ final class ExclusivePoolAccess {
     this._request,
     PoolConnectionRef writer,
     List<PoolConnectionRef> readers,
-  ) : writer = AsyncConnection._(poolConnectionFromPointer(writer)),
+  ) : writer = AsyncConnection._(
+        PoolConnection.unsafeFromPointer(writer.connection),
+      ),
       readers = [
         for (final reader in readers)
-          AsyncConnection._(poolConnectionFromPointer(reader)),
+          AsyncConnection._(
+            PoolConnection.unsafeFromPointer(reader.connection),
+          ),
       ];
 
   Future<void> _rollbackPendingTransactions() async {

@@ -371,10 +371,10 @@ impl Drop for PoolState {
             "Tried to drop with leased read connection"
         );
 
-        Self::drop_connection(&mut self.writes.connection, &self.functions);
         for read in &mut self.reads.connections {
             Self::drop_connection(read, &self.functions);
         }
+        Self::drop_connection(&mut self.writes.connection, &self.functions);
     }
 }
 

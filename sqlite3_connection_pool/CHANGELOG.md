@@ -1,3 +1,9 @@
+## 0.2.3
+
+- Close read connections before write connection to clean up `-wal` and `-shm` files.
+- Add `select` and `execute` helpers to `PoolConnection`.
+- Add `PoolConnection.unsafePointer` and `PoolConnection.unsafeFromPointer`.
+
 ## 0.2.2
 
 - Rollback transactions potentially left from killed isolates previously using a connection.
