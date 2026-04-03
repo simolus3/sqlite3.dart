@@ -18,4 +18,5 @@ export 'src/wasm/vfs/simple_opfs.dart' show SimpleOpfsFileSystem;
 export 'src/wasm/vfs/indexed_db.dart' show IndexedDbFileSystem;
 export 'src/wasm/vfs/async_opfs/client.dart' show WasmVfs;
 export 'src/wasm/vfs/async_opfs/worker.dart' show WorkerOptions, VfsWorker;
+export 'src/wasm/loader.dart' show WasmModuleLoader;
 export 'src/wasm/sqlite3.dart';

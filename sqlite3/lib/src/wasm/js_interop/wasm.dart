@@ -2,37 +2,18 @@
 library;
 
 import 'dart:js_interop';
-import 'dart:js_interop_unsafe';
-
-import 'package:web/web.dart' as web;
 
 @JS('WebAssembly.Instance')
 extension type WasmInstance._(JSObject _) implements JSObject {
   external JSObject get exports;
-
-  static Future<WasmInstance> load(
-    web.Response response,
-    JSObject imports,
-  ) async {
-    final native = await _instantiateStreaming(response, imports).toDart;
-
-    // If the module has an `_initialize` export, it needs to be called to run
-    // C constructors and set up memory.
-    final exports = native.instance.exports;
-    if (exports.has('_initialize')) {
-      (exports['_initialize'] as JSFunction).callAsFunction();
-    }
-
-    return WasmInstance._(native.instance);
-  }
 }
 
-extension type _ResultObject._(JSObject _) implements JSObject {
+extension type ResultObject._(JSObject _) implements JSObject {
   external WasmInstance get instance;
 }
 
 @JS('WebAssembly.instantiateStreaming')
-external JSPromise<_ResultObject> _instantiateStreaming(
+external JSPromise<ResultObject> instantiateStreaming(
   JSAny? source,
   JSObject imports,
 );

@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_dynamic_calls
-import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
@@ -8,8 +6,6 @@ import 'dart:typed_data';
 import '../implementation/bindings.dart';
 import 'injected_values.dart';
 import 'js_interop.dart';
-
-import 'package:web/web.dart' as web;
 
 import 'sqlite3_wasm.g.dart';
 
@@ -33,7 +29,7 @@ class WasmBindings {
       databaseFinalizer,
       statementFinalizer;
 
-  WasmBindings._(this.instance, this.callbacks)
+  WasmBindings(this.instance, this.callbacks)
     : memory = callbacks.memory = _exportedMemory(instance),
       sqlite3 = SqliteExports(instance.exports) {
     callbacks.bindings = this;
@@ -42,16 +38,6 @@ class WasmBindings {
     sessionFinalizer = Finalizer((p) => sqlite3.sqlite3session_delete(p));
     databaseFinalizer = Finalizer((p) => sqlite3.sqlite3_close_v2(p));
     statementFinalizer = Finalizer((p) => sqlite3.sqlite3_finalize(p));
-  }
-
-  static Future<WasmBindings> instantiateAsync(web.Response response) async {
-    final injectedDartFunctions = DartBridgeCallbacks();
-
-    final imported = JSObject();
-    imported['dart'] = createJSInteropWrapper(injectedDartFunctions);
-
-    final instance = await WasmInstance.load(response, imported);
-    return WasmBindings._(instance, injectedDartFunctions);
   }
 
   Pointer allocateBytes(List<int> bytes, {int additionalLength = 0}) {
