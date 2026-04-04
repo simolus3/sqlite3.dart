@@ -3,6 +3,8 @@ import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
+import 'package:web/web.dart';
+
 import '../implementation/bindings.dart';
 import 'injected_values.dart';
 import 'js_interop.dart';
@@ -15,7 +17,7 @@ class WasmBindings {
   // We're compiling to 32bit wasm
   static const pointerSize = 4;
 
-  final WasmInstance instance;
+  final Instance instance;
   final Memory memory;
 
   final DartBridgeCallbacks callbacks;
@@ -430,7 +432,7 @@ class WasmBindings {
   }
 
   Pointer get sqlite3_temp_directory {
-    return sqlite3.sqlite3_temp_directory.value.toDartInt;
+    return (sqlite3.sqlite3_temp_directory.value as JSNumber).toDartInt;
   }
 
   set sqlite3_temp_directory(Pointer value) {
@@ -493,6 +495,6 @@ extension WrappedMemory on Memory {
   }
 }
 
-Memory _exportedMemory(WasmInstance instance) {
+Memory _exportedMemory(Instance instance) {
   return instance.exports['memory'] as Memory;
 }

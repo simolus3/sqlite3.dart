@@ -76,7 +76,7 @@ final class WasmSqlite3 extends Sqlite3Implementation {
   ) async {
     loader ??= WasmModuleLoader();
     final module = await loader.loadModule(fetchResponse);
-    final bindings = WasmBindings(module as WasmInstance, loader.dartFunctions);
+    final bindings = WasmBindings(module, loader.dartFunctions);
 
     return WasmSqlite3._(bindings);
   }

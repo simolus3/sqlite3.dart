@@ -74,7 +74,7 @@ void writeWasmDefinitions() {
   final buffer = StringBuffer('''
 import 'dart:js_interop';
 
-import 'js_interop.dart';
+import 'package:web/web.dart' show Global;
 
 // ignore_for_file: non_constant_identifier_names
 typedef Pointer = int;

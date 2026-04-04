@@ -4,6 +4,8 @@
 import 'dart:convert';
 import 'dart:js_interop';
 
+import 'package:web/web.dart';
+
 import '../constants.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';

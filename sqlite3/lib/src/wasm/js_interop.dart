@@ -12,7 +12,6 @@ export 'js_interop/fetch.dart';
 export 'js_interop/new_file_system_access.dart';
 export 'js_interop/indexed_db.dart';
 export 'js_interop/typed_data.dart';
-export 'js_interop/wasm.dart';
 
 extension ReadBlob on Blob {
   Future<ByteBuffer> byteBuffer() async {
