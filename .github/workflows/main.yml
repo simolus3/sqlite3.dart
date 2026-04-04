@@ -8,9 +8,11 @@ on:
 
 jobs:
   fetch_sqlite:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     uses: ./.github/workflows/compile_sqlite.yml
 
   analyze:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     timeout-minutes: 5
     strategy:
       matrix:
@@ -52,6 +54,7 @@ jobs:
       run: dart analyze --fatal-infos sqlite3 sqlite3_web sqlite3_test
 
   test:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     timeout-minutes: 5
     needs: [analyze, fetch_sqlite]
     strategy:
@@ -161,6 +164,7 @@ jobs:
       working-directory: sqlite3/
 
   upload_asset_hashes:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     timeout-minutes: 5
     needs: [test, fetch_sqlite]
     runs-on: ubuntu-latest
@@ -194,6 +198,7 @@ jobs:
         retention-days: 1
 
   integration_test_web:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     timeout-minutes: 10
     needs: [analyze, fetch_sqlite]
     runs-on: ubuntu-latest
@@ -254,6 +259,7 @@ jobs:
   # Shamelessly stolen from https://medium.com/flutter-community/run-flutter-driver-tests-on-github-actions-13c639c7e4ab
 
   integration_test:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     strategy:
       matrix:
         runner: [ubuntu-latest, macos-latest]
