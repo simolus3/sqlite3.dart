@@ -70,12 +70,12 @@ jobs:
         sdk: ${{ matrix.dart }}
     - name: Download compiled sqlite3
       if: matrix.sqlite == 'compiled'
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v8
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
         path: sqlite-compiled
     - name: Download connection pool libraries
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v8
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.pool_libs_artifact_id }}
         path: sqlite3_connection_pool/lib/src/precompiled/
@@ -168,7 +168,7 @@ jobs:
     - uses: actions/checkout@v5
     - uses: dart-lang/setup-dart@v1
     - name: Download compiled sqlite3
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v8
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
         path: sqlite-compiled
@@ -201,7 +201,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dart-lang/setup-dart@v1
       - name: Download compiled sqlite3
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
           path: sqlite-compiled
@@ -300,12 +300,12 @@ jobs:
           key: avd-35
 
       - name: Download compiled sqlite3
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
           path: sqlite-compiled
       - name: Download connection pool libraries
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           artifact-ids: ${{ needs.fetch_sqlite.outputs.pool_libs_artifact_id }}
           path: sqlite3_connection_pool/lib/src/precompiled/

@@ -56,7 +56,7 @@ jobs:
 
       - name: Download sqlite3 sources
         if: steps.cache_build.outputs.cache-hit != 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: sqlite-src
           path: sqlite-src
@@ -282,13 +282,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           path: out/
           merge-multiple: true
           pattern: sqlite3-libs-*
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           path: sqlite3_connection_pool/lib/src/precompiled
           merge-multiple: true
