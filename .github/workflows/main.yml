@@ -99,7 +99,7 @@ jobs:
 
     - name: Test sqlite3 package
       run: |
-        dart test --test-randomize-ordering-seed "random" -P ci --reporter expanded --concurrency 1
+        dart test --test-randomize-ordering-seed "random" -P ci
       working-directory: sqlite3/
 
     - name: Test sqlite3_connection_pool package
@@ -115,7 +115,7 @@ jobs:
     - name: Test with OS-specific system override
       if: matrix.sqlite == 'system'
       run: |
-        dart test --test-randomize-ordering-seed "random" -P ci --reporter expanded --concurrency 1
+        dart test --test-randomize-ordering-seed "random" -P ci
       working-directory: sqlite3/
 
     - name: Enable sqlite3mc
@@ -126,7 +126,7 @@ jobs:
     - name: Test sqlite3 package with sqlite3mc
       if: matrix.sqlite == 'compiled'
       run: |
-        dart test --test-randomize-ordering-seed "random" -P ci --reporter expanded --concurrency 1
+        dart test --test-randomize-ordering-seed "random" -P ci
       working-directory: sqlite3/
 
     # - name: Test with SQLITE_OMIT_AUTOINIT
