@@ -31,7 +31,7 @@ jobs:
           dart run tool/download_sqlite.dart
 
       - name: Upload sqlite3 sources
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sqlite-src
           path: sqlite-src/
@@ -78,7 +78,7 @@ jobs:
           dart run tool/build_sqlite.dart
 
       - name: Upload sqlite3 binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sqlite3-libs-${{ runner.os }}
           path: sqlite-compiled
@@ -127,7 +127,7 @@ jobs:
           cmake --build .dart_tool/sqlite_build/ -t output -j
 
       - name: Upload sqlite3 binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sqlite3-libs-wasm
           path: sqlite3_wasm_build/out/
@@ -183,7 +183,7 @@ jobs:
           cp target/android/x86_64/libsqlite3_connection_pool.so out/libsqlite3_connection_pool.android_x86_64.so
           cp target/android/armeabi-v7a/libsqlite3_connection_pool.so out/libsqlite3_connection_pool.android_v7a.so
           cp target/android/arm64-v8a/libsqlite3_connection_pool.so out/libsqlite3_connection_pool.android_v8a.so
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: connection-pool-linux
           retention-days: 1
@@ -221,7 +221,7 @@ jobs:
           cp target/aarch64-apple-ios/release/libsqlite3_connection_pool.dylib out/libsqlite3_connection_pool.ios_aarch64.dylib
           cp target/aarch64-apple-ios-sim/release/libsqlite3_connection_pool.dylib out/libsqlite3_connection_pool.ios_sim_aarch64.dylib
           cp target/x86_64-apple-ios/release/libsqlite3_connection_pool.dylib out/libsqlite3_connection_pool.ios_sim_x64.dylib
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: connection-pool-apple
           retention-days: 1
@@ -260,7 +260,7 @@ jobs:
           mkdir out
           cp target/x86_64-pc-windows-msvc/release/sqlite3_connection_pool.dll out/sqlite3_connection_pool.win_x64.dll
           cp target/aarch64-pc-windows-msvc/release/sqlite3_connection_pool.dll out/sqlite3_connection_pool.win_aarch64.dll
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: connection-pool-windows
           retention-days: 1
@@ -298,7 +298,7 @@ jobs:
       - run: ls -al sqlite3_connection_pool/lib/src/precompiled/
 
       - name: Upload sqlite3 binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         id: upload
         with:
           name: sqlite3-precompiled
@@ -307,7 +307,7 @@ jobs:
           retention-days: 1
 
       - name: Upload pool helper binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         id: upload_pool
         with:
           name: connection-pool-libs
