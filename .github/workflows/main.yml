@@ -19,7 +19,7 @@ jobs:
     name: Analyze ${{ matrix.package }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{ matrix.dart }}
@@ -64,7 +64,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{ matrix.dart }}
@@ -165,7 +165,7 @@ jobs:
     needs: [test, fetch_sqlite]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: dart-lang/setup-dart@v1
     - name: Download compiled sqlite3
       uses: actions/download-artifact@v5
@@ -198,7 +198,7 @@ jobs:
     needs: [analyze, fetch_sqlite]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: dart-lang/setup-dart@v1
       - name: Download compiled sqlite3
         uses: actions/download-artifact@v5
@@ -236,7 +236,7 @@ jobs:
 #          - flutter_libs
 #          - sqlcipher_flutter
 #    steps:
-#      - uses: actions/checkout@v5
+#      - uses: actions/checkout@v6
 #      - uses: subosito/flutter-action@v2
 #        with:
 #          channel: dev
@@ -273,7 +273,7 @@ jobs:
           IPHONE=$(xcrun xctrace list devices  2>&1 | grep -m 1 "iPhone" | awk -F'[()]' '{print $4}')
           xcrun simctl boot $IPHONE
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: subosito/flutter-action@v2
 
       - name: Flutter version

@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Download SQLite sources
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/cache@v4
         id: cache_build
         with:
@@ -47,7 +47,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: Compile sqlite3
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/cache@v4
         id: cache_build
         with:
@@ -88,7 +88,7 @@ jobs:
   compile_wasm:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/cache@v4
         id: cache_build
         with:
@@ -137,7 +137,7 @@ jobs:
   compile_pool_linux_android:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/cache@v4
         id: cache_build
         with:
@@ -192,7 +192,7 @@ jobs:
   compile_pool_apple:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/cache@v4
         id: cache_build
         with:
@@ -230,7 +230,7 @@ jobs:
   compile_pool_windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/cache@v4
         id: cache_build
         with:
@@ -280,7 +280,7 @@ jobs:
       pool_libs: ${{ steps.upload_pool.outputs.artifact-id }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/download-artifact@v5
         with:

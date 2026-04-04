@@ -19,7 +19,7 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: dart-lang/setup-dart@v1
     - name: Pub get
       run: dart pub get
@@ -94,7 +94,7 @@ jobs:
     # This can't use the workflow because we need to download assets to include in
     # the package.
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: dart-lang/setup-dart@v1 # This will request an OIDC token for pub.dev
 
     - name: Download connection pool libraries
