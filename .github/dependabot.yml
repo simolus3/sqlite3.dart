@@ -4,8 +4,16 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    groups:
+      all-github-actions:
+        patterns:
+          - "*"
   - package-ecosystem: "pub"
     versioning-strategy: "increase-if-necessary"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      all-pub-dependencies:
+        patterns:
+          - "*"
