@@ -19,11 +19,11 @@ jobs:
     name: Analyze ${{ matrix.package }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{ matrix.dart }}
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       with:
         path: "${{ env.PUB_CACHE }}"
         key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
@@ -64,23 +64,23 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{ matrix.dart }}
     - name: Download compiled sqlite3
       if: matrix.sqlite == 'compiled'
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v8
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
         path: sqlite-compiled
     - name: Download connection pool libraries
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v8
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.pool_libs_artifact_id }}
         path: sqlite3_connection_pool/lib/src/precompiled/
 
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       with:
         path: "${{ env.PUB_CACHE }}"
         key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
@@ -165,14 +165,14 @@ jobs:
     needs: [test, fetch_sqlite]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: dart-lang/setup-dart@v1
     - name: Download compiled sqlite3
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v8
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
         path: sqlite-compiled
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       with:
         path: "${{ env.PUB_CACHE }}"
         key: dart-dependencies-beta-${{ runner.os }}
@@ -185,7 +185,7 @@ jobs:
     - name: Write asset hashes
       run: dart run tool/write_asset_hashes.dart
     - name: Upload asset hashes
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       id: upload
       with:
         name: asset-hashes
@@ -198,14 +198,14 @@ jobs:
     needs: [analyze, fetch_sqlite]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: dart-lang/setup-dart@v1
       - name: Download compiled sqlite3
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
           path: sqlite-compiled
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: "${{ env.PUB_CACHE }}"
           key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
@@ -236,7 +236,7 @@ jobs:
 #          - flutter_libs
 #          - sqlcipher_flutter
 #    steps:
-#      - uses: actions/checkout@v5
+#      - uses: actions/checkout@v6
 #      - uses: subosito/flutter-action@v2
 #        with:
 #          channel: dev
@@ -273,7 +273,7 @@ jobs:
           IPHONE=$(xcrun xctrace list devices  2>&1 | grep -m 1 "iPhone" | awk -F'[()]' '{print $4}')
           xcrun simctl boot $IPHONE
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: subosito/flutter-action@v2
 
       - name: Flutter version
@@ -290,7 +290,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: AVD Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: avd-cache
         if: runner.os == 'linux'
         with:
@@ -300,17 +300,17 @@ jobs:
           key: avd-35
 
       - name: Download compiled sqlite3
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
           path: sqlite-compiled
       - name: Download connection pool libraries
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           artifact-ids: ${{ needs.fetch_sqlite.outputs.pool_libs_artifact_id }}
           path: sqlite3_connection_pool/lib/src/precompiled/
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: "${{ env.PUB_CACHE }}"
           key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}

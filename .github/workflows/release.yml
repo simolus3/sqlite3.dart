@@ -19,12 +19,12 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: dart-lang/setup-dart@v1
     - name: Pub get
       run: dart pub get
     - name: Download compiled sqlite3
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v8
       with:
         github-token: ${{ github.token }}
         artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
@@ -94,11 +94,11 @@ jobs:
     # This can't use the workflow because we need to download assets to include in
     # the package.
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: dart-lang/setup-dart@v1 # This will request an OIDC token for pub.dev
 
     - name: Download connection pool libraries
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v8
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.pool_libs_artifact_id }}
         path: sqlite3_connection_pool/lib/src/precompiled/
