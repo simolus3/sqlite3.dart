@@ -16,7 +16,7 @@ jobs:
     name: Download SQLite sources
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: cache_build
         with:
           path: sqlite-src/
@@ -48,7 +48,7 @@ jobs:
     name: Compile sqlite3
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: cache_build
         with:
           path: sqlite-compiled
@@ -89,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: cache_build
         with:
           path: sqlite3_wasm_build/out/
@@ -138,7 +138,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: cache_build
         with:
           path: sqlite3_connection_pool/out
@@ -193,7 +193,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: cache_build
         with:
           path: sqlite3_connection_pool/out
@@ -231,7 +231,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: cache_build
         with:
           path: sqlite3_connection_pool/out
