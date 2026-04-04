@@ -1,4 +1,4 @@
-## 3.3.0-wip
+## 3.3.0
 
 - Web: Add `WasmModuleLoader` API to customize how WebAssembly modules are loaded.
 - Hook: Improve error message for failing downloads.
