@@ -684,7 +684,8 @@ SharedCompatibilityCheck newSharedCompatibilityCheck({
 @anonymous
 extension type _DedicatedInSharedCompatibilityCheck._(
   DedicatedInSharedCompatibilityCheck _
-) implements DedicatedInSharedCompatibilityCheck {
+)
+    implements DedicatedInSharedCompatibilityCheck {
   external factory _DedicatedInSharedCompatibilityCheck({
     @JS('d') required String? databaseName,
     @JS('i') required int requestId,
