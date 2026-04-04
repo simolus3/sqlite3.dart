@@ -98,7 +98,7 @@ jobs:
       # clang 18 that ships on ubuntu crashes when compiling the wasm sources
       - name: Install LLVM and Clang
         if: steps.cache_build.outputs.cache-hit != 'true'
-        uses: KyleMayes/install-llvm-action@v2.0.8
+        uses: KyleMayes/install-llvm-action@v2.0.9
         with:
           version: "21"
 
