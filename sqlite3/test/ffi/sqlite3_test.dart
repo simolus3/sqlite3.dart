@@ -125,7 +125,7 @@ int sqlite3_myextension_init(sqlite3* db, char** pzErrMsg,
       // doesn't seem to compile with the default includes on this system.
       // Windows also doesn't seem to work, but I think my poor GitHub actions
       // setup is to blame for that
-      'windows': Skip('Unsupported platform'),
+      '!linux': Skip('Unsupported platform'),
     },
   );
 }
