@@ -93,7 +93,7 @@ jobs:
       - uses: actions/cache@v5
         id: cache_build
         with:
-          path: sqlite-compiled
+          path: sqlite3-sanitized
           key: sqlite-sanitizers-${{ runner.os }}-${{ hashFiles('tool/**', 'sqlite3/lib/src/hook/description.dart') }}
       - name: Download sqlite3 sources
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -133,9 +133,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: sqlite3-sanitized
-          path: |
-            sqlite-sanitized
-            sqlite3_connection_pool/target/release/*.san.so
+          path: sqlite-sanitized
           if-no-files-found: error
           retention-days: 1
 

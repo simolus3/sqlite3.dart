@@ -10,7 +10,7 @@ function compile() {
         -Z build-std-features= \
         --target x86_64-unknown-linux-gnu
 
-    cp target/x86_64-unknown-linux-gnu/release/libsqlite3_connection_pool.so target/release/libsqlite3_connection_pool.$sanitizer.san.so
+    cp target/x86_64-unknown-linux-gnu/release/libsqlite3_connection_pool.so ../sqlite-sanitized/libsqlite3_connection_pool.$sanitizer.san.so
 }
 
 compile address
