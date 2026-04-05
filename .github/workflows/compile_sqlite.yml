@@ -85,6 +85,38 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  build_with_sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache@v5
+        id: cache_build
+        with:
+          path: sqlite-compiled
+          key: sqlite-sanitizers-${{ runner.os }}-${{ hashFiles('tool/**', 'sqlite3/lib/src/hook/description.dart') }}
+      - name: Download sqlite3 sources
+        if: steps.cache_build.outputs.cache-hit != 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: sqlite-src
+          path: sqlite-src
+
+      - uses: dart-lang/setup-dart@v1
+        if: steps.cache_build.outputs.cache-hit != 'true'
+
+      - name: Compile sqlite3
+        if: steps.cache_build.outputs.cache-hit != 'true'
+        run: |
+          dart pub get
+          dart run tool/build_with_sanitizers.dart
+          ls sqlite-sanitize
+      - name: Upload binaries
+        uses: actions/upload-artifact@v7
+        with:
+          name: sqlite3-sanitized
+          path: sqlite-sanitized
+          if-no-files-found: error
+          retention-days: 1
+
   compile_wasm:
     runs-on: ubuntu-latest
     steps:
