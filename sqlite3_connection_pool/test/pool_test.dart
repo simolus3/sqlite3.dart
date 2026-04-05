@@ -52,6 +52,7 @@ void main() {
     for (final port in closePorts) {
       port.send(null);
     }
+    receiveControl.close();
   });
 
   test('can open pool asynchronously', () async {
