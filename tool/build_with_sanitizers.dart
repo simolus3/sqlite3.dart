@@ -5,9 +5,12 @@ import 'package:hooks/hooks.dart';
 import 'package:code_assets/code_assets.dart';
 import 'package:native_toolchain_c/native_toolchain_c.dart';
 import 'package:path/path.dart' as p;
+import 'package:pool/pool.dart';
 
 import 'package:sqlite3/src/hook/description.dart';
 import '../sqlite3/hook/build.dart' as hook;
+
+final _limitConcurrency = Pool(Platform.numberOfProcessors);
 
 /// Builds `libsqlite3.so` variants for X64 Linux with different sanitizers
 /// enabled.
@@ -28,7 +31,7 @@ void main() async {
   }
   await outputDirectory.create();
 
-  for (final sanitizer in ['address', 'memory', 'thread']) {
+  Future<void> compileWithSanitizer(String sanitizer) async {
     await testBuildHook(
       extensions: [
         CodeAssetExtension(
@@ -68,6 +71,11 @@ void main() async {
       },
     );
   }
+
+  await [
+    for (final sanitizer in ['address', 'memory', 'thread'])
+      _limitConcurrency.withResource(() => compileWithSanitizer(sanitizer)),
+  ].wait;
 }
 
 Uri _which(String tool) {
