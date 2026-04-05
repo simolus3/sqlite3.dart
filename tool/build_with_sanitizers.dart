@@ -23,6 +23,10 @@ void main() async {
 
   final outputDirectory =
       fs.currentDirectory.parent.childDirectory('sqlite-sanitized');
+  if (await outputDirectory.exists()) {
+    await outputDirectory.delete(recursive: true);
+  }
+  await outputDirectory.create();
 
   for (final sanitizer in ['address', 'memory', 'thread']) {
     await testBuildHook(
@@ -50,7 +54,7 @@ void main() async {
             sources: [sourceFile],
             includes: [p.dirname(sourceFile)],
             defines: CompilerDefines.defaults(false),
-            flags: ['-fsanitize=$sanitizer'],
+            flags: ['-fsanitize=$sanitizer', '-fno-omit-frame-pointer'],
           );
 
           await library.run(input: input, output: output);

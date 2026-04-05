@@ -105,6 +105,12 @@ jobs:
       - uses: dart-lang/setup-dart@v1
         if: steps.cache_build.outputs.cache-hit != 'true'
 
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.cache_build.outputs.cache-hit != 'true'
+        with:
+          toolchain: nightly
+          components: rust-src
+
       - name: Install LLVM toolchain
         shell: bash
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -118,11 +124,19 @@ jobs:
           dart pub get
           dart run tool/build_with_sanitizers.dart
           ls sqlite-sanitize
+
+      - name: Compile pool libraries
+        if: steps.cache_build.outputs.cache-hit != 'true'
+        working-directory: sqlite3_connection_pool
+        run: ./tool/build_linux_sanitizer.sh
+
       - name: Upload binaries
         uses: actions/upload-artifact@v7
         with:
           name: sqlite3-sanitized
-          path: sqlite-sanitized
+          path: |
+            sqlite-sanitized
+            sqlite3_connection_pool/target/release/*.san.so
           if-no-files-found: error
           retention-days: 1
 
