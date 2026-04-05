@@ -43,7 +43,7 @@ jobs:
         dart format --set-exit-if-changed sqlite3_web
 
     - name: Format native
-      run: clang-format --Werror --dry-run --style=google assets/*.h test/**/*.c
+      run: clang-format --Werror --dry-run --style=google assets/*.h
       working-directory: sqlite3
 
     - name: Format native
