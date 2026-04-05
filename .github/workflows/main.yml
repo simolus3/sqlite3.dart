@@ -115,12 +115,17 @@ jobs:
     - name: Run tests with AOT executable
       run: dart run run.dart
       working-directory: native_tests/
+    - name: Run tests AddressSanitizer and MemorySanitizer
+      if: runner.os == 'Linux'
+      run: |
+        dart run run.dart --sanitizer=asan
+        dart run run.dart --sanitizer=msan
+      working-directory: native_tests/
 
     - name: Enable sqlite3mc
       run: |
         dart run tool/hook_overrides.dart compiled-ciphers
     - name: Test sqlite3 package with sqlite3mc
-      if: matrix.sqlite == 'compiled'
       run: |
         dart test --test-randomize-ordering-seed "random" -P ci
       working-directory: sqlite3/
