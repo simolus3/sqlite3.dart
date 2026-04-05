@@ -105,6 +105,13 @@ jobs:
       - uses: dart-lang/setup-dart@v1
         if: steps.cache_build.outputs.cache-hit != 'true'
 
+      - name: Install LLVM toolchain
+        shell: bash
+        if: steps.cache_build.outputs.cache-hit != 'true'
+        run: |
+          sudo apt update
+          sudo apt install -y llvm clang lld
+
       - name: Compile sqlite3
         if: steps.cache_build.outputs.cache-hit != 'true'
         run: |
