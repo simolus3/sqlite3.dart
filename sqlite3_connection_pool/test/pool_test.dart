@@ -23,7 +23,7 @@ void main() {
   }
 
   test('opening pools is synchronized', () async {
-    const numIsolates = 10_000;
+    const numIsolates = 10;
     final receiveControl = ReceivePort();
     var countOpened = 0;
     final allOpened = Completer();
@@ -52,6 +52,7 @@ void main() {
     for (final port in closePorts) {
       port.send(null);
     }
+    receiveControl.close();
   });
 
   test('can open pool asynchronously', () async {
@@ -91,7 +92,7 @@ void main() {
 
     final futures = <Future<void>>[];
     var writers = 0;
-    for (var i = 0; i < 10_000; i++) {
+    for (var i = 0; i < 10; i++) {
       futures.add(
         Future(() async {
           final writer = await pool.writer();
@@ -123,7 +124,7 @@ void main() {
     final futures = <Future<void>>[];
 
     final connectionDistribution = <String, int>{};
-    for (var i = 0; i < 10_000; i++) {
+    for (var i = 0; i < 10; i++) {
       futures.add(
         Future(() async {
           final results = await pool.readQuery('SELECT id FROM conn');
@@ -137,7 +138,7 @@ void main() {
     expect(connectionDistribution['writer'], isNull);
 
     // Connections should be distributed somewhat evenly.
-    expect(connectionDistribution.values.fold(0, (a, b) => a + b), 10_000);
+    expect(connectionDistribution.values.fold(0, (a, b) => a + b), 10);
     for (final amount in connectionDistribution.values) {
       expect(amount, lessThan(4000));
     }

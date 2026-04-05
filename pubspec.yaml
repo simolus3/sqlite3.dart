@@ -18,6 +18,7 @@ workspace:
   - sqlite3_connection_pool
   - sqlite3_web
   - sqlite3_test
+  - native_tests
 
   - legacy/sqlcipher_flutter_libs
   - legacy/sqlite3_flutter_libs

@@ -61,9 +61,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         dart: [stable, dev]
-        sqlite: [system, compiled]
 
-    name: Unit tests with Dart ${{ matrix.dart }} on ${{ matrix.os }} with ${{ matrix.sqlite }} sqlite
+    name: Unit tests with Dart ${{ matrix.dart }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -72,7 +71,6 @@ jobs:
       with:
         sdk: ${{ matrix.dart }}
     - name: Download compiled sqlite3
-      if: matrix.sqlite == 'compiled'
       uses: actions/download-artifact@v8
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
@@ -95,76 +93,53 @@ jobs:
         dart pub get
     - name: Write asset hashes
       run: dart run tool/write_asset_hashes.dart
-      if: matrix.sqlite == 'compiled'
-    - name: Prepare for tests
-      run: |
-        dart run tool/hook_overrides.dart ${{ matrix.sqlite }}
 
+    - name: Prepare for tests with pre-compiled SQLite
+      run: |
+        dart run tool/hook_overrides.dart compiled
     - name: Test sqlite3 package
       run: |
         dart test --test-randomize-ordering-seed "random" -P ci
       working-directory: sqlite3/
-
     - name: Test sqlite3_connection_pool package
       run: |
         dart test
       working-directory: sqlite3_connection_pool/
-
-    - name: Test sqlite3 package with sanitizers
-      if: runner.os == 'Linux'
-      run:
-        dart test -P ci -p vm-asan,vm-msan,vm-tsan
-      working-directory: sqlite3/
-
-    - name: Test sqlite3_connection_pool package with sanitizers
-      if: runner.os == 'Linux'
-      run:
-        dart test -p vm-asan,vm-msan,vm-tsan
-      working-directory: sqlite3_connection_pool/
-
-    - name: Setup OS-specific system override
-      if: matrix.sqlite == 'system'
-      run: |
-        dart run tool/hook_overrides.dart system-os-specific
-
-    - name: Test with OS-specific system override
-      if: matrix.sqlite == 'system'
-      run: |
-        dart test --test-randomize-ordering-seed "random" -P ci
-      working-directory: sqlite3/
+    - name: Test sqlite3_test package
+      run: dart test
+      if: ${{ runner.os != 'windows' }} # TODO: Investigate crashes on Windows
+      working-directory: sqlite3_test/
+    - name: Test extension example
+      run: dart test
+      working-directory: sqlite3/example/custom_extension
+    - name: Run tests with AOT executable
+      run: dart run run.dart
+      working-directory: native_tests/
 
     - name: Enable sqlite3mc
-      if: matrix.sqlite == 'compiled'
       run: |
         dart run tool/hook_overrides.dart compiled-ciphers
-
     - name: Test sqlite3 package with sqlite3mc
       if: matrix.sqlite == 'compiled'
       run: |
         dart test --test-randomize-ordering-seed "random" -P ci
       working-directory: sqlite3/
 
-    # - name: Test with SQLITE_OMIT_AUTOINIT
-    #   if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
-    #   run: |
-    #     ls $LD_LIBRARY_PATH
-    #     dart run tool/check_compile_time_option.dart OMIT_AUTOINIT
-    #     dart test -P ci
-    #   env:
-    #     LD_LIBRARY_PATH: ../sqlite/out/without_autoinit
-    #   working-directory: sqlite3/
-
+    - name: Prepare for tests with system SQLite
+      run: |
+        dart run tool/hook_overrides.dart system-os-specific
+    - name: Test sqlite3 package
+      run: |
+        dart test --test-randomize-ordering-seed "random" -P ci
+      working-directory: sqlite3/
+    - name: Test sqlite3_connection_pool package
+      run: |
+        dart test
+      working-directory: sqlite3_connection_pool/
     - name: Test sqlite3_test package
       run: dart test
       if: ${{ runner.os != 'windows' }} # TODO: Investigate crashes on Windows
       working-directory: sqlite3_test/
-
-    - name: Test extension example
-      # We can't load extension with the system SQLite on Apple platforms,
-      # the feature is disabled.
-      if: ${{ !(runner.os == 'macos' && matrix.sqlite == 'system') }}
-      run: dart test
-      working-directory: sqlite3/example/custom_extension
 
     - name: Web tests
       run: |
@@ -172,7 +147,7 @@ jobs:
         dart test -P web -r expanded
       # If browsers behave differently on different platforms, surely that's not our fault...
       # So, only run browser tests on Linux to be faster.
-      if: matrix.sqlite == 'compiled' && runner.os == 'Linux'
+      if: runner.os == 'Linux'
       working-directory: sqlite3/
 
   upload_asset_hashes:

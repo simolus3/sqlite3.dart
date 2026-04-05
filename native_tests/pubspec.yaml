@@ -1,0 +1,21 @@
+name: native_tests
+description: Helper package to test other packages in this workspace in aot builds.
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.11.0
+
+topics:
+  - sql
+  - database
+  - ffi
+  - sqlite
+
+dependencies:
+  sqlite3:
+  sqlite3_test:
+  sqlite3_connection_pool: 
+  test: ^1.31.0
+  path: ^1.9.1
+  args: ^2.7.0

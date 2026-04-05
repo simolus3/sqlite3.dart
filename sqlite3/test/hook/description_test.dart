@@ -1,4 +1,4 @@
-@Tags(['ffi'])
+@TestOn('vm')
 library;
 
 import 'package:code_assets/code_assets.dart';
