@@ -110,6 +110,18 @@ jobs:
         dart test
       working-directory: sqlite3_connection_pool/
 
+    - name: Test sqlite3 package with sanitizers
+      if: runner.os == 'Linux'
+      run:
+        dart test -P ci -p vm-asan,vm-msan,vm-tsan
+      working-directory: sqlite3/
+
+    - name: Test sqlite3_connection_pool package with sanitizers
+      if: runner.os == 'Linux'
+      run:
+        dart test -p vm-asan,vm-msan,vm-tsan
+      working-directory: sqlite3_connection_pool/
+
     - name: Setup OS-specific system override
       if: matrix.sqlite == 'system'
       run: |

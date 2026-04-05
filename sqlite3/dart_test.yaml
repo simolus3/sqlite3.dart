@@ -8,11 +8,6 @@ tags:
 
 platforms: [vm]
 
-on_os:
-  linux:
-    # Testing with sanitizers is only supported on Linux at the moment.
-    platforms: [vm, vm-asan, vm-msan, vm-tsan]
-
 override_platforms:
   firefox:
     settings:
