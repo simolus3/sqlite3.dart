@@ -47,6 +47,8 @@ final hasColumnMetadata =
 
 final _vfsPointers = Expando<_RegisteredVfs>();
 
+Pointer<sqlite3_char> _globalTempDirectory = nullPtr();
+
 final class FfiBindings implements RawSqliteBindings {
   const FfiBindings._();
 
@@ -180,13 +182,19 @@ final class FfiBindings implements RawSqliteBindings {
 
   @override
   set sqlite3_temp_directory(String? value) {
-    if (value == null) {
-      libsqlite3.sqlite3_temp_directory = nullPtr();
-    } else {
-      libsqlite3.sqlite3_temp_directory = Utf8Utils.allocateZeroTerminated(
-        value,
-      );
+    final newPtr = value != null
+        ? Utf8Utils.allocateZeroTerminated(value)
+        : nullPtr<sqlite3_char>();
+
+    if (!_globalTempDirectory.isNullPointer && _globalTempDirectory != newPtr) {
+      // The previous value was set in Dart too, free that now to avoid leaking
+      // memory. There's still a possibility for leaks if sqlite3_temp_directory
+      // is called in different isolates, but we can't safely avoid that.
+      allocate.free(_globalTempDirectory);
     }
+
+    _globalTempDirectory = newPtr;
+    libsqlite3.sqlite3_temp_directory = newPtr;
   }
 
   @override

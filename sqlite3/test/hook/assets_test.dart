@@ -1,4 +1,4 @@
-@Tags(['ffi'])
+@TestOn('vm')
 library;
 
 import 'package:sqlite3/src/hook/assets.dart';

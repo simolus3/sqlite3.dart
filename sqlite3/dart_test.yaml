@@ -1,6 +1,6 @@
 tags:
   ffi:
-    test_on: vm
+    test_on: dart-vm
   wasm:
     test_on: browser
   ci_only:
