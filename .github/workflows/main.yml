@@ -80,6 +80,11 @@ jobs:
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.pool_libs_artifact_id }}
         path: sqlite3_connection_pool/lib/src/precompiled/
+    - name: Download libraries compiled with sanitizers
+      uses: actions/download-artifact@v8
+      with:
+        artifact-ids: ${{ needs.fetch_sqlite.outputs.sanitized_artifact_id }}
+        path: sqlite-sanitized/
 
     - uses: actions/cache@v5
       with:
@@ -118,8 +123,9 @@ jobs:
     - name: Run tests AddressSanitizer and MemorySanitizer
       if: runner.os == 'Linux'
       run: |
-        dart run run.dart --sanitizer=asan
-        dart run run.dart --sanitizer=msan
+        dart run.dart --sanitizer=asan
+        dart run.dart --sanitizer=msan
+        dart run.dart --sanitizer=tsan
       working-directory: native_tests/
 
     - name: Enable sqlite3mc

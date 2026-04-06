@@ -1,3 +1,7 @@
+## 3.3.1-wip
+
+- Avoid leaking memory when `tempDirectory` is set multiple times.
+
 ## 3.3.0
 
 - Web: Add `WasmModuleLoader` API to customize how WebAssembly modules are loaded.

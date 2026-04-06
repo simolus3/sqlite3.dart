@@ -56,8 +56,20 @@ void main() async {
             assetName: hook.name,
             sources: [sourceFile],
             includes: [p.dirname(sourceFile)],
-            defines: CompilerDefines.defaults(false),
-            flags: ['-fsanitize=$sanitizer', '-fno-omit-frame-pointer'],
+            defines: {
+              'SQLITE_ENABLE_API_ARMOR': '1',
+              ...CompilerDefines.defaults(false),
+            },
+            flags: [
+              '-fsanitize=$sanitizer',
+              '-fno-omit-frame-pointer',
+              // It looks like os calls like stat() don't count as initializing
+              // memory, so we have to exclude SQLite itself from msan tests.
+              // But we can already assume it to be correct, we mainly want to
+              // test Dart parts.
+              if (sanitizer == 'memory')
+                '-fsanitize-ignorelist=../native_tests/ignorelist.txt'
+            ],
           );
 
           await library.run(input: input, output: output);

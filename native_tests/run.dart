@@ -7,11 +7,6 @@ import 'package:path/path.dart' as p;
 ///
 /// Usage: `dart run run.dart`.
 void main(List<String> args) async {
-  const nativeAssetsSpec = '.dart_tool/native_assets.yaml';
-  if (!await File(nativeAssetsSpec).exists()) {
-    throw 'Expected $nativeAssetsSpec to exist, are you using dart run?';
-  }
-
   final parser = ArgParser(allowTrailingOptions: false);
   parser.addOption('sanitizer', allowed: ['asan', 'msan', 'tsan']);
   final result = parser.parse(args);
@@ -19,6 +14,7 @@ void main(List<String> args) async {
 
   final dir = await Directory.systemTemp.createTemp('pkg-sqlite3-test');
   final aotPath = p.join(dir.path, 'test.aot');
+  final assetsConfig = await _createNativeAssetsConfig(dir, sanitizer);
 
   try {
     print('AOT-compiling tests');
@@ -29,7 +25,7 @@ void main(List<String> args) async {
       '--output',
       aotPath,
       if (sanitizer != null) '--target-sanitizer=$sanitizer',
-      '--extra-gen-kernel-options=--native-assets=$nativeAssetsSpec',
+      '--extra-gen-kernel-options=--native-assets=${assetsConfig.path}',
     ]);
 
     if (result.exitCode != 0 || !await File(aotPath).exists()) {
@@ -51,8 +47,56 @@ stderr: ${result.stderr}
     final process = await Process.start(runtime, [
       aotPath,
     ], mode: ProcessStartMode.inheritStdio);
-    await process.exitCode;
+    final exit = await process.exitCode;
+    if (exit != 0) {
+      throw 'Expected exit code 0, got $exit';
+    }
   } finally {
     await dir.delete(recursive: true);
   }
+}
+
+Future<File> _createNativeAssetsConfig(
+  Directory tmpForRun,
+  String? sanitizer,
+) async {
+  if (sanitizer == null) {
+    final file = File('.dart_tool/native_assets.yaml');
+    if (!await file.exists()) {
+      throw 'Expected $file to exist, are you using dart run?';
+    }
+  }
+
+  final name = switch (sanitizer) {
+    'asan' => 'address',
+    'msan' => 'memory',
+    'tsan' => 'thread',
+    _ => throw AssertionError(),
+  };
+  final sqliteFile = p.normalize(
+    p.absolute('../sqlite-sanitized', 'sqlite3.san_$name.so'),
+  );
+  final poolFile = p.normalize(
+    p.absolute(
+      '../sqlite-sanitized',
+      'libsqlite3_connection_pool.$name.san.so',
+    ),
+  );
+
+  final yaml =
+      '''
+format-version: [1, 0, 0]
+native-assets:
+  linux_x64:
+    "package:sqlite3/src/ffi/libsqlite3.g.dart":
+      - absolute
+      - "$sqliteFile"
+    "package:sqlite3_connection_pool/sqlite3_connection_pool.dart":
+      - absolute
+      - "$poolFile"
+''';
+
+  final file = File(p.join(tmpForRun.path, 'assets.yaml'));
+  await file.writeAsString(yaml);
+  return file;
 }
