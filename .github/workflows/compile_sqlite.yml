@@ -98,7 +98,7 @@ jobs:
       - uses: actions/cache@v5
         id: cache_build
         with:
-          path: sqlite3-sanitized
+          path: sqlite-sanitized
           key: sqlite-sanitizers-${{ runner.os }}-${{ hashFiles('tool/**', 'sqlite3/lib/src/hook/description.dart') }}
       - name: Download sqlite3 sources
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -136,11 +136,11 @@ jobs:
 
       - name: Upload binaries
         uses: actions/upload-artifact@v7
+        id: upload
         with:
           name: sqlite3-sanitized
           path: sqlite-sanitized
           if-no-files-found: error
-          id: upload
           retention-days: 1
 
   compile_wasm:
@@ -213,7 +213,7 @@ jobs:
         if: steps.cache_build.outputs.cache-hit != 'true'
         run: |
           sudo apt update
-          sudo apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-arm-linux-gnueabihf      
+          sudo apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-arm-linux-gnueabihf
 
       - name: Build for Linux
         if: steps.cache_build.outputs.cache-hit != 'true'
