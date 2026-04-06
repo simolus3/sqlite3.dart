@@ -118,6 +118,8 @@ extension type StartFileSystemServer._(JSObject _) implements Message {
 extension type CustomRequest._(JSObject _) implements Request {
   @JS(_UniqueFieldNames.responseData)
   external JSAny? payload;
+  @JS(_UniqueFieldNames.lockId)
+  external int? lockId;
 }
 
 /// The other side will respond with a [SimpleSuccessResponse] containing a

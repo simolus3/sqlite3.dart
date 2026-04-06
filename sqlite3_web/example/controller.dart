@@ -8,7 +8,7 @@ final class ExampleController extends DatabaseController {
   @override
   Future<JSAny?> handleCustomRequest(
     ClientConnection connection,
-    JSAny? request,
+    CustomClientRequest request,
   ) async {
     return null;
   }
@@ -33,7 +33,7 @@ final class ExampleDatabase extends WorkerDatabase {
   @override
   Future<JSAny?> handleCustomRequest(
     ClientConnection connection,
-    JSAny? request,
+    CustomClientRequest request,
   ) async {
     return null;
   }

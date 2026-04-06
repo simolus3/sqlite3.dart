@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:js_interop';
 
 import 'package:meta/meta.dart';
@@ -43,8 +44,42 @@ abstract base class DatabaseController {
   /// This is not currently used.
   Future<JSAny?> handleCustomRequest(
     ClientConnection connection,
-    JSAny? request,
+    CustomClientRequest request,
   );
+}
+
+/// A custom request sent from a client to a worker hosting a database.
+final class CustomClientRequest {
+  /// The custom message sent from the client.
+  final JSAny? request;
+
+  /// A signal allowing clients to abort this request.
+  ///
+  /// Implementations can query this signal to throw an [AbortException] instead
+  /// of completing their work if that's more efficient. There is no guarantee
+  /// that aborting a signal actually cancels the pending task, though.
+  final AbortSignal abortSignal;
+
+  CustomClientRequest({required this.request, required this.abortSignal});
+}
+
+/// A [CustomClientRequest] sent to a worker-managed database
+final class CustomClientDatabaseRequest extends CustomClientRequest {
+  /// Runs a synchronous function with exclusive access to the underlying
+  /// database.
+  ///
+  /// This respects the lock token sent by [Database.customRequest], allowing
+  /// custom requests to integrate with the locking mechanism of
+  /// [Database.execute] and [Database.requestLock].
+  ///
+  /// Requesting a lock automatically respects an [abortSignal].
+  final Future<T> Function<T>(T Function() inner) useLock;
+
+  CustomClientDatabaseRequest({
+    required super.request,
+    required super.abortSignal,
+    required this.useLock,
+  });
 }
 
 /// An endpoint that can be used, by any running JavaScript context in the same
@@ -155,7 +190,11 @@ abstract class Database {
   ///
   /// Custom requests are handled by implementing `handleCustomRequest` in your
   /// `WorkerDatabase` subclass.
-  Future<JSAny?> customRequest(JSAny? request);
+  Future<JSAny?> customRequest(
+    JSAny? request, {
+    LockToken? token,
+    Future<void>? abortTrigger,
+  });
 
   /// Creates a [MessagePort] (a transferrable object that can be sent to
   /// another JavaScript context like a worker) that can be used with
@@ -203,7 +242,7 @@ abstract class WorkerDatabase {
   /// [Database.customRequest] call for clients.
   Future<JSAny?> handleCustomRequest(
     ClientConnection connection,
-    JSAny? request,
+    CustomClientDatabaseRequest request,
   );
 }
 
@@ -363,7 +402,7 @@ final class _DefaultDatabaseController extends DatabaseController {
   @override
   Future<JSAny?> handleCustomRequest(
     ClientConnection connection,
-    JSAny? request,
+    CustomClientRequest request,
   ) {
     throw UnimplementedError();
   }
@@ -388,7 +427,7 @@ final class _DefaultWorkerDatabase extends WorkerDatabase {
   @override
   Future<JSAny?> handleCustomRequest(
     ClientConnection connection,
-    JSAny? request,
+    CustomClientRequest request,
   ) {
     throw UnimplementedError();
   }

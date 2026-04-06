@@ -144,10 +144,20 @@ final class RemoteDatabase implements Database {
   }
 
   @override
-  Future<JSAny?> customRequest(JSAny? request) async {
+  Future<JSAny?> customRequest(
+    JSAny? request, {
+    LockToken? token,
+    Future<void>? abortTrigger,
+  }) async {
     final response = await connection.sendRequest(
-      newCustomRequest(payload: request, requestId: 0, databaseId: databaseId),
+      newCustomRequest(
+        payload: request,
+        requestId: 0,
+        databaseId: databaseId,
+        lockId: token != null ? lockTokenToId(token) : null,
+      ),
       MessageType.simpleSuccessResponse,
+      abortTrigger: abortTrigger,
     );
     return response.response;
   }

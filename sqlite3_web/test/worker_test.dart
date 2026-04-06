@@ -268,6 +268,30 @@ void main() {
       releaseA.complete();
       await lockA;
     });
+
+    test('can integrate with custom requests', () async {
+      final obtainedA = Completer();
+      final releaseA = Completer();
+
+      final lockA = a.requestLock((token) async {
+        obtainedA.complete();
+        expect(
+          (await a.customRequest(null, token: token) as JSString).toDart,
+          'response',
+        );
+        await releaseA.future;
+      });
+
+      await obtainedA.future;
+      await expectLater(
+        b.customRequest(null, abortTrigger: Future.value(null)),
+        throwsA(isA<AbortException>()),
+      );
+
+      releaseA.complete();
+      await lockA;
+      expect((await a.customRequest(null) as JSString).toDart, 'response');
+    });
   });
 }
 
@@ -291,7 +315,7 @@ final class _TestController extends DatabaseController {
   @override
   Future<JSAny?> handleCustomRequest(
     ClientConnection connection,
-    JSAny? request,
+    CustomClientRequest request,
   ) {
     throw UnimplementedError();
   }
@@ -316,8 +340,10 @@ final class _TestDatabase extends WorkerDatabase {
   @override
   Future<JSAny?> handleCustomRequest(
     ClientConnection connection,
-    JSAny? request,
+    CustomClientDatabaseRequest request,
   ) {
-    throw UnimplementedError();
+    return request.useLock(() {
+      return 'response'.toJS;
+    });
   }
 }

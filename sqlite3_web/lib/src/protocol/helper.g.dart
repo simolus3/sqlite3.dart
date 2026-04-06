@@ -268,6 +268,7 @@ StartFileSystemServer newStartFileSystemServer({
 extension type _CustomRequest._(CustomRequest _) implements CustomRequest {
   external factory _CustomRequest({
     @JS('r') required JSAny? payload,
+    @JS('z') required int? lockId,
     @JS('i') required int requestId,
     @JS('d') required int? databaseId,
     @JS('t') required String type,
@@ -275,11 +276,13 @@ extension type _CustomRequest._(CustomRequest _) implements CustomRequest {
 }
 CustomRequest newCustomRequest({
   required JSAny? payload,
+  required int? lockId,
   required int requestId,
   required int? databaseId,
 }) {
   return _CustomRequest(
     payload: payload,
+    lockId: lockId,
     requestId: requestId,
     databaseId: databaseId,
     type: 'custom',
@@ -684,8 +687,7 @@ SharedCompatibilityCheck newSharedCompatibilityCheck({
 @anonymous
 extension type _DedicatedInSharedCompatibilityCheck._(
   DedicatedInSharedCompatibilityCheck _
-)
-    implements DedicatedInSharedCompatibilityCheck {
+) implements DedicatedInSharedCompatibilityCheck {
   external factory _DedicatedInSharedCompatibilityCheck({
     @JS('d') required String? databaseName,
     @JS('i') required int requestId,

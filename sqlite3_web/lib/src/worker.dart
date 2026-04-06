@@ -233,13 +233,24 @@ final class _ClientConnection extends ProtocolChannel
     JSAny? response;
 
     if (request.databaseId case final id?) {
-      response = await (await _databaseById(
-        id,
-      ).database.opened).handleCustomRequest(this, request.payload);
+      final database = _databaseById(id);
+      final lockId = request.lockId;
+      final wrapped = CustomClientDatabaseRequest(
+        request: request.payload,
+        abortSignal: abortSignal,
+        useLock: <T>(block) {
+          return database.useLock(lockId, abortSignal, block);
+        },
+      );
+
+      response = await (await database.database.opened).handleCustomRequest(
+        this,
+        wrapped,
+      );
     } else {
       response = await _runner._controller.handleCustomRequest(
         this,
-        request.payload,
+        CustomClientRequest(request: request, abortSignal: abortSignal),
       );
     }
 
@@ -551,7 +562,12 @@ final class _ClientConnection extends ProtocolChannel
   @override
   Future<JSAny?> customRequest(JSAny? request) async {
     final response = await sendRequest(
-      newCustomRequest(requestId: 0, payload: request, databaseId: null),
+      newCustomRequest(
+        requestId: 0,
+        payload: request,
+        databaseId: null,
+        lockId: null,
+      ),
       MessageType.simpleSuccessResponse,
     );
     return response.response;
