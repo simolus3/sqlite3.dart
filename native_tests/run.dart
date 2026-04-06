@@ -65,6 +65,8 @@ Future<File> _createNativeAssetsConfig(
     if (!await file.exists()) {
       throw 'Expected $file to exist, are you using dart run?';
     }
+
+    return file;
   }
 
   final name = switch (sanitizer) {
