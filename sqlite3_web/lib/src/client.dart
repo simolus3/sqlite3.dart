@@ -131,6 +131,10 @@ final class RemoteDatabase implements Database {
 
   @override
   Future<void> dispose() async {
+    if (_isClosed) {
+      return await closed;
+    }
+
     _isClosed = true;
     await (
       _updates.close(),
@@ -141,6 +145,7 @@ final class RemoteDatabase implements Database {
         MessageType.simpleSuccessResponse,
       ),
     ).wait;
+    await connection.close();
   }
 
   @override

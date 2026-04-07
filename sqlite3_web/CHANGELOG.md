@@ -1,4 +1,4 @@
-## 0.7.0-wip
+## 0.7.0
 
 - __Breaking__: Introduce `CustomClientRequest` and `CustomClientDatabaseRequest` classes representing
   client requests. They expose an abort signal for requests and a way to interact with database locks.
