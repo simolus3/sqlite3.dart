@@ -23,8 +23,7 @@ final class _CommitOrRollbackStream {
 final class RemoteDatabase implements Database {
   final WorkerConnection connection;
   final int databaseId;
-
-  var _isClosed = false;
+  final Completer<Object?> _isClosed = Completer();
 
   StreamSubscription<Notification>? _updateNotificationSubscription;
   final StreamController<SqliteUpdate> _updates = StreamController.broadcast();
@@ -33,6 +32,15 @@ final class RemoteDatabase implements Database {
   final _CommitOrRollbackStream _rollbacks = _CommitOrRollbackStream();
 
   RemoteDatabase({required this.connection, required this.databaseId}) {
+    connection.closed.then((_) {
+      if (!isClosed) {
+        _isClosed.complete();
+        _updates.close();
+        _rollbacks.controller.close();
+        _commits.controller.close();
+      }
+    });
+
     _updates
       ..onListen = (() {
         _updateNotificationSubscription ??= connection.notifications.stream
@@ -44,7 +52,7 @@ final class RemoteDatabase implements Database {
                 }
               }
             });
-        if (!_isClosed) {
+        if (!isClosed) {
           connection.sendRequest(
             newUpdateStreamRequest(
               action: true,
@@ -58,7 +66,7 @@ final class RemoteDatabase implements Database {
       ..onCancel = (() {
         _updateNotificationSubscription?.cancel();
         _updateNotificationSubscription = null;
-        if (!_isClosed) {
+        if (!isClosed) {
           connection.sendRequest(
             newUpdateStreamRequest(
               action: false,
@@ -105,7 +113,7 @@ final class RemoteDatabase implements Database {
             stream.controller.add(null);
           }
         });
-        if (!_isClosed) {
+        if (!isClosed) {
           connection.sendRequest(
             generateRequest(true),
             MessageType.simpleSuccessResponse,
@@ -115,7 +123,7 @@ final class RemoteDatabase implements Database {
       ..onCancel = (() {
         stream.workerSubscription?.cancel();
         stream.workerSubscription = null;
-        if (!_isClosed) {
+        if (!isClosed) {
           connection.sendRequest(
             generateRequest(false),
             MessageType.simpleSuccessResponse,
@@ -125,27 +133,28 @@ final class RemoteDatabase implements Database {
   }
 
   @override
-  Future<void> get closed {
-    return connection.closed;
-  }
+  bool get isClosed => _isClosed.isCompleted;
+
+  @override
+  Future<void> get closed => _isClosed.future;
 
   @override
   Future<void> dispose() async {
-    if (_isClosed) {
-      return await closed;
+    if (!isClosed) {
+      _isClosed.complete(
+        (
+          _updates.close(),
+          _rollbacks.controller.close(),
+          _commits.controller.close(),
+          connection.sendRequest(
+            newCloseDatabase(requestId: 0, databaseId: databaseId),
+            MessageType.simpleSuccessResponse,
+          ),
+        ).wait,
+      );
     }
 
-    _isClosed = true;
-    await (
-      _updates.close(),
-      _rollbacks.controller.close(),
-      _commits.controller.close(),
-      connection.sendRequest(
-        newCloseDatabase(requestId: 0, databaseId: databaseId),
-        MessageType.simpleSuccessResponse,
-      ),
-    ).wait;
-    await connection.close();
+    return await closed;
   }
 
   @override

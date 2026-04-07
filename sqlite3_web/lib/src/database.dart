@@ -129,6 +129,9 @@ abstract class Database {
   /// is useful to react to databases closing.
   Future<void> get closed;
 
+  /// Whether the database is currently closed.
+  bool get isClosed;
+
   /// Closes this database and instructs the worker to release associated
   /// resources.
   ///
