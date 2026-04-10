@@ -49,7 +49,7 @@ void main() {
           isA<Version>().having(
             (e) => e.libVersion,
             'libVersion',
-            startsWith('3.52'),
+            startsWith('3.53'),
           ),
         );
       });

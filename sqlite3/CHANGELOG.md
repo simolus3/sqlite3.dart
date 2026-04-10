@@ -1,6 +1,7 @@
 ## 3.3.1-wip
 
 - Avoid memory leaks when `tempDirectory` is set multiple times.
+- Update to SQLite 3.53.0 and SQLite3 Multiple Ciphers version 2.3.3.
 
 ## 3.3.0
 
