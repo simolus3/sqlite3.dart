@@ -1,9 +1,9 @@
 # sqlite3
 
-> [!CAUTION]
-> Please consider upgrading to version 3.x of this package, contains reliability
-> improvements and is much easier to install.
-> Version 2.x will continue to be maintained until early 2026. See [notes on upgrading](https://github.com/simolus3/sqlite3.dart/blob/main/UPGRADING_TO_V3.md).
+> [!WARNING]
+> This branch contains sources for version 2 of `package:sqlite3`. The latest version
+> is `3.x`, and the `2.x` releases are no longer maintained. They will not receive further updates.
+> Please see [these notes](https://github.com/simolus3/sqlite3.dart/blob/main/UPGRADING_TO_V3.md) for details on how to upgrade.
 
 Provides Dart bindings to [SQLite](https://www.sqlite.org/index.html) via `dart:ffi`.
 
