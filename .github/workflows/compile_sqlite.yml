@@ -99,7 +99,7 @@ jobs:
         id: cache_build
         with:
           path: sqlite-sanitized
-          key: sqlite-sanitizers-${{ runner.os }}-${{ hashFiles('tool/**', 'sqlite3/lib/src/hook/description.dart') }}
+          key: sqlite-sanitizers-${{ runner.os }}-${{ hashFiles('tool/**', 'sqlite3/lib/src/hook/description.dart', 'sqlite3_connection_pool/src/**') }}
       - name: Download sqlite3 sources
         if: steps.cache_build.outputs.cache-hit != 'true'
         uses: actions/download-artifact@v8
