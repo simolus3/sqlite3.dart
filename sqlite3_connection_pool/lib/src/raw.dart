@@ -168,6 +168,10 @@ final class RawSqliteConnectionPool implements Finalizable {
                   .cast()
               ..sqlite3_commit_hook = libsqlite3.addresses.sqlite3_commit_hook
                   .cast()
+              ..sqlite3_get_autocommit = libsqlite3
+                  .addresses
+                  .sqlite3_get_autocommit
+                  .cast()
               ..sqlite3_finalize = libsqlite3.addresses.sqlite3_finalize.cast()
               ..sqlite3_close_v2 = libsqlite3.addresses.sqlite3_close_v2.cast()
               ..dart_post_c_object = NativeApi.postCObject.cast();
@@ -288,6 +292,10 @@ final class RawPoolRequest implements Finalizable {
     _pool._outstandingRequests
         .remove(_dartTag)
         ?.completeError(PoolAbortException());
+  }
+
+  void notifyUpdates() {
+    pkg_sqlite3_connection_pool_notify_updates(_handle);
   }
 }
 

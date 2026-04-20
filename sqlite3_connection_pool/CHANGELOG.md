@@ -1,3 +1,7 @@
+## 0.2.4
+
+- Fix `SqliteConnectionPool.updatedTables` emitting updates before a transaction has completed.
+
 ## 0.2.3
 
 - Close read connections before write connection to clean up `-wal` and `-shm` files.

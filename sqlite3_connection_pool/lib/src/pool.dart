@@ -94,6 +94,14 @@ final class SqliteConnectionPool {
   ///
   /// This stream will also emit items if the update is made by an independent
   /// isolate or another Dart/Flutter engine in the same process.
+  ///
+  /// By default, updates are only collected when a [writer] or
+  /// [exclusiveAccess] is returned. Emitting in a SQLite commit hook directly
+  /// causes race conditions, as the commit might still be ongoing by the time
+  /// we emit events here.
+  /// For long-running writes that using multiple transactions,
+  /// [ConnectionLease.notifyUpdates] can be used to emit updates before a
+  /// writer is returned.
   Stream<List<String>> get updatedTables => _updatedTables.stream;
 
   /// Obtains a connection suitable for reads from the connection pool.
@@ -117,6 +125,7 @@ final class SqliteConnectionPool {
     final lease = ConnectionLease._(
       PoolConnection.unsafeFromPointer(connectionPointer.connection),
       request,
+      false,
     );
     await lease._rollbackPendingTransaction();
     return lease;
@@ -147,6 +156,7 @@ final class SqliteConnectionPool {
     final lease = ConnectionLease._(
       PoolConnection.unsafeFromPointer(connectionPointer.connection),
       request,
+      true,
     );
     await lease._rollbackPendingTransaction();
     return lease;
@@ -454,8 +464,10 @@ final class ConnectionLease extends AsyncConnection {
   // The native request from which the database has been obtained. Closing this
   // will return the connection to the pool.
   final RawPoolRequest _request;
+  final bool _isWriter;
 
-  ConnectionLease._(super._connection, this._request) : super._();
+  ConnectionLease._(super._connection, this._request, this._isWriter)
+    : super._();
 
   /// Returns this leased connection back to the pool.
   ///
@@ -463,6 +475,28 @@ final class ConnectionLease extends AsyncConnection {
   void returnLease() {
     _close();
     _request.close();
+  }
+
+  /// Manual signal to add tables to [SqliteConnectionPool.updatedTables].
+  ///
+  /// By default, local writes made while a connection was leased from the pool
+  /// propagate to [SqliteConnectionPool.updatedTables] when the write
+  /// connection is returned. This is a sensible default for most cases, but
+  /// long-running writers issuing multiple transactions might want to notify
+  /// updates after each transaction without returning the write lease.
+  ///
+  /// This method emits pending updates when:
+  ///
+  ///   1. This is a write transaction.
+  ///   2. It is not in a transaction ([autocommit] is true).
+  ///   3. There are pending writes from an earlier completed transaction that
+  ///      haven't made it to [SqliteConnectionPool.updatedTables] yet.
+  Future<void> notifyUpdates() {
+    return unsafeAccess((_) {
+      if (_isWriter && !_closed) {
+        _request.notifyUpdates();
+      }
+    });
   }
 }
 

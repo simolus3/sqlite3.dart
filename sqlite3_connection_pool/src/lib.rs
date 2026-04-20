@@ -136,6 +136,15 @@ extern "C" fn pkg_sqlite3_connection_pool_update_listener(
 }
 
 #[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_notify_updates(request: &PoolRequestHandle) {
+    let pool = request.pool.lock().unwrap();
+    unsafe {
+        // Safety: Dart must only call this when owning a write connection.
+        pool.send_update_notifications()
+    };
+}
+
+#[unsafe(no_mangle)]
 extern "C" fn pkg_sqlite3_connection_pool_stmt_cache_get(
     connection: &mut PoolConnection,
     sql: *const u8,

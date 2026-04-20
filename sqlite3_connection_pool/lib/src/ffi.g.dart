@@ -103,6 +103,11 @@ external void pkg_sqlite3_connection_pool_update_listener(
   int listener,
 );
 
+@ffi.Native<ffi.Void Function(ffi.Pointer<PoolRequest>)>()
+external void pkg_sqlite3_connection_pool_notify_updates(
+  ffi.Pointer<PoolRequest> request,
+);
+
 @ffi.Native<
   ffi.Pointer<ffi.Void> Function(
     ffi.Pointer<PoolConnection>,
@@ -189,6 +194,11 @@ final class ExternalFunctions extends ffi.Struct {
     >
   >
   sqlite3_rollback_hook;
+
+  external ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>
+  >
+  sqlite3_get_autocommit;
 
   external ffi.Pointer<
     ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>

@@ -212,6 +212,43 @@ void main() {
 
       await expectLater(updates, emits(['bar']));
     });
+
+    test('waits for returned connection before emitting', () async {
+      final pool = testPool();
+      await pool.execute('CREATE TABLE foo (id INTEGER NOT NULL PRIMARY KEY)');
+      var hadEvent = false;
+      final event = pool.updatedTables.first.whenComplete(
+        () => hadEvent = true,
+      );
+
+      final writer = await pool.writer();
+      await writer.execute('INSERT INTO foo DEFAULT VALUES');
+      expect(hadEvent, isFalse);
+      await pumpEventQueue();
+      expect(hadEvent, isFalse);
+
+      writer.returnLease();
+      await event;
+      expect(hadEvent, isTrue);
+    });
+
+    test('can manually emit during write', () async {
+      final pool = testPool();
+      await pool.execute('CREATE TABLE foo (id INTEGER NOT NULL PRIMARY KEY)');
+
+      final events = StreamQueue(pool.updatedTables);
+
+      final writer = await pool.writer();
+      final firstEvent = events.next;
+      await writer.execute('INSERT INTO foo DEFAULT VALUES');
+      await writer.notifyUpdates();
+      await firstEvent;
+
+      final nextEvent = events.next;
+      await writer.execute('INSERT INTO foo DEFAULT VALUES');
+      writer.returnLease();
+      await nextEvent;
+    });
   });
 
   test('prepared statement cache', () async {

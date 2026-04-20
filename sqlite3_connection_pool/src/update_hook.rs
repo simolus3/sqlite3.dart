@@ -1,26 +1,25 @@
 use crate::connection::Connection;
-use crate::dart::{RawDartCObject, RawDartCObjectArray, RawDartCObjectValue};
-use crate::pool::{ExternalFunctions, PoolState};
+use crate::dart::{DartPort, RawDartCObject, RawDartCObjectArray, RawDartCObjectValue};
+use crate::pool::ExternalFunctions;
 use std::collections::HashSet;
-use std::ffi::{CStr, CString, c_char, c_int, c_void};
+use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::mem;
 use std::ptr::NonNull;
-use std::sync::{Arc, Mutex, Weak};
 
+#[derive(Default)]
 pub struct CollectedTableUpdates {
-    /// Tables that have been updated since the last recorded commit.
-    updated_since_last_commit: HashSet<CString>,
-    pool: Weak<Mutex<PoolState>>,
+    /// Tables that have been updated in the current transaction (that hasn't been committed yet).
+    uncommitted_updates: HashSet<CString>,
+    /// Tables that have been updated and committed but for which Dart clients have not been
+    /// notified yet.
+    ///
+    /// We can't notify Dart clients directly in a commit hook because the notification then runs
+    /// concurrently to the rest of the commit. So we might issue reads before the transaction is
+    /// fully committed, causing stale data to get returned.
+    outstanding_notification: HashSet<CString>,
 }
 
 impl CollectedTableUpdates {
-    pub fn new(pool: &Arc<Mutex<PoolState>>) -> Self {
-        Self {
-            updated_since_last_commit: Default::default(),
-            pool: Arc::downgrade(pool),
-        }
-    }
-
     pub fn attach_to(
         ptr: *mut CollectedTableUpdates,
         functions: &ExternalFunctions,
@@ -56,22 +55,29 @@ impl CollectedTableUpdates {
     }
 
     fn handle_update(&mut self, table: &CStr) {
-        if !self.updated_since_last_commit.contains(table) {
-            self.updated_since_last_commit.insert(table.to_owned());
+        if !self.outstanding_notification.contains(table)
+            && !self.uncommitted_updates.contains(table)
+        {
+            self.uncommitted_updates.insert(table.to_owned());
         }
     }
 
     fn handle_commit(&mut self) {
-        let updates = mem::take(&mut self.updated_since_last_commit);
+        for update in mem::take(&mut self.uncommitted_updates) {
+            self.outstanding_notification.insert(update);
+        }
+    }
+
+    fn handle_rollback(&mut self) {
+        self.uncommitted_updates.clear()
+    }
+
+    pub fn send_notification(&mut self, listeners: &[DartPort], functions: &ExternalFunctions) {
+        let updates = mem::take(&mut self.outstanding_notification);
         if updates.is_empty() {
             return;
         }
 
-        let Some(pool) = self.pool.upgrade() else {
-            return;
-        };
-        let pool = pool.lock().unwrap();
-        let listeners = pool.update_listeners();
         if listeners.is_empty() {
             return;
         }
@@ -103,11 +109,7 @@ impl CollectedTableUpdates {
 
         // Send to registered update ports.
         for listener in listeners {
-            (pool.functions.dart_post_c_object)(*listener, &mut dart_msg);
+            (functions.dart_post_c_object)(*listener, &mut dart_msg);
         }
-    }
-
-    fn handle_rollback(&mut self) {
-        self.updated_since_last_commit.clear()
     }
 }

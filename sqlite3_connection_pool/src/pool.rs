@@ -26,7 +26,7 @@ pub struct PoolState {
     ///
     /// This allows not locking in update hooks (since the SQLite connection is never used
     /// concurrently).
-    table_updates: Option<UnsafeCell<CollectedTableUpdates>>,
+    table_updates: UnsafeCell<CollectedTableUpdates>,
     update_listeners: Vec<DartPort>,
 }
 
@@ -187,7 +187,27 @@ impl PoolState {
         }
     }
 
+    /// ## Safety
+    ///
+    /// The caller must currently own a lease to the write connection of the pool.
+    pub unsafe fn send_update_notifications(&self) {
+        if (self.functions.sqlite3_get_autocommit)(self.writes.connection.raw) != 0 {
+            // No longer in a transaction, notify clients for completed writes.
+            let updates = unsafe {
+                // Safety: Because we have an exclusive reference to the write connection, we also
+                // have an exclusive reference to table updates.
+                self.table_updates.get().as_mut().unwrap_unchecked()
+            };
+            updates.send_notification(self.update_listeners.as_slice(), &self.functions);
+        }
+    }
+
     fn return_write_connection(&mut self) {
+        unsafe {
+            // Safety: We have an exclusive reference to the write connection.
+            self.send_update_notifications()
+        };
+
         self.writes.acquired = false;
 
         // See if we can complete the next writer.
@@ -342,16 +362,9 @@ impl PoolState {
             .retain(|l| !removed_listeners.contains(l));
     }
 
-    pub fn update_listeners(&self) -> &[DartPort] {
-        self.update_listeners.as_slice()
-    }
-
     pub fn register_hooks_on_writer(arc: &ConnectionPool) {
-        let mut pool = arc.lock().unwrap();
-        let updates_ptr = pool
-            .table_updates
-            .insert(UnsafeCell::new(CollectedTableUpdates::new(arc)))
-            .get();
+        let pool = arc.lock().unwrap();
+        let updates_ptr = pool.table_updates.get();
         let writer = &pool.writes.connection;
         CollectedTableUpdates::attach_to(updates_ptr, &pool.functions, writer.raw);
     }
@@ -501,7 +514,7 @@ impl<E: ExtractEntry> LinkedList<E> {
 }
 
 pub struct PoolRequestHandle {
-    pool: ConnectionPool,
+    pub pool: ConnectionPool,
     node: NonNull<WaitNode>,
 }
 
@@ -534,6 +547,7 @@ pub struct ExternalFunctions {
         Option<extern "C" fn(NonNull<c_void>)>,
         *mut c_void,
     ) -> *mut c_void,
+    pub sqlite3_get_autocommit: extern "C" fn(Connection) -> c_int,
     pub sqlite3_finalize: extern "C" fn(PreparedStatement) -> c_int,
     pub sqlite3_close_v2: extern "C" fn(Connection) -> c_int,
     pub dart_post_c_object: extern "C" fn(port: DartPort, message: &mut RawDartCObject) -> bool,
