@@ -1,3 +1,7 @@
+## 3.3.2 (unreleased)
+
+- Support `native_toolchain_c` versions `0.18.x`.
+
 ## 3.3.1
 
 - Avoid memory leaks when `tempDirectory` is set multiple times.
