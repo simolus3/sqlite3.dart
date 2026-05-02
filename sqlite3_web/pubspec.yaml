@@ -35,6 +35,6 @@ dev_dependencies:
   http: ^1.6.0
 
   # For the protocol generator
-  analyzer: ^12.0.0
+  analyzer: ^13.0.0
   dart_style: ^3.1.5
   pub_semver: ^2.2.0
