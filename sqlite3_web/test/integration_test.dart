@@ -189,6 +189,10 @@ final class _TestConfiguration {
       expect(implementation, browser.defaultImplementation);
     });
 
+    test('can open concurrently', () async {
+      await driver.openConcurrently();
+    });
+
     for (final implementation in browser.availableImplementations) {
       group(implementation.name, () {
         test('basic tests', () async {

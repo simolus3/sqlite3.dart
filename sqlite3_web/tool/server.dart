@@ -165,6 +165,10 @@ class TestWebDriver {
     return DatabaseImplementation.values.byName(res!);
   }
 
+  Future<void> openConcurrently() async {
+    await driver.executeAsync("open_concurrent('', arguments[0])", []);
+  }
+
   Future<void> closeDatabase() async {
     await driver.executeAsync("close('', arguments[0])", []);
   }

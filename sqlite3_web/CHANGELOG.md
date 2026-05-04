@@ -1,3 +1,8 @@
+## 0.7.1
+
+- Fix internal mutex throwing when not given an abort signal.
+- Fix internal mutex never aborting when given a signal that has already been aborted.
+
 ## 0.7.0
 
 - __Breaking__: Introduce `CustomClientRequest` and `CustomClientDatabaseRequest` classes representing

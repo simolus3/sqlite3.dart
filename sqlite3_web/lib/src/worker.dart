@@ -265,34 +265,36 @@ final class _ClientConnection extends ProtocolChannel
     OpenRequest request,
     AbortSignal abortSignal,
   ) async {
-    await _runner.loadWasmModule(Uri.parse(request.wasmUri));
-    DatabaseState? database;
-    _ConnectionDatabase? connectionDatabase;
+    return await _runner.openLock.withCriticalSection(() async {
+      await _runner.loadWasmModule(Uri.parse(request.wasmUri));
+      DatabaseState? database;
+      _ConnectionDatabase? connectionDatabase;
 
-    try {
-      database = _runner.findDatabase(
-        request.databaseName,
-        FileSystemImplementation.fromJS(request.storageMode),
-        request.additionalData,
-      );
+      try {
+        database = _runner.findDatabase(
+          request.databaseName,
+          FileSystemImplementation.fromJS(request.storageMode),
+          request.additionalData,
+        );
 
-      await (request.onlyOpenVfs ? database.vfs : database.opened);
+        await (request.onlyOpenVfs ? database.vfs : database.opened);
 
-      connectionDatabase = _ConnectionDatabase(database);
-      _openedDatabases.add(connectionDatabase);
+        connectionDatabase = _ConnectionDatabase(database);
+        _openedDatabases.add(connectionDatabase);
 
-      return newSimpleSuccessResponse(
-        response: database.id.toJS,
-        requestId: request.requestId,
-      );
-    } catch (e) {
-      if (database != null) {
-        _openedDatabases.remove(connectionDatabase);
-        await database.decrementRefCount();
+        return newSimpleSuccessResponse(
+          response: database.id.toJS,
+          requestId: request.requestId,
+        );
+      } catch (e) {
+        if (database != null) {
+          _openedDatabases.remove(connectionDatabase);
+          await database.decrementRefCount();
+        }
+
+        rethrow;
       }
-
-      rethrow;
-    }
+    });
   }
 
   @override
@@ -725,6 +727,9 @@ final class WorkerRunner {
   Uri? _wasmUri;
 
   final Mutex _compatibilityCheck = Mutex();
+
+  /// Avoid opening multiple databases concurrently.
+  final Mutex openLock = Mutex();
   CompatibilityResult? _compatibilityResult;
 
   /// For shared workers, a dedicated inner worker allowing tabs to connect to

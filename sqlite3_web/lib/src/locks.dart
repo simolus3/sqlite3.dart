@@ -109,6 +109,10 @@ final class Mutex {
     FutureOr<T> Function() action, {
     AbortSignal? abort,
   }) async {
+    if (abort?.aborted == true) {
+      throw const AbortException();
+    }
+
     var holdsMutex = false;
 
     void markCompleted() {
@@ -131,27 +135,30 @@ final class Mutex {
     } else {
       assert(_inCriticalSection);
       final completer = Completer<T>.sync();
+      StreamSubscription<void>? abortSubscription;
 
       void complete() {
         holdsMutex = true;
+        abortSubscription?.cancel();
         completer.complete(Future.sync(action));
       }
 
-      late StreamSubscription<void> abortSubscription;
-      abortSubscription = EventStreamProviders.abortEvent
-          .forTarget(abort)
-          .listen((_) {
-            abortSubscription.cancel();
+      if (abort != null) {
+        abortSubscription = EventStreamProviders.abortEvent
+            .forTarget(abort)
+            .listen((_) {
+              abortSubscription!.cancel();
 
-            if (!completer.isCompleted) {
-              final didRemove = _waiting.remove(complete);
+              if (!completer.isCompleted) {
+                final didRemove = _waiting.remove(complete);
 
-              // The only way for waiters to get removed is for [complete] to get
-              // called, so we wouldn't enter this branch.
-              assert(didRemove);
-              completer.completeError(const AbortException());
-            }
-          });
+                // The only way for waiters to get removed is for [complete] to
+                // get called, so we wouldn't enter this branch.
+                assert(didRemove);
+                completer.completeError(const AbortException());
+              }
+            });
+      }
 
       _waiting.addLast(complete);
       return completer.future.whenComplete(markCompleted);

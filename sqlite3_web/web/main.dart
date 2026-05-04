@@ -38,6 +38,16 @@ void main() {
   });
   _addCallbackForWebDriver('open', (arg) => _open(arg, false));
   _addCallbackForWebDriver('open_only_vfs', (arg) => _open(arg, true));
+  _addCallbackForWebDriver('open_concurrent', (arg) async {
+    final sqlite = initializeSqlite();
+    final (a, b) = await (
+      sqlite.connectToRecommended('a'),
+      sqlite.connectToRecommended('b'),
+    ).wait;
+
+    await Future.wait([a.database.dispose(), b.database.dispose()]);
+    return null;
+  });
   _addCallbackForWebDriver('exec', _exec);
   _addCallbackForWebDriver('test_second', (arg) async {
     final sqlite = initializeSqlite();
