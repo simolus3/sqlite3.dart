@@ -1,6 +1,7 @@
 ## 3.3.2 (unreleased)
 
 - Support `native_toolchain_c` versions `0.18.x`.
+- Upgrade to SQLite version 3.53.1.
 
 ## 3.3.1
 
