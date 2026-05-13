@@ -8,6 +8,8 @@ on:
       - 'sqlite3_web-[0-9]+.[0-9]+.[0-9]+*'
       - 'sqlite3_connection_pool-[0-9]+.[0-9]+.[0-9]+*'
 
+permissions: {}
+
 jobs:
   fetch_sqlite:
     uses: ./.github/workflows/compile_sqlite.yml
@@ -15,11 +17,13 @@ jobs:
   prepare_release:
     needs: [fetch_sqlite]
     permissions:
-      packages: write
-      contents: write
+      packages: write # Needed to upload release assets
+      contents: write # Needed to upload release assets
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
     - uses: dart-lang/setup-dart@v1
     - name: Pub get
       run: dart pub get
@@ -33,12 +37,14 @@ jobs:
       if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
       id: tag
       run: |
-        tag=$(basename "${{ github.ref }}")
+        tag=$(basename "${GITHUB_REF}")
         echo "tag=$tag" >> $GITHUB_OUTPUT
 
     - name: Verify asset hashes
       if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
-      run: dart run tool/write_asset_hashes.dart "${{ steps.tag.outputs.tag }}"
+      run: dart run tool/write_asset_hashes.dart "${STEPS_TAG_OUTPUTS_TAG}"
+      env:
+        STEPS_TAG_OUTPUTS_TAG: ${{ steps.tag.outputs.tag }}
     - name: List libraries
       run: ls -al sqlite-compiled
 
@@ -47,8 +53,9 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
+        STEPS_TAG_OUTPUTS_TAG: ${{ steps.tag.outputs.tag }}
       run: |
-        tag="${{ steps.tag.outputs.tag }}"
+        tag="${STEPS_TAG_OUTPUTS_TAG}"
         body="Pending release for $tag"
         gh release create --draft "$tag" --title "$tag" --notes "$body"
 
@@ -57,7 +64,7 @@ jobs:
   publish_sqlite3:
     needs: [prepare_release]
     permissions:
-      id-token: write
+      id-token: write # Needed to create OIDC token for pub.dev
     if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
     uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
     with:
@@ -67,7 +74,7 @@ jobs:
   publish_sqlite3_test:
     needs: [prepare_release]
     permissions:
-      id-token: write
+      id-token: write # Needed to create OIDC token for pub.dev
     if: "${{ startsWith(github.ref_name, 'sqlite3_test-') }}"
     uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
     with:
@@ -77,7 +84,7 @@ jobs:
   publish_sqlite3_web:
     needs: [prepare_release]
     permissions:
-      id-token: write
+      id-token: write # Needed to create OIDC token for pub.dev
     if: "${{ startsWith(github.ref_name, 'sqlite3_web-') }}"
     uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
     with:
@@ -87,7 +94,7 @@ jobs:
   publish_sqlite3_connection_pool:
     needs: [fetch_sqlite, prepare_release]
     permissions:
-      id-token: write
+      id-token: write # Needed to create OIDC token for pub.dev
     if: "${{ startsWith(github.ref_name, 'sqlite3_connection_pool-') }}"
     runs-on: ubuntu-latest
     environment: 'pub.dev'
@@ -95,6 +102,8 @@ jobs:
     # the package.
     steps:
     - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
     - uses: dart-lang/setup-dart@v1 # This will request an OIDC token for pub.dev
 
     - name: Download connection pool libraries

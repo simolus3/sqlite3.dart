@@ -6,10 +6,27 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions: {}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
 jobs:
   fetch_sqlite:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     uses: ./.github/workflows/compile_sqlite.yml
+
+  zizmor:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write # To report results
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Run zizmor 🌈
+        uses: zizmorcore/zizmor-action@b1d7e1fb5de872772f31590499237e7cce841e8e # v0.5.3
 
   analyze:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
@@ -22,6 +39,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
     - uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{ matrix.dart }}
@@ -67,6 +86,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
     - uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{ matrix.dart }}
@@ -168,6 +189,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
     - uses: dart-lang/setup-dart@v1
     - name: Download compiled sqlite3
       uses: actions/download-artifact@v8
@@ -202,6 +225,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: dart-lang/setup-dart@v1
       - name: Download compiled sqlite3
         uses: actions/download-artifact@v8
@@ -278,7 +303,9 @@ jobs:
           xcrun simctl boot $IPHONE
 
       - uses: actions/checkout@v6
-      - uses: subosito/flutter-action@v2
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 #v2.23.0
 
       - name: Flutter version
         run: flutter --version
@@ -343,7 +370,7 @@ jobs:
           flutter test integration_test -d linux
 
       - name: SQLite Android emulator tests
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
         if: runner.os == 'linux'
         with:
           api-level: 34
@@ -369,7 +396,7 @@ jobs:
           flutter test integration_test -Dsqlite3.multipleciphers=true -d macos
 
       - name: sqlite3mc Android emulator tests
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
         if: runner.os == 'linux'
         with:
           api-level: 34

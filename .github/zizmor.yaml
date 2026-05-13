@@ -1,0 +1,14 @@
+# Configuration for https://zizmor.sh/, a static analysis tool for GitHub actions.
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        "dart-lang/*": ref-pin
+        "actions/*": ref-pin
+  anonymous-definition:
+    disable: true
+  concurrency-limits:
+    ignore:
+      # We don't need to limit concurrency for publishing, as only maintainers can
+      # push tags.
+      - release.yml:3:1
