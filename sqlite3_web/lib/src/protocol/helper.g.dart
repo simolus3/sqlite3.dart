@@ -687,7 +687,8 @@ SharedCompatibilityCheck newSharedCompatibilityCheck({
 @anonymous
 extension type _DedicatedInSharedCompatibilityCheck._(
   DedicatedInSharedCompatibilityCheck _
-) implements DedicatedInSharedCompatibilityCheck {
+)
+    implements DedicatedInSharedCompatibilityCheck {
   external factory _DedicatedInSharedCompatibilityCheck({
     @JS('d') required String? databaseName,
     @JS('i') required int requestId,
@@ -772,26 +773,38 @@ JSArray<JSAny> extractTransferrable(Message message) {
   final result = JSArray<JSAny>();
   switch (message.type) {
     case 'connect':
-      result.add((message as ConnectRequest).endpoint.port);
-      break;
-    case 'fileSystemAccess':
-      if ((message as FileSystemAccess).buffer case final e?) result.add(e);
-      break;
-    case 'runQuery':
-      if ((message as RunQuery).typeVector case final e?) result.add(e);
-      break;
-    case 'simpleSuccessResponse':
-      if ((message as SimpleSuccessResponse).response case JSAny a
-          when a.instanceof(_arrayBufferConstructor)) {
-        result.add(a);
+      {
+        result.add((message as ConnectRequest).endpoint.port);
+        break;
       }
-      break;
+    case 'fileSystemAccess':
+      {
+        if ((message as FileSystemAccess).buffer case final e?) result.add(e);
+        break;
+      }
+    case 'runQuery':
+      {
+        if ((message as RunQuery).typeVector case final e?) result.add(e);
+        break;
+      }
+    case 'simpleSuccessResponse':
+      {
+        if ((message as SimpleSuccessResponse).response case JSAny a
+            when a.instanceof(_arrayBufferConstructor)) {
+          result.add(a);
+        }
+        break;
+      }
     case 'endpointResponse':
-      result.add((message as EndpointResponse).endpoint.port);
-      break;
+      {
+        result.add((message as EndpointResponse).endpoint.port);
+        break;
+      }
     case 'rowsResponse':
-      if ((message as RowsResponse).typeVector case final e?) result.add(e);
-      break;
+      {
+        if ((message as RowsResponse).typeVector case final e?) result.add(e);
+        break;
+      }
   }
   return result;
 }

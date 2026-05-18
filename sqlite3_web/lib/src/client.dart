@@ -740,17 +740,10 @@ final class DatabaseClient implements WebSqlite {
     final availableImplementations = probed.availableImplementations.toList();
 
     checkExisting:
-    for (final (location, name) in probed.existingDatabases) {
-      if (name == name) {
-        // If any of the implementations for this location is still availalable,
-        // we want to use it instead of another location.
-        final locationIsAccessible = availableImplementations.any(
-          (e) => e.storage == location,
-        );
-        if (locationIsAccessible) {
-          availableImplementations.removeWhere((e) => e.storage != location);
-          break checkExisting;
-        }
+    for (final (location, existingName) in probed.existingDatabases) {
+      if (name == existingName) {
+        availableImplementations.removeWhere((e) => e.storage != location);
+        break checkExisting;
       }
     }
 
@@ -797,7 +790,7 @@ final class DatabaseClient implements WebSqlite {
     }
 
     // Storage and access are only equal between opfsAtomics and
-    // opfsWithExternalLocks. We prefer the later.
+    // opfsWithExternalLocks. We prefer the latter.
     return a.index.compareTo(b.index);
   }
 

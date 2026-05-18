@@ -702,11 +702,13 @@ final class DatabaseState {
 
   Future<void> close() async {
     final sqlite3 = await runner._sqlite3!;
-    final database = await _database!;
+    if (_database case final dbFuture?) {
+      final database = await dbFuture;
+      database.database.close();
 
-    database.database.close();
-    if (_resolvedVfs case final vfs?) {
-      sqlite3.unregisterVirtualFileSystem(vfs);
+      if (_resolvedVfs case final vfs?) {
+        sqlite3.unregisterVirtualFileSystem(vfs);
+      }
     }
 
     await closeHandler?.call();

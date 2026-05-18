@@ -25,7 +25,7 @@ final class SqliteException implements Exception {
   /// code, providing some idea of the cause of the failure.
   int get resultCode => extendedResultCode & 0xFF;
 
-  /// If this error is related to a syntex error in SQL, contains the byte
+  /// If this error is related to a syntax error in SQL, contains the byte
   /// offset of the token associated with the error.
   final int? offset;
 

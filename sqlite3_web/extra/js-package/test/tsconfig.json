@@ -1,0 +1,13 @@
+{
+    "extends": "@tsconfig/strictest/tsconfig.json",
+    "include": ["./"],
+    "compilerOptions": {
+        "noImplicitAny": true,
+        "module": "esnext",
+        "moduleDetection": "force",
+        "sourceMap": true
+    },
+    "references": [
+        {"path": "../"}
+    ]
+}
