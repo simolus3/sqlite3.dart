@@ -3,7 +3,7 @@ import 'dart:js_interop_unsafe';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:path/path.dart' as p;
+import 'package:web/web.dart' show URL;
 
 import '../../../constants.dart';
 import '../../../vfs.dart';
@@ -42,7 +42,6 @@ final class WasmVfs extends BaseVirtualFileSystem {
   final MessageSerializer serializer;
 
   final String chroot;
-  final p.Context pathContext;
 
   WasmVfs({
     super.random,
@@ -53,7 +52,6 @@ final class WasmVfs extends BaseVirtualFileSystem {
          workerOptions.synchronizationBuffer,
        ),
        serializer = MessageSerializer(workerOptions.communicationBuffer),
-       pathContext = p.Context(style: p.Style.url, current: chroot),
        super(name: vfsName);
 
   Res _runInWorker<Req extends Message, Res extends Message>(
@@ -89,12 +87,13 @@ final class WasmVfs extends BaseVirtualFileSystem {
 
   @override
   String xFullPathName(String path) {
-    final resolved = pathContext.absolute(path);
-    if (!p.isWithin(chroot, resolved)) {
+    final normalized = URL(path, 'file://$chroot').pathname;
+
+    if (!normalized.startsWith(chroot)) {
       throw const VfsException(SqlError.SQLITE_CANTOPEN);
     }
 
-    return resolved;
+    return normalized;
   }
 
   @override

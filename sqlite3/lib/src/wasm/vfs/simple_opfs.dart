@@ -2,7 +2,6 @@ import 'dart:js_interop';
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
-import 'package:path/path.dart' as p;
 import 'package:web/web.dart'
     show
         FileSystemDirectoryHandle,
@@ -15,6 +14,7 @@ import '../../constants.dart';
 import '../../vfs.dart';
 import '../js_interop.dart';
 import '../../in_memory_vfs.dart';
+import '../path_utils.dart';
 
 @internal
 enum FileType {
@@ -82,7 +82,7 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
     FileSystemDirectoryHandle? parent;
     var opfsDirectory = await storage.directory;
 
-    for (final segment in p.split(path)) {
+    for (final segment in pathComponents(path)) {
       parent = opfsDirectory;
       opfsDirectory = await opfsDirectory.getDirectory(segment, create: create);
     }
@@ -210,7 +210,7 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
 
   @override
   String xFullPathName(String path) {
-    return p.url.normalize('/$path');
+    return pathToAbsoluteAndNormalize(path);
   }
 
   @override

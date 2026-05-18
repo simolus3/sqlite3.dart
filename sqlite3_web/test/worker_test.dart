@@ -11,13 +11,13 @@ import 'package:sqlite3_web/src/client.dart';
 import 'package:test/test.dart';
 
 void main() {
-  late Uri sqlite3WasmUri;
+  late String sqlite3WasmUri;
   late FakeWorkerEnvironment fakeWorkers;
 
   setUpAll(() async {
     final channel = spawnHybridUri('/test/asset_server.dart');
     final port = (await channel.stream.first as double).toInt();
-    sqlite3WasmUri = Uri.parse('http://localhost:$port/web/sqlite3.wasm');
+    sqlite3WasmUri = 'http://localhost:$port/web/sqlite3.wasm';
   });
 
   setUp(() {

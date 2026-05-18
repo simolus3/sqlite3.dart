@@ -5,13 +5,14 @@ import 'dart:typed_data';
 import 'package:sqlite3/wasm.dart';
 import 'package:web/web.dart'
     show
+        AbortController,
         AbortSignal,
         DedicatedWorkerGlobalScope,
         EventStreamProviders,
         FileSystemDirectoryHandle,
         FileSystemFileHandle,
         FileSystemSyncAccessHandle,
-        AbortController;
+        URL;
 // ignore: implementation_imports
 import 'package:sqlite3/src/wasm/js_interop/new_file_system_access.dart';
 
@@ -265,7 +266,7 @@ final class _ClientConnection extends ProtocolChannel
     AbortSignal abortSignal,
   ) async {
     return await _runner.openLock.withCriticalSection(() async {
-      await _runner.loadWasmModule(Uri.parse(request.wasmUri));
+      await _runner.loadWasmModule(request.wasmUri);
       DatabaseState? database;
       _ConnectionDatabase? connectionDatabase;
 
@@ -723,7 +724,7 @@ final class WorkerRunner {
   var _nextDatabaseId = 0;
 
   Future<WasmSqlite3>? _sqlite3;
-  Uri? _wasmUri;
+  String? _wasmUri;
 
   final Mutex _compatibilityCheck = Mutex();
 
@@ -839,18 +840,20 @@ final class WorkerRunner {
     });
   }
 
-  Future<void> loadWasmModule(Uri uri) async {
+  Future<void> loadWasmModule(String url) async {
+    final resolved = URL(url, (globalContext['location'] as URL).href).href;
+
     if (_sqlite3 != null) {
-      if (_wasmUri != uri) {
+      if (_wasmUri != resolved) {
         throw StateError(
           'Workers only support a single sqlite3 wasm module, provided '
-          'different URI (has $_wasmUri, got $uri)',
+          'different URI (has $_wasmUri, got $resolved)',
         );
       }
 
       await _sqlite3;
     } else {
-      final future = _sqlite3 = _controller.loadWasmModule(uri).onError((
+      final future = _sqlite3 = _controller.loadWasmModule(resolved).onError((
         error,
         stackTrace,
       ) {
@@ -858,7 +861,7 @@ final class WorkerRunner {
         throw error!;
       });
       await future;
-      _wasmUri = uri;
+      _wasmUri = resolved;
     }
   }
 

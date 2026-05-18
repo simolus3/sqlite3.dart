@@ -4,7 +4,7 @@ library;
 
 import 'dart:js_interop';
 
-import 'package:path/path.dart' as p show url;
+import 'package:sqlite3/src/wasm/path_utils.dart';
 import 'package:web/web.dart'
     show
         FileSystemDirectoryHandle,
@@ -61,12 +61,12 @@ extension type WorkerOptions._raw(JSObject _) implements JSObject {
 }
 
 class _ResolvedPath {
-  final String fullPath;
+  final String debugPath;
 
   final FileSystemDirectoryHandle directory;
   final String filename;
 
-  _ResolvedPath(this.fullPath, this.directory, this.filename);
+  _ResolvedPath(this.debugPath, this.directory, this.filename);
 
   Future<FileSystemFileHandle> openFile({bool create = false}) {
     return directory.openFile(filename, create: create);
@@ -101,7 +101,7 @@ class VfsWorker {
 
   static Future<VfsWorker> create(WorkerOptions options) async {
     var root = await storageManager!.directory;
-    final split = p.url.split(options.root);
+    final split = pathComponents(options.root);
 
     for (final directory in split) {
       root = await root.getDirectory(directory, create: true);
@@ -114,8 +114,7 @@ class VfsWorker {
     String absolutePath, {
     bool createDirectories = false,
   }) async {
-    final fullPath = p.url.relative(absolutePath, from: '/');
-    final [...directories, file] = p.url.split(fullPath);
+    final [...directories, file] = [...pathComponents(absolutePath)];
 
     var dirHandle = root;
     for (final entry in directories) {
@@ -125,7 +124,7 @@ class VfsWorker {
       );
     }
 
-    return _ResolvedPath(fullPath, dirHandle, file);
+    return _ResolvedPath(absolutePath, dirHandle, file);
   }
 
   Future<Flags> _xAccess(NameAndInt32Flags flags) async {
@@ -169,7 +168,7 @@ class VfsWorker {
     final opened = _OpenedFileHandle(
       fd: _fdCounter++,
       directory: resolved.directory,
-      fullPath: resolved.fullPath,
+      debugPath: resolved.debugPath,
       filename: resolved.filename,
       file: fileHandle,
       deleteOnClose: (flags & SqlFlag.SQLITE_OPEN_DELETEONCLOSE) != 0,
@@ -422,7 +421,7 @@ class VfsWorker {
         // across requests.
         if (!file.explicitlyLocked) {
           _implicitlyHeldLocks.add(file);
-          _log('Acquired implicit lock for ${file.fullPath}');
+          _log('Acquired implicit lock for ${file.debugPath}');
         }
         return handle;
       } catch (e) {
@@ -447,7 +446,7 @@ class VfsWorker {
   void _closeSyncHandle(_OpenedFileHandle handle) {
     final syncHandle = handle.syncHandle;
     if (syncHandle != null) {
-      _log('Closing sync handle for ${handle.fullPath}');
+      _log('Closing sync handle for ${handle.debugPath}');
       handle.syncHandle = null;
       _implicitlyHeldLocks.remove(handle);
       handle.explicitlyLocked = false;
@@ -461,7 +460,7 @@ class _OpenedFileHandle {
   final bool readonly;
   final bool deleteOnClose;
 
-  final String fullPath;
+  final String debugPath;
   final FileSystemDirectoryHandle directory;
   final String filename;
   final FileSystemFileHandle file;
@@ -473,7 +472,7 @@ class _OpenedFileHandle {
     required this.fd,
     required this.readonly,
     required this.deleteOnClose,
-    required this.fullPath,
+    required this.debugPath,
     required this.directory,
     required this.filename,
     required this.file,

@@ -85,7 +85,7 @@ import 'package:sqlite3/common.dart';
 import 'package:sqlite3/wasm.dart';
 
 Future<WasmSqlite3> loadSqlite() async {
-  final sqlite = await WasmSqlite3.loadFromUrl(Uri.parse('sqlite3.wasm'));
+  final sqlite = await WasmSqlite3.loadFromUrlString('sqlite3.wasm');
   final fileSystem = await IndexedDbFileSystem.open(dbName: 'my_app');
   sqlite.registerVirtualFileSystem(fileSystem, makeDefault: true);
   return sqlite;
@@ -123,7 +123,7 @@ To test the encryption integration, download `sqlite3mc.wasm` from the [releases
 of this package and use that as a URL to load sqlite3 on the web:
 
 ```dart
-final sqlite3 = await WasmSqlite3.loadFromUrl(Uri.parse('sqlite3mc.wasm'));
+final sqlite3 = await WasmSqlite3.loadFromUrlString('sqlite3mc.wasm');
 sqlite3.registerVirtualFileSystem(InMemoryFileSystem(), makeDefault: true);
 
 final database = sqlite3.open('/database')

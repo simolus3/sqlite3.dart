@@ -369,7 +369,7 @@ final class WorkerConnection extends ProtocolChannel {
   }
 
   Future<RemoteDatabase> requestDatabase({
-    required Uri wasmUri,
+    required String wasmUri,
     required String databaseName,
     required DatabaseImplementation implementation,
     required bool onlyOpenVfs,
@@ -378,7 +378,7 @@ final class WorkerConnection extends ProtocolChannel {
     final response = await sendRequest(
       newOpenRequest(
         requestId: 0,
-        wasmUri: wasmUri.toString(),
+        wasmUri: wasmUri,
         databaseName: databaseName,
         storageMode: implementation.resolveToVfs().toJS,
         onlyOpenVfs: onlyOpenVfs,
@@ -401,7 +401,7 @@ final class WorkerConnection extends ProtocolChannel {
 
 final class DatabaseClient implements WebSqlite {
   final WorkerConnector workers;
-  final Uri wasmUri;
+  final String wasmUri;
   final DatabaseController _localController;
   final Future<JSAny?> Function(JSAny?) _handleCustomRequest;
 

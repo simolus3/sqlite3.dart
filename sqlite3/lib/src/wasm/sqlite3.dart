@@ -51,6 +51,23 @@ final class WasmSqlite3 extends Sqlite3Implementation {
     Uri uri, {
     Map<String, String>? headers,
     WasmModuleLoader? loader,
+  }) {
+    return loadFromUrlString(uri.toString());
+  }
+
+  /// Loads a web version of the sqlite3 libraries.
+  ///
+  /// The native wasm library for sqlite3 is loaded from the [url] with the
+  /// desired [headers] through a `fetch` request.
+  ///
+  /// Using this over [loadFromUrl] might reduce compiled JS sizes for apps
+  /// which otherwise don't use URLs.
+  ///
+  /// [pgk release]: https://github.com/simolus3/sqlite3.dart/releases
+  static Future<WasmSqlite3> loadFromUrlString(
+    String url, {
+    Map<String, String>? headers,
+    WasmModuleLoader? loader,
   }) async {
     web.RequestInit? options;
 
@@ -63,9 +80,7 @@ final class WasmSqlite3 extends Sqlite3Implementation {
       options = web.RequestInit(headers: headersJs);
     }
 
-    final jsUri = uri.isAbsolute
-        ? web.URL(uri.toString())
-        : web.URL(uri.toString(), Uri.base.toString());
+    final jsUri = web.URL(url, (globalContext['location'] as web.URL).href);
     final response = await fetch(jsUri, options).toDart;
     return _load(response, loader);
   }
