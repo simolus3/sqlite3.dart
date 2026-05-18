@@ -3,7 +3,6 @@ import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 import 'package:sqlite3/wasm.dart';
-import 'package:stream_channel/stream_channel.dart';
 import 'package:web/web.dart'
     show
         AbortSignal,
@@ -159,7 +158,7 @@ final class _ClientConnection extends ProtocolChannel
 
   _ClientConnection({
     required WorkerRunner runner,
-    required StreamChannel<Message> channel,
+    required ConnectableChannel channel,
     required this.id,
   }) : _runner = runner,
        super(channel) {
@@ -760,7 +759,7 @@ final class WorkerRunner {
     }
   }
 
-  _ClientConnection _accept(StreamChannel<Message> channel) {
+  _ClientConnection _accept(ConnectableChannel channel) {
     final connection = _ClientConnection(
       runner: this,
       channel: channel,

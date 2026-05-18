@@ -194,6 +194,12 @@ void main() {
       ),
     );
   });
+
+  test('propagate close', () async {
+    await server.close();
+    // Closing the server should close the client.
+    await client.closed;
+  });
 }
 
 const isDart2Wasm = bool.fromEnvironment('dart.tool.dart2wasm');

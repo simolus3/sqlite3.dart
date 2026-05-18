@@ -3,7 +3,6 @@ import 'dart:js_interop';
 import 'dart:typed_data';
 
 import 'package:sqlite3/wasm.dart' hide WorkerOptions;
-import 'package:stream_channel/stream_channel.dart';
 import 'package:web/web.dart'
     hide Response, Request, FileSystem, Notification, Lock;
 
@@ -439,7 +438,7 @@ final class DatabaseClient implements WebSqlite {
     });
   }
 
-  WorkerConnection _connection(StreamChannel<Message> channel) {
+  WorkerConnection _connection(ConnectableChannel channel) {
     return WorkerConnection(channel, _handleCustomRequest);
   }
 
@@ -457,15 +456,14 @@ final class DatabaseClient implements WebSqlite {
     }
 
     final (endpoint, channel) = await createChannel();
+    channel.injectErrors = dedicated.targetForErrorEvents;
     newConnectRequest(
       endpoint: endpoint,
       requestId: 0,
       databaseId: null,
     ).sendToWorker(dedicated);
 
-    _connectionToDedicated = _connection(
-      channel.injectErrorsFrom(dedicated.targetForErrorEvents),
-    );
+    _connectionToDedicated = _connection(channel);
   }
 
   Future<void> _startShared() async {
@@ -482,6 +480,7 @@ final class DatabaseClient implements WebSqlite {
     }
 
     final (endpoint, channel) = await createChannel();
+    channel.injectErrors = shared.targetForErrorEvents;
 
     newConnectRequest(
       endpoint: endpoint,
@@ -489,9 +488,7 @@ final class DatabaseClient implements WebSqlite {
       databaseId: null,
     ).sendToWorker(shared);
 
-    _connectionToShared = _connection(
-      channel.injectErrorsFrom(shared.targetForErrorEvents),
-    );
+    _connectionToShared = _connection(channel);
   }
 
   Future<WorkerConnection> _connectToDedicatedInShared() {

@@ -1,3 +1,7 @@
+## 0.7.2 (unreleased)
+
+- Remove `stream_channel` dependency with custom implementation, slightly decreasing compiled size.
+
 ## 0.7.1
 
 - Fix internal mutex throwing when not given an abort signal.
