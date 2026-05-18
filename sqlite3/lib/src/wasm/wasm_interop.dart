@@ -164,12 +164,8 @@ class WasmBindings {
     return sqlite3.sqlite3_bind_null(stmt, index);
   }
 
-  int sqlite3_bind_int64(Pointer stmt, int index, BigInt value) {
-    return sqlite3.sqlite3_bind_int64(
-      stmt,
-      index,
-      JsBigInt.fromBigInt(value).jsObject,
-    );
+  int sqlite3_bind_int64(Pointer stmt, int index, JSBigInt value) {
+    return sqlite3.sqlite3_bind_int64(stmt, index, value);
   }
 
   int sqlite3_bind_int(Pointer stmt, int index, int value) {

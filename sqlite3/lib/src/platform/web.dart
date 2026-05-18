@@ -13,6 +13,10 @@ import 'dart:typed_data';
 
 import 'package:web/web.dart';
 
+import '../implementation/statement.dart';
+import '../statement.dart';
+import '../wasm/bindings.dart';
+
 String pathToAbsoluteAndNormalize(String source) {
   return URL(source, 'file:///').pathname;
 }
@@ -31,3 +35,16 @@ Uint8List utf8Encode(String str) {
 
 final _decoder = TextDecoder();
 final _encoder = TextEncoder();
+
+final class BoxedJavaScriptBigInt implements CustomStatementParameter {
+  final JSBigInt value;
+
+  BoxedJavaScriptBigInt(this.value);
+
+  @override
+  void applyTo(CommonPreparedStatement statement, int index) {
+    final raw =
+        (statement as StatementImplementation).statement as WasmStatement;
+    raw.bindings.sqlite3_bind_int64(raw.stmt, index, value);
+  }
+}

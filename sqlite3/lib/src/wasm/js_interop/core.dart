@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
+import '../../compile_options.dart';
+import '../../platform/web.dart';
+
 @JS('BigInt')
 external JSBigInt _bigInt(JSAny? s);
 
@@ -27,7 +30,13 @@ extension type JsBigInt(JSBigInt _jsBigInt) implements JSBigInt {
 
   int get asDartInt => _number(_jsBigInt).toDartInt;
 
-  BigInt get asDartBigInt => BigInt.parse(jsToString());
+  Object get asDartBigInt {
+    if (!supportDartBigInts) {
+      return BoxedJavaScriptBigInt(this);
+    }
+
+    return BigInt.parse(jsToString());
+  }
 
   JSBigInt get jsObject => _jsBigInt;
 

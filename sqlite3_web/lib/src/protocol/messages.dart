@@ -4,6 +4,10 @@ import 'dart:typed_data';
 import 'package:sqlite3/wasm.dart';
 // ignore: implementation_imports
 import 'package:sqlite3/src/wasm/js_interop/core.dart';
+// ignore: implementation_imports
+import 'package:sqlite3/src/platform/web.dart';
+// ignore: implementation_imports
+import 'package:sqlite3/src/compile_options.dart';
 
 import '../channel.dart';
 import 'dsl.dart';
@@ -242,8 +246,11 @@ enum TypeCode {
       case final int integer:
         value = integer.toJS;
         code = TypeCode.integer;
-      case final BigInt bi:
+      case final BigInt bi when supportDartBigInts:
         value = JsBigInt.fromBigInt(bi);
+        code = TypeCode.bigInt;
+      case final BoxedJavaScriptBigInt bi when !supportDartBigInts:
+        value = bi.value;
         code = TypeCode.bigInt;
       case final double d:
         value = d.toJS;
