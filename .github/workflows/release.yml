@@ -168,4 +168,5 @@ jobs:
         pnpm build
 
     - name: Publish to npmjs.com
+      working-directory: sqlite3_web/extra/js-package
       run: pnpm publish --no-git-checks
