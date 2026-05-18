@@ -168,4 +168,4 @@ jobs:
         pnpm build
 
     - name: Publish to npmjs.com
-      run: pnpm publish
+      run: pnpm publish --no-git-checks
