@@ -17,10 +17,10 @@ abstract base class DatabaseController {
 
   /// Loads a wasm module from the given [uri] with the specified [headers].
   Future<WasmSqlite3> loadWasmModule(
-    Uri uri, {
+    String uri, {
     Map<String, String>? headers,
   }) async {
-    return WasmSqlite3.loadFromUrl(uri, headers: headers);
+    return WasmSqlite3.loadFromUrlString(uri, headers: headers);
   }
 
   /// Opens a database in the pre-configured [sqlite3] instance under the
@@ -358,7 +358,7 @@ abstract class WebSqlite {
   /// If it's absent, the default is to throw an exception when called.
   static WebSqlite open({
     required WorkerConnector workers,
-    required Uri wasmModule,
+    required String wasmModule,
     DatabaseController? controller,
     Future<JSAny?> Function(JSAny?)? handleCustomRequest,
   }) {
@@ -391,7 +391,7 @@ abstract class WebSqlite {
   }) {
     final client = DatabaseClient(
       const WorkerConnector.unsupported(),
-      Uri.base,
+      (globalContext as Window).location.href,
       const _DefaultDatabaseController(),
       handleCustomRequest,
     );

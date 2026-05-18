@@ -1,6 +1,9 @@
-## 0.7.2 (unreleased)
+## 0.8.0 (unreleased)
 
 - Remove `stream_channel` dependency with custom implementation, slightly decreasing compiled size.
+- Use strings instead of URLs to reduce code size.
+- Custom Dart objects can no longer be serialized via `serializeParameters` and `serializeResultSet`.
+  Only SQLite values are supported.
 
 ## 0.7.1
 

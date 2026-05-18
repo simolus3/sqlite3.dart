@@ -38,7 +38,7 @@ Future<CommonDatabase> openDatabase() async {
 import 'package:sqlite3/wasm.dart';
 
 Future<CommonDatabase> openDatabase() async {
-  final sqlite = await WasmSqlite3.loadFromUrl(Uri.parse('sqlite3.wasm'));
+  final sqlite = await WasmSqlite3.loadFromUrlString('sqlite3.wasm');
   final fs = await IndexedDbFileSystem.open(dbName: 'app.db');
   sqlite.registerVirtualFileSystem(fs, makeDefault: true);
   return sqlite.open('/app.db');

@@ -3,9 +3,8 @@ import 'dart:js_interop_unsafe';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:path/path.dart' as p;
-
 import '../../../constants.dart';
+import '../../../platform/web.dart';
 import '../../../vfs.dart';
 import '../../js_interop.dart';
 import '../../../utils.dart';
@@ -41,19 +40,14 @@ final class WasmVfs extends BaseVirtualFileSystem {
   final RequestResponseSynchronizer synchronizer;
   final MessageSerializer serializer;
 
-  final String chroot;
-  final p.Context pathContext;
-
   WasmVfs({
     super.random,
     required WorkerOptions workerOptions,
-    this.chroot = '/',
     String vfsName = 'dart-sqlite3-vfs',
   }) : synchronizer = RequestResponseSynchronizer(
          workerOptions.synchronizationBuffer,
        ),
        serializer = MessageSerializer(workerOptions.communicationBuffer),
-       pathContext = p.Context(style: p.Style.url, current: chroot),
        super(name: vfsName);
 
   Res _runInWorker<Req extends Message, Res extends Message>(
@@ -89,17 +83,12 @@ final class WasmVfs extends BaseVirtualFileSystem {
 
   @override
   String xFullPathName(String path) {
-    final resolved = pathContext.absolute(path);
-    if (!p.isWithin(chroot, resolved)) {
-      throw const VfsException(SqlError.SQLITE_CANTOPEN);
-    }
-
-    return resolved;
+    return pathToAbsoluteAndNormalize(path);
   }
 
   @override
   XOpenResult xOpen(Sqlite3Filename path, int flags) {
-    final filePath = path.path ?? random.randomFileName(prefix: chroot);
+    final filePath = path.path ?? random.randomFileName(prefix: '/');
     final result = _runInWorker(
       WorkerOperation.xOpen,
       NameAndInt32Flags(filePath, flags, 0, 0),

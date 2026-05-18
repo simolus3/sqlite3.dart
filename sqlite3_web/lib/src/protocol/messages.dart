@@ -4,6 +4,10 @@ import 'dart:typed_data';
 import 'package:sqlite3/wasm.dart';
 // ignore: implementation_imports
 import 'package:sqlite3/src/wasm/js_interop/core.dart';
+// ignore: implementation_imports
+import 'package:sqlite3/src/platform/web.dart';
+// ignore: implementation_imports
+import 'package:sqlite3/src/compile_options.dart';
 
 import '../channel.dart';
 import 'dsl.dart';
@@ -208,7 +212,7 @@ enum TypeCode {
     const hasNativeInts = !identical(0, 0.0);
 
     return switch (this) {
-      TypeCode.unknown => column.dartify(),
+      TypeCode.unknown => throw ArgumentError('Unsupported type code'),
       TypeCode.integer => (column as JSNumber).toDartInt,
       TypeCode.bigInt =>
         hasNativeInts
@@ -242,8 +246,11 @@ enum TypeCode {
       case final int integer:
         value = integer.toJS;
         code = TypeCode.integer;
-      case final BigInt bi:
+      case final BigInt bi when supportDartBigInts:
         value = JsBigInt.fromBigInt(bi);
+        code = TypeCode.bigInt;
+      case final BoxedJavaScriptBigInt bi when !supportDartBigInts:
+        value = bi.value;
         code = TypeCode.bigInt;
       case final double d:
         value = d.toJS;
@@ -257,9 +264,8 @@ enum TypeCode {
       case final bool boolean:
         value = boolean.toJS;
         code = TypeCode.boolean;
-      case final other:
-        value = other.jsify();
-        code = TypeCode.unknown;
+      default:
+        throw ArgumentError('Unsupported value: $dart');
     }
 
     return (code, value);

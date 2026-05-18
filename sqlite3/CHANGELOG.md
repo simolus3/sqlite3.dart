@@ -2,6 +2,8 @@
 
 - Support `native_toolchain_c` versions `0.18.x`.
 - Upgrade to SQLite version 3.53.1.
+- Allow disabling `BigInt` support via `-Dsqlite3.dartbigints=false`, which can be used to 
+  reduce code size on the web if nothing else uses `BigInt` values.
 
 ## 3.3.1
 

@@ -20,13 +20,13 @@ final class WasmSqlite3 extends Sqlite3Implementation {
   /// Loads a web version of the sqlite3 libraries.
   ///
   /// [source] must be a byte buffer of a `sqlite.wasm` file prepared for this
-  /// package. This file can be obtained at the [releases][pgk release] for this
+  /// package. This file can be obtained at the [releases][pkg release] for this
   /// package.
   ///
   /// When the [source] is obtained through a HTTP request, consider directly
   /// using [loadFromUrl] as that method is more efficient.
   ///
-  /// [pgk release]: https://github.com/simolus3/sqlite3.dart/releases
+  /// [pkg release]: https://github.com/simolus3/sqlite3.dart/releases
   static Future<WasmSqlite3> load(
     Uint8List source, {
     WasmModuleLoader? loader,
@@ -46,9 +46,26 @@ final class WasmSqlite3 extends Sqlite3Implementation {
   /// The native wasm library for sqlite3 is loaded from the [uri] with the
   /// desired [headers] through a `fetch` request.
   ///
-  /// [pgk release]: https://github.com/simolus3/sqlite3.dart/releases
+  /// [pkg release]: https://github.com/simolus3/sqlite3.dart/releases
   static Future<WasmSqlite3> loadFromUrl(
     Uri uri, {
+    Map<String, String>? headers,
+    WasmModuleLoader? loader,
+  }) {
+    return loadFromUrlString(uri.toString());
+  }
+
+  /// Loads a web version of the sqlite3 libraries.
+  ///
+  /// The native wasm library for sqlite3 is loaded from the [url] with the
+  /// desired [headers] through a `fetch` request.
+  ///
+  /// Using this over [loadFromUrl] might reduce compiled JS sizes for apps
+  /// which otherwise don't use URLs.
+  ///
+  /// [pkg release]: https://github.com/simolus3/sqlite3.dart/releases
+  static Future<WasmSqlite3> loadFromUrlString(
+    String url, {
     Map<String, String>? headers,
     WasmModuleLoader? loader,
   }) async {
@@ -63,9 +80,7 @@ final class WasmSqlite3 extends Sqlite3Implementation {
       options = web.RequestInit(headers: headersJs);
     }
 
-    final jsUri = uri.isAbsolute
-        ? web.URL(uri.toString())
-        : web.URL(uri.toString(), Uri.base.toString());
+    final jsUri = web.URL(url, (globalContext['location'] as web.URL).href);
     final response = await fetch(jsUri, options).toDart;
     return _load(response, loader);
   }

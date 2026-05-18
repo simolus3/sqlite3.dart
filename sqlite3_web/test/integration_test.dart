@@ -83,6 +83,12 @@ void main() {
 
       setUpAll(() async {
         final process = driverProcess = await browser.spawnDriver();
+
+        // On macOS, geckodriver seems to time out if there's no consumer on
+        // these.
+        process.stderr.listen((_) {});
+        process.stdout.listen((_) {});
+
         process.exitCode.then((code) {
           if (!isStoppingProcess) {
             throw 'Webdriver stopped (code $code) before tearing down tests.';

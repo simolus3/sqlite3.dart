@@ -63,8 +63,8 @@ that are transparently hosted in the worker:
 ```dart
 Future<void> connectToDatabase() async {
   final sqlite = await WebSqlite.open(
-    workers: WorkerConnector.defaultWorkers(Uri.parse('worker.dart.js')),
-    wasmModule: Uri.parse('sqlite3.wasm'),
+    workers: WorkerConnector.defaultWorkers('worker.dart.js'),
+    wasmModule: 'sqlite3.wasm',
   );
 
   final features = await sqlite.runFeatureDetection();

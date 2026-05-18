@@ -10,6 +10,7 @@ import '../functions.dart';
 import '../implementation/bindings.dart';
 import '../implementation/exception.dart';
 import 'injected_values.dart';
+import 'js_interop/core.dart';
 import 'wasm_interop.dart' as wasm;
 import 'sqlite3_wasm.g.dart';
 import 'wasm_interop.dart';
@@ -473,7 +474,11 @@ final class WasmStatement implements RawSqliteStatement {
 
   @override
   int sqlite3_bind_int64BigInt(int index, BigInt value) {
-    return bindings.sqlite3_bind_int64(stmt, index, value);
+    return bindings.sqlite3_bind_int64(
+      stmt,
+      index,
+      JsBigInt.fromBigInt(value).jsObject,
+    );
   }
 
   @override

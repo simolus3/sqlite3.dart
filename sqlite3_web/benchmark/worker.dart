@@ -14,15 +14,16 @@ void main() {
   WorkerEnvironment environment;
 
   if (globalContext.instanceOfString('SharedWorkerGlobalScope')) {
+    final scope = globalContext as SharedWorkerGlobalScope;
+
     // This shared worker is used both to hand out database access and to
     // coordinate multiple tabs running concurrency benchmarks. We encapsulate
     // messages from the sqlite3_async package in a WorkerMessage struct, which
     // allows this worker to speak both protocols.
     final fakeEnvironment = environment = FakeWorkerEnvironment(
-      WorkerConnector.defaultWorkers(Uri.base),
+      WorkerConnector.defaultWorkers(scope.location.href),
     );
 
-    final scope = globalContext as SharedWorkerGlobalScope;
     final clients = ClientsDriver();
     clients.run();
 

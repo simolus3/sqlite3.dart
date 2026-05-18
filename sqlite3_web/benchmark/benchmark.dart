@@ -237,7 +237,7 @@ final class ClientStateNotifier extends Notifier<ClientState?> {
 final sqlite3 = Provider((ref) {
   return WebSqlite.open(
     workers: _EncapsulatedWorkerConnector(),
-    wasmModule: Uri.parse('sqlite3.wasm'),
+    wasmModule: 'sqlite3.wasm',
   );
 });
 
@@ -252,7 +252,7 @@ final selectedTarget = StateProvider<BenchmarkTarget>((ref) {
 
 final class _EncapsulatedWorkerConnector implements WorkerConnector {
   final WorkerConnector _inner = WorkerConnector.defaultWorkers(
-    Uri.parse('worker.dart.js'),
+    'worker.dart.js',
   );
 
   @override
