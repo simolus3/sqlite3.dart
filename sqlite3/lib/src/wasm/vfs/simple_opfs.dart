@@ -14,7 +14,7 @@ import '../../constants.dart';
 import '../../vfs.dart';
 import '../js_interop.dart';
 import '../../in_memory_vfs.dart';
-import '../path_utils.dart';
+import '../../platform/web.dart';
 
 @internal
 enum FileType {
@@ -127,13 +127,17 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
 
     try {
       (parent, handle) = await _resolveDir(path, create: false);
-    } on DOMException catch (e) {
-      if (e.name == 'NotFoundError' || e.name == 'TypeMismatchError') {
-        // Directory doesn't exist, ignore.
-        return;
-      } else {
-        rethrow;
+    } catch (e) {
+      if (e.isA<DOMException>()) {
+        final asDomException = e as DOMException;
+        if (asDomException.name == 'NotFoundError' ||
+            asDomException.name == 'TypeMismatchError') {
+          // Directory doesn't exist, ignore.
+          return;
+        }
       }
+
+      rethrow;
     }
 
     if (parent != null) {

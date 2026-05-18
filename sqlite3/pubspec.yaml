@@ -6,8 +6,7 @@ issue_tracker: https://github.com/simolus3/sqlite3.dart/issues
 resolution: workspace
 
 environment:
-  # We want >=3.10, but Flutter 3.38 somehow ships with a beta Dart SDK that rejects >=3.10 deps.
-  sdk: '>=3.9.999 <4.0.0'
+  sdk: '>=3.12.0 <4.0.0'
 
 # This package supports all platforms listed below.
 platforms:

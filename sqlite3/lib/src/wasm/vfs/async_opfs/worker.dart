@@ -4,7 +4,6 @@ library;
 
 import 'dart:js_interop';
 
-import 'package:sqlite3/src/wasm/path_utils.dart';
 import 'package:web/web.dart'
     show
         FileSystemDirectoryHandle,
@@ -13,6 +12,7 @@ import 'package:web/web.dart'
         FileSystemReadWriteOptions;
 
 import '../../../constants.dart';
+import '../../../platform/web.dart';
 import '../../../vfs.dart';
 import '../../js_interop.dart';
 import 'sync_channel.dart';

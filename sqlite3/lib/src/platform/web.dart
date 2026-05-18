@@ -1,5 +1,5 @@
-/// Path helpers implemented with direct interop to web APIs instead of
-/// `package:path`.
+/// Helpers implemented with direct interop to web APIs instead of
+/// cross-platform Dart packages or the SDK.
 ///
 /// In compiled web workers, Dart's [Uri.parse] implementation takes up a good
 /// chunk of the total file size. By using [URL] directly (which is good enough

@@ -640,12 +640,10 @@ final class _StreamHandlers<T, SyncCallback> {
   Stream<T> get syncStream => _syncStream ??= _generateStream(true);
 
   _StreamHandlers({
-    required DatabaseImplementation database,
-    required void Function() register,
-    required void Function() unregister,
-  }) : _database = database,
-       _register = register,
-       _unregister = unregister;
+    required this._database,
+    required this._register,
+    required this._unregister,
+  });
 
   Stream<T> _generateStream(bool dispatchSynchronously) {
     return Stream.multi((newListener) {
