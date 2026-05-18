@@ -127,7 +127,9 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
 
     try {
       (parent, handle) = await _resolveDir(path, create: false);
-    } catch (e) {
+      // ignore: invalid_runtime_check_with_js_interop_types
+    } on JSAny catch (e) {
+      // TODO: Remove type clause (needs Dart 3.12 as a minimum version)
       if (e.isA<DOMException>()) {
         final asDomException = e as DOMException;
         if (asDomException.name == 'NotFoundError' ||
