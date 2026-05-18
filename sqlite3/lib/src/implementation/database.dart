@@ -393,9 +393,7 @@ base class DatabaseImplementation implements CommonDatabase {
       // or comments were parsed. That's fine, just skip over it then.
       final stmt = result.result;
       if (stmt != null) {
-        final stmtSql = utf8.decode(
-          Uint8List.sublistView(bytes, offset, endOffset),
-        );
+        final stmtSql = utf8.decoder.convert(bytes, offset, endOffset);
 
         createdStatements.add(wrapStatement(stmtSql, stmt));
       }

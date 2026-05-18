@@ -3,10 +3,8 @@ import 'dart:typed_data';
 
 import 'package:typed_data/typed_buffers.dart';
 
-import 'platform/fallback.dart'
-    if (dart.library.js_interop) 'platform/web.dart';
-
 import 'constants.dart';
+import 'platform/platform.dart';
 import 'vfs.dart';
 import 'utils.dart';
 
