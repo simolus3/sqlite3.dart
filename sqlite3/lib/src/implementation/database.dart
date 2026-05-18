@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
@@ -8,7 +9,6 @@ import '../constants.dart';
 import '../database.dart';
 import '../exception.dart';
 import '../functions.dart';
-import '../platform/platform.dart';
 import '../result_set.dart';
 import '../statement.dart';
 import 'bindings.dart';
@@ -124,7 +124,7 @@ base class DatabaseImplementation implements CommonDatabase {
   }
 
   Uint8List _validateAndEncodeFunctionName(String functionName) {
-    final functionNameBytes = utf8Encode(functionName);
+    final functionNameBytes = utf8.encode(functionName);
 
     if (functionNameBytes.length > 255) {
       throw ArgumentError.value(
@@ -348,7 +348,7 @@ base class DatabaseImplementation implements CommonDatabase {
   }) {
     _ensureOpen();
 
-    final bytes = utf8Encode(sql);
+    final bytes = utf8.encode(sql);
     final compiler = database.newCompiler(bytes);
 
     var prepFlags = 0;
@@ -393,7 +393,7 @@ base class DatabaseImplementation implements CommonDatabase {
       // or comments were parsed. That's fine, just skip over it then.
       final stmt = result.result;
       if (stmt != null) {
-        final stmtSql = utf8Decode(
+        final stmtSql = utf8.decode(
           Uint8List.sublistView(bytes, offset, endOffset),
         );
 

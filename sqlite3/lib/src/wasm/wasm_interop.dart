@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
@@ -5,7 +6,6 @@ import 'dart:typed_data';
 import 'package:web/web.dart';
 
 import '../implementation/bindings.dart';
-import '../platform/web.dart';
 import 'injected_values.dart';
 import 'js_interop.dart';
 
@@ -52,7 +52,7 @@ class WasmBindings {
   }
 
   Pointer allocateZeroTerminated(String string) {
-    return allocateBytes(utf8Encode(string), additionalLength: 1);
+    return allocateBytes(utf8.encode(string), additionalLength: 1);
   }
 
   Pointer malloc(int size) {
@@ -471,7 +471,7 @@ extension WrappedMemory on Memory {
 
   String readString(int address, [int? length]) {
     assert(address != 0, 'Null pointer dereference');
-    return utf8Decode(
+    return utf8.decode(
       dartBuffer.asUint8List(address, length ?? strlen(address)),
     );
   }
@@ -479,7 +479,7 @@ extension WrappedMemory on Memory {
   String? readNullableString(int address, [int? length]) {
     if (address == 0) return null;
 
-    return utf8Decode(
+    return utf8.decode(
       dartBuffer.asUint8List(address, length ?? strlen(address)),
     );
   }

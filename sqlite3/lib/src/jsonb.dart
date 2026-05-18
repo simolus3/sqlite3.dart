@@ -3,8 +3,6 @@ import 'dart:typed_data';
 
 import 'package:typed_data/typed_buffers.dart';
 
-import 'platform/platform.dart';
-
 /// A [Codec] capable of converting Dart objects from and to the [JSONB] format
 /// used by sqlite3.
 ///
@@ -178,7 +176,7 @@ final class _JsonbDecodingState {
     }
 
     String payloadString() {
-      return utf8Decode(payloadBytes());
+      return utf8.decode(payloadBytes());
     }
 
     final value = switch (type) {
@@ -307,7 +305,7 @@ final class _JsonbEncodingOperation {
   }
 
   void writeInt(int value) {
-    final encoded = utf8Encode(value.toString());
+    final encoded = utf8.encode(value.toString());
     writeHeader(encoded.length, _ElementType._int);
     _buffer.addAll(encoded);
   }
@@ -319,7 +317,7 @@ final class _JsonbEncodingOperation {
       throw JsonUnsupportedObjectError(value);
     }
 
-    final encoded = utf8Encode(value.toString());
+    final encoded = utf8.encode(value.toString());
     // RFC 8259 does not support infinity or NaN.
     writeHeader(
       encoded.length,
@@ -329,7 +327,7 @@ final class _JsonbEncodingOperation {
   }
 
   void writeString(String value) {
-    final encoded = utf8Encode(value);
+    final encoded = utf8.encode(value);
     writeHeader(encoded.length, _ElementType._textraw);
     _buffer.addAll(encoded);
   }

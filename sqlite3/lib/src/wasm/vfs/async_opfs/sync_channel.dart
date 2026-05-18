@@ -1,6 +1,6 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
-import '../../../platform/platform.dart';
 import '../../js_interop.dart';
 
 const protocolVersion = 1;
@@ -126,11 +126,11 @@ class MessageSerializer {
     final originalSlice = buffer.asUint8ListSlice(offset + 4, length);
     final copy = Uint8List.fromList(originalSlice);
 
-    return utf8Decode(copy);
+    return utf8.decode(copy);
   }
 
   void _writeString(int offset, String data) {
-    final encoded = utf8Encode(data);
+    final encoded = utf8.encode(data);
     dataView.setInt32(offset, encoded.length);
     byteView.setAll(offset + 4, encoded);
   }

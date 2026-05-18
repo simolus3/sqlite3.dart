@@ -51,7 +51,9 @@ databases. The [hook options page](./doc/hook.md) describe this setup.
 When binding parameters to queries, the supported types are `ìnt`,
 `double`, `String`, `List<int>` (for `BLOB`) and `null`.
 Result sets will use the same set of types.
-On the web (but only on the web), `BigInt` is supported as well.
+
+On the web (when compiled with `dart2js`), `BigInt` is supported as well to represent 64bit integers.
+Support for this can be disabled with `-Dsqlite3.dartbigints=false`.
 
 ## WASM (web support)
 
