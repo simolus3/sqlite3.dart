@@ -251,6 +251,12 @@ jobs:
           mkdir sqlite3_web/extra/js-package/assets
           cp sqlite-compiled/*.wasm sqlite3_web/extra/js-package/assets/
 
+      - name: Setup node
+        uses: actions/setup-node@v6
+        with:
+          node-version: latest
+          package-manager-cache: false
+
       - name: Install pnpm
         uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
         with:
