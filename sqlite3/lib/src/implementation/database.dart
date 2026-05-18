@@ -9,6 +9,7 @@ import '../constants.dart';
 import '../database.dart';
 import '../exception.dart';
 import '../functions.dart';
+import '../platform/platform.dart';
 import '../result_set.dart';
 import '../statement.dart';
 import 'bindings.dart';
@@ -393,7 +394,9 @@ base class DatabaseImplementation implements CommonDatabase {
       // or comments were parsed. That's fine, just skip over it then.
       final stmt = result.result;
       if (stmt != null) {
-        final stmtSql = utf8.decoder.convert(bytes, offset, endOffset);
+        final stmtSql = utf8Decode(
+          Uint8List.sublistView(bytes, offset, endOffset),
+        );
 
         createdStatements.add(wrapStatement(stmtSql, stmt));
       }

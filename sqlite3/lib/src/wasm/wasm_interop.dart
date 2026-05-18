@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:web/web.dart';
 
 import '../implementation/bindings.dart';
+import '../platform/web.dart';
 import 'injected_values.dart';
 import 'js_interop.dart';
 
@@ -475,7 +476,7 @@ extension WrappedMemory on Memory {
 
   String readString(int address, [int? length]) {
     assert(address != 0, 'Null pointer dereference');
-    return utf8.decode(
+    return utf8Decode(
       dartBuffer.asUint8List(address, length ?? strlen(address)),
     );
   }
@@ -483,7 +484,7 @@ extension WrappedMemory on Memory {
   String? readNullableString(int address, [int? length]) {
     if (address == 0) return null;
 
-    return utf8.decode(
+    return utf8Decode(
       dartBuffer.asUint8List(address, length ?? strlen(address)),
     );
   }

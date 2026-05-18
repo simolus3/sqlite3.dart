@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:typed_data/typed_buffers.dart';
 
+import 'platform/platform.dart';
+
 /// A [Codec] capable of converting Dart objects from and to the [JSONB] format
 /// used by sqlite3.
 ///
@@ -176,7 +178,7 @@ final class _JsonbDecodingState {
     }
 
     String payloadString() {
-      return utf8.decode(payloadBytes());
+      return utf8Decode(payloadBytes());
     }
 
     final value = switch (type) {
