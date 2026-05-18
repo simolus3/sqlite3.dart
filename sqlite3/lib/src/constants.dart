@@ -544,9 +544,6 @@ const SQLITE_DELETE = 9;
 const SQLITE_INSERT = 18;
 const SQLITE_UPDATE = 23;
 
-final bigIntMinValue64 = BigInt.parse('-9223372036854775808');
-final bigIntMaxValue64 = BigInt.parse('9223372036854775807');
-
 // Connection config options https://www.sqlite.org/c3ref/c_dbconfig_defensive.html
 const SQLITE_DBCONFIG_DQS_DML = 1013;
 const SQLITE_DBCONFIG_DQS_DDL = 1014;

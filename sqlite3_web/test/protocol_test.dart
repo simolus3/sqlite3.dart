@@ -30,15 +30,7 @@ void main() {
 
   group('TypeCode', () {
     test('is compatible with dartify()', () {
-      for (final value in [
-        1,
-        3.4,
-        true,
-        null,
-        {'custom': 'object'},
-        'string',
-        Uint8List(10),
-      ]) {
+      for (final value in [1, 3.4, true, null, 'string', Uint8List(10)]) {
         final (_, jsified) = TypeCode.encodeValue(value);
         expect(jsified.dartify(), value);
       }
@@ -59,7 +51,6 @@ void main() {
         isA<Uint8List>().having((e) => e.length, 'length', 10),
         isDart2Wasm ? 100 : BigInt.from(100),
         null,
-        {'custom': 'object'},
       ]);
       if (isDart2Wasm) {
         // Make sure we don't loose type information in the js conversion across
@@ -83,7 +74,6 @@ void main() {
       Uint8List(10),
       BigInt.from(100),
       null,
-      {'custom': 'object'},
     ]);
     await client.sendRequest(
       newRunQuery(

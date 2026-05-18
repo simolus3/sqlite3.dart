@@ -208,7 +208,7 @@ enum TypeCode {
     const hasNativeInts = !identical(0, 0.0);
 
     return switch (this) {
-      TypeCode.unknown => column.dartify(),
+      TypeCode.unknown => throw ArgumentError('Unsupported type code'),
       TypeCode.integer => (column as JSNumber).toDartInt,
       TypeCode.bigInt =>
         hasNativeInts
@@ -257,9 +257,8 @@ enum TypeCode {
       case final bool boolean:
         value = boolean.toJS;
         code = TypeCode.boolean;
-      case final other:
-        value = other.jsify();
-        code = TypeCode.unknown;
+      default:
+        throw ArgumentError('Unsupported value: $dart');
     }
 
     return (code, value);
