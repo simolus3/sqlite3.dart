@@ -307,7 +307,7 @@ final class _JsonbEncodingOperation {
   }
 
   void writeInt(int value) {
-    final encoded = utf8.encode(value.toString());
+    final encoded = utf8Encode(value.toString());
     writeHeader(encoded.length, _ElementType._int);
     _buffer.addAll(encoded);
   }
@@ -319,7 +319,7 @@ final class _JsonbEncodingOperation {
       throw JsonUnsupportedObjectError(value);
     }
 
-    final encoded = utf8.encode(value.toString());
+    final encoded = utf8Encode(value.toString());
     // RFC 8259 does not support infinity or NaN.
     writeHeader(
       encoded.length,
@@ -329,7 +329,7 @@ final class _JsonbEncodingOperation {
   }
 
   void writeString(String value) {
-    final encoded = utf8.encode(value);
+    final encoded = utf8Encode(value);
     writeHeader(encoded.length, _ElementType._textraw);
     _buffer.addAll(encoded);
   }

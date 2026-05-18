@@ -1,7 +1,6 @@
 // Dart functions that are injected into the SQLite WebAssembly module. For
 // details, see sqlite3_wasm_build/bridge.h
 
-import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:web/web.dart';
@@ -9,6 +8,7 @@ import 'package:web/web.dart';
 import '../constants.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
+import '../platform/web.dart';
 import '../vfs.dart';
 import 'bindings.dart';
 import 'js_interop.dart';
@@ -125,7 +125,7 @@ final class DartBridgeCallbacks {
 
     return _runVfs(() {
       final fullPath = vfs.toDartObject.xFullPathName(path);
-      final encoded = utf8.encode(fullPath);
+      final encoded = utf8Encode(fullPath);
 
       if (encoded.length > nOut) {
         throw VfsException(SqlError.SQLITE_CANTOPEN);

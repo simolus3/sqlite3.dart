@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:collection';
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
@@ -125,7 +124,7 @@ base class DatabaseImplementation implements CommonDatabase {
   }
 
   Uint8List _validateAndEncodeFunctionName(String functionName) {
-    final functionNameBytes = utf8.encode(functionName);
+    final functionNameBytes = utf8Encode(functionName);
 
     if (functionNameBytes.length > 255) {
       throw ArgumentError.value(
@@ -349,7 +348,7 @@ base class DatabaseImplementation implements CommonDatabase {
   }) {
     _ensureOpen();
 
-    final bytes = utf8.encode(sql);
+    final bytes = utf8Encode(sql);
     final compiler = database.newCompiler(bytes);
 
     var prepFlags = 0;

@@ -10,3 +10,7 @@ String pathToAbsoluteAndNormalize(String source) {
 String utf8Decode(Uint8List bytes) {
   return utf8.decode(bytes);
 }
+
+Uint8List utf8Encode(String str) {
+  return utf8.encode(str);
+}

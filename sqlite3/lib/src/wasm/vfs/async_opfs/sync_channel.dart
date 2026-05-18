@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import '../../../platform/platform.dart';
@@ -126,7 +125,7 @@ class MessageSerializer {
   }
 
   void _writeString(int offset, String data) {
-    final encoded = utf8.encode(data);
+    final encoded = utf8Encode(data);
     dataView.setInt32(offset, encoded.length);
     byteView.setAll(offset + 4, encoded);
   }

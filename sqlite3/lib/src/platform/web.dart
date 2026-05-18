@@ -25,4 +25,9 @@ String utf8Decode(Uint8List bytes) {
   return _decoder.decode(bytes.toJS);
 }
 
+Uint8List utf8Encode(String str) {
+  return _encoder.encode(str).toDart;
+}
+
 final _decoder = TextDecoder();
+final _encoder = TextEncoder();

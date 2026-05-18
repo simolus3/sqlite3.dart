@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
@@ -53,7 +52,7 @@ class WasmBindings {
   }
 
   Pointer allocateZeroTerminated(String string) {
-    return allocateBytes(utf8.encode(string), additionalLength: 1);
+    return allocateBytes(utf8Encode(string), additionalLength: 1);
   }
 
   Pointer malloc(int size) {

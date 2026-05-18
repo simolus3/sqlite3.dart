@@ -1,5 +1,4 @@
 import 'dart:collection';
-import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:typed_data';
 
@@ -9,6 +8,7 @@ import '../constants.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
 import '../implementation/exception.dart';
+import '../platform/web.dart';
 import 'injected_values.dart';
 import 'wasm_interop.dart' as wasm;
 import 'sqlite3_wasm.g.dart';
@@ -508,7 +508,7 @@ final class WasmStatement implements RawSqliteStatement {
 
   @override
   int sqlite3_bind_text(int index, String value) {
-    final encoded = utf8.encode(value);
+    final encoded = utf8Encode(value);
     final ptr = bindings.allocateBytes(encoded);
 
     return bindings.sqlite3_bind_text_finalizerFree(
@@ -654,7 +654,7 @@ final class WasmContext implements RawSqliteContext {
 
   @override
   void sqlite3_result_error(String message) {
-    final encoded = utf8.encode(message);
+    final encoded = utf8Encode(message);
     final ptr = bindings.allocateBytes(encoded);
 
     bindings.sqlite3_result_error(context, ptr, encoded.length);
@@ -678,7 +678,7 @@ final class WasmContext implements RawSqliteContext {
 
   @override
   void sqlite3_result_text(String text) {
-    final encoded = utf8.encode(text);
+    final encoded = utf8Encode(text);
     final ptr = bindings.allocateBytes(encoded);
 
     bindings.sqlite3_result_text(
