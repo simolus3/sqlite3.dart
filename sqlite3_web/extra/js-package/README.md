@@ -18,7 +18,6 @@ The library itself is around 10 KB in size (uncompressed). Additionally, this in
 and a 750 KB WebAssembly file for SQLite.
 
 Before compression, this library is around 230KB in size (10 KB library + 220 KB worker).
-A somewhat comparable WA-sqlite build is 164KB in size, but doesn't include workers or feature detection.
 
 ## Setup
 
