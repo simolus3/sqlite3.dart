@@ -399,6 +399,10 @@ base class AsyncConnection {
     }
   }
 
+  SerializedPoolLease serialize() {
+    return SerializedPoolLease._(_associatedRequest);
+  }
+
   /// On a short-lived isolate, calls [computation] as a critical section with
   /// the underlying database.
   ///
@@ -437,6 +441,8 @@ base class AsyncConnection {
       final conn = PoolConnection.unsafeFromPointer(
         Pointer.fromAddress(address),
       );
+      // TODO: Close restored? It works implicitly before of Isolate.run being
+      // short-lived atm.
       return computation(conn);
     };
   }
@@ -488,17 +494,13 @@ base class AsyncConnection {
   }
 }
 
-abstract interface class PoolLease {
-  SerializedPoolLease serialize();
-}
-
 final class SerializedPoolLease {
   final int _ptr;
 
   SerializedPoolLease._(RawPoolRequest request)
     : _ptr = request.weakClone().address;
 
-  Finalizable? unsafeRestore() {
+  RawPoolRequest? unsafeRestore() {
     final ptr = Pointer<WeakPoolRequest>.fromAddress(_ptr);
     return RawPoolRequest.upgradeWeak(ptr);
   }
@@ -510,18 +512,13 @@ final class SerializedPoolLease {
 /// If this object is no longer referenced, or if the isolate with exclusive
 /// access is closed for any reason, the lease is also automatically returned.
 
-final class ConnectionLease extends AsyncConnection implements PoolLease {
+final class ConnectionLease extends AsyncConnection {
   // The native request from which the database has been obtained. Closing this
   // will return the connection to the pool.
   final bool _isWriter;
 
   ConnectionLease._(super._connection, super._associatedRequest, this._isWriter)
     : super._();
-
-  @override
-  SerializedPoolLease serialize() {
-    return SerializedPoolLease._(_associatedRequest);
-  }
 
   /// Returns this leased connection back to the pool.
   ///
@@ -561,7 +558,7 @@ final class ConnectionLease extends AsyncConnection implements PoolLease {
 ///
 /// If this object is no longer referenced, or if the isolate with exclusive
 /// access is closed for any reason, the handle is also automatically returned.
-final class ExclusivePoolAccess implements PoolLease {
+final class ExclusivePoolAccess {
   /// The single write connection of the connection pool.
   final AsyncConnection writer;
 
@@ -590,11 +587,6 @@ final class ExclusivePoolAccess implements PoolLease {
       writer._rollbackPendingTransaction(),
       for (final reader in readers) reader._rollbackPendingTransaction(),
     ]);
-  }
-
-  @override
-  SerializedPoolLease serialize() {
-    return SerializedPoolLease._(_request);
   }
 
   /// Returns this exclusive access instance, allowing other readers and writers
