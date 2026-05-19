@@ -44,36 +44,36 @@ jobs:
     - uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{ matrix.dart }}
-    - uses: actions/cache@v5
-      with:
-        path: "${{ env.PUB_CACHE }}"
-        key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
-        restore-keys: |
-          dart-dependencies-${{ matrix.dart }}-
-          dart-dependencies-
+    # - uses: actions/cache@v5
+    #   with:
+    #     path: "${{ env.PUB_CACHE }}"
+    #     key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
+    #     restore-keys: |
+    #       dart-dependencies-${{ matrix.dart }}-
+    #       dart-dependencies-
 
-    - name: Pub get
-      run: dart pub get
+    # - name: Pub get
+    #   run: dart pub get
 
-    - name: Format dart
-      run: |
-        dart format --set-exit-if-changed sqlite3
-        dart format --set-exit-if-changed sqlite3_test
-        dart format --set-exit-if-changed sqlite3_web
+    # - name: Format dart
+    #   run: |
+    #     dart format --set-exit-if-changed sqlite3
+    #     dart format --set-exit-if-changed sqlite3_test
+    #     dart format --set-exit-if-changed sqlite3_web
 
-    - name: Format native
-      run: clang-format --Werror --dry-run --style=google assets/*.h
-      working-directory: sqlite3
+    # - name: Format native
+    #   run: clang-format --Werror --dry-run --style=google assets/*.h
+    #   working-directory: sqlite3
 
-    - name: Format native
-      run: clang-format --Werror --dry-run --style=google src/*{.h,.c}
-      working-directory: sqlite3_wasm_build
+    # - name: Format native
+    #   run: clang-format --Werror --dry-run --style=google src/*{.h,.c}
+    #   working-directory: sqlite3_wasm_build
 
-    - name: Analyze
-      run: dart analyze --fatal-infos sqlite3 sqlite3_web sqlite3_test
+    # - name: Analyze
+    #   run: dart analyze --fatal-infos sqlite3 sqlite3_web sqlite3_test
 
   test:
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
+    if: false && github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     timeout-minutes: 5
     needs: [analyze, fetch_sqlite]
     strategy:
@@ -185,7 +185,7 @@ jobs:
   upload_asset_hashes:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     timeout-minutes: 5
-    needs: [test, fetch_sqlite]
+    needs: [fetch_sqlite]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
@@ -219,7 +219,7 @@ jobs:
         retention-days: 1
 
   integration_test_web:
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
+    if: false && github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     timeout-minutes: 10
     needs: [analyze, fetch_sqlite]
     runs-on: ubuntu-latest

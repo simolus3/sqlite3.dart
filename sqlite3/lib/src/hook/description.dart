@@ -16,12 +16,18 @@ import 'utils.dart';
 sealed class SqliteBinary {
   static SqliteBinary forBuild(BuildInput input) {
     final userDefines = input.userDefines;
+    // print("USERDEFINES");
+    // print(userDefines['source']);
     switch (userDefines['source']) {
       case null:
       case 'sqlite3':
         return PrecompiledFromGithubAssets(LibraryType.sqlite3);
       case 'sqlite3mc':
         return PrecompiledFromGithubAssets(LibraryType.sqlite3mc);
+      case 'sqlcipher-folder':
+        return PrecompiledAtFolder(Directory("...."), LibraryType.sqlcipher);
+      case 'sqlcipher':
+        return PrecompiledFromGithubAssets(LibraryType.sqlcipher);
       case 'test-sqlite3':
         return PrecompiledForTesting(LibraryType.sqlite3);
       case 'test-sqlite3mc':
@@ -95,6 +101,39 @@ enum SimpleBinary implements ExternalSqliteBinary {
       case SimpleBinary.fromExecutable:
         return LookupInExecutable();
     }
+  }
+}
+
+final class PrecompiledAtFolder extends PrecompiledBinary {
+  final Directory folder;
+
+  const PrecompiledAtFolder(this.folder, super.type) : super._();
+
+  @override
+  Stream<Uint8List> _fetchFromSource(
+    BuildInput input,
+    BuildOutputBuilder output,
+    String filename,
+  ) {
+    final uri = folder.uri.resolve(filename);
+    output.dependencies.add(uri);
+
+    return File(uri.toFilePath()).openRead().map(
+      (event) => switch (event) {
+        final Uint8List bytes => bytes,
+        _ => Uint8List.fromList(event),
+      },
+    );
+  }
+
+  @override
+  Stream<Uint8List> fetch(
+    BuildInput input,
+    BuildOutputBuilder output,
+    PrebuiltSqliteLibrary library,
+  ) {
+    final filename = library.sourceFilename;
+    return _fetchFromSource(input, output, filename);
   }
 }
 
@@ -227,10 +266,15 @@ final class PrecompiledFromGithubAssets extends PrecompiledBinary {
       // environments where that's required
       // https://github.com/simolus3/sqlite3.dart/issues/335
       ..findProxy = HttpClient.findProxyFromEnvironment;
-    final uri = Uri.https(
-      'github.com',
-      'simolus3/sqlite3.dart/releases/download/${releaseTag!}/$filename',
-    );
+    final uri = type == LibraryType.sqlcipher
+        ? Uri.https(
+            'github.com',
+            'davidmartos96/sqlite3.dart/releases/download/${releaseTag!}/$filename',
+          )
+        : Uri.https(
+            'github.com',
+            'simolus3/sqlite3.dart/releases/download/${releaseTag!}/$filename',
+          );
 
     HttpClientResponse response;
     try {
@@ -351,8 +395,18 @@ extension type const CompilerDefines(Map<String, String?> flags)
     };
 
     final start = includeDefaults
-        ? CompilerDefines.defaults(targetOS == OS.windows)
+        ? CompilerDefines.defaults(targetOS)
         : const CompilerDefines({});
+
+    print("----------------------");
+    print("OBJ: $obj");
+    print("DEFINES START:");
+    print(start);
+    if (additionalDefines != null) {
+      print("DEFINES ADDITIONAL:");
+      print(additionalDefines);
+    }
+    print("------------------------");
 
     return switch (additionalDefines) {
       final added? => start.overrideWith(added),
@@ -388,10 +442,14 @@ extension type const CompilerDefines(Map<String, String?> flags)
     return CompilerDefines(entries);
   }
 
-  static CompilerDefines defaults(bool windows) {
+  static CompilerDefines defaults(OS targetOS) {
     final defines = _parseLines(const LineSplitter().convert(_defaultDefines));
-    if (windows) {
+    if (targetOS == OS.windows) {
       defines['SQLITE_API'] = '__declspec(dllexport)';
+    }
+
+    if (targetOS == OS.macOS || targetOS == OS.iOS) {
+      defines['SQLCIPHER_CRYPTO_CC'] = null;
     }
     return defines;
   }

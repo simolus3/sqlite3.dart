@@ -7,16 +7,25 @@ const sqliteSource = 'https://sqlite.org/2026/$sqlitePath.zip';
 const sqliteMultipleCiphersSource =
     'https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.4/sqlite3mc-2.3.4-sqlite-3.53.1-amalgamation.zip';
 
+const sqlcipherVersion = '4.16.0';
+const sqlcipherPath = 'sqlcipher-amalgamation-$sqlcipherVersion';
+const sqlCipherSource =
+    'https://github.com/chehrlic/sqlcipher-amalgamation/archive/refs/tags/v$sqlcipherVersion.zip';
+
 const tmpDir = 'tmp';
 
 /// This runs as part of a GitHub actions workflow in this repository. It's not
 /// really supposed to be used outside of that, but can be used to reproduce
 /// what hooks are doing in the CI.
 void main(List<String> args) async {
+  if (await Directory(tmpDir).exists()) {
+    await Directory(tmpDir).delete(recursive: true);
+  }
   await Directory(tmpDir).create();
 
   await _downloadAndExtract(sqliteSource, 'sqlite3');
   await _downloadAndExtract(sqliteMultipleCiphersSource, 'sqlite3mc');
+  await _downloadAndExtract(sqlCipherSource, 'sqlcipher');
 
   await Directory('sqlite-src').create();
   await Directory('sqlite-src/sqlite3mc').create();
@@ -32,6 +41,14 @@ void main(List<String> args) async {
       .copy('sqlite-src/sqlite3/sqlite3.c');
   await File('$tmpDir/$sqlitePath/sqlite3ext.h')
       .copy('sqlite-src/sqlite3/sqlite3ext.h');
+
+  await Directory('sqlite-src/sqlcipher').create();
+  await File('$tmpDir/$sqlcipherPath/sqlite3.h')
+      .copy('sqlite-src/sqlcipher/sqlite3.h');
+  await File('$tmpDir/$sqlcipherPath/sqlite3.c')
+      .copy('sqlite-src/sqlcipher/sqlite3.c');
+  await File('$tmpDir/$sqlcipherPath/sqlite3ext.h')
+      .copy('sqlite-src/sqlcipher/sqlite3ext.h');
 }
 
 Future<void> _downloadAndExtract(String url, String filename) async {

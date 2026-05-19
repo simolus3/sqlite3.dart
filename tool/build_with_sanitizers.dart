@@ -58,7 +58,7 @@ void main() async {
             includes: [p.dirname(sourceFile)],
             defines: {
               'SQLITE_ENABLE_API_ARMOR': '1',
-              ...CompilerDefines.defaults(false),
+              ...CompilerDefines.defaults(input.config.code.targetOS),
             },
             flags: [
               '-fsanitize=$sanitizer',

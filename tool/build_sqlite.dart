@@ -20,9 +20,15 @@ void main(List<String> args) async {
   var operatingSystems = args.map(OS.fromString).toList();
   if (operatingSystems.isEmpty) {
     if (Platform.isLinux) {
-      operatingSystems = [OS.linux, OS.android];
+      operatingSystems = [
+        OS.linux,
+        OS.android,
+      ];
     } else if (Platform.isMacOS) {
-      operatingSystems = [OS.macOS, OS.iOS];
+      operatingSystems = [
+        OS.macOS,
+        OS.iOS,
+      ];
     } else if (Platform.isWindows) {
       operatingSystems = [OS.windows];
     }
@@ -47,11 +53,21 @@ void main(List<String> args) async {
 
   final buildTasks = <Future<void>>[];
 
-  for (final mode in ['sqlite3', 'sqlite3mc']) {
+  for (final mode in [
+    // 'sqlite3',
+    // 'sqlite3mc',
+    'sqlcipher',
+  ]) {
+    final sourceFileName = switch (mode) {
+      "sqlite3" || "sqlcipher" => "sqlite3.c",
+      "sqlite3mc" => 'sqlite3mc_amalgamation.c',
+      _ => throw UnimplementedError(),
+    };
+
     final sourcePath = fs.currentDirectory.parent
         .childDirectory('sqlite-src')
         .childDirectory(mode)
-        .childFile(mode == 'sqlite3' ? 'sqlite3.c' : 'sqlite3mc_amalgamation.c')
+        .childFile(sourceFileName)
         .path;
 
     Future<void> buildAndCopy(OS os, Architecture architecture,
@@ -106,6 +122,14 @@ void main(List<String> args) async {
           defines: {
             'source': 'source',
             'path': p.relative(sourcePath, from: fs.currentDirectory.path),
+            'defines': {
+              'defines': <String, String?>{
+                'SQLITE_HAS_CODEC': null,
+                'SQLITE_TEMP_STORE': "2",
+                'SQLITE_EXTRA_INIT': 'sqlcipher_extra_init',
+                'SQLITE_EXTRA_SHUTDOWN': 'sqlcipher_extra_shutdown',
+              }
+            }
           },
           basePath: fs.currentDirectory.uri,
         )),
@@ -147,12 +171,13 @@ void main(List<String> args) async {
 }
 
 const _osToAbis = {
+  // TODO: Recover linux 32 bits
   OS.linux: [
-    Architecture.arm,
-    Architecture.arm64,
-    Architecture.ia32,
+    // Architecture.arm,
+    // Architecture.arm64,
+    // Architecture.ia32,
     Architecture.x64,
-    Architecture.riscv64,
+    // Architecture.riscv64,
   ],
   OS.android: [
     Architecture.arm,
@@ -167,10 +192,10 @@ const _osToAbis = {
   ],
   OS.macOS: [
     Architecture.arm64,
-    Architecture.x64,
+    // Architecture.x64,
   ],
   OS.iOS: [
     Architecture.arm64,
-    // Note: There's a special check to also compile simulator builds for x64
+    //   // Note: There's a special check to also compile simulator builds for x64
   ],
 };

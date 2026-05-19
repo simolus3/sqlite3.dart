@@ -243,8 +243,7 @@ final class PoolConnections {
 
 extension type PoolConnectionRef(
   /// The pool connection, used to manage cached prepared statements.
-  Pointer<PoolConnection>
-  connection
+  Pointer<PoolConnection> connection
 ) {
   /// The `sqlite3*` connection pointer.
   Pointer<Void> get rawDatabase => connection.ref.raw;

@@ -6,6 +6,7 @@ import 'package:native_toolchain_c/native_toolchain_c.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:sqlite3/src/hook/description.dart';
+import 'package:sqlite3/src/hook/openssl.dart';
 import 'package:sqlite3/src/hook/used_symbols.dart';
 
 void main(List<String> args) async {
@@ -59,12 +60,57 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
 ''');
         }
 
+        final targetOS = input.config.code.targetOS;
+
+        final List<String> includes = [];
+        final List<String> libraryDirectories = [];
+        final List<String> libraries = [];
+        final List<String> flags = [];
+
+        switch (targetOS) {
+          case OS.macOS:
+          case OS.iOS:
+            flags.addAll([
+              '-framework',
+              'Foundation',
+              '-framework',
+              'Security',
+            ]);
+            break;
+          case OS.android:
+          case OS.linux:
+          case OS.windows:
+            final kOpenSSLBuiltDir = (await buildOpenSSL(input, output))!.path;
+            print("BUILT OPENSSL IN $kOpenSSLBuiltDir");
+
+            final cryptoStaticLib = File(
+              getStaticCryptoLib(
+                Directory(kOpenSSLBuiltDir),
+                input.config.code.targetOS,
+                input.config.code.targetArchitecture,
+              ),
+            );
+
+            includes.add('$kOpenSSLBuiltDir/include');
+            libraryDirectories.add(cryptoStaticLib.parent.path);
+            libraries.add('crypto');
+          default:
+            throw UnsupportedError(
+              'Unsupported OS: ${input.config.code.targetOS}',
+            );
+        }
+
+        // final files = Directory(kOpenSSLBuiltDir).listSync();
+        // print(files);
+
+        final isMacLike = [OS.iOS, OS.macOS].contains(targetOS);
+
         final library = CBuilder.library(
           name: 'sqlite3',
           packageName: 'sqlite3',
           assetName: name,
           sources: [sourceFile],
-          includes: [p.dirname(sourceFile)],
+          includes: [p.dirname(sourceFile), ...includes],
           defines: defines,
           flags: [
             if (input.config.code.targetOS == OS.linux) ...[
@@ -78,7 +124,7 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               '-fdata-sections',
               '-Wl,--gc-sections',
             ],
-            if (input.config.code.targetOS case OS.iOS || OS.macOS) ...[
+            if (isMacLike) ...[
               '-headerpad_max_install_names',
               // clang would use the temporary directory passed by
               // native_toolchain_c otherwise. So this makes improves
@@ -86,11 +132,16 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               '-install_name',
               '@rpath/libsqlite3.dylib',
             ],
+            ...flags,
           ],
+          libraryDirectories: [...libraryDirectories],
           libraries: [
-            if (input.config.code.targetOS == OS.android)
+            if (targetOS == OS.android || targetOS == OS.linux) ...[
               // We need to link the math library on Android.
               'm',
+            ],
+            if (targetOS == OS.android) 'log',
+            ...libraries,
           ],
         );
 

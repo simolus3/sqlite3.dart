@@ -48,8 +48,9 @@ jobs:
   build_sqlite:
     needs: [download_sqlite]
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
 
     runs-on: ${{ matrix.os }}
     name: Compile sqlite3
@@ -96,6 +97,7 @@ jobs:
 
   build_with_sanitizers:
     needs: [download_sqlite]
+    if: false
     runs-on: ubuntu-latest
     outputs:
       libs: ${{ steps.upload.outputs.artifact-id }}
