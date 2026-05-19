@@ -2,6 +2,7 @@
 
 typedef struct ConnectionPool ConnectionPool;
 typedef struct PoolRequest PoolRequest;
+typedef struct WeakPoolRequest WeakPoolRequest;
 
 typedef const void *Connection;
 
@@ -49,6 +50,8 @@ uintptr_t pkg_sqlite3_connection_pool_query_read_connection_count(const Connecti
 void pkg_sqlite3_connection_pool_query_connections(const ConnectionPool *pool, struct PoolConnection **writer, struct PoolConnection **readers, uintptr_t reader_count);
 
 void pkg_sqlite3_connection_pool_request_close(PoolRequest *request);
+WeakPoolRequest* pkg_sqlite3_connection_pool_request_clone_weak(PoolRequest *request);
+PoolRequest* pkg_sqlite3_connection_pool_request_clone_upgrade(WeakPoolRequest *request);
 
 void pkg_sqlite3_connection_pool_update_listener(const ConnectionPool *pool, int add, DartPort listener);
 

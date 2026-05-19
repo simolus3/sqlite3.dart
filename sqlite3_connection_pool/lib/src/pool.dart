@@ -8,6 +8,7 @@ import 'dart:isolate';
 import 'package:sqlite3/sqlite3.dart';
 
 import 'connection.dart';
+import 'ffi.g.dart' show WeakPoolRequest;
 import 'mutex.dart';
 import 'raw.dart';
 
@@ -75,7 +76,10 @@ final class SqliteConnectionPool {
     }
   }
 
-  void _installAbortSignal(RawPoolRequest request, Future<void>? abortSignal) {
+  void _installAbortSignal(
+    DartRawPoolRequest request,
+    Future<void>? abortSignal,
+  ) {
     if (abortSignal != null) {
       abortSignal.whenComplete(() {
         if (!request.isCompleted) {
@@ -341,6 +345,7 @@ final class SqliteConnectionPool {
 /// queries in short-lived background isolates.
 base class AsyncConnection {
   final PoolConnection _connection;
+  final RawPoolRequest _associatedRequest;
 
   // Because the database is used across multiple isolates (the current one and
   // the short-lived ones used for computations), we need to guard access to the
@@ -348,7 +353,7 @@ base class AsyncConnection {
   final Mutex _mutex = Mutex();
   var _closed = false;
 
-  AsyncConnection._(this._connection);
+  AsyncConnection._(this._connection, this._associatedRequest);
 
   /// If the connection is in a transaction, rolls that transaction back.
   ///
@@ -381,11 +386,17 @@ base class AsyncConnection {
   Future<T> unsafeAccess<T>(
     FutureOr<T> Function(PoolConnection) computation,
   ) async {
+    _checkNotClosed();
+    return _mutex.withCriticalSection(() {
+      _checkNotClosed();
+      return computation(_connection);
+    });
+  }
+
+  void _checkNotClosed() {
     if (_closed) {
       throw StateError('LeasedDatabase used after callback returned');
     }
-
-    return _mutex.withCriticalSection(() => computation(_connection));
   }
 
   /// On a short-lived isolate, calls [computation] as a critical section with
@@ -398,13 +409,36 @@ base class AsyncConnection {
   ) {
     return unsafeAccess((conn) {
       final address = conn.unsafePointer.address;
-      return Isolate.run(() {
-        final conn = PoolConnection.unsafeFromPointer(
-          Pointer.fromAddress(address),
-        );
-        return computation(conn);
-      });
+      final requestAddress = _associatedRequest.weakClone().address;
+
+      return Isolate.run(
+        _accessOnIsolateClosure(address, requestAddress, computation),
+      );
     });
+  }
+
+  static T Function() _accessOnIsolateClosure<T>(
+    int address,
+    int requestAddress,
+    T Function(PoolConnection) computation,
+  ) {
+    return () {
+      final restored = RawPoolRequest.upgradeWeak(
+        Pointer.fromAddress(requestAddress),
+      );
+      if (restored == null) {
+        // Note: Because we await this here, this can't happen outside of odd
+        // cases like a hot restart.
+        throw StateError(
+          "Pool request became invalid before isolate was started",
+        );
+      }
+
+      final conn = PoolConnection.unsafeFromPointer(
+        Pointer.fromAddress(address),
+      );
+      return computation(conn);
+    };
   }
 
   /// Returns the [Database.autocommit] status for the wrapped database.
@@ -454,27 +488,47 @@ base class AsyncConnection {
   }
 }
 
+abstract interface class PoolLease {
+  SerializedPoolLease serialize();
+}
+
+final class SerializedPoolLease {
+  final int _ptr;
+
+  SerializedPoolLease._(RawPoolRequest request)
+    : _ptr = request.weakClone().address;
+
+  Finalizable? unsafeRestore() {
+    final ptr = Pointer<WeakPoolRequest>.fromAddress(_ptr);
+    return RawPoolRequest.upgradeWeak(ptr);
+  }
+}
+
 /// A SQLite database connection that has been leased from a connection pool and
 /// must be returned to it with [returnLease].
 ///
 /// If this object is no longer referenced, or if the isolate with exclusive
 /// access is closed for any reason, the lease is also automatically returned.
 
-final class ConnectionLease extends AsyncConnection {
+final class ConnectionLease extends AsyncConnection implements PoolLease {
   // The native request from which the database has been obtained. Closing this
   // will return the connection to the pool.
-  final RawPoolRequest _request;
   final bool _isWriter;
 
-  ConnectionLease._(super._connection, this._request, this._isWriter)
+  ConnectionLease._(super._connection, super._associatedRequest, this._isWriter)
     : super._();
+
+  @override
+  SerializedPoolLease serialize() {
+    return SerializedPoolLease._(_associatedRequest);
+  }
 
   /// Returns this leased connection back to the pool.
   ///
   /// This connection may not be used after calling this method.
   void returnLease() {
     _close();
-    _request.close();
+    _associatedRequest.close();
   }
 
   /// Manual signal to add tables to [SqliteConnectionPool.updatedTables].
@@ -494,7 +548,7 @@ final class ConnectionLease extends AsyncConnection {
   Future<void> notifyUpdates() {
     return unsafeAccess((_) {
       if (_isWriter && !_closed) {
-        _request.notifyUpdates();
+        _associatedRequest.notifyUpdates();
       }
     });
   }
@@ -507,7 +561,7 @@ final class ConnectionLease extends AsyncConnection {
 ///
 /// If this object is no longer referenced, or if the isolate with exclusive
 /// access is closed for any reason, the handle is also automatically returned.
-final class ExclusivePoolAccess {
+final class ExclusivePoolAccess implements PoolLease {
   /// The single write connection of the connection pool.
   final AsyncConnection writer;
 
@@ -521,11 +575,13 @@ final class ExclusivePoolAccess {
     List<PoolConnectionRef> readers,
   ) : writer = AsyncConnection._(
         PoolConnection.unsafeFromPointer(writer.connection),
+        _request,
       ),
       readers = [
         for (final reader in readers)
           AsyncConnection._(
             PoolConnection.unsafeFromPointer(reader.connection),
+            _request,
           ),
       ];
 
@@ -534,6 +590,11 @@ final class ExclusivePoolAccess {
       writer._rollbackPendingTransaction(),
       for (final reader in readers) reader._rollbackPendingTransaction(),
     ]);
+  }
+
+  @override
+  SerializedPoolLease serialize() {
+    return SerializedPoolLease._(_request);
   }
 
   /// Returns this exclusive access instance, allowing other readers and writers

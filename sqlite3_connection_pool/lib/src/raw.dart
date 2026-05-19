@@ -60,9 +60,9 @@ final class RawSqliteConnectionPool implements Finalizable {
     return (id, _outstandingRequests[id] = Completer());
   }
 
-  (RawPoolRequest, Future<PoolConnectionRef>) requestRead() {
+  (DartRawPoolRequest, Future<PoolConnectionRef>) requestRead() {
     final (tag, completer) = _createRequest();
-    final request = RawPoolRequest._(
+    final request = DartRawPoolRequest._(
       tag,
       this,
       pkg_sqlite3_connection_pool_obtain_read(_pool, tag, _nativePort),
@@ -74,9 +74,9 @@ final class RawSqliteConnectionPool implements Finalizable {
     );
   }
 
-  (RawPoolRequest, Future<PoolConnectionRef>) requestWrite() {
+  (DartRawPoolRequest, Future<PoolConnectionRef>) requestWrite() {
     final (tag, completer) = _createRequest();
-    final request = RawPoolRequest._(
+    final request = DartRawPoolRequest._(
       tag,
       this,
       pkg_sqlite3_connection_pool_obtain_write(_pool, tag, _nativePort),
@@ -88,9 +88,9 @@ final class RawSqliteConnectionPool implements Finalizable {
     );
   }
 
-  (RawPoolRequest, Future<void>) requestExclusive() {
+  (DartRawPoolRequest, Future<void>) requestExclusive() {
     final (tag, completer) = _createRequest();
-    final request = RawPoolRequest._(
+    final request = DartRawPoolRequest._(
       tag,
       this,
       pkg_sqlite3_connection_pool_obtain_exclusive(_pool, tag, _nativePort),
@@ -273,29 +273,53 @@ extension type PoolConnectionRef(
 
 @internal
 final class RawPoolRequest implements Finalizable {
-  final int _dartTag;
-  final RawSqliteConnectionPool _pool;
-
   final Pointer<PoolRequest> _handle;
   final Object _detachToken = Object();
 
-  RawPoolRequest._(this._dartTag, this._pool, this._handle) {
+  RawPoolRequest(this._handle) {
     _requestFinalizer.attach(this, _handle.cast(), detach: _detachToken);
   }
 
-  bool get isCompleted => !_pool._outstandingRequests.containsKey(_dartTag);
+  static RawPoolRequest? upgradeWeak(Pointer<WeakPoolRequest> weak) {
+    final upgraded = pkg_sqlite3_connection_pool_request_clone_upgrade(weak);
+    if (upgraded.address == 0) {
+      return null;
+    } else {
+      return RawPoolRequest(upgraded);
+    }
+  }
+
+  void _markClosed() {}
 
   void close() {
     _requestFinalizer.detach(_detachToken);
     pkg_sqlite3_connection_pool_request_close(_handle);
-
-    _pool._outstandingRequests
-        .remove(_dartTag)
-        ?.completeError(PoolAbortException());
+    _markClosed();
   }
 
   void notifyUpdates() {
     pkg_sqlite3_connection_pool_notify_updates(_handle);
+  }
+
+  Pointer<WeakPoolRequest> weakClone() {
+    return pkg_sqlite3_connection_pool_request_clone_weak(_handle);
+  }
+}
+
+@internal
+final class DartRawPoolRequest extends RawPoolRequest {
+  final int _dartTag;
+  final RawSqliteConnectionPool _pool;
+
+  DartRawPoolRequest._(this._dartTag, this._pool, super._handle);
+
+  bool get isCompleted => !_pool._outstandingRequests.containsKey(_dartTag);
+
+  @override
+  void _markClosed() {
+    _pool._outstandingRequests
+        .remove(_dartTag)
+        ?.completeError(PoolAbortException());
   }
 }
 

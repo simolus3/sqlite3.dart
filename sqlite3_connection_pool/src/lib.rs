@@ -4,8 +4,8 @@ use crate::dart::DartPort;
 use crate::pool::{ConnectionPool, PendingMessage, PoolConnection, PoolRequestHandle, PoolState};
 use crate::registry::{PoolInitializer, PoolRegistry};
 use std::ffi::{c_int, c_void};
-use std::ptr::NonNull;
-use std::sync::{Arc, Mutex};
+use std::ptr::{NonNull, null};
+use std::sync::{Arc, Mutex, Weak};
 use std::{ptr, slice};
 
 mod client;
@@ -48,12 +48,12 @@ extern "C" fn pkg_sqlite3_connection_pool_obtain_read(
     client: &PoolClient,
     tag: i64,
     port: DartPort,
-) -> *mut PoolRequestHandle {
+) -> *const PoolRequestHandle {
     let pool = &client.pool;
     let mut state = pool.lock().unwrap();
     let pool = clone_arc(pool);
 
-    Box::into_raw(Box::new(
+    Arc::into_raw(Arc::new(
         state.request_read(pool, PendingMessage { tag, port }),
     ))
 }
@@ -63,12 +63,12 @@ extern "C" fn pkg_sqlite3_connection_pool_obtain_write(
     client: &PoolClient,
     tag: i64,
     port: DartPort,
-) -> *mut PoolRequestHandle {
+) -> *const PoolRequestHandle {
     let pool = &client.pool;
     let mut state = pool.lock().unwrap();
     let pool = clone_arc(pool);
 
-    Box::into_raw(Box::new(
+    Arc::into_raw(Arc::new(
         state.request_write(pool, PendingMessage { tag, port }),
     ))
 }
@@ -78,19 +78,41 @@ extern "C" fn pkg_sqlite3_connection_pool_obtain_exclusive(
     client: &PoolClient,
     tag: i64,
     port: DartPort,
-) -> *mut PoolRequestHandle {
+) -> *const PoolRequestHandle {
     let pool = &client.pool;
     let mut state = pool.lock().unwrap();
     let pool = clone_arc(pool);
 
-    Box::into_raw(Box::new(
+    Arc::into_raw(Arc::new(
         state.request_exclusive(pool, PendingMessage { tag, port }),
     ))
 }
 
 #[unsafe(no_mangle)]
 extern "C" fn pkg_sqlite3_connection_pool_request_close(request: *mut PoolRequestHandle) {
-    drop(unsafe { Box::from_raw(request) });
+    drop(unsafe { Arc::from_raw(request) });
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_request_clone_weak(
+    request: *mut PoolRequestHandle,
+) -> *const PoolRequestHandle {
+    let request = unsafe {
+        Arc::increment_strong_count(request);
+        Arc::from_raw(request)
+    };
+
+    Weak::into_raw(Arc::downgrade(&request))
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_request_clone_upgrade(
+    request: *mut PoolRequestHandle,
+) -> *const PoolRequestHandle {
+    match unsafe { Weak::from_raw(request) }.upgrade() {
+        Some(arc) => Arc::into_raw(arc),
+        None => null(),
+    }
 }
 
 #[unsafe(no_mangle)]

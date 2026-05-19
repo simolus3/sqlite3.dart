@@ -94,6 +94,18 @@ external void pkg_sqlite3_connection_pool_request_close(
   ffi.Pointer<PoolRequest> request,
 );
 
+@ffi.Native<ffi.Pointer<WeakPoolRequest> Function(ffi.Pointer<PoolRequest>)>()
+external ffi.Pointer<WeakPoolRequest>
+pkg_sqlite3_connection_pool_request_clone_weak(
+  ffi.Pointer<PoolRequest> request,
+);
+
+@ffi.Native<ffi.Pointer<PoolRequest> Function(ffi.Pointer<WeakPoolRequest>)>()
+external ffi.Pointer<PoolRequest>
+pkg_sqlite3_connection_pool_request_clone_upgrade(
+  ffi.Pointer<WeakPoolRequest> request,
+);
+
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ConnectionPool>, ffi.Int, ffi.Int64)
 >()
@@ -156,6 +168,8 @@ class _SymbolAddresses {
 final class ConnectionPool extends ffi.Opaque {}
 
 final class PoolRequest extends ffi.Opaque {}
+
+final class WeakPoolRequest extends ffi.Opaque {}
 
 final class PoolConnection extends ffi.Struct {
   external ffi.Pointer<ffi.Void> raw;
