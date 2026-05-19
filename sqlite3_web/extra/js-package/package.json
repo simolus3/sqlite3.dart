@@ -1,6 +1,6 @@
 {
   "name": "sqlite3-web",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Optimized SQLite and SQLite3 Multiple Ciphers builds for the web.",
   "bugs": {
     "url": "https://github.com/simolus3/sqlite3.dart/issues"
@@ -48,13 +48,11 @@
     "./sqlite3mc.wasm": "./assets/sqlite3mc.wasm"
   },
   "packageManager": "pnpm@11.1.2",
-  "dependencies": {
-    "typescript": "^6.0.3"
-  },
   "devDependencies": {
     "@tsconfig/strictest": "^2.0.8",
     "@vitest/browser-preview": "^4.1.6",
     "tsdown": "^0.22.0",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.6",
+    "typescript": "^6.0.3"
   }
 }

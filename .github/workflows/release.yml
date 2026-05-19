@@ -148,7 +148,8 @@ jobs:
     - name: Copy SQLite libraries
       run: |
         mkdir sqlite3_web/extra/js-package/assets
-        cp sqlite-compiled/*.wasm sqlite3_web/extra/js-package/assets/
+        cp sqlite-compiled/sqlite3.wasm sqlite3_web/extra/js-package/assets/
+        cp sqlite-compiled/sqlite3mc.wasm sqlite3_web/extra/js-package/assets/
 
     - name: Setup node
       uses: actions/setup-node@v6
