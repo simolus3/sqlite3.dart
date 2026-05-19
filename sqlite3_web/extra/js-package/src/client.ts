@@ -16,6 +16,13 @@ import {
 } from "./api";
 import { createChannel, ProtocolChannel, WebEndpoint } from "./channel";
 import {
+  indexedDb,
+  inMemory,
+  opfs,
+  throughDedicatedWorker,
+  throughSharedWorker,
+} from "./constants";
+import {
   Request,
   Response,
   Message,
@@ -47,30 +54,33 @@ import {
   typeFileSystemExistsQuery,
   CloseDatabase,
   typeCloseDatabase,
+  typeOpenRequest,
+  typeDedicatedCompatibilityCheck,
+  typeSharedCompatibilityCheck,
 } from "./generated_protocol";
 import { CompatibilityResult, typeCodesForValues } from "./types";
 import { wrapFeatureDetectionResult } from "./utils";
 import { WorkerConnector, WorkerHandle } from "./worker_connector";
 
 class WorkerConnection extends ProtocolChannel {
-  override async serveRequest(request: Request): Promise<Response> {
+  override async _internal_serveRequest(request: Request): Promise<Response> {
     if (request.t == typeCustomRequest) {
     }
 
     throw new Error("Method not implemented.");
   }
 
-  override handleNotification(): void {
+  override _internal_handleNotification(): void {
     // Ignore notifications, the JS package doesn't support update/commit/rollback hooks currently.
   }
 
-  async requestDatabase(
+  async _internal_requestDatabase(
     request: Omit<OpenRequest, "i">,
   ): Promise<RemoteDatabase> {
-    const response = await this.sendRequest<OpenRequest, SimpleSuccessResponse>(
-      request,
-      typeSimpleSuccessResponse,
-    );
+    const response = await this._internal_sendRequest<
+      OpenRequest,
+      SimpleSuccessResponse
+    >(request, typeSimpleSuccessResponse);
 
     return new RemoteDatabase(this, response.r as number);
   }
@@ -90,14 +100,17 @@ export interface ClientInitializationOptions {
 
 export class DatabaseClient implements WebSqlite {
   readonly #workerInitializationLock = `web-sqlite-init-${crypto.randomUUID()}`;
-  readonly missingFeatures = new Set<MissingBrowserFeature>();
+  readonly #missingFeatures = new Set<MissingBrowserFeature>();
+  readonly #options: ClientInitializationOptions;
 
   #startedWorkers = false;
   #connectionToDedicated?: WorkerConnection;
   #connectionToShared?: WorkerConnection;
   #connectionToDedicatedInShared?: WorkerConnection;
 
-  constructor(readonly options: ClientInitializationOptions) {}
+  constructor(options: ClientInitializationOptions) {
+    this.#options = options;
+  }
 
   async #startWorkers() {
     await navigator.locks.request(this.#workerInitializationLock, async () => {
@@ -113,18 +126,18 @@ export class DatabaseClient implements WebSqlite {
   async #startDedicated() {
     let dedicated: WorkerHandle | null = null;
     try {
-      dedicated = this.options.workers.spawnDedicatedWorker();
+      dedicated = this.#options.workers.spawnDedicatedWorker();
     } catch {
       // Add missing feature and move on.
     }
 
     if (dedicated == null) {
-      this.missingFeatures.add("dedicatedWorkers");
+      this.#missingFeatures.add("dedicatedWorkers");
       return;
     }
 
     const [endpoint, channel] = await createChannel({
-      errors: dedicated.targetForErrorEvents,
+      _internal_errors: dedicated.targetForErrorEvents,
     });
     const request = {
       t: typeConnectRequest,
@@ -139,18 +152,18 @@ export class DatabaseClient implements WebSqlite {
   async #startShared() {
     let shared: WorkerHandle | null = null;
     try {
-      shared = this.options.workers.spawnSharedWorker();
+      shared = this.#options.workers.spawnSharedWorker();
     } catch {
       // Add missing feature and move on.
     }
 
     if (shared == null) {
-      this.missingFeatures.add("sharedWorkers");
+      this.#missingFeatures.add("sharedWorkers");
       return;
     }
 
     const [endpoint, channel] = await createChannel({
-      errors: shared.targetForErrorEvents,
+      _internal_errors: shared.targetForErrorEvents,
     });
     const request = {
       t: typeConnectRequest,
@@ -169,7 +182,7 @@ export class DatabaseClient implements WebSqlite {
       }
 
       const [endpoint, channel] = await createChannel();
-      this.#connectionToShared!.sendRequest<
+      this.#connectionToShared!._internal_sendRequest<
         ConnectRequest,
         SimpleSuccessResponse
       >(
@@ -185,7 +198,7 @@ export class DatabaseClient implements WebSqlite {
 
   async deleteDatabase(name: string, storage: StorageMode): Promise<void> {
     switch (storage) {
-      case "opfs":
+      case opfs:
         const pathSegments = ["drift_db", ...name.split("/")];
 
         try {
@@ -214,7 +227,7 @@ export class DatabaseClient implements WebSqlite {
         }
 
         break;
-      case "indexedDb": {
+      case indexedDb: {
         const request = indexedDB.deleteDatabase(name);
         await new Promise<void>((resolve, reject) => {
           request.onsuccess = () => resolve();
@@ -225,7 +238,7 @@ export class DatabaseClient implements WebSqlite {
         break;
       }
 
-      case "inMemory":
+      case inMemory:
         break; // Nothing to do here
     }
   }
@@ -253,11 +266,11 @@ export class DatabaseClient implements WebSqlite {
       let response: SimpleSuccessResponse;
 
       try {
-        response = await connection.sendRequest<
+        response = await connection._internal_sendRequest<
           DedicatedCompatibilityCheck,
           SimpleSuccessResponse
         >(
-          { t: "dedicatedCompatibilityCheck", d: dbName },
+          { t: typeDedicatedCompatibilityCheck, d: dbName },
           typeSimpleSuccessResponse,
           AbortSignal.timeout(workerInitializationTimeout),
         );
@@ -274,19 +287,19 @@ export class DatabaseClient implements WebSqlite {
       const opfsSupportsReadWriteUnsafe = result.g;
 
       if (!canUseOpfs) {
-        this.missingFeatures.add("fileSystemAccess");
+        this.#missingFeatures.add("fileSystemAccess");
       }
       if (!canUseIndexedDb) {
-        this.missingFeatures.add("indexedDb");
+        this.#missingFeatures.add("indexedDb");
       }
       if (!opfsSupportsReadWriteUnsafe) {
-        this.missingFeatures.add("createSyncAccessHandleReadWriteUnsafe");
+        this.#missingFeatures.add("createSyncAccessHandleReadWriteUnsafe");
       }
       if (!supportsSharedArrayBuffers) {
-        this.missingFeatures.add("sharedArrayBuffers");
+        this.#missingFeatures.add("sharedArrayBuffers");
       }
       if (!dedicatedWorkersCanNest) {
-        this.missingFeatures.add("dedicatedWorkersCanNest");
+        this.#missingFeatures.add("dedicatedWorkersCanNest");
       }
 
       if (canUseOpfs && supportsSharedArrayBuffers && dedicatedWorkersCanNest) {
@@ -301,11 +314,11 @@ export class DatabaseClient implements WebSqlite {
       let response: SimpleSuccessResponse;
 
       try {
-        response = await connection.sendRequest<
+        response = await connection._internal_sendRequest<
           SharedCompatibilityCheck,
           SimpleSuccessResponse
         >(
-          { t: "sharedCompatibilityCheck", d: dbName },
+          { t: typeSharedCompatibilityCheck, d: dbName },
           typeSimpleSuccessResponse,
           AbortSignal.timeout(workerInitializationTimeout),
         );
@@ -322,7 +335,7 @@ export class DatabaseClient implements WebSqlite {
       if (canUseIndexedDb) {
         available.push(DatabaseImplementation.indexedDbShared);
       } else {
-        this.missingFeatures.add("indexedDb");
+        this.#missingFeatures.add(indexedDb);
       }
 
       if (canUseOpfs) {
@@ -330,12 +343,12 @@ export class DatabaseClient implements WebSqlite {
       } else if (sharedCanSpawnDedicated) {
         // Only report OPFS as unavailable if we can spawn dedicated workers.
         // If we can't, it's known that we can't use OPFS.
-        this.missingFeatures.add("fileSystemAccess");
+        this.#missingFeatures.add("fileSystemAccess");
       }
 
       available.push(DatabaseImplementation.inMemoryShared);
       if (!sharedCanSpawnDedicated) {
-        this.missingFeatures.add("dedicatedWorkersInSharedWorkers");
+        this.#missingFeatures.add("dedicatedWorkersInSharedWorkers");
       }
     };
 
@@ -347,7 +360,7 @@ export class DatabaseClient implements WebSqlite {
     }
 
     return wrapFeatureDetectionResult({
-      missingFeatures: [...this.missingFeatures],
+      missingFeatures: [...this.#missingFeatures],
       existingDatabases: existing,
       availableImplementations: available,
     });
@@ -361,8 +374,8 @@ export class DatabaseClient implements WebSqlite {
     await this.#startWorkers();
     let connection: WorkerConnection;
     switch (implementation.access) {
-      case "throughSharedWorker":
-        if (implementation.storage == "opfs") {
+      case throughSharedWorker:
+        if (implementation.storage == opfs) {
           // Shared workers don't support OPFS, but we can spawn a dedicated
           // worker inside of the shared worker and connect through that one.
           connection = await this.#connectToDedicatedInShared();
@@ -371,13 +384,13 @@ export class DatabaseClient implements WebSqlite {
         }
 
         break;
-      case "throughDedicatedWorker":
+      case throughDedicatedWorker:
         connection = this.#connectionToDedicated!;
     }
 
     let internalFileSystemImpl: "s" | "l" | "x" | "i" | "m";
     switch (implementation.storage) {
-      case "opfs":
+      case opfs:
         if (implementation === DatabaseImplementation.opfsAtomics) {
           internalFileSystemImpl = "l";
         } else if (implementation === DatabaseImplementation.opfsShared) {
@@ -390,17 +403,17 @@ export class DatabaseClient implements WebSqlite {
           throw new Error("Unknown OPFS file system impl");
         }
         break;
-      case "indexedDb":
+      case indexedDb:
         internalFileSystemImpl = "i";
         break;
-      case "inMemory":
+      case inMemory:
         internalFileSystemImpl = "m";
         break;
     }
 
-    return connection.requestDatabase({
-      t: "open",
-      u: this.options.wasmUri,
+    return connection._internal_requestDatabase({
+      t: typeOpenRequest,
+      u: this.#options.wasmUri,
       d: name,
       s: internalFileSystemImpl,
       o: options?.onlyOpenVfs ?? false,
@@ -447,10 +460,16 @@ export class DatabaseClient implements WebSqlite {
     };
   }
 
-  async connectToExisting(port: WebEndpoint) {
+  async _internal_connectToExisting({ port, lockName }: WebEndpoint) {
     // We always have zero as a database id for these pre-existing connections, as the worker will identify it through
     // the unique send port.
-    return new RemoteDatabase(new WorkerConnection(port), 0);
+    return new RemoteDatabase(
+      new WorkerConnection({
+        _internal_port: port,
+        _internal_lockName: lockName,
+      }),
+      0,
+    );
   }
 }
 
@@ -460,8 +479,8 @@ class RemoteDatabase implements Database {
   #markClosed!: () => void;
 
   constructor(
-    readonly connection: WorkerConnection,
-    readonly databaseId: number,
+    readonly _internal_connection: WorkerConnection,
+    readonly _internal_databaseId: number,
   ) {
     this.closed = new Promise((resolve) => {
       this.#markClosed = () => {
@@ -470,7 +489,7 @@ class RemoteDatabase implements Database {
       };
     });
 
-    connection.closed.finally(this.#markClosed);
+    _internal_connection.closed.finally(this.#markClosed);
   }
 
   public get fileSystem(): FileSystem {
@@ -479,8 +498,11 @@ class RemoteDatabase implements Database {
 
   async close(): Promise<void> {
     if (!this.isClosed) {
-      this.connection.sendRequest<CloseDatabase, SimpleSuccessResponse>(
-        { t: typeCloseDatabase, d: this.databaseId },
+      this._internal_connection._internal_sendRequest<
+        CloseDatabase,
+        SimpleSuccessResponse
+      >(
+        { t: typeCloseDatabase, d: this._internal_databaseId },
         typeSimpleSuccessResponse,
       );
       this.#markClosed();
@@ -495,7 +517,10 @@ class RemoteDatabase implements Database {
     options?: DatabaseExecuteOptions,
   ) {
     const parameters = options?.parameters ?? [];
-    const rows = await this.connection.sendRequest<RunQuery, RowsResponse>(
+    const rows = await this._internal_connection._internal_sendRequest<
+      RunQuery,
+      RowsResponse
+    >(
       {
         t: typeRunQuery,
         s: sql,
@@ -504,7 +529,7 @@ class RemoteDatabase implements Database {
         z: options?.token ?? null,
         r: includeResultSet,
         c: options?.checkInTransaction ?? false,
-        d: this.databaseId,
+        d: this._internal_databaseId,
       },
       typeRowsResponse,
       options?.abort,
@@ -544,13 +569,13 @@ class RemoteDatabase implements Database {
     body: (token: number) => Promise<T>,
     options?: { abort?: AbortSignal | undefined },
   ): Promise<T> {
-    const response = await this.connection.sendRequest<
+    const response = await this._internal_connection._internal_sendRequest<
       RequestExclusiveLock,
       SimpleSuccessResponse
     >(
       {
         t: typeRequestExclusiveLock,
-        d: this.databaseId,
+        d: this._internal_databaseId,
       },
       typeSimpleSuccessResponse,
       options?.abort,
@@ -560,10 +585,13 @@ class RemoteDatabase implements Database {
     try {
       return await body(lockId);
     } finally {
-      await this.connection.sendRequest<ReleaseLock, SimpleSuccessResponse>(
+      await this._internal_connection._internal_sendRequest<
+        ReleaseLock,
+        SimpleSuccessResponse
+      >(
         {
           t: typeReleaseLock,
-          d: this.databaseId,
+          d: this._internal_databaseId,
           z: lockId,
         },
         typeSimpleSuccessResponse,
@@ -575,13 +603,13 @@ class RemoteDatabase implements Database {
     request: unknown,
     options: { token?: number | undefined; abort?: AbortSignal },
   ): Promise<unknown> {
-    const { r } = await this.connection.sendRequest<
+    const { r } = await this._internal_connection._internal_sendRequest<
       CustomRequest,
       SimpleSuccessResponse
     >(
       {
         t: typeCustomRequest,
-        d: this.databaseId,
+        d: this._internal_databaseId,
         r: request,
         z: options?.token ?? null,
       },
@@ -592,13 +620,13 @@ class RemoteDatabase implements Database {
   }
 
   async additionalConnection(): Promise<WebEndpoint> {
-    const response = await this.connection.sendRequest<
+    const response = await this._internal_connection._internal_sendRequest<
       OpenAdditionalConnection,
       EndpointResponse
     >(
       {
         t: typeOpenAdditionalConnection,
-        d: this.databaseId,
+        d: this._internal_databaseId,
       },
       typeEndpointResponse,
     );
@@ -607,16 +635,20 @@ class RemoteDatabase implements Database {
 }
 
 class RemoteFileSystem implements FileSystem {
-  constructor(readonly db: RemoteDatabase) {}
+  readonly #db: RemoteDatabase;
+
+  constructor(db: RemoteDatabase) {
+    this.#db = db;
+  }
 
   async exists(file: FileType): Promise<boolean> {
-    const { r } = await this.db.connection.sendRequest<
+    const { r } = await this.#db._internal_connection._internal_sendRequest<
       FileSystemExistsQuery,
       SimpleSuccessResponse
     >(
       {
         t: typeFileSystemExistsQuery,
-        d: this.db.databaseId,
+        d: this.#db._internal_databaseId,
         f: fileTypeIndex(file),
       },
       typeSimpleSuccessResponse,
@@ -626,13 +658,13 @@ class RemoteFileSystem implements FileSystem {
   }
 
   async readFile(file: FileType): Promise<Uint8Array> {
-    const { r } = await this.db.connection.sendRequest<
+    const { r } = await this.#db._internal_connection._internal_sendRequest<
       FileSystemAccess,
       SimpleSuccessResponse
     >(
       {
         t: typeFileSystemAccess,
-        d: this.db.databaseId,
+        d: this.#db._internal_databaseId,
         f: fileTypeIndex(file),
         b: null,
       },
@@ -646,13 +678,13 @@ class RemoteFileSystem implements FileSystem {
   async writeFile(type: FileType, content: Uint8Array): Promise<void> {
     // We need to copy since we're about to transfer contents over.
     const copy = new Uint8Array(content);
-    await this.db.connection.sendRequest<
+    await this.#db._internal_connection._internal_sendRequest<
       FileSystemAccess,
       SimpleSuccessResponse
     >(
       {
         t: typeFileSystemAccess,
-        d: this.db.databaseId,
+        d: this.#db._internal_databaseId,
         f: fileTypeIndex(type),
         b: copy.buffer,
       },

@@ -1,4 +1,11 @@
 import { WebEndpoint } from "./channel";
+import {
+  indexedDb,
+  inMemory,
+  opfs,
+  throughDedicatedWorker,
+  throughSharedWorker,
+} from "./constants";
 
 /**
  * Available locations to store database content in browsers.
@@ -42,8 +49,8 @@ export class DatabaseImplementation extends Object {
   static readonly inMemoryShared = new DatabaseImplementation(
     "inMemoryShared",
     5,
-    "inMemory",
-    "throughSharedWorker",
+    inMemory,
+    throughSharedWorker,
   );
 
   /**
@@ -52,8 +59,8 @@ export class DatabaseImplementation extends Object {
   static readonly indexedDbShared = new DatabaseImplementation(
     "indexedDbShared",
     15,
-    "indexedDb",
-    "throughSharedWorker",
+    indexedDb,
+    throughSharedWorker,
   );
 
   /**
@@ -65,8 +72,8 @@ export class DatabaseImplementation extends Object {
   static readonly opfsWithExternalLocks = new DatabaseImplementation(
     "opfsWithExternalLocks",
     22,
-    "opfs",
-    "throughDedicatedWorker",
+    opfs,
+    throughDedicatedWorker,
   );
 
   /**
@@ -76,8 +83,8 @@ export class DatabaseImplementation extends Object {
   static readonly opfsAtomics = new DatabaseImplementation(
     "opfsAtomics",
     21,
-    "opfs",
-    "throughDedicatedWorker",
+    opfs,
+    throughDedicatedWorker,
   );
 
   /**
@@ -89,8 +96,8 @@ export class DatabaseImplementation extends Object {
   static readonly opfsShared = new DatabaseImplementation(
     "opfsShared",
     25,
-    "opfs",
-    "throughSharedWorker",
+    opfs,
+    throughSharedWorker,
   );
 }
 

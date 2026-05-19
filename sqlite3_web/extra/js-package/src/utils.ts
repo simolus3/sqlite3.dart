@@ -1,4 +1,8 @@
-import { ErrorResponse, Response } from "./generated_protocol";
+import {
+  ErrorResponse,
+  Response,
+  typeErrorResponse,
+} from "./generated_protocol";
 import { FeatureDetectionResult, RemoteError, SqliteException } from "./api";
 
 export type ReleaseLock = () => void;
@@ -42,7 +46,7 @@ export function serializeError(
   }
 
   return {
-    t: "errorResponse",
+    t: typeErrorResponse,
     e: message,
     i: requestId,
     s: serializedExceptionType,

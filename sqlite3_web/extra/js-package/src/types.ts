@@ -1,32 +1,29 @@
-const typeCode = {
-  unknown: 0,
-  integer: 1,
-  bigInt: 2,
-  float: 3,
-  text: 4,
-  blob: 5,
-  null: 6,
-  boolean: 7,
-} as const;
+const typeCodeInteger = 1;
+const typeCodeBigInt = 2;
+const typeCodeFloat = 3;
+const typeCodeText = 4;
+const typeCodeBlob = 5;
+const typeCodeNull = 6;
+const typeCodeBoolean = 7;
 
 export function typeCodeForValue(value: unknown): number {
   switch (typeof value) {
     case "string":
-      return typeCode.text;
+      return typeCodeText;
     case "number":
-      return Number.isSafeInteger(value) ? typeCode.integer : typeCode.float;
+      return Number.isSafeInteger(value) ? typeCodeInteger : typeCodeFloat;
     case "bigint":
-      return typeCode.bigInt;
+      return typeCodeBigInt;
     case "boolean":
-      return typeCode.boolean;
+      return typeCodeBoolean;
     case "undefined":
-      return typeCode.null;
+      return typeCodeNull;
     // @ts-expect-error (allow fallthrough)
     case "object":
       if (value == null) {
-        return typeCode.null;
+        return typeCodeNull;
       } else if (value instanceof Uint8Array) {
-        return typeCode.blob;
+        return typeCodeBlob;
       }
     case "function":
     case "symbol":

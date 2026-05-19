@@ -643,9 +643,15 @@ final class TypeScriptCodeGenerator extends BaseCodeGenerator {
 
     typesDirectlyExtendingMessage.sortBy((parent) => subtypesOf(parent).length);
 
+    String whenCallbackName(ProtocolMessageType type) {
+      return '_internal_when${type.name}';
+    }
+
     buffer.writeln('export function dispatchMessage<T>(msg: Message, cb: {');
     for (final type in typesDirectlyExtendingMessage) {
-      buffer.writeln('  when${type.name}: (message: ${type.name}) => T,');
+      buffer.writeln(
+        '  ${whenCallbackName(type)}: (message: ${type.name}) => T,',
+      );
     }
 
     buffer
@@ -667,7 +673,9 @@ final class TypeScriptCodeGenerator extends BaseCodeGenerator {
         buffer.write('default:');
       }
 
-      buffer.writeln('return cb.when${type.name}(msg as ${type.name});');
+      buffer.writeln(
+        'return cb.${whenCallbackName(type)}(msg as ${type.name});',
+      );
     }
 
     buffer

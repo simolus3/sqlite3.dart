@@ -391,28 +391,30 @@ export function extractTransferrable(message: Message): Transferable[] {
 export function dispatchMessage<T>(
   msg: Message,
   cb: {
-    whenStartFileSystemServer: (message: StartFileSystemServer) => T;
-    whenAbortRequest: (message: AbortRequest) => T;
-    whenNotification: (message: Notification) => T;
-    whenResponse: (message: Response) => T;
-    whenRequest: (message: Request) => T;
+    _internal_whenStartFileSystemServer: (message: StartFileSystemServer) => T;
+    _internal_whenAbortRequest: (message: AbortRequest) => T;
+    _internal_whenNotification: (message: Notification) => T;
+    _internal_whenResponse: (message: Response) => T;
+    _internal_whenRequest: (message: Request) => T;
   },
 ): T {
   switch (msg.t) {
     case typeStartFileSystemServer:
-      return cb.whenStartFileSystemServer(msg as StartFileSystemServer);
+      return cb._internal_whenStartFileSystemServer(
+        msg as StartFileSystemServer,
+      );
     case typeAbortRequest:
-      return cb.whenAbortRequest(msg as AbortRequest);
+      return cb._internal_whenAbortRequest(msg as AbortRequest);
     case typeUpdateNotification:
     case typeCommitNotification:
     case typeRollbackNotification:
-      return cb.whenNotification(msg as Notification);
+      return cb._internal_whenNotification(msg as Notification);
     case typeSimpleSuccessResponse:
     case typeEndpointResponse:
     case typeRowsResponse:
     case typeErrorResponse:
-      return cb.whenResponse(msg as Response);
+      return cb._internal_whenResponse(msg as Response);
     default:
-      return cb.whenRequest(msg as Request);
+      return cb._internal_whenRequest(msg as Request);
   }
 }

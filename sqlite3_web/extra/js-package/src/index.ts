@@ -32,5 +32,5 @@ export async function connectToPort(port: WebEndpoint): Promise<Database> {
     wasmUri: "",
   });
 
-  return await client.connectToExisting(port);
+  return await client._internal_connectToExisting(port);
 }

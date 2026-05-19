@@ -17,7 +17,7 @@
   "license": "MIT",
   "scripts": {
     "watch": "tsc -b -w",
-    "build": "tsc -b && tsdown --minify",
+    "build": "tsc -b && rolldown -c rolldown.config.ts",
     "wasm:download": "node tool/download_wasm.js",
     "build:worker": "node tool/build_worker.js",
     "test": "vitest"
@@ -51,8 +51,9 @@
   "devDependencies": {
     "@tsconfig/strictest": "^2.0.8",
     "@vitest/browser-preview": "^4.1.6",
-    "tsdown": "^0.22.0",
-    "vitest": "^4.1.6",
-    "typescript": "^6.0.3"
+    "rolldown": "^1.0.1",
+    "terser": "^5.47.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
   }
 }

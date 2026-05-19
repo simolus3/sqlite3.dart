@@ -6,6 +6,7 @@ import {
   Response,
   Notification,
   dispatchMessage,
+  typeAbortRequest,
 } from "./generated_protocol";
 import {
   interpretResponseAsError,
@@ -34,18 +35,18 @@ export async function createChannel(
     { port: port2, lockName },
     {
       ...options,
-      port: port1,
-      lockName,
-      lock,
+      _internal_port: port1,
+      _internal_lockName: lockName,
+      _internal_lock: lock,
     },
   ];
 }
 
 export interface ProtocolChannelOptions {
-  port: MessagePort;
-  lockName: string | null;
-  lock?: ReleaseLock;
-  errors?: EventTarget;
+  _internal_port: MessagePort;
+  _internal_lockName: string | null;
+  _internal_lock?: ReleaseLock;
+  _internal_errors?: EventTarget;
 }
 
 export abstract class ProtocolChannel {
@@ -62,7 +63,12 @@ export abstract class ProtocolChannel {
   #closedPromise: Promise<void>;
   #markClosed!: () => void;
 
-  constructor({ port, lockName, lock, errors }: ProtocolChannelOptions) {
+  constructor({
+    _internal_port: port,
+    _internal_lockName: lockName,
+    _internal_lock: lock,
+    _internal_errors: errors,
+  }: ProtocolChannelOptions) {
     this.#port = port;
     this.#closedPromise = new Promise((resolve) => {
       this.#markClosed = () => {
@@ -106,24 +112,24 @@ export abstract class ProtocolChannel {
     const self = this;
 
     dispatchMessage(message, {
-      whenStartFileSystemServer() {
+      _internal_whenStartFileSystemServer() {
         throw new Error("Should only be a top-level message.");
       },
-      whenAbortRequest() {
+      _internal_whenAbortRequest() {
         // We don't currently support aborting requests handled on this side.
       },
-      whenNotification(notification) {
-        self.handleNotification(notification);
+      _internal_whenNotification(notification) {
+        self._internal_handleNotification(notification);
       },
-      whenResponse: function (message: Response) {
+      _internal_whenResponse: function (message: Response) {
         const entry = self.#outstandingRequests.get(message.i);
         self.#outstandingRequests.delete(message.i);
         entry?.ok(message);
       },
-      async whenRequest(message: Request) {
+      async _internal_whenRequest(message: Request) {
         let response: Response;
         try {
-          response = await self.serveRequest(message);
+          response = await self._internal_serveRequest(message);
         } catch (e) {
           response = serializeError(message.i, "Error in JS client", e);
         }
@@ -150,15 +156,17 @@ export abstract class ProtocolChannel {
     this.#heldLock?.();
   }
 
-  abstract serveRequest(request: Request): Promise<Response> | Response;
+  abstract _internal_serveRequest(
+    request: Request,
+  ): Promise<Response> | Response;
 
-  abstract handleNotification(notification: Notification): void;
+  abstract _internal_handleNotification(notification: Notification): void;
 
-  sendNotification(notification: Notification) {
+  _internal_sendNotification(notification: Notification) {
     this.#port.postMessage(notification, extractTransferrable(notification));
   }
 
-  async sendRequest<Req extends Request, Res extends Response>(
+  async _internal_sendRequest<Req extends Request, Res extends Response>(
     request: Omit<Req, "i">,
     expectedType: Res["t"],
     abort?: AbortSignal,
@@ -181,7 +189,7 @@ export abstract class ProtocolChannel {
         abort.addEventListener("abort", () => {
           if (!hasResponse && !this.#closed) {
             this.#port.postMessage({
-              t: "abort",
+              t: typeAbortRequest,
               i: id,
             } satisfies AbortRequest);
           }
