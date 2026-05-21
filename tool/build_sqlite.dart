@@ -12,6 +12,10 @@ import '../sqlite3/hook/build.dart' as hook;
 
 final _limitConcurrency = Pool(Platform.numberOfProcessors);
 
+const _kSQLiteMode = 'sqlite';
+const _kSQLite3MCMode = 'sqlite3mc';
+const _kSQLCipherMode = 'sqlcipher';
+
 /// Invokes `package:sqlite3` build hooks for multiple operating systems and
 /// architectures, merging outputs into `sqlite3-compiled/`.
 void main(List<String> args) async {
@@ -54,17 +58,17 @@ void main(List<String> args) async {
   final buildTasks = <Future<void>>[];
 
   for (final mode in [
-    // 'sqlite3',
-    // 'sqlite3mc',
-    'sqlcipher',
+    _kSQLiteMode,
+    _kSQLite3MCMode,
+    _kSQLCipherMode,
   ]) {
     final sourceFileName = switch (mode) {
-      "sqlite3" || "sqlcipher" => "sqlite3.c",
-      "sqlite3mc" => 'sqlite3mc_amalgamation.c',
+      _kSQLiteMode || _kSQLCipherMode => "sqlite3.c",
+      _kSQLite3MCMode => 'sqlite3mc_amalgamation.c',
       _ => throw UnimplementedError(),
     };
 
-    final sourcePath = fs.currentDirectory.parent
+    final sourceCFilePath = fs.currentDirectory.parent
         .childDirectory('sqlite-src')
         .childDirectory(mode)
         .childFile(sourceFileName)
@@ -121,15 +125,8 @@ void main(List<String> args) async {
             workspacePubspec: PackageUserDefinesSource(
           defines: {
             'source': 'source',
-            'path': p.relative(sourcePath, from: fs.currentDirectory.path),
-            'defines': {
-              'defines': <String, String?>{
-                'SQLITE_HAS_CODEC': null,
-                'SQLITE_TEMP_STORE': "2",
-                'SQLITE_EXTRA_INIT': 'sqlcipher_extra_init',
-                'SQLITE_EXTRA_SHUTDOWN': 'sqlcipher_extra_shutdown',
-              }
-            }
+            'path': p.relative(sourceCFilePath, from: fs.currentDirectory.path),
+            'library_type': mode,
           },
           basePath: fs.currentDirectory.uri,
         )),

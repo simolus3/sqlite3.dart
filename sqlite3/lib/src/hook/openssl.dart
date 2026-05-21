@@ -39,8 +39,9 @@ Map<String, String> environment = {};
 
 Future<Directory?> buildOpenSSL(
   BuildInput input,
-  BuildOutputBuilder output,
-) async {
+  BuildOutputBuilder output, {
+  required Directory openSslSrcDir,
+}) async {
   if (!input.config.buildCodeAssets) return null;
 
   final workDir = input.outputDirectory;

@@ -44,9 +44,16 @@ sealed class SqliteBinary {
       case 'executable':
         return SimpleBinary.fromExecutable;
       case 'source':
+        final libraryTypeName = userDefines['library_type'] as String?;
+        final libraryType = libraryTypeName != null
+            ? LibraryType.fromName(libraryTypeName)
+            : LibraryType.sqlite3;
+
         return CompileSqlite(
           sourceFile: userDefines.path('path')!.toFilePath(),
+          libraryType: libraryType,
           defines: CompilerDefines.parse(
+            libraryType,
             userDefines,
             input.config.code.targetOS,
           ),
@@ -293,13 +300,20 @@ final class PrecompiledForTesting extends PrecompiledBinary {
 }
 
 final class CompileSqlite implements SqliteBinary {
+  /// The type of build
+  final LibraryType libraryType;
+
   /// Path to the `sqlite3.c` source file to compile.
   final String sourceFile;
 
   /// User-defines for the SQLite compilation.
   final CompilerDefines defines;
 
-  CompileSqlite({required this.sourceFile, required this.defines});
+  CompileSqlite({
+    required this.libraryType,
+    required this.sourceFile,
+    required this.defines,
+  });
 }
 
 /// If we're compiling SQLite from source, a way to obtain these sources.
@@ -344,7 +358,11 @@ extension type const CompilerDefines(Map<String, String?> flags)
     return CompilerDefines({...flags, ...other.flags});
   }
 
-  static CompilerDefines parse(HookInputUserDefines defines, OS targetOS) {
+  static CompilerDefines parse(
+    LibraryType libraryType,
+    HookInputUserDefines defines,
+    OS targetOS,
+  ) {
     final obj = defines['defines'];
 
     // Include default options when not explicitly disabled.
@@ -362,7 +380,7 @@ extension type const CompilerDefines(Map<String, String?> flags)
     };
 
     final start = includeDefaults
-        ? CompilerDefines.defaults(targetOS)
+        ? CompilerDefines.defaults(targetOS, libraryType)
         : const CompilerDefines({});
 
     print("----------------------");
@@ -409,15 +427,24 @@ extension type const CompilerDefines(Map<String, String?> flags)
     return CompilerDefines(entries);
   }
 
-  static CompilerDefines defaults(OS targetOS) {
+  static CompilerDefines defaults(OS targetOS, LibraryType libraryType) {
     final defines = _parseLines(const LineSplitter().convert(_defaultDefines));
     if (targetOS == OS.windows) {
       defines['SQLITE_API'] = '__declspec(dllexport)';
     }
 
-    if (targetOS == OS.macOS || targetOS == OS.iOS) {
-      defines['SQLCIPHER_CRYPTO_CC'] = null;
+    // Minimum extra flags to build SQLCipher
+    if (libraryType == LibraryType.sqlcipher) {
+      defines.addAll({
+        'SQLITE_HAS_CODEC': null,
+        'SQLITE_TEMP_STORE': "2",
+        'SQLITE_EXTRA_INIT': 'sqlcipher_extra_init',
+        'SQLITE_EXTRA_SHUTDOWN': 'sqlcipher_extra_shutdown',
+        if (targetOS == OS.macOS || targetOS == OS.iOS)
+          'SQLCIPHER_CRYPTO_CC': null,
+      });
     }
+
     return defines;
   }
 }
