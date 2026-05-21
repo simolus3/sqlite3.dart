@@ -12,7 +12,7 @@ import '../sqlite3/hook/build.dart' as hook;
 
 final _limitConcurrency = Pool(Platform.numberOfProcessors);
 
-const _kSQLiteMode = 'sqlite';
+const _kSQLiteMode = 'sqlite3';
 const _kSQLite3MCMode = 'sqlite3mc';
 const _kSQLCipherMode = 'sqlcipher';
 
@@ -126,12 +126,7 @@ void main(List<String> args) async {
           defines: {
             'source': 'source',
             'path': p.relative(sourceCFilePath, from: fs.currentDirectory.path),
-            'library_type': switch (mode) {
-              _kSQLiteMode => 'sqlite3',
-              _kSQLite3MCMode => 'sqlite3mc',
-              _kSQLCipherMode => 'sqlcipher',
-              _ => throw UnimplementedError(),
-            },
+            'library_type': mode,
           },
           basePath: fs.currentDirectory.uri,
         )),
