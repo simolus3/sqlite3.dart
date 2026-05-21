@@ -175,11 +175,11 @@ void main(List<String> args) async {
 const _osToAbis = {
   // TODO: Recover linux 32 bits
   OS.linux: [
-    // Architecture.arm,
-    // Architecture.arm64,
-    // Architecture.ia32,
+    Architecture.arm,
+    Architecture.arm64,
+    Architecture.ia32,
     Architecture.x64,
-    // Architecture.riscv64,
+    Architecture.riscv64,
   ],
   OS.android: [
     Architecture.arm,
@@ -194,10 +194,10 @@ const _osToAbis = {
   ],
   OS.macOS: [
     Architecture.arm64,
-    // Architecture.x64,
+    Architecture.x64,
   ],
   OS.iOS: [
     Architecture.arm64,
-    //   // Note: There's a special check to also compile simulator builds for x64
+    // Note: There's a special check to also compile simulator builds for x64
   ],
 };

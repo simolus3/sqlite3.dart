@@ -16,8 +16,6 @@ import 'utils.dart';
 sealed class SqliteBinary {
   static SqliteBinary forBuild(BuildInput input) {
     final userDefines = input.userDefines;
-    // print("USERDEFINES");
-    // print(userDefines['source']);
     switch (userDefines['source']) {
       case null:
       case 'sqlite3':
@@ -383,16 +381,6 @@ extension type const CompilerDefines(Map<String, String?> flags)
         ? CompilerDefines.defaults(targetOS, libraryType)
         : const CompilerDefines({});
 
-    print("----------------------");
-    print("OBJ: $obj");
-    print("DEFINES START:");
-    print(start);
-    if (additionalDefines != null) {
-      print("DEFINES ADDITIONAL:");
-      print(additionalDefines);
-    }
-    print("------------------------");
-
     return switch (additionalDefines) {
       final added? => start.overrideWith(added),
       null => start,
@@ -440,6 +428,7 @@ extension type const CompilerDefines(Map<String, String?> flags)
         'SQLITE_TEMP_STORE': "2",
         'SQLITE_EXTRA_INIT': 'sqlcipher_extra_init',
         'SQLITE_EXTRA_SHUTDOWN': 'sqlcipher_extra_shutdown',
+        // Link with CommonCrypto on Apple platforms
         if (targetOS == OS.macOS || targetOS == OS.iOS)
           'SQLCIPHER_CRYPTO_CC': null,
       });
