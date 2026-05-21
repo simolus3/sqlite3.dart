@@ -1,0 +1,59 @@
+{
+  "name": "sqlite3-web",
+  "version": "0.1.2",
+  "description": "Optimized SQLite and SQLite3 Multiple Ciphers builds for the web.",
+  "bugs": {
+    "url": "https://github.com/simolus3/sqlite3.dart/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/simolus3/sqlite3.dart.git",
+    "directory": "sqlite3_web/extra/js-package"
+  },
+  "keywords": [
+    "sqlite"
+  ],
+  "author": "Simon Binder",
+  "license": "MIT",
+  "scripts": {
+    "watch": "tsc -b -w",
+    "build": "tsc -b && rolldown -c rolldown.config.ts",
+    "wasm:download": "node tool/download_wasm.js",
+    "build:worker": "node tool/build_worker.js",
+    "test": "vitest"
+  },
+  "files": [
+    "assets/",
+    "dist/",
+    "lib/",
+    "src/",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "development": {
+        "module-sync": "./lib/index.js"
+      },
+      "production": {
+        "module-sync": "./dist/index.mjs"
+      },
+      "module-sync": "./dist/index.mjs"
+    },
+    "./worker.js": "./assets/worker.js",
+    "./sqlite3.wasm": "./assets/sqlite3.wasm",
+    "./sqlite3mc.wasm": "./assets/sqlite3mc.wasm"
+  },
+  "packageManager": "pnpm@11.1.2",
+  "devDependencies": {
+    "@tsconfig/strictest": "^2.0.8",
+    "@vitest/browser-preview": "^4.1.6",
+    "rolldown": "^1.0.1",
+    "terser": "^5.47.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}

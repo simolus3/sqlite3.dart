@@ -1,3 +1,4 @@
+import '../compile_options.dart';
 import '../constants.dart';
 import '../result_set.dart';
 import '../statement.dart';
@@ -210,7 +211,10 @@ base class StatementImplementation extends CommonPreparedStatement {
     final rc = switch (param) {
       null => statement.sqlite3_bind_null(i),
       int() => statement.sqlite3_bind_int64(i, param),
-      BigInt() => statement.sqlite3_bind_int64BigInt(i, param.checkRange),
+      BigInt() when supportDartBigInts => statement.sqlite3_bind_int64BigInt(
+        i,
+        param.checkRange,
+      ),
       bool() => statement.sqlite3_bind_int64(i, param ? 1 : 0),
       double() => statement.sqlite3_bind_double(i, param),
       String() => statement.sqlite3_bind_text(i, param),

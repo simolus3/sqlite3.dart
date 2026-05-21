@@ -1,0 +1,7 @@
+node_modules/
+pnpm-lock.yaml
+assets/
+lib/
+test/worker.js
+dist/
+*.tsbuildinfo

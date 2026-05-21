@@ -8,6 +8,9 @@ extension BigIntRangeCheck on BigInt {
     }
     return this;
   }
+
+  static final bigIntMinValue64 = -(BigInt.one << 63);
+  static final bigIntMaxValue64 = (BigInt.one << 63) - BigInt.one;
 }
 
 int eTextRep(bool deterministic, bool directOnly, bool subtype) {

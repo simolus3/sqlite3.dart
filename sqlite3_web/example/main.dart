@@ -5,8 +5,8 @@ import 'package:sqlite3_web/sqlite3_web.dart';
 
 void main() async {
   final sqlite = WebSqlite.open(
-    workers: WorkerConnector.defaultWorkers(Uri.parse('worker.dart.js')),
-    wasmModule: Uri.parse('sqlite3.wasm'),
+    workers: WorkerConnector.defaultWorkers('worker.dart.js'),
+    wasmModule: 'sqlite3.wasm',
   );
 
   final features = await sqlite.runFeatureDetection();

@@ -39,7 +39,9 @@ abstract class _WorkerEnvironment<T extends WorkerGlobalScope>
   final T scope;
 
   @override
-  final WorkerConnector connector = WorkerConnector.defaultWorkers(Uri.base);
+  final WorkerConnector connector = WorkerConnector.defaultWorkers(
+    (globalContext as WorkerGlobalScope).location.href,
+  );
 
   _WorkerEnvironment() : scope = globalContext as T;
 }
@@ -141,7 +143,7 @@ abstract interface class WorkerConnector {
   ///
   /// The [uri] must point to a compiled Dart program using
   /// [WebSqlite.workerEntrypoint] to receive messages.
-  factory WorkerConnector.defaultWorkers(Uri uri) {
+  factory WorkerConnector.defaultWorkers(String uri) {
     return _DefaultWorkerConnector(uri);
   }
 
@@ -167,9 +169,9 @@ abstract interface class WorkerHandle {
 }
 
 final class _DefaultWorkerConnector implements WorkerConnector {
-  final Uri _worker;
+  final String _workerUrl;
 
-  _DefaultWorkerConnector(this._worker);
+  _DefaultWorkerConnector(this._workerUrl);
 
   @override
   WorkerHandle? spawnDedicatedWorker() {
@@ -178,7 +180,7 @@ final class _DefaultWorkerConnector implements WorkerConnector {
     }
 
     return _DedicatedWorker(
-      Worker(_worker.toString().toJS, WorkerOptions(name: 'sqlite3_worker')),
+      Worker(_workerUrl.toJS, WorkerOptions(name: 'sqlite3_worker')),
     );
   }
 
@@ -188,7 +190,7 @@ final class _DefaultWorkerConnector implements WorkerConnector {
       return null;
     }
 
-    final worker = SharedWorker(_worker.toString().toJS);
+    final worker = SharedWorker(_workerUrl.toJS);
     worker.port.start();
     return _SharedWorker(worker);
   }

@@ -1,0 +1,146 @@
+import { test as baseTest, describe, onTestFinished, expect } from "vitest";
+
+import type * as sqlite from "../lib/index";
+import type { WebSqlite, ConnectOptions, Database } from "../lib/index";
+
+// @ts-expect-error
+import workerUrl from "../assets/worker.js?url";
+// @ts-expect-error
+import wasmCiphersUrl from "../assets/sqlite3mc.wasm?url";
+
+export function sqliteTestCases(module: typeof sqlite) {
+  const test = baseTest.extend<{ sqlite: WebSqlite }>({
+    sqlite: async ({}, use) => {
+      await use(
+        module.openWebSqlite({
+          workers: module.defaultWorkerConnector(workerUrl),
+          wasmUri: wasmCiphersUrl,
+        }),
+      );
+    },
+  });
+
+  const databaseTest = test.extend<{
+    database: {
+      name: string;
+      connect: (options?: ConnectOptions) => Promise<Database>;
+    };
+  }>({
+    database: async ({ sqlite }, use) => {
+      const name = `db-${crypto.randomUUID()}`;
+
+      await use({
+        name,
+        connect: async (options) => {
+          const db = await sqlite.connect(
+            name,
+            module.DatabaseImplementation.inMemoryShared,
+            options,
+          );
+          onTestFinished(() => db.close());
+          return db;
+        },
+      });
+    },
+  });
+
+  test("feature detection", async ({ sqlite }) => {
+    const results = await sqlite.runFeatureDetection();
+
+    console.log(`${results}`);
+  });
+
+  describe("database", () => {
+    databaseTest("smoke test", async ({ database }) => {
+      const db = await database.connect();
+      const { result } = await db.select("SELECT 1");
+
+      expect(result).toStrictEqual({
+        columnNames: ["1"],
+        tableNames: null,
+        rows: [[1]],
+      });
+    });
+
+    databaseTest("execute", async ({ database }) => {
+      const db = await database.connect();
+      const { result } = await db.execute("CREATE TABLE foo (bar);");
+
+      expect(result).toStrictEqual(null);
+    });
+
+    databaseTest("locks and aborts", async ({ database }) => {
+      const db = await database.connect();
+
+      const [token, releaseToken] = await new Promise<[number, () => void]>(
+        (resolve) => {
+          db.requestLock(async (token) => {
+            return new Promise<void>((returnToken) => {
+              resolve([token, returnToken]);
+            });
+          });
+        },
+      );
+
+      await db.execute("SELECT 1", { token });
+      await expect(
+        db.select("SELECT 2", { abort: AbortSignal.abort() }),
+      ).rejects.toThrow();
+      await expect(
+        db.select("SELECT 3", { abort: AbortSignal.timeout(50) }),
+      ).rejects.toThrow();
+
+      const completesEventually = db.select("SELECT 3");
+      releaseToken();
+      await completesEventually;
+    });
+
+    databaseTest("vfs access", async ({ database }) => {
+      const db = await database.connect({ onlyOpenVfs: true });
+      const fs = db.fileSystem;
+
+      expect(await fs.exists("database")).toBeFalsy();
+      await db.execute("pragma user_version = 2");
+      expect(await fs.exists("database")).toBeTruthy();
+
+      const bytes = await fs.readFile("database");
+      expect(bytes).toHaveLength(8192); // default page size
+    });
+
+    databaseTest("additional connection", async ({ database }) => {
+      const firstInstance = await database.connect();
+      await firstInstance.execute("CREATE TABLE foo (BAR INTEGER);");
+      await firstInstance.execute("INSERT INTO foo DEFAULT VALUES");
+
+      const endpoint = await firstInstance.additionalConnection();
+      const second = await module.connectToPort(endpoint);
+      expect(
+        (await second.select("SELECT * FROM foo")).result.rows,
+      ).toHaveLength(1);
+      await second.execute("DELETE FROM foo");
+
+      expect(
+        (await firstInstance.select("SELECT * FROM foo")).result.rows,
+      ).toHaveLength(0);
+    });
+
+    baseTest("encryption", async () => {
+      const sqlite = module.openWebSqlite({
+        workers: module.defaultWorkerConnector(workerUrl),
+        wasmUri: wasmCiphersUrl,
+        handleCustomRequest: undefined,
+      });
+      const db = await sqlite.connect(
+        `db-${crypto.randomUUID()}`,
+        module.DatabaseImplementation.inMemoryShared,
+        { enableEncryptedVfs: true },
+      );
+
+      const getCipher = await db.select("pragma cipher");
+      expect(getCipher.result.rows).toStrictEqual([["chacha20"]]);
+
+      await db.execute("pragma key = 'foo'");
+      await db.execute("pragma user_version = 2");
+    });
+  });
+}

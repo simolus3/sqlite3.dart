@@ -7,7 +7,7 @@ on:
       - 'sqlite3_test-[0-9]+.[0-9]+.[0-9]+*'
       - 'sqlite3_web-[0-9]+.[0-9]+.[0-9]+*'
       - 'sqlite3_connection_pool-[0-9]+.[0-9]+.[0-9]+*'
-      - 'sqlite3-sqlcipher-[0-9]+.[0-9]+.[0-9]+*'
+      - 'sqlite3_web_js-[0-9]+.[0-9]+.[0-9]+*'
 
 permissions: {}
 
@@ -113,11 +113,61 @@ jobs:
   #       artifact-ids: ${{ needs.fetch_sqlite.outputs.pool_libs_artifact_id }}
   #       path: sqlite3_connection_pool/lib/src/precompiled/
 
-  #   - name: Pub get
-  #     run: dart pub get
-  #   - name: Publish - dry run
-  #     run: dart pub publish --dry-run
-  #     working-directory: sqlite3_connection_pool
-  #   - name: Publish to pub.dev
-  #     run: dart pub publish -f
-  #     working-directory: sqlite3_connection_pool
+    - name: Pub get
+      run: dart pub get
+    - name: Publish - dry run
+      run: dart pub publish --dry-run
+      working-directory: sqlite3_connection_pool
+    - name: Publish to pub.dev
+      run: dart pub publish -f
+      working-directory: sqlite3_connection_pool
+
+  publish_js_package:
+    needs: [fetch_sqlite]
+    permissions:
+      id-token: write # Needed to create OIDC token for npm trusted publishing
+    if: "${{ startsWith(github.ref_name, 'sqlite3_web_js-') }}"
+    runs-on: ubuntu-latest
+    environment: 'npm'
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
+    - uses: dart-lang/setup-dart@v1
+
+    - name: Pub get
+      run: dart pub get
+
+    - name: Download compiled sqlite3
+      uses: actions/download-artifact@v8
+      with:
+        github-token: ${{ github.token }}
+        artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
+        path: sqlite-compiled
+
+    - name: Copy SQLite libraries
+      run: |
+        mkdir sqlite3_web/extra/js-package/assets
+        cp sqlite-compiled/sqlite3.wasm sqlite3_web/extra/js-package/assets/
+        cp sqlite-compiled/sqlite3mc.wasm sqlite3_web/extra/js-package/assets/
+
+    - name: Setup node
+      uses: actions/setup-node@v6
+      with:
+        node-version: latest
+        package-manager-cache: false
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      with:
+        package_json_file: sqlite3_web/extra/js-package/package.json
+
+    - name: Build pnpm package
+      working-directory: sqlite3_web/extra/js-package
+      run: |
+        pnpm build:worker
+        pnpm build
+
+    - name: Publish to npmjs.com
+      working-directory: sqlite3_web/extra/js-package
+      run: pnpm publish --no-git-checks

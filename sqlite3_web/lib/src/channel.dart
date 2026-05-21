@@ -194,7 +194,6 @@ abstract base class ProtocolChannel extends RequestHandler {
 
     final response = await completer.future;
     hasResponse = true;
-    hasResponse = true;
     if (response.type == expectedType.name) {
       return response as Res;
     } else {

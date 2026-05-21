@@ -121,7 +121,12 @@ class MessageSerializer {
 
   String _readString(int offset) {
     final length = dataView.getInt32(offset);
-    return utf8.decode(buffer.asUint8ListSlice(offset + 4, length));
+    // Browsers don't allow TextDecoder.decode on shared array buffers
+    // (https://github.com/whatwg/encoding/issues/172). So, we copy.
+    final originalSlice = buffer.asUint8ListSlice(offset + 4, length);
+    final copy = Uint8List.fromList(originalSlice);
+
+    return utf8.decode(copy);
   }
 
   void _writeString(int offset, String data) {

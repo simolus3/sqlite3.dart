@@ -1,10 +1,10 @@
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:path/path.dart' as p;
 import 'package:typed_data/typed_buffers.dart';
 
 import 'constants.dart';
+import 'platform/platform.dart';
 import 'vfs.dart';
 import 'utils.dart';
 
@@ -32,7 +32,7 @@ final class InMemoryFileSystem extends BaseVirtualFileSystem {
 
   @override
   String xFullPathName(String path) {
-    return p.url.normalize('/$path');
+    return pathToAbsoluteAndNormalize(path);
   }
 
   @override

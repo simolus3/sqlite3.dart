@@ -1,0 +1,15 @@
+{
+    "extends": "@tsconfig/strictest/tsconfig.json",
+    "include": ["src/"],
+    "compilerOptions": {
+        "rootDir": "src/",
+        "outDir": "lib",
+        "declarationDir": "lib",
+        "declaration": true,
+        "noImplicitAny": true,
+        "module": "esnext",
+        "moduleDetection": "force",
+        "sourceMap": true,
+        "composite": true
+    }
+}

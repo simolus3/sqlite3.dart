@@ -245,6 +245,30 @@ jobs:
         run: |
           dart run tool/write_asset_hashes.dart
           dart run tool/hook_overrides.dart compiled
+
+      - name: Copy SQLite libraries
+        run: |
+          mkdir sqlite3_web/extra/js-package/assets
+          cp sqlite-compiled/sqlite3.wasm sqlite3_web/extra/js-package/assets/
+          cp sqlite-compiled/sqlite3mc.wasm sqlite3_web/extra/js-package/assets/
+
+      - name: Setup node
+        uses: actions/setup-node@v6
+        with:
+          node-version: latest
+          package-manager-cache: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+        with:
+          package_json_file: sqlite3_web/extra/js-package/package.json
+
+      - name: Build pnpm package
+        working-directory: sqlite3_web/extra/js-package
+        run: |
+          pnpm build:worker
+          pnpm build
+
       - name: Web tests
         run: |
           cp ../sqlite-compiled/*.wasm web/

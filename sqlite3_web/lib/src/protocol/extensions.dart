@@ -146,14 +146,14 @@ extension RowsResponseUtils on RowsResponse {
     required bool autoCommit,
     required int lastInsertRowId,
   }) {
-    final jsRows = <JSArray>[];
+    final jsRows = JSArray<JSArray<JSAny?>>.withLength(resultSet.length);
     final columns = resultSet.columnNames.length;
     final typeVector = Uint8List(resultSet.length * columns);
 
     for (var i = 0; i < resultSet.length; i++) {
       final row = resultSet.rows[i];
       assert(row.length == columns);
-      final jsRow = List<JSAny?>.filled(row.length, null);
+      final jsRow = JSArray<JSAny?>.withLength(row.length);
 
       for (var j = 0; j < columns; j++) {
         final (code, value) = TypeCode.encodeValue(row[j]);
@@ -162,13 +162,8 @@ extension RowsResponseUtils on RowsResponse {
         typeVector[i * columns + j] = code.index;
       }
 
-      jsRows.add(jsRow.toJS);
+      jsRows[i] = jsRow;
     }
-
-    final rows = <JSArray>[
-      for (final row in resultSet.rows)
-        <JSAny?>[for (final column in row) column.jsify()].toJS,
-    ].toJS;
 
     JSArray<JSString?>? tableNames;
     if (resultSet.tableNames case var dartTableNames?) {
@@ -183,7 +178,7 @@ extension RowsResponseUtils on RowsResponse {
       ].toJS,
       tableNames: tableNames,
       typeVector: typeVector.buffer.toJS,
-      rows: rows,
+      rows: jsRows,
       autoCommit: autoCommit,
       lastInsertRowId: lastInsertRowId,
       requestId: requestId,

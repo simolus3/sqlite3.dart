@@ -2,7 +2,6 @@ import 'dart:js_interop';
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
-import 'package:path/path.dart' as p;
 import 'package:web/web.dart'
     show
         FileSystemDirectoryHandle,
@@ -15,6 +14,7 @@ import '../../constants.dart';
 import '../../vfs.dart';
 import '../js_interop.dart';
 import '../../in_memory_vfs.dart';
+import '../../platform/web.dart';
 
 @internal
 enum FileType {
@@ -82,7 +82,7 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
     FileSystemDirectoryHandle? parent;
     var opfsDirectory = await storage.directory;
 
-    for (final segment in p.split(path)) {
+    for (final segment in pathComponents(path)) {
       parent = opfsDirectory;
       opfsDirectory = await opfsDirectory.getDirectory(segment, create: create);
     }
@@ -127,13 +127,19 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
 
     try {
       (parent, handle) = await _resolveDir(path, create: false);
-    } on DOMException catch (e) {
-      if (e.name == 'NotFoundError' || e.name == 'TypeMismatchError') {
-        // Directory doesn't exist, ignore.
-        return;
-      } else {
-        rethrow;
+      // ignore: invalid_runtime_check_with_js_interop_types
+    } on JSAny catch (e) {
+      // TODO: Remove type clause (needs Dart 3.12 as a minimum version)
+      if (e.isA<DOMException>()) {
+        final asDomException = e as DOMException;
+        if (asDomException.name == 'NotFoundError' ||
+            asDomException.name == 'TypeMismatchError') {
+          // Directory doesn't exist, ignore.
+          return;
+        }
       }
+
+      rethrow;
     }
 
     if (parent != null) {
@@ -210,7 +216,7 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
 
   @override
   String xFullPathName(String path) {
-    return p.url.normalize('/$path');
+    return pathToAbsoluteAndNormalize(path);
   }
 
   @override

@@ -9,8 +9,8 @@ import 'package:web/web.dart';
 
 import 'controller.dart';
 
-final sqlite3WasmUri = Uri.parse('sqlite3.wasm');
-final workerUri = Uri.parse('worker.dart.js');
+const sqlite3WasmUri = 'sqlite3.wasm';
+const workerUri = 'worker.dart.js';
 const databaseName = 'database';
 const additionalOptions = 'test-additional-options';
 
