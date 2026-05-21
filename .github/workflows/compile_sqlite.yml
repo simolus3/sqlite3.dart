@@ -97,7 +97,6 @@ jobs:
 
   build_with_sanitizers:
     needs: [download_sqlite]
-    if: false
     runs-on: ubuntu-latest
     outputs:
       libs: ${{ steps.upload.outputs.artifact-id }}

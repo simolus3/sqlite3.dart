@@ -62,56 +62,56 @@ jobs:
 
         gh release upload "$tag" sqlite-compiled/*
 
-  # publish_sqlite3:
-  #   needs: [prepare_release]
-  #   permissions:
-  #     id-token: write # Needed to create OIDC token for pub.dev
-  #   if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
-  #   uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
-  #   with:
-  #     environment: 'pub.dev'
-  #     working-directory: sqlite3/
+  publish_sqlite3:
+    needs: [prepare_release]
+    permissions:
+      id-token: write # Needed to create OIDC token for pub.dev
+    if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      environment: 'pub.dev'
+      working-directory: sqlite3/
 
-  # publish_sqlite3_test:
-  #   needs: [prepare_release]
-  #   permissions:
-  #     id-token: write # Needed to create OIDC token for pub.dev
-  #   if: "${{ startsWith(github.ref_name, 'sqlite3_test-') }}"
-  #   uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
-  #   with:
-  #     environment: 'pub.dev'
-  #     working-directory: sqlite3_test/
+  publish_sqlite3_test:
+    needs: [prepare_release]
+    permissions:
+      id-token: write # Needed to create OIDC token for pub.dev
+    if: "${{ startsWith(github.ref_name, 'sqlite3_test-') }}"
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      environment: 'pub.dev'
+      working-directory: sqlite3_test/
 
-  # publish_sqlite3_web:
-  #   needs: [prepare_release]
-  #   permissions:
-  #     id-token: write # Needed to create OIDC token for pub.dev
-  #   if: "${{ startsWith(github.ref_name, 'sqlite3_web-') }}"
-  #   uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
-  #   with:
-  #     environment: 'pub.dev'
-  #     working-directory: sqlite3_web/
+  publish_sqlite3_web:
+    needs: [prepare_release]
+    permissions:
+      id-token: write # Needed to create OIDC token for pub.dev
+    if: "${{ startsWith(github.ref_name, 'sqlite3_web-') }}"
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      environment: 'pub.dev'
+      working-directory: sqlite3_web/
 
-  # publish_sqlite3_connection_pool:
-  #   needs: [fetch_sqlite, prepare_release]
-  #   permissions:
-  #     id-token: write # Needed to create OIDC token for pub.dev
-  #   if: "${{ startsWith(github.ref_name, 'sqlite3_connection_pool-') }}"
-  #   runs-on: ubuntu-latest
-  #   environment: 'pub.dev'
-  #   # This can't use the workflow because we need to download assets to include in
-  #   # the package.
-  #   steps:
-  #   - uses: actions/checkout@v6
-  #     with:
-  #       persist-credentials: false
-  #   - uses: dart-lang/setup-dart@v1 # This will request an OIDC token for pub.dev
+  publish_sqlite3_connection_pool:
+    needs: [fetch_sqlite, prepare_release]
+    permissions:
+      id-token: write # Needed to create OIDC token for pub.dev
+    if: "${{ startsWith(github.ref_name, 'sqlite3_connection_pool-') }}"
+    runs-on: ubuntu-latest
+    environment: 'pub.dev'
+    # This can't use the workflow because we need to download assets to include in
+    # the package.
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
+    - uses: dart-lang/setup-dart@v1 # This will request an OIDC token for pub.dev
 
-  #   - name: Download connection pool libraries
-  #     uses: actions/download-artifact@v8
-  #     with:
-  #       artifact-ids: ${{ needs.fetch_sqlite.outputs.pool_libs_artifact_id }}
-  #       path: sqlite3_connection_pool/lib/src/precompiled/
+    - name: Download connection pool libraries
+      uses: actions/download-artifact@v8
+      with:
+        artifact-ids: ${{ needs.fetch_sqlite.outputs.pool_libs_artifact_id }}
+        path: sqlite3_connection_pool/lib/src/precompiled/
 
     - name: Pub get
       run: dart pub get
