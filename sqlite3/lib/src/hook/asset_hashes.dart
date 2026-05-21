@@ -9,15 +9,15 @@
 const String? releaseTag = 'sqlite3-sqlcipher-3.3.2';
 
 const Map<String, String> assetNameToSha256Hash = {
-  'libsqlcipher.arm.android.so': '941ec977eef2d7e51fcf1005304069772612258dccd70edc2aacb829f47da138',
-  'libsqlcipher.arm64.android.so': 'af77d7d8be5336d6768b1eb81f1f5b4e84f7cefd1c74d34d4904d31282fe67d3',
+  'libsqlcipher.arm.android.so': '2eadf86bc294585fada0ac9f4267e30c92cd13b0e1600633ea5aed2420a320cf',
+  'libsqlcipher.arm64.android.so': '805cb1f8ca5e9bc358205d1d03f943601a172b2dfe01d3342de8bb6ff587f58b',
   'libsqlcipher.arm64.ios.dylib': 'bd94a9cdb9a2d4a5312fbea169679aaa7d4186b73ff30e726aac04e84bf70e71',
   'libsqlcipher.arm64.ios_sim.dylib': '3a11f40c21c79e9d0cab6b084bc2764864f008b92baa8b6a330ad503816dd114',
   'libsqlcipher.arm64.macos.dylib': '2ce44e43da3f6e7ac0d0cd39bfaabc35dfe10f9e9db713ce587aa0d5446f302d',
-  'libsqlcipher.ia32.android.so': '9828f82ed144de73e15c9102e01d71e1cf736dd8ef67c3f82f723b2124617c2e',
-  'libsqlcipher.x64.android.so': '15577d744643ba80f7578b47c6f1481957482faa2caf3dbadbeea99df08d066d',
+  'libsqlcipher.ia32.android.so': '26e9db6dfd182493adcb92602c0b7e5d411cafcc68bf2e5b5a4bcfe6cdabd18d',
+  'libsqlcipher.x64.android.so': 'e7fd186037357a8421125b872873073f18b5277131c743ee5ce2594c3cecacc6',
   'libsqlcipher.x64.ios_sim.dylib': '2b9dc11ba52bba90c7d0d933185462c9f9ca949d498b1e690852e6fccdf32933',
-  'libsqlcipher.x64.linux.so': 'a8f36a48002e202402cca11d1e22de08f40af0c893559640d9c8c4c27f8ea347',
+  'libsqlcipher.x64.linux.so': '74af90ec30afa80407ed702cf1d8ff163ec3b0d72c11651ddc5f34a400826314',
   'sqlite3.debug.wasm': '9a942f7c42247e6463725b80bafc3a3f5d1ff6a6d2d27ef1ba1b06a313bf0a2e',
   'sqlite3.wasm': 'cb6b6b3a6d6cd912ef3b95ab995714a4e91694aa9a9d1cd15542314fb44982d0',
   'sqlite3mc.wasm': '4493f8b822215a3ac50364deb0e5a0491bd6ec537c0f79ee2ef1fb02575ffbdd',
