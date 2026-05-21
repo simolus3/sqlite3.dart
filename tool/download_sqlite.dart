@@ -12,6 +12,11 @@ const sqlcipherPath = 'sqlcipher-amalgamation-$sqlcipherVersion';
 const sqlCipherSource =
     'https://github.com/chehrlic/sqlcipher-amalgamation/archive/refs/tags/v$sqlcipherVersion.zip';
 
+const openSslVersion = '3.6.2';
+const openSslSource =
+    'https://github.com/openssl/openssl/releases/download/openssl-$openSslVersion/openssl-$openSslVersion.tar.gz';
+const openSslPath = 'openssl-$openSslVersion';
+
 const tmpDir = 'tmp';
 
 /// This runs as part of a GitHub actions workflow in this repository. It's not
@@ -26,6 +31,7 @@ void main(List<String> args) async {
   await _downloadAndExtract(sqliteSource, 'sqlite3');
   await _downloadAndExtract(sqliteMultipleCiphersSource, 'sqlite3mc');
   await _downloadAndExtract(sqlCipherSource, 'sqlcipher');
+  await _downloadAndExtractTarGz(openSslSource, 'openssl');
 
   await Directory('sqlite-src').create();
   await Directory('sqlite-src/sqlite3mc').create();
@@ -49,11 +55,20 @@ void main(List<String> args) async {
       .copy('sqlite-src/sqlcipher/sqlite3.c');
   await File('$tmpDir/$sqlcipherPath/sqlite3ext.h')
       .copy('sqlite-src/sqlcipher/sqlite3ext.h');
+
+  // move openssl source inside sqlcipher source
+  await Directory('$tmpDir/$openSslPath')
+      .rename('sqlite-src/sqlcipher/openssl-src');
 }
 
 Future<void> _downloadAndExtract(String url, String filename) async {
   await _run('curl -L $url --output $filename.zip', workingDirectory: tmpDir);
   await _run('unzip $filename.zip', workingDirectory: tmpDir);
+}
+
+Future<void> _downloadAndExtractTarGz(String url, String filename) async {
+  await _run('curl -L $url --output $filename.tar.gz', workingDirectory: tmpDir);
+  await _run('tar xzf $filename.tar.gz', workingDirectory: tmpDir);
 }
 
 Future<void> _run(String command, {String? workingDirectory}) async {

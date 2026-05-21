@@ -7,12 +7,8 @@ import 'package:sqlite3/src/hook/android_ndk.dart';
 
 // Based from https://github.com/LucazzP/openssl_dart
 
-// import '../lib/src/android_ndk.dart';
+// Build instructions: https://github.com/openssl/openssl/blob/openssl-3.6.2/INSTALL.md#building-openssl
 
-const version = '3.6.2';
-const sourceCodeUrl =
-    'https://github.com/openssl/openssl/releases/download/openssl-$version/openssl-$version.tar.gz';
-const openSslDirName = 'openssl-$version';
 const configArgs = [
   'no-shared',
   'no-apps',
@@ -47,18 +43,8 @@ Future<Directory?> buildOpenSSL(
   final workDir = input.outputDirectory;
   final outputDir = join(input.outputDirectoryShared.toFilePath(), 'openssl');
 
-  // download source code from openssl
-  await downloadAndExtract(
-    sourceCodeUrl,
-    '$openSslDirName.tar.gz',
-    workDir,
-    createFolderForExtraction: false,
-  );
+  final openSslSrcUri = openSslSrcDir.uri;
 
-  final openSslDir = workDir.resolve('$openSslDirName/');
-
-  // build source code, depends on the OS we are running on
-  // Read https://github.com/openssl/openssl/blob/openssl-3.5.4/INSTALL.md#building-openssl
   final configName = resolveConfigName(
     input.config.code.targetOS,
     input.config.code.targetArchitecture,
@@ -120,7 +106,7 @@ Future<Directory?> buildOpenSSL(
           // needed to build using multiple threads on Windows
           '/FS',
         ],
-        workingDirectory: openSslDir,
+        workingDirectory: openSslSrcUri,
         extraEnvironment: msvcEnv,
       );
 
@@ -128,7 +114,7 @@ Future<Directory?> buildOpenSSL(
       await runProcess(
         jomProgram,
         ['-j', '${Platform.numberOfProcessors}'],
-        workingDirectory: openSslDir,
+        workingDirectory: openSslSrcUri,
         extraEnvironment: msvcEnv,
       );
 
@@ -158,112 +144,21 @@ Future<Directory?> buildOpenSSL(
         configName,
         ...configArgs,
         ...extraConfigureArgs,
-      ], workingDirectory: openSslDir);
+      ], workingDirectory: openSslSrcUri);
 
       // run make
       await runProcess('make', [
         '-j',
         '${Platform.numberOfProcessors}',
-      ], workingDirectory: openSslDir);
+      ], workingDirectory: openSslSrcUri);
 
-      await runProcess('make', ['install'], workingDirectory: openSslDir);
+      await runProcess('make', ['install'], workingDirectory: openSslSrcUri);
 
       break;
   }
 
-  // final filesInOut = Directory(
-  //   openSslDir.toFilePath(),
-  // ).listSync(recursive: true);
-
-  // copy the library to the output directory
-  // final String libPath = outputDir
-  //     .resolve(libName)
-  //     .toFilePath(windows: Platform.isWindows);
-  // await File(
-  //   openSslDir.resolve(libName).toFilePath(windows: Platform.isWindows),
-  // ).copy(libPath);
-
-  // delete the source code
-  // await Directory(
-  //   openSslDir.toFilePath(windows: Platform.isWindows),
-  // ).delete(recursive: true);
-
   return Directory(outputDir);
-
-  // determine the libName from OS and Link mode
-  /*  final libName = switch ((
-    input.config.code.targetOS,
-    input.config.code.linkModePreference,
-  )) {
-    (
-      OS.windows,
-      LinkModePreference.static || LinkModePreference.preferStatic,
-    ) =>
-      'libcrypto_static.lib',
-    (
-      OS.macOS || OS.iOS,
-      LinkModePreference.static || LinkModePreference.preferStatic,
-    ) =>
-      'libcrypto.a',
-    (
-      OS.linux || OS.android,
-      LinkModePreference.static || LinkModePreference.preferStatic,
-    ) =>
-      'libcrypto.a',
-    (
-      OS.windows,
-      LinkModePreference.dynamic || LinkModePreference.preferDynamic,
-    ) =>
-      'libcrypto-3-${input.config.code.targetArchitecture.name}.dll',
-    (
-      OS.macOS || OS.iOS,
-      LinkModePreference.dynamic || LinkModePreference.preferDynamic,
-    ) =>
-      'libcrypto.dylib',
-    (
-      OS.linux || OS.android,
-      LinkModePreference.dynamic || LinkModePreference.preferDynamic,
-    ) =>
-      'libcrypto.so',
-    _ => throw UnsupportedError(
-      'Unsupported target OS: ${input.config.code.targetOS.name} or link mode preference: ${input.config.code.linkModePreference.name}',
-    ),
-  };
-
-  // copy the library to the output directory
-  final String libPath = outputDir
-      .resolve(libName)
-      .toFilePath(windows: Platform.isWindows);
-  await File(
-    openSslDir.resolve(libName).toFilePath(windows: Platform.isWindows),
-  ).copy(libPath);
-
-  // delete the source code
-  await Directory(
-    openSslDir.toFilePath(windows: Platform.isWindows),
-  ).delete(recursive: true);
-
-  return null; */
-
-  // add the library to dart code assets
-  /* output.assets.code.add(
-    CodeAsset(
-      package: input.packageName,
-      name: 'src/third_party/openssl.g.dart',
-      linkMode: libName.linkMode,
-      file: outputDir.resolve(libName),
-    ),
-  ); */
 }
-
-/* extension on String {
-  LinkMode get linkMode {
-    if (endsWith('.dylib') || endsWith('.so') || endsWith('.dll')) {
-      return DynamicLoadingBundled();
-    }
-    return StaticLinking();
-  }
-} */
 
 String getStaticCryptoLib(
   Directory opensslDir,
