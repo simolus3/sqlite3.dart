@@ -24,14 +24,14 @@ sealed class SqliteBinary {
         return PrecompiledFromGithubAssets(LibraryType.sqlite3);
       case 'sqlite3mc':
         return PrecompiledFromGithubAssets(LibraryType.sqlite3mc);
-      case 'sqlcipher-folder':
-        return PrecompiledAtFolder(Directory("...."), LibraryType.sqlcipher);
       case 'sqlcipher':
         return PrecompiledFromGithubAssets(LibraryType.sqlcipher);
       case 'test-sqlite3':
         return PrecompiledForTesting(LibraryType.sqlite3);
       case 'test-sqlite3mc':
         return PrecompiledForTesting(LibraryType.sqlite3mc);
+      case 'test-sqlcipher':
+        return PrecompiledForTesting(LibraryType.sqlcipher);
       case 'system':
         final osSpecificNameKey = 'name_${input.config.code.targetOS.name}';
 
@@ -101,39 +101,6 @@ enum SimpleBinary implements ExternalSqliteBinary {
       case SimpleBinary.fromExecutable:
         return LookupInExecutable();
     }
-  }
-}
-
-final class PrecompiledAtFolder extends PrecompiledBinary {
-  final Directory folder;
-
-  const PrecompiledAtFolder(this.folder, super.type) : super._();
-
-  @override
-  Stream<Uint8List> _fetchFromSource(
-    BuildInput input,
-    BuildOutputBuilder output,
-    String filename,
-  ) {
-    final uri = folder.uri.resolve(filename);
-    output.dependencies.add(uri);
-
-    return File(uri.toFilePath()).openRead().map(
-      (event) => switch (event) {
-        final Uint8List bytes => bytes,
-        _ => Uint8List.fromList(event),
-      },
-    );
-  }
-
-  @override
-  Stream<Uint8List> fetch(
-    BuildInput input,
-    BuildOutputBuilder output,
-    PrebuiltSqliteLibrary library,
-  ) {
-    final filename = library.sourceFilename;
-    return _fetchFromSource(input, output, filename);
   }
 }
 
