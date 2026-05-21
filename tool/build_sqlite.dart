@@ -126,7 +126,12 @@ void main(List<String> args) async {
           defines: {
             'source': 'source',
             'path': p.relative(sourceCFilePath, from: fs.currentDirectory.path),
-            'library_type': mode,
+            'library_type': switch (mode) {
+              _kSQLiteMode => 'sqlite3',
+              _kSQLite3MCMode => 'sqlite3mc',
+              _kSQLCipherMode => 'sqlcipher',
+              _ => throw UnimplementedError(),
+            },
           },
           basePath: fs.currentDirectory.uri,
         )),
