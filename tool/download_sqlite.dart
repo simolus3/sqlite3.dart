@@ -33,7 +33,11 @@ void main(List<String> args) async {
   await _downloadAndExtract(sqlCipherSource, 'sqlcipher');
   await _downloadAndExtractTarGz(openSslSource, 'openssl');
 
+  if (await Directory('sqlite-src').exists()) {
+    await Directory('sqlite-src').delete(recursive: true);
+  }
   await Directory('sqlite-src').create();
+  
   await Directory('sqlite-src/sqlite3mc').create();
   await File('$tmpDir/sqlite3mc_amalgamation.h')
       .copy('sqlite-src/sqlite3mc/sqlite3mc_amalgamation.h');

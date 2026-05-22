@@ -9,6 +9,7 @@ import 'package:sqlite3/src/hook/assets.dart';
 import 'package:sqlite3/src/hook/description.dart';
 import 'package:sqlite3/src/hook/openssl.dart';
 import 'package:sqlite3/src/hook/used_symbols.dart';
+import 'package:sqlite3/src/hook/utils.dart';
 
 void main(List<String> args) async {
   await build(args, (input, output) async {
@@ -83,16 +84,30 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
             case OS.android:
             case OS.linux:
             case OS.windows:
-              // OpenSSL is downloaded next to the main source file
-              final openSslSrcDir = Directory(
-                p.join(File(sourceFile).parent.path, 'openssl-src'),
-              );
+              final Directory openSslSrcDirArch;
+              {
+                // OpenSSL is downloaded next to the main source file and we leave it untouched, copying the src
+                // into a separate folder for each architecture, so that they can be configured and built in parallel
+                final openSslSrcDirOrig = Directory(
+                  p.join(File(sourceFile).parent.path, 'openssl-src'),
+                );
+
+                openSslSrcDirArch = Directory(
+                  input.outputDirectory
+                      .resolve(
+                        'openssl-src-${targetOS.name}-${input.config.code.targetArchitecture.name}',
+                      )
+                      .path,
+                )..createSync(recursive: true);
+
+                copyDirectory(openSslSrcDirOrig, openSslSrcDirArch);
+              }
+
               final kOpenSSLBuiltDir = (await buildOpenSSL(
                 input,
                 output,
-                openSslSrcDir: openSslSrcDir,
+                openSslSrcDir: openSslSrcDirArch,
               ))!.path;
-              print("BUILT OPENSSL IN $kOpenSSLBuiltDir");
 
               final cryptoStaticLib = File(
                 getStaticCryptoLib(
