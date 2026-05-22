@@ -4,8 +4,10 @@ import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
 import 'package:native_toolchain_c/native_toolchain_c.dart';
 import 'package:path/path.dart' as p;
+import 'package:sqlite3/src/hook/assets.dart';
 
 import 'package:sqlite3/src/hook/description.dart';
+import 'package:sqlite3/src/hook/openssl.dart';
 import 'package:sqlite3/src/hook/used_symbols.dart';
 
 void main(List<String> args) async {
@@ -34,7 +36,9 @@ void main(List<String> args) async {
             file: downloaded.uri,
           ),
         );
-      case CompileSqlite(:final sourceFile, :final defines):
+      case CompileSqlite(:final libraryType, :final sourceFile, :final defines):
+        final targetOS = input.config.code.targetOS;
+
         // With Flutter on Linux (which already dynamically links SQLite through
         // its libgtk dependency), we run into issues where loading our SQLite
         // build causes internal symbols to be resolved against the already
@@ -46,7 +50,7 @@ void main(List<String> args) async {
         // For the full discussion, see https://github.com/dart-lang/native/issues/2724
 
         String? linkerScript;
-        if (input.config.code.targetOS == OS.linux) {
+        if (targetOS == OS.linux) {
           linkerScript = input.outputDirectory.resolve('sqlite.map').path;
 
           await File(linkerScript).writeAsString('''
@@ -59,12 +63,66 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
 ''');
         }
 
+        final List<String> includes = [];
+        final List<String> libraryDirectories = [];
+        final List<String> libraries = [];
+        final List<String> flags = [];
+
+        if (libraryType == LibraryType.sqlcipher) {
+          switch (targetOS) {
+            case OS.macOS:
+            case OS.iOS:
+              // Link with CommonCrypto on Apple platforms, which is optimized
+              flags.addAll([
+                '-framework',
+                'Foundation',
+                '-framework',
+                'Security',
+              ]);
+              break;
+            case OS.android:
+            case OS.linux:
+            case OS.windows:
+              // OpenSSL is downloaded next to the main source file
+              final openSslSrcDir = Directory(
+                p.join(File(sourceFile).parent.path, 'openssl-src'),
+              );
+
+              final openSslBinariesDir = (await buildOpenSSL(
+                input,
+                output,
+                openSslSrcDir: openSslSrcDir,
+              ))!;
+
+              final cryptoStaticLib = File(
+                getStaticCryptoLib(
+                  openSslBinariesDir,
+                  input.config.code.targetOS,
+                  input.config.code.targetArchitecture,
+                ),
+              );
+
+              includes.add(p.join(openSslBinariesDir.path, 'include'));
+              libraryDirectories.add(cryptoStaticLib.parent.path);
+              libraries.add('crypto');
+            default:
+              throw UnsupportedError(
+                'Unsupported OS: ${input.config.code.targetOS}',
+              );
+          }
+        }
+
+        // final files = Directory(kOpenSSLBuiltDir).listSync();
+        // print(files);
+
+        final isMacLike = [OS.iOS, OS.macOS].contains(targetOS);
+
         final library = CBuilder.library(
           name: 'sqlite3',
           packageName: 'sqlite3',
           assetName: name,
           sources: [sourceFile],
-          includes: [p.dirname(sourceFile)],
+          includes: [p.dirname(sourceFile), ...includes],
           defines: defines,
           flags: [
             if (input.config.code.targetOS == OS.linux) ...[
@@ -78,7 +136,7 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               '-fdata-sections',
               '-Wl,--gc-sections',
             ],
-            if (input.config.code.targetOS case OS.iOS || OS.macOS) ...[
+            if (isMacLike) ...[
               '-headerpad_max_install_names',
               // clang would use the temporary directory passed by
               // native_toolchain_c otherwise. So this makes improves
@@ -86,11 +144,16 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               '-install_name',
               '@rpath/libsqlite3.dylib',
             ],
+            ...flags,
           ],
+          libraryDirectories: [...libraryDirectories],
           libraries: [
-            if (input.config.code.targetOS == OS.android)
+            if (targetOS == OS.android || targetOS == OS.linux) ...[
               // We need to link the math library on Android.
               'm',
+            ],
+            if (targetOS == OS.android) 'log',
+            ...libraries,
           ],
         );
 

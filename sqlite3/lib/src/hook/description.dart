@@ -22,10 +22,14 @@ sealed class SqliteBinary {
         return PrecompiledFromGithubAssets(LibraryType.sqlite3);
       case 'sqlite3mc':
         return PrecompiledFromGithubAssets(LibraryType.sqlite3mc);
+      case 'sqlcipher':
+        return PrecompiledFromGithubAssets(LibraryType.sqlcipher);
       case 'test-sqlite3':
         return PrecompiledForTesting(LibraryType.sqlite3);
       case 'test-sqlite3mc':
         return PrecompiledForTesting(LibraryType.sqlite3mc);
+      case 'test-sqlcipher':
+        return PrecompiledForTesting(LibraryType.sqlcipher);
       case 'system':
         final osSpecificNameKey = 'name_${input.config.code.targetOS.name}';
 
@@ -38,9 +42,16 @@ sealed class SqliteBinary {
       case 'executable':
         return SimpleBinary.fromExecutable;
       case 'source':
+        final libraryTypeName = userDefines['library_type'] as String?;
+        final libraryType = libraryTypeName != null
+            ? LibraryType.fromName(libraryTypeName)
+            : LibraryType.sqlite3;
+
         return CompileSqlite(
           sourceFile: userDefines.path('path')!.toFilePath(),
+          libraryType: libraryType,
           defines: CompilerDefines.parse(
+            libraryType,
             userDefines,
             input.config.code.targetOS,
           ),
@@ -227,10 +238,15 @@ final class PrecompiledFromGithubAssets extends PrecompiledBinary {
       // environments where that's required
       // https://github.com/simolus3/sqlite3.dart/issues/335
       ..findProxy = HttpClient.findProxyFromEnvironment;
-    final uri = Uri.https(
-      'github.com',
-      'simolus3/sqlite3.dart/releases/download/${releaseTag!}/$filename',
-    );
+    final uri = type == LibraryType.sqlcipher
+        ? Uri.https(
+            'github.com',
+            'davidmartos96/sqlite3.dart/releases/download/${releaseTag!}/$filename',
+          )
+        : Uri.https(
+            'github.com',
+            'simolus3/sqlite3.dart/releases/download/${releaseTag!}/$filename',
+          );
 
     HttpClientResponse response;
     try {
@@ -282,13 +298,20 @@ final class PrecompiledForTesting extends PrecompiledBinary {
 }
 
 final class CompileSqlite implements SqliteBinary {
+  /// The type of build
+  final LibraryType libraryType;
+
   /// Path to the `sqlite3.c` source file to compile.
   final String sourceFile;
 
   /// User-defines for the SQLite compilation.
   final CompilerDefines defines;
 
-  CompileSqlite({required this.sourceFile, required this.defines});
+  CompileSqlite({
+    required this.libraryType,
+    required this.sourceFile,
+    required this.defines,
+  });
 }
 
 /// If we're compiling SQLite from source, a way to obtain these sources.
@@ -333,7 +356,11 @@ extension type const CompilerDefines(Map<String, String?> flags)
     return CompilerDefines({...flags, ...other.flags});
   }
 
-  static CompilerDefines parse(HookInputUserDefines defines, OS targetOS) {
+  static CompilerDefines parse(
+    LibraryType libraryType,
+    HookInputUserDefines defines,
+    OS targetOS,
+  ) {
     final obj = defines['defines'];
 
     // Include default options when not explicitly disabled.
@@ -351,7 +378,7 @@ extension type const CompilerDefines(Map<String, String?> flags)
     };
 
     final start = includeDefaults
-        ? CompilerDefines.defaults(targetOS == OS.windows)
+        ? CompilerDefines.defaults(targetOS, libraryType)
         : const CompilerDefines({});
 
     return switch (additionalDefines) {
@@ -388,11 +415,25 @@ extension type const CompilerDefines(Map<String, String?> flags)
     return CompilerDefines(entries);
   }
 
-  static CompilerDefines defaults(bool windows) {
+  static CompilerDefines defaults(OS targetOS, LibraryType libraryType) {
     final defines = _parseLines(const LineSplitter().convert(_defaultDefines));
-    if (windows) {
+    if (targetOS == OS.windows) {
       defines['SQLITE_API'] = '__declspec(dllexport)';
     }
+
+    // Minimum extra flags to build SQLCipher
+    if (libraryType == LibraryType.sqlcipher) {
+      defines.addAll({
+        'SQLITE_HAS_CODEC': null,
+        'SQLITE_TEMP_STORE': "2",
+        'SQLITE_EXTRA_INIT': 'sqlcipher_extra_init',
+        'SQLITE_EXTRA_SHUTDOWN': 'sqlcipher_extra_shutdown',
+        // Link with CommonCrypto on Apple platforms
+        if (targetOS == OS.macOS || targetOS == OS.iOS)
+          'SQLCIPHER_CRYPTO_CC': null,
+      });
+    }
+
     return defines;
   }
 }

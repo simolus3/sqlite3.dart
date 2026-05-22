@@ -12,6 +12,10 @@ import '../sqlite3/hook/build.dart' as hook;
 
 final _limitConcurrency = Pool(Platform.numberOfProcessors);
 
+const _kSQLiteMode = 'sqlite3';
+const _kSQLite3MCMode = 'sqlite3mc';
+const _kSQLCipherMode = 'sqlcipher';
+
 /// Invokes `package:sqlite3` build hooks for multiple operating systems and
 /// architectures, merging outputs into `sqlite3-compiled/`.
 void main(List<String> args) async {
@@ -20,9 +24,15 @@ void main(List<String> args) async {
   var operatingSystems = args.map(OS.fromString).toList();
   if (operatingSystems.isEmpty) {
     if (Platform.isLinux) {
-      operatingSystems = [OS.linux, OS.android];
+      operatingSystems = [
+        OS.linux,
+        OS.android,
+      ];
     } else if (Platform.isMacOS) {
-      operatingSystems = [OS.macOS, OS.iOS];
+      operatingSystems = [
+        OS.macOS,
+        OS.iOS,
+      ];
     } else if (Platform.isWindows) {
       operatingSystems = [OS.windows];
     }
@@ -47,11 +57,21 @@ void main(List<String> args) async {
 
   final buildTasks = <Future<void>>[];
 
-  for (final mode in ['sqlite3', 'sqlite3mc']) {
-    final sourcePath = fs.currentDirectory.parent
+  for (final mode in [
+    _kSQLiteMode,
+    _kSQLite3MCMode,
+    _kSQLCipherMode,
+  ]) {
+    final sourceFileName = switch (mode) {
+      _kSQLiteMode || _kSQLCipherMode => "sqlite3.c",
+      _kSQLite3MCMode => 'sqlite3mc_amalgamation.c',
+      _ => throw UnimplementedError(),
+    };
+
+    final sourceCFilePath = fs.currentDirectory.parent
         .childDirectory('sqlite-src')
         .childDirectory(mode)
-        .childFile(mode == 'sqlite3' ? 'sqlite3.c' : 'sqlite3mc_amalgamation.c')
+        .childFile(sourceFileName)
         .path;
 
     Future<void> buildAndCopy(OS os, Architecture architecture,
@@ -105,7 +125,8 @@ void main(List<String> args) async {
             workspacePubspec: PackageUserDefinesSource(
           defines: {
             'source': 'source',
-            'path': p.relative(sourcePath, from: fs.currentDirectory.path),
+            'path': p.relative(sourceCFilePath, from: fs.currentDirectory.path),
+            'library_type': mode,
           },
           basePath: fs.currentDirectory.uri,
         )),
@@ -119,9 +140,14 @@ void main(List<String> args) async {
     for (final os in operatingSystems) {
       for (final architecture in _osToAbis[os]!) {
         // Compiling sqlite3mc for x86 on Linux does not work.
-        if (mode == 'sqlite3mc' &&
+        if (mode == _kSQLite3MCMode &&
             os == OS.linux &&
             architecture == Architecture.ia32) {
+          continue;
+        }
+
+        // TODO: Windows build for sqlcipher
+        if (mode == _kSQLCipherMode && os == OS.windows) {
           continue;
         }
 
@@ -147,6 +173,7 @@ void main(List<String> args) async {
 }
 
 const _osToAbis = {
+  // TODO: Recover linux 32 bits
   OS.linux: [
     Architecture.arm,
     Architecture.arm64,
