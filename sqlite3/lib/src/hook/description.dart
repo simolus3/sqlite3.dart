@@ -238,15 +238,10 @@ final class PrecompiledFromGithubAssets extends PrecompiledBinary {
       // environments where that's required
       // https://github.com/simolus3/sqlite3.dart/issues/335
       ..findProxy = HttpClient.findProxyFromEnvironment;
-    final uri = type == LibraryType.sqlcipher
-        ? Uri.https(
-            'github.com',
-            'davidmartos96/sqlite3.dart/releases/download/${releaseTag!}/$filename',
-          )
-        : Uri.https(
-            'github.com',
-            'simolus3/sqlite3.dart/releases/download/${releaseTag!}/$filename',
-          );
+    final uri = Uri.https(
+      'github.com',
+      'simolus3/sqlite3.dart/releases/download/${releaseTag!}/$filename',
+    );
 
     HttpClientResponse response;
     try {

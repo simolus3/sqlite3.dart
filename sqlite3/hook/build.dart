@@ -105,6 +105,9 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               includes.add(p.join(openSslBinariesDir.path, 'include'));
               libraryDirectories.add(cryptoStaticLib.parent.path);
               libraries.add('crypto');
+
+              // The android library is needed when linking
+              libraries.add('log');
             default:
               throw UnsupportedError(
                 'Unsupported OS: ${input.config.code.targetOS}',
@@ -155,7 +158,6 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               // We need to link the math library on Android.
               'm',
             ],
-            if (targetOS == OS.android) 'log',
             ...libraries,
           ],
         );

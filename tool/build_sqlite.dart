@@ -178,7 +178,6 @@ void main(List<String> args) async {
 }
 
 const _osToAbis = {
-  // TODO: Recover linux 32 bits
   OS.linux: [
     Architecture.arm,
     Architecture.arm64,
