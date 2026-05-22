@@ -9,7 +9,6 @@ import 'package:sqlite3/src/hook/assets.dart';
 import 'package:sqlite3/src/hook/description.dart';
 import 'package:sqlite3/src/hook/openssl.dart';
 import 'package:sqlite3/src/hook/used_symbols.dart';
-import 'package:sqlite3/src/hook/utils.dart';
 
 void main(List<String> args) async {
   await build(args, (input, output) async {
