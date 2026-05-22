@@ -157,6 +157,14 @@ jobs:
         dart test --test-randomize-ordering-seed "random" -P ci
       working-directory: sqlite3/
 
+    - name: Enable sqlcipher
+      run: |
+        dart run tool/hook_overrides.dart compiled-sqlcipher
+    - name: Test sqlite3 package with sqlcipher
+      run: |
+        dart test --test-randomize-ordering-seed "random" -P ci
+      working-directory: sqlite3/
+
     - name: Prepare for tests with system SQLite
       run: |
         dart run tool/hook_overrides.dart system-os-specific
