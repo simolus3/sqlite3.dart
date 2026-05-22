@@ -84,40 +84,26 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
             case OS.android:
             case OS.linux:
             case OS.windows:
-              final Directory openSslSrcDirArch;
-              {
-                // OpenSSL is downloaded next to the main source file and we leave it untouched, copying the src
-                // into a separate folder for each architecture, so that they can be configured and built in parallel
-                final openSslSrcDirOrig = Directory(
-                  p.join(File(sourceFile).parent.path, 'openssl-src'),
-                );
+              // OpenSSL is downloaded next to the main source file
+              final openSslSrcDir = Directory(
+                p.join(File(sourceFile).parent.path, 'openssl-src'),
+              );
 
-                openSslSrcDirArch = Directory(
-                  input.outputDirectory
-                      .resolve(
-                        'openssl-src-${targetOS.name}-${input.config.code.targetArchitecture.name}',
-                      )
-                      .path,
-                )..createSync(recursive: true);
-
-                copyDirectory(openSslSrcDirOrig, openSslSrcDirArch);
-              }
-
-              final kOpenSSLBuiltDir = (await buildOpenSSL(
+              final openSslBinariesDir = (await buildOpenSSL(
                 input,
                 output,
-                openSslSrcDir: openSslSrcDirArch,
-              ))!.path;
+                openSslSrcDir: openSslSrcDir,
+              ))!;
 
               final cryptoStaticLib = File(
                 getStaticCryptoLib(
-                  Directory(kOpenSSLBuiltDir),
+                  openSslBinariesDir,
                   input.config.code.targetOS,
                   input.config.code.targetArchitecture,
                 ),
               );
 
-              includes.add('$kOpenSSLBuiltDir/include');
+              includes.add(p.join(openSslBinariesDir.path, 'include'));
               libraryDirectories.add(cryptoStaticLib.parent.path);
               libraries.add('crypto');
             default:

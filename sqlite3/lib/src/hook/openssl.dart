@@ -41,9 +41,22 @@ Future<Directory?> buildOpenSSL(
   if (!input.config.buildCodeAssets) return null;
 
   final workDir = input.outputDirectory;
-  final outputDir = join(input.outputDirectoryShared.toFilePath(), 'openssl');
 
-  final openSslSrcUri = openSslSrcDir.uri;
+  // We configure the project from a separate folder per ABI, to support parallel builds
+  final openSslBuildDir = Directory(
+    workDir.resolve('build-openssl').toFilePath(windows: Platform.isWindows),
+  )..createSync(recursive: true);
+
+  final openSslBuildDirUri = openSslBuildDir.uri;
+
+  // Directory where we install the OpenSSL binaries
+  final outputDir = join(
+    input.outputDirectoryShared.toFilePath(windows: Platform.isWindows),
+    'openssl',
+  );
+
+  // Absolute path of the Configure program in the src folder
+  final String configureProgramPath = join(openSslSrcDir.path, 'Configure');
 
   final configName = resolveConfigName(
     input.config.code.targetOS,
@@ -62,12 +75,11 @@ Future<Directory?> buildOpenSSL(
     final pathSeparator = Platform.isWindows ? ';' : ':';
     environment['PATH'] = '$toolchainBin$pathSeparator$existingPath';
 
-    print(environment);
+    // print(environment);
   }
 
   final extraConfigureArgs = <String>[
     '--prefix=$outputDir',
-
     '--openssldir=$outputDir',
   ];
 
@@ -99,14 +111,14 @@ Future<Directory?> buildOpenSSL(
       await runProcess(
         perlProgram,
         [
-          'Configure',
+          configureProgramPath,
           configName,
           ...configArgs,
           ...extraConfigureArgs,
           // needed to build using multiple threads on Windows
           '/FS',
         ],
-        workingDirectory: openSslSrcUri,
+        workingDirectory: openSslBuildDirUri,
         extraEnvironment: msvcEnv,
       );
 
@@ -114,7 +126,7 @@ Future<Directory?> buildOpenSSL(
       await runProcess(
         jomProgram,
         ['-j', '${Platform.numberOfProcessors}'],
-        workingDirectory: openSslSrcUri,
+        workingDirectory: openSslBuildDirUri,
         extraEnvironment: msvcEnv,
       );
 
@@ -140,19 +152,21 @@ Future<Directory?> buildOpenSSL(
       }
 
       // run ./Configure with the target OS and architecture
-      await runProcess('./Configure', [
+      await runProcess(configureProgramPath, [
         configName,
         ...configArgs,
         ...extraConfigureArgs,
-      ], workingDirectory: openSslSrcUri);
+      ], workingDirectory: openSslBuildDirUri);
 
       // run make
       await runProcess('make', [
         '-j',
         '${Platform.numberOfProcessors}',
-      ], workingDirectory: openSslSrcUri);
+      ], workingDirectory: openSslBuildDirUri);
 
-      await runProcess('make', ['install'], workingDirectory: openSslSrcUri);
+      await runProcess('make', [
+        'install',
+      ], workingDirectory: openSslBuildDirUri);
 
       break;
   }
