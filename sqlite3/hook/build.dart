@@ -106,8 +106,10 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               libraryDirectories.add(cryptoStaticLib.parent.path);
               libraries.add('crypto');
 
-              // The android library is needed when linking
-              libraries.add('log');
+              if (targetOS == OS.android) {
+                // The android library is needed when linking
+                libraries.add('log');
+              }
             default:
               throw UnsupportedError(
                 'Unsupported OS: ${input.config.code.targetOS}',
