@@ -190,7 +190,8 @@ Future<Directory?> buildOpenSSL(
       }
 
       // run ./Configure with the target OS and architecture
-      await runProcess(configureProgramPath, [
+      await runProcess('perl', [
+        configureProgramPath,
         configName,
         ...configArgs,
         ...extraConfigureArgs,
