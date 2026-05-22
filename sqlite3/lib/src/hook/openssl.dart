@@ -23,9 +23,37 @@ const configArgs = [
   'no-legacy',
   'no-fips',
   'no-async',
-  '-Wl,-headerpad_max_install_names',
+  'no-aria',
+  'no-bf',
+  'no-blake2',
+  'no-camellia',
+  'no-cast',
+  'no-chacha',
+  'no-cmac',
+  'no-des',
+  'no-dh',
+  'no-dsa',
+  'no-ec',
+  'no-ecdh',
+  'no-ecdsa',
+  'no-md4',
+  'no-mdc2',
+  'no-ocsp',
+  'no-poly1305',
+  'no-rc2',
+  'no-rc4',
+  'no-rc5',
+  'no-rmd160',
+  'no-seed',
+  'no-siphash',
+  'no-sm2',
+  'no-sm3',
+  'no-sm4',
+  'no-srp',
+  'no-ts',
+  'no-whirlpool',
 ];
-// 'no-unit-test no-asm no-makedepend no-ssl no-apps -Wl,-headerpad_max_install_names'
+
 const perlDownloadUrl =
     'https://strawberryperl.com/download/5.14.2.1/strawberry-perl-5.14.2.1-64bit-portable.zip';
 const jomDownloadUrl =
@@ -81,6 +109,16 @@ Future<Directory?> buildOpenSSL(
   final extraConfigureArgs = <String>[
     '--prefix=$outputDir',
     '--openssldir=$outputDir',
+    if (input.config.code.targetOS == OS.linux) ...[
+      '-fPIC',
+      '-ffunction-sections',
+      '-fdata-sections',
+      '-fvisibility=hidden',
+    ],
+    if (input.config.code.targetOS == OS.macOS ||
+        input.config.code.targetOS == OS.iOS) ...[
+      '-Wl,-headerpad_max_install_names',
+    ],
   ];
 
   switch (OS.current) {

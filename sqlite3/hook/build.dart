@@ -50,7 +50,7 @@ void main(List<String> args) async {
         // For the full discussion, see https://github.com/dart-lang/native/issues/2724
 
         String? linkerScript;
-        if (targetOS == OS.linux) {
+        if (targetOS == OS.linux && libraryType != LibraryType.sqlcipher) {
           linkerScript = input.outputDirectory.resolve('sqlite.map').path;
 
           await File(linkerScript).writeAsString('''
@@ -126,12 +126,15 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
           defines: defines,
           flags: [
             if (input.config.code.targetOS == OS.linux) ...[
-              // This avoids loading issues on Linux, see comment above.
-              '-Wl,-Bsymbolic',
-              // And since we already have a designated list of symbols to
-              // export, we might as well strip the rest.
-              // TODO: Port this to other targets too.
-              '-Wl,--version-script=$linkerScript',
+              if (linkerScript != null) ...[
+                // This avoids loading issues on Linux, see comment above.
+                '-Wl,-Bsymbolic',
+                // And since we already have a designated list of symbols to
+                // export, we might as well strip the rest.
+                // TODO: Port this to other targets too.
+                '-Wl,--version-script=$linkerScript',
+              ],
+              '-s',
               '-ffunction-sections',
               '-fdata-sections',
               '-Wl,--gc-sections',
