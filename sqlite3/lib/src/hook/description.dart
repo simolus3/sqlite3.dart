@@ -425,7 +425,7 @@ extension type const CompilerDefines(Map<String, String?> flags)
         'SQLITE_EXTRA_SHUTDOWN': 'sqlcipher_extra_shutdown',
 
         // Most modern unix systems support nanosleep, but if it wouldn't be available
-        // we want to fallback to usleep (microseconds) instead of sleep (seconds) 
+        // we want to fallback to usleep (microseconds) instead of sleep (seconds)
         'HAVE_USLEEP': null,
 
         // SQLCipher enables this by default, so better keep compatibility
@@ -435,7 +435,7 @@ extension type const CompilerDefines(Map<String, String?> flags)
         // Not clear if it has an impact in all applications
         // https://github.com/sqlcipher/sqlcipher-android/blob/7fab57af75039e5004b087086142b11a9d2a2380/sqlcipher/src/main/jni/sqlcipher/Android.mk#L9
         'SQLITE_ENABLE_MEMORY_MANAGEMENT': null,
-       
+
         // Link with CommonCrypto on Apple platforms
         if (targetOS == OS.macOS || targetOS == OS.iOS)
           'SQLCIPHER_CRYPTO_CC': null,

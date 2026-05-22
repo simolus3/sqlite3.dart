@@ -37,7 +37,7 @@ void main(List<String> args) async {
     await Directory('sqlite-src').delete(recursive: true);
   }
   await Directory('sqlite-src').create();
-  
+
   await Directory('sqlite-src/sqlite3mc').create();
   await File('$tmpDir/sqlite3mc_amalgamation.h')
       .copy('sqlite-src/sqlite3mc/sqlite3mc_amalgamation.h');
@@ -71,7 +71,8 @@ Future<void> _downloadAndExtract(String url, String filename) async {
 }
 
 Future<void> _downloadAndExtractTarGz(String url, String filename) async {
-  await _run('curl -L $url --output $filename.tar.gz', workingDirectory: tmpDir);
+  await _run('curl -L $url --output $filename.tar.gz',
+      workingDirectory: tmpDir);
   await _run('tar xzf $filename.tar.gz', workingDirectory: tmpDir);
 }
 
