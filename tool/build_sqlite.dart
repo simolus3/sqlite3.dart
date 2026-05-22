@@ -149,8 +149,11 @@ void main(List<String> args) async {
         if (mode == _kSQLCipherMode) {
           // TODO: Windows build for sqlcipher
           if (os == OS.windows) continue;
-          // TODO: Linux arm 32
+          // TODO: Other linux archs
           if (os == OS.linux && architecture == Architecture.arm) continue;
+          if (os == OS.linux && architecture == Architecture.arm64) continue;
+          if (os == OS.linux && architecture == Architecture.ia32) continue;
+          if (os == OS.linux && architecture == Architecture.riscv64) continue;
         }
 
         scheduleTask(() => buildAndCopy(os, architecture,
