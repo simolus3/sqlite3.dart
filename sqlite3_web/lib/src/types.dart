@@ -67,17 +67,17 @@ enum DatabaseImplementation {
   /// database concurrently.
   opfsWithExternalLocks(StorageMode.opfs, AccessMode.throughDedicatedWorker),
 
-  /// Open an asynchronous database stored in OPFS. It is "syncified" by using
-  /// a pair of two dedicated workers implementing an RPC channel over shared
-  /// memory and atomics.
-  opfsAtomics(StorageMode.opfs, AccessMode.throughDedicatedWorker),
-
   /// A variant of [opfsWithExternalLocks] that works without the non-standard
   /// `readwrite-unsafe` option (e.g. in Firefox and Safari).
   opfsWithExternalLocksWorkaround(
     StorageMode.opfs,
     AccessMode.throughDedicatedWorker,
   ),
+
+  /// Open an asynchronous database stored in OPFS. It is "syncified" by using
+  /// a pair of two dedicated workers implementing an RPC channel over shared
+  /// memory and atomics.
+  opfsAtomics(StorageMode.opfs, AccessMode.throughDedicatedWorker),
 
   /// Open a synchronous database stored in OPFS.
   ///

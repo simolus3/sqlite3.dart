@@ -77,17 +77,6 @@ export class DatabaseImplementation extends Object {
   );
 
   /**
-   * Open an asynchronous database stored in OPFS. It is "syncified" by using a pair of two dedicated workers
-   * implementing an RPC channel over shared array buffers and atomics.
-   */
-  static readonly opfsAtomics = new DatabaseImplementation(
-    "opfsAtomics",
-    21,
-    opfs,
-    throughDedicatedWorker,
-  );
-
-  /**
    * Opens a synchronous database stored in OPFS.
    *
    * This is similar to {@link opfsWithExternalLocks}, but also supports browsers without `readwrite-unsafe`.
@@ -95,6 +84,17 @@ export class DatabaseImplementation extends Object {
    */
   static readonly opfsWithExternalLocksWorkaround = new DatabaseImplementation(
     "opfsWithExternalLocksWorkaround",
+    21,
+    opfs,
+    throughDedicatedWorker,
+  );
+
+  /**
+   * Open an asynchronous database stored in OPFS. It is "syncified" by using a pair of two dedicated workers
+   * implementing an RPC channel over shared array buffers and atomics.
+   */
+  static readonly opfsAtomics = new DatabaseImplementation(
+    "opfsAtomics",
     20,
     opfs,
     throughDedicatedWorker,
