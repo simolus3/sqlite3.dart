@@ -501,32 +501,34 @@ final class _ClientConnection extends ProtocolChannel
     final buffer = request.buffer;
 
     final vfs = await database.database.vfs;
-    final file = vfs
-        .xOpen(Sqlite3Filename(fsType.pathInVfs), SqlFlag.SQLITE_OPEN_CREATE)
-        .file;
+    return await database.useLock(null, abortSignal, () {
+      final file = vfs
+          .xOpen(Sqlite3Filename(fsType.pathInVfs), SqlFlag.SQLITE_OPEN_CREATE)
+          .file;
 
-    try {
-      if (buffer != null) {
-        final asDartBuffer = buffer.toDart;
-        file.xTruncate(asDartBuffer.lengthInBytes);
-        file.xWrite(asDartBuffer.asUint8List(), 0);
+      try {
+        if (buffer != null) {
+          final asDartBuffer = buffer.toDart;
+          file.xTruncate(asDartBuffer.lengthInBytes);
+          file.xWrite(asDartBuffer.asUint8List(), 0);
 
-        return newSimpleSuccessResponse(
-          response: null,
-          requestId: request.requestId,
-        );
-      } else {
-        final buffer = Uint8List(file.xFileSize());
-        file.xRead(buffer, 0);
+          return newSimpleSuccessResponse(
+            response: null,
+            requestId: request.requestId,
+          );
+        } else {
+          final buffer = Uint8List(file.xFileSize());
+          file.xRead(buffer, 0);
 
-        return newSimpleSuccessResponse(
-          response: buffer.buffer.toJS,
-          requestId: request.requestId,
-        );
+          return newSimpleSuccessResponse(
+            response: buffer.buffer.toJS,
+            requestId: request.requestId,
+          );
+        }
+      } finally {
+        file.xClose();
       }
-    } finally {
-      file.xClose();
-    }
+    });
   }
 
   @override
@@ -536,8 +538,12 @@ final class _ClientConnection extends ProtocolChannel
   ) async {
     final database = _requireDatabase(request);
     final vfs = await database.database.vfs;
-    final exists =
-        vfs.xAccess(FileType.values[request.fsType].pathInVfs, 0) == 1;
+
+    final exists = await database.useLock(
+      null,
+      abortSignal,
+      () => vfs.xAccess(FileType.values[request.fsType].pathInVfs, 0) == 1,
+    );
 
     return newSimpleSuccessResponse(
       response: exists.toJS,

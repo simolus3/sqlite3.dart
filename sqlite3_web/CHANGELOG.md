@@ -4,6 +4,7 @@
 - Use strings instead of URLs to reduce code size.
 - Custom Dart objects can no longer be serialized via `serializeParameters` and `serializeResultSet`.
   Only SQLite values are supported.
+- Fix raw file system writes not acquiring database locks.
 
 ## 0.7.1
 
