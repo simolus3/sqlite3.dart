@@ -279,11 +279,19 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
     }
 
     final meta = await open('meta');
+    // The meta file did not exist before, this can happen when migrating from
+    // OPFS with atomics to this VFS.
+    final migratingFromOpfsAtomics = meta.getSize() == 0;
     meta.truncate(2);
 
     final database = await open(FileType.database.name);
     final journal = await open(FileType.journal.name);
-    _files = _OpfsFiles(meta, database, journal);
+
+    final files = _files = _OpfsFiles(meta, database, journal);
+    if (migratingFromOpfsAtomics) {
+      files.markExists(FileType.database, database.getSize() > 0);
+      files.markExists(FileType.journal, journal.getSize() > 0);
+    }
   }
 }
 
