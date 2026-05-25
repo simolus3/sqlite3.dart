@@ -5,6 +5,7 @@
 - Custom Dart objects can no longer be serialized via `serializeParameters` and `serializeResultSet`.
   Only SQLite values are supported.
 - Fix raw file system writes not acquiring database locks.
+- Optimize use of navigator locks to avoid acquiring them in single-tab scenarios.
 
 ## 0.7.1
 

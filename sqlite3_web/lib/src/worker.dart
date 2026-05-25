@@ -722,6 +722,7 @@ final class DatabaseState {
     }
 
     await closeHandler?.call();
+    unawaited(locks.releaseNavigatorLocks());
   }
 }
 
