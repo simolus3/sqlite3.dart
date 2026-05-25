@@ -650,10 +650,11 @@ final class DatabaseState {
               );
           closeHandler = simple.close;
         case FileSystemImplementation.opfsExternalLocks:
+        case FileSystemImplementation.opfsExternalLocksWorkaround:
           final state = await ExternalLocksState.open(
             path: pathForOpfs(name),
             vfsName: vfsName,
-            readWriteUnsafe: true,
+            readWriteUnsafe: mode == .opfsExternalLocks,
           );
           locks.attachVfs(state);
 

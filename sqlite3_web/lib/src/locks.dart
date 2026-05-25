@@ -112,8 +112,8 @@ final class DatabaseLocks {
       try {
         return await criticalSection();
       } finally {
-        held.release();
         if (attached != null) await attached.releaseExclusiveAccess();
+        held.release();
       }
     }
 

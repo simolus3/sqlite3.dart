@@ -598,20 +598,23 @@ final class DatabaseClient implements WebSqlite {
         _missingFeatures.add(MissingBrowserFeature.dedicatedWorkersCanNest);
       }
 
-      // For the OPFS storage layer in dedicated workers, we're spawning two
-      // nested workers communicating through a synchronous channel created by
-      // Atomics and SharedArrayBuffers.
-      if (result.canUseOpfs &&
-          result.supportsSharedArrayBuffers &&
-          result.dedicatedWorkersCanNest) {
-        available.add(DatabaseImplementation.opfsAtomics);
-      }
+      if (result.canUseOpfs) {
+        // For the OPFS storage layer in dedicated workers, we're spawning two
+        // nested workers communicating through a synchronous channel created by
+        // Atomics and SharedArrayBuffers.
+        if (result.supportsSharedArrayBuffers &&
+            result.dedicatedWorkersCanNest) {
+          available.add(DatabaseImplementation.opfsAtomics);
+        }
 
-      // Another option is to use a single worker opening files with
-      // readwrite-unsafe. That allows opening the database in multiple tabs,
-      // but we'd then have to use weblocks to coordinate access.
-      if (result.canUseOpfs && result.opfsSupportsReadWriteUnsafe) {
-        available.add(DatabaseImplementation.opfsWithExternalLocks);
+        // Another option is to use a single worker opening files with
+        // readwrite-unsafe. That allows opening the database in multiple tabs,
+        // but we'd then have to use weblocks to coordinate access.
+        if (result.opfsSupportsReadWriteUnsafe) {
+          available.add(DatabaseImplementation.opfsWithExternalLocks);
+        }
+
+        available.add(DatabaseImplementation.opfsWithExternalLocksWorkaround);
       }
     }
 
@@ -801,12 +804,11 @@ extension on DatabaseImplementation {
   FileSystemImplementation resolveToVfs() {
     return switch (storage) {
       StorageMode.opfs => switch (this) {
-        DatabaseImplementation.opfsAtomics =>
-          FileSystemImplementation.opfsAtomics,
-        DatabaseImplementation.opfsShared =>
-          FileSystemImplementation.opfsShared,
-        DatabaseImplementation.opfsWithExternalLocks =>
-          FileSystemImplementation.opfsExternalLocks,
+        .opfsAtomics => FileSystemImplementation.opfsAtomics,
+        .opfsShared => FileSystemImplementation.opfsShared,
+        .opfsWithExternalLocks => FileSystemImplementation.opfsExternalLocks,
+        .opfsWithExternalLocksWorkaround =>
+          FileSystemImplementation.opfsExternalLocksWorkaround,
         _ => throw AssertionError('Unknown OPFS implementation'),
       },
       StorageMode.indexedDb => FileSystemImplementation.indexedDb,

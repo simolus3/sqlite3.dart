@@ -230,10 +230,9 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
     final deleteOnClose = (flags & SqlFlag.SQLITE_OPEN_DELETEONCLOSE) != 0;
     final existsAlready = files.exists(recognized);
 
-    final syncHandle = files.handleFor(recognized);
-
     if (!existsAlready) {
       if (create) {
+        final syncHandle = files.handleFor(recognized);
         syncHandle.truncate(0);
         files.markExists(recognized, true);
       } else {
@@ -243,7 +242,7 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
 
     return (
       outFlags: 0,
-      file: _SimpleOpfsFile(this, recognized, syncHandle, deleteOnClose),
+      file: _SimpleOpfsFile(this, recognized, deleteOnClose),
     );
   }
 
@@ -291,12 +290,14 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
 class _SimpleOpfsFile extends BaseVfsFile {
   final SimpleOpfsFileSystem vfs;
   final FileType type;
-  final FileSystemSyncAccessHandle syncHandle;
   final bool deleteOnClose;
 
   var _lockMode = SqlFileLockingLevels.SQLITE_LOCK_NONE;
 
-  _SimpleOpfsFile(this.vfs, this.type, this.syncHandle, this.deleteOnClose);
+  FileSystemSyncAccessHandle get syncHandle =>
+      vfs._requireFiles().handleFor(type);
+
+  _SimpleOpfsFile(this.vfs, this.type, this.deleteOnClose);
 
   @override
   int readInto(Uint8List buffer, int offset) {

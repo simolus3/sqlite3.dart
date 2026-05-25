@@ -47,6 +47,10 @@ enum FileSystemImplementation {
   opfsShared('s'),
   opfsAtomics('l'),
   opfsExternalLocks('x'),
+
+  /// Like [opfsExternalLocks], but using a workaround based on re-opening OFPS
+  /// file handles instead of `readwrite-unsafe`.
+  opfsExternalLocksWorkaround('y'),
   indexedDb('i'),
   inMemory('m');
 
@@ -60,7 +64,9 @@ enum FileSystemImplementation {
       // Technically, opfsAtomics doesn't need external locks around each
       // database access. We just do this to avoid contention in the underlying
       // VFS.
-      this == opfsAtomics || this == opfsExternalLocks;
+      this == opfsAtomics ||
+      this == opfsExternalLocks ||
+      this == opfsExternalLocksWorkaround;
 
   static FileSystemImplementation fromJS(JSString js) {
     final toDart = js.toDart;

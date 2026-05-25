@@ -302,11 +302,15 @@ export class DatabaseClient implements WebSqlite {
         this.#missingFeatures.add("dedicatedWorkersCanNest");
       }
 
-      if (canUseOpfs && supportsSharedArrayBuffers && dedicatedWorkersCanNest) {
-        available.push(DatabaseImplementation.opfsAtomics);
-      }
-      if (canUseOpfs && opfsSupportsReadWriteUnsafe) {
-        available.push(DatabaseImplementation.opfsWithExternalLocks);
+      if (canUseOpfs) {
+        available.push(DatabaseImplementation.opfsWithExternalLocksWorkaround);
+
+        if (supportsSharedArrayBuffers && dedicatedWorkersCanNest) {
+          available.push(DatabaseImplementation.opfsAtomics);
+        }
+        if (opfsSupportsReadWriteUnsafe) {
+          available.push(DatabaseImplementation.opfsWithExternalLocks);
+        }
       }
     };
 
@@ -388,7 +392,7 @@ export class DatabaseClient implements WebSqlite {
         connection = this.#connectionToDedicated!;
     }
 
-    let internalFileSystemImpl: "s" | "l" | "x" | "i" | "m";
+    let internalFileSystemImpl: "s" | "l" | "x" | "y" | "i" | "m";
     switch (implementation.storage) {
       case opfs:
         if (implementation === DatabaseImplementation.opfsAtomics) {
@@ -399,6 +403,10 @@ export class DatabaseClient implements WebSqlite {
           implementation === DatabaseImplementation.opfsWithExternalLocks
         ) {
           internalFileSystemImpl = "x";
+        } else if (
+          implementation === DatabaseImplementation.opfsWithExternalLocksWorkaround
+        ) {
+          internalFileSystemImpl = "y";
         } else {
           throw new Error("Unknown OPFS file system impl");
         }

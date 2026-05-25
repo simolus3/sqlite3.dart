@@ -72,6 +72,13 @@ enum DatabaseImplementation {
   /// memory and atomics.
   opfsAtomics(StorageMode.opfs, AccessMode.throughDedicatedWorker),
 
+  /// A variant of [opfsWithExternalLocks] that works without the non-standard
+  /// `readwrite-unsafe` option (e.g. in Firefox and Safari).
+  opfsWithExternalLocksWorkaround(
+    StorageMode.opfs,
+    AccessMode.throughDedicatedWorker,
+  ),
+
   /// Open a synchronous database stored in OPFS.
   ///
   /// This works by letting a shared worker spawn a dedicated worker. This is

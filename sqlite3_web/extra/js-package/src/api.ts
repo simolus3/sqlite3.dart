@@ -88,6 +88,19 @@ export class DatabaseImplementation extends Object {
   );
 
   /**
+   * Opens a synchronous database stored in OPFS.
+   *
+   * This is similar to {@link opfsWithExternalLocks}, but also supports browsers without `readwrite-unsafe`.
+   * It works by opening file handles on most database accessses, which is substantially slower.
+   */
+  static readonly opfsWithExternalLocksWorkaround = new DatabaseImplementation(
+    "opfsWithExternalLocksWorkaround",
+    20,
+    opfs,
+    throughDedicatedWorker,
+  );
+
+  /**
    * Open a synchronous database stored in OPFS.
    *
    * This works by letting a shared worker spawn a dedicated worker. This is supposed to work according to web
