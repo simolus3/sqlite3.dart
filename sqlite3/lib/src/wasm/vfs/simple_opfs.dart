@@ -60,17 +60,17 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
   // the FileSystem Access API to check whether a file exists, which can only be
   // done asynchronously.
 
-  final FileSystemSyncAccessHandle _metaHandle;
-  final Uint8List _existsList = Uint8List(FileType.values.length);
+  _OpfsFiles? _files;
 
-  final Map<FileType, FileSystemSyncAccessHandle> _files;
+  /// An in-memory overlay used for files that aren't persisted (e.g. temporary
+  /// materialized views).
   final InMemoryFileSystem _memory = InMemoryFileSystem();
 
-  SimpleOpfsFileSystem._(
-    this._metaHandle,
-    this._files, {
-    String vfsName = 'simple-opfs',
-  }) : super(name: vfsName);
+  /// Creates an OPFS-based file system in a closed state.
+  ///
+  /// Before using this file system, call [open] to load the required access
+  /// handles.
+  SimpleOpfsFileSystem({String vfsName = 'simple-opfs'}) : super(name: vfsName);
 
   static Future<(FileSystemDirectoryHandle?, FileSystemDirectoryHandle)>
   _resolveDir(String path, {bool create = true}) async {
@@ -88,6 +88,18 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
     }
 
     return (parent, opfsDirectory);
+  }
+
+  /// Resolves a [FileSystemDirectoryHandle] from a path resolved against the
+  /// OPFS root.
+  ///
+  /// The directory is created recursively if [create] is enabled (the default).
+  static Future<FileSystemDirectoryHandle> resolveDirectory(
+    String path, {
+    bool create = true,
+  }) async {
+    final (_, handle) = await _resolveDir(path, create: create);
+    return handle;
   }
 
   /// Loads an [SimpleOpfsFileSystem] in the desired [path] under the root directory
@@ -111,7 +123,7 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
       throw VfsException(SqlError.SQLITE_ERROR);
     }
 
-    final (_, directory) = await _resolveDir(path);
+    final directory = await resolveDirectory(path);
     return inDirectory(
       directory,
       vfsName: vfsName,
@@ -163,30 +175,16 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
     String vfsName = 'simple-opfs',
     bool readWriteUnsafe = false,
   }) async {
-    Future<FileSystemSyncAccessHandle> open(String name) async {
-      final handle = await root.openFile(name, create: true);
-
-      final syncHandlePromise = readWriteUnsafe
-          ? ProposedLockingSchemeApi(handle).createSyncAccessHandle(
-              FileSystemCreateSyncAccessHandleOptions.unsafeReadWrite(),
-            )
-          : handle.createSyncAccessHandle();
-
-      return await syncHandlePromise.toDart;
-    }
-
-    final meta = await open('meta');
-    meta.truncate(2);
-    final files = {
-      for (final type in FileType.values) type: await open(type.name),
-    };
-
-    return SimpleOpfsFileSystem._(meta, files, vfsName: vfsName);
+    final fs = SimpleOpfsFileSystem(vfsName: vfsName);
+    await fs.open(root, readWriteUnsafe: readWriteUnsafe);
+    return fs;
   }
 
-  void _markExists(FileType type, bool exists) {
-    _existsList[type.index] = exists ? 1 : 0;
-    _metaHandle.writeDart(_existsList, FileSystemReadWriteOptions(at: 0));
+  _OpfsFiles _requireFiles() {
+    if (_files case final files?) {
+      return files;
+    }
+    throw StateError('VFS closed');
   }
 
   FileType? _recognizeType(String path) {
@@ -199,8 +197,8 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
     if (type == null) {
       return _memory.xAccess(path, flags);
     } else {
-      _metaHandle.readDart(_existsList, FileSystemReadWriteOptions(at: 0));
-      return _existsList[type.index];
+      final files = _requireFiles();
+      return files.exists(type) ? 1 : 0;
     }
   }
 
@@ -210,7 +208,7 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
     if (type == null) {
       return _memory.xDelete(path, syncDir);
     } else {
-      _markExists(type, false);
+      _requireFiles().markExists(type, false);
     }
   }
 
@@ -227,18 +225,17 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
     final recognized = _recognizeType(pathStr);
     if (recognized == null) return _memory.xOpen(path, flags);
 
+    final files = _requireFiles();
     final create = (flags & SqlFlag.SQLITE_OPEN_CREATE) != 0;
     final deleteOnClose = (flags & SqlFlag.SQLITE_OPEN_DELETEONCLOSE) != 0;
+    final existsAlready = files.exists(recognized);
 
-    _metaHandle.readDart(_existsList, FileSystemReadWriteOptions(at: 0));
-    final existsAlready = _existsList[recognized.index] != 0;
-
-    final syncHandle = _files[recognized]!;
+    final syncHandle = files.handleFor(recognized);
 
     if (!existsAlready) {
       if (create) {
         syncHandle.truncate(0);
-        _markExists(recognized, true);
+        files.markExists(recognized, true);
       } else {
         throw const VfsException(SqlError.SQLITE_CANTOPEN);
       }
@@ -255,11 +252,39 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
 
   /// Closes the synchronous access handles kept open while this file system is
   /// active.
+  ///
+  /// This file system can be re-opened afterwards with [open].
   void close() {
-    _metaHandle.close();
-    for (final file in _files.values) {
-      file.close();
+    _files?.close();
+    _files = null;
+  }
+
+  /// Re-opens a file system previously closed with [close].
+  @experimental
+  Future<void> open(
+    FileSystemDirectoryHandle root, {
+    bool readWriteUnsafe = false,
+  }) async {
+    assert(_files == null);
+
+    Future<FileSystemSyncAccessHandle> open(String name) async {
+      final handle = await root.openFile(name, create: true);
+
+      final syncHandlePromise = readWriteUnsafe
+          ? ProposedLockingSchemeApi(handle).createSyncAccessHandle(
+              FileSystemCreateSyncAccessHandleOptions.unsafeReadWrite(),
+            )
+          : handle.createSyncAccessHandle();
+
+      return await syncHandlePromise.toDart;
     }
+
+    final meta = await open('meta');
+    meta.truncate(2);
+
+    final database = await open(FileType.database.name);
+    final journal = await open(FileType.journal.name);
+    _files = _OpfsFiles(meta, database, journal);
   }
 }
 
@@ -288,7 +313,7 @@ class _SimpleOpfsFile extends BaseVfsFile {
     syncHandle.flush();
 
     if (deleteOnClose) {
-      vfs._markExists(type, false);
+      vfs._requireFiles().markExists(type, false);
     }
   }
 
@@ -327,5 +352,38 @@ class _SimpleOpfsFile extends BaseVfsFile {
     if (bytesWritten < buffer.length) {
       throw const VfsException(SqlExtendedError.SQLITE_IOERR_WRITE);
     }
+  }
+}
+
+final class _OpfsFiles {
+  final Uint8List _existsList = Uint8List(FileType.values.length);
+
+  final FileSystemSyncAccessHandle metaHandle;
+  final FileSystemSyncAccessHandle database;
+  final FileSystemSyncAccessHandle journal;
+
+  _OpfsFiles(this.metaHandle, this.database, this.journal);
+
+  bool exists(FileType type) {
+    metaHandle.readDart(_existsList, FileSystemReadWriteOptions(at: 0));
+    return _existsList[type.index] != 0;
+  }
+
+  void markExists(FileType type, bool exists) {
+    _existsList[type.index] = exists ? 1 : 0;
+    metaHandle.writeDart(_existsList, FileSystemReadWriteOptions(at: 0));
+  }
+
+  FileSystemSyncAccessHandle handleFor(FileType type) {
+    return switch (type) {
+      FileType.database => database,
+      FileType.journal => journal,
+    };
+  }
+
+  void close() {
+    metaHandle.close();
+    database.close();
+    journal.close();
   }
 }

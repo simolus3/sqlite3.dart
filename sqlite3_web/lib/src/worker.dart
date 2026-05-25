@@ -18,6 +18,7 @@ import 'package:sqlite3/src/wasm/js_interop/new_file_system_access.dart';
 
 import 'database.dart';
 import 'channel.dart';
+import 'external_locks_vfs.dart';
 import 'locks.dart';
 import 'protocol.dart';
 import 'shared.dart';
@@ -649,13 +650,15 @@ final class DatabaseState {
               );
           closeHandler = simple.close;
         case FileSystemImplementation.opfsExternalLocks:
-          final simple = _resolvedVfs =
-              await SimpleOpfsFileSystem.loadFromStorage(
-                pathForOpfs(name),
-                vfsName: vfsName,
-                readWriteUnsafe: true,
-              );
-          closeHandler = simple.close;
+          final state = await ExternalLocksState.open(
+            path: pathForOpfs(name),
+            vfsName: vfsName,
+            readWriteUnsafe: true,
+          );
+          locks.attachVfs(state);
+
+          final vfs = _resolvedVfs = state.fs;
+          closeHandler = vfs.close;
         case FileSystemImplementation.indexedDb:
           final idb = _resolvedVfs = await IndexedDbFileSystem.open(
             dbName: name,

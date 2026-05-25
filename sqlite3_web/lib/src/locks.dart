@@ -5,6 +5,7 @@ import 'dart:js_interop_unsafe';
 
 import 'package:web/web.dart';
 
+import 'external_locks_vfs.dart';
 import 'types.dart';
 
 @JS('navigator')
@@ -72,6 +73,10 @@ final class DatabaseLocks {
   /// is necessary to manage exclusive access.
   final bool needsInterContextLocks;
 
+  /// If these locks are for a datbase backed by a VFS that needs to be locked
+  /// and unlocked as well, a reference to that VFS.
+  ExternalLocksState? _attachedVfs;
+
   DatabaseLocks(this.lockName, this.needsInterContextLocks);
 
   /// Returns whether a synchronous block could run immediately.
@@ -84,6 +89,12 @@ final class DatabaseLocks {
     return !needsInterContextLocks && !_dartMutex._inCriticalSection;
   }
 
+  void attachVfs(ExternalLocksState state) {
+    assert(_attachedVfs == null);
+    assert(needsInterContextLocks);
+    _attachedVfs = state;
+  }
+
   Future<T> lock<T>(
     FutureOr<T> Function() criticalSection,
     AbortSignal? abortSignal,
@@ -93,7 +104,17 @@ final class DatabaseLocks {
         lockName,
         abortSignal: abortSignal,
       );
-      return Future(criticalSection).whenComplete(held.release);
+      final attached = _attachedVfs;
+      if (attached != null) {
+        await attached.markHasExclusiveAccess();
+      }
+
+      try {
+        return await criticalSection();
+      } finally {
+        held.release();
+        if (attached != null) await attached.releaseExclusiveAccess();
+      }
     }
 
     return _dartMutex.withCriticalSection(criticalSection, abort: abortSignal);
