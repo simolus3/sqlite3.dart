@@ -282,7 +282,6 @@ export class DatabaseClient implements WebSqlite {
       handleCompatibilityResult(result);
       const canUseOpfs = result.c;
       const canUseIndexedDb = result.d;
-      const supportsSharedArrayBuffers = result.e;
       const dedicatedWorkersCanNest = result.f;
       const opfsSupportsReadWriteUnsafe = result.g;
 
@@ -295,19 +294,12 @@ export class DatabaseClient implements WebSqlite {
       if (!opfsSupportsReadWriteUnsafe) {
         this.#missingFeatures.add("createSyncAccessHandleReadWriteUnsafe");
       }
-      if (!supportsSharedArrayBuffers) {
-        this.#missingFeatures.add("sharedArrayBuffers");
-      }
       if (!dedicatedWorkersCanNest) {
         this.#missingFeatures.add("dedicatedWorkersCanNest");
       }
 
       if (canUseOpfs) {
         available.push(DatabaseImplementation.opfsWithExternalLocksWorkaround);
-
-        if (supportsSharedArrayBuffers && dedicatedWorkersCanNest) {
-          available.push(DatabaseImplementation.opfsAtomics);
-        }
         if (opfsSupportsReadWriteUnsafe) {
           available.push(DatabaseImplementation.opfsWithExternalLocks);
         }
@@ -395,9 +387,7 @@ export class DatabaseClient implements WebSqlite {
     let internalFileSystemImpl: "s" | "l" | "x" | "y" | "i" | "m";
     switch (implementation.storage) {
       case opfs:
-        if (implementation === DatabaseImplementation.opfsAtomics) {
-          internalFileSystemImpl = "l";
-        } else if (implementation === DatabaseImplementation.opfsShared) {
+        if (implementation === DatabaseImplementation.opfsShared) {
           internalFileSystemImpl = "s";
         } else if (
           implementation === DatabaseImplementation.opfsWithExternalLocks

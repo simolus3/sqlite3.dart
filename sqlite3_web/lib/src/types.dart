@@ -77,6 +77,10 @@ enum DatabaseImplementation {
   /// Open an asynchronous database stored in OPFS. It is "syncified" by using
   /// a pair of two dedicated workers implementing an RPC channel over shared
   /// memory and atomics.
+  @Deprecated(
+    'opfsWithExternalLocks and opfsWithExternalLocksWorkaround are supported '
+    'by all browsers, those are substantially simpler and faster.',
+  )
   opfsAtomics(StorageMode.opfs, AccessMode.throughDedicatedWorker),
 
   /// Open a synchronous database stored in OPFS.
@@ -225,6 +229,10 @@ enum MissingBrowserFeature {
   ///
   /// To enable this feature in most browsers, you need to serve your app with
   /// two [special headers](https://web.dev/coop-coep/).
+  @Deprecated(
+    'The VFS relying on this feature will be removed in a future version of '
+    'this package.',
+  )
   sharedArrayBuffers,
 }
 
