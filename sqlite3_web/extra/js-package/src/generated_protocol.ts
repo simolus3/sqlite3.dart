@@ -2,7 +2,6 @@
 import { WebEndpoint } from "./channel.js";
 export const typeOpenRequest = "open";
 export const typeConnectRequest = "connect";
-export const typeStartFileSystemServer = "startFileSystemServer";
 export const typeCustomRequest = "custom";
 export const typeFileSystemExistsQuery = "fileSystemExists";
 export const typeFileSystemFlushRequest = "fileSystemFlush";
@@ -33,7 +32,6 @@ export type Message =
   | Response
   | OpenRequest
   | ConnectRequest
-  | StartFileSystemServer
   | CustomRequest
   | FileSystemExistsQuery
   | FileSystemFlushRequest
@@ -113,12 +111,6 @@ export interface ConnectRequest {
   d: number /* int */ | null;
   // Dart name: type
   t: "connect";
-}
-export interface StartFileSystemServer {
-  // Dart name: options
-  a: unknown /* WorkerOptions */;
-  // Dart name: type
-  t: "startFileSystemServer";
 }
 export interface CustomRequest {
   // Dart name: payload
@@ -391,7 +383,6 @@ export function extractTransferrable(message: Message): Transferable[] {
 export function dispatchMessage<T>(
   msg: Message,
   cb: {
-    _internal_whenStartFileSystemServer: (message: StartFileSystemServer) => T;
     _internal_whenAbortRequest: (message: AbortRequest) => T;
     _internal_whenNotification: (message: Notification) => T;
     _internal_whenResponse: (message: Response) => T;
@@ -399,10 +390,6 @@ export function dispatchMessage<T>(
   },
 ): T {
   switch (msg.t) {
-    case typeStartFileSystemServer:
-      return cb._internal_whenStartFileSystemServer(
-        msg as StartFileSystemServer,
-      );
     case typeAbortRequest:
       return cb._internal_whenAbortRequest(msg as AbortRequest);
     case typeUpdateNotification:

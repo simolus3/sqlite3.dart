@@ -16,7 +16,6 @@ void main() {
       DatabaseImplementation.opfsShared,
       DatabaseImplementation.opfsWithExternalLocks,
       DatabaseImplementation.opfsWithExternalLocksWorkaround,
-      DatabaseImplementation.opfsAtomics,
       DatabaseImplementation.indexedDbShared,
       DatabaseImplementation.indexedDbUnsafeWorker,
       DatabaseImplementation.indexedDbUnsafeLocal,

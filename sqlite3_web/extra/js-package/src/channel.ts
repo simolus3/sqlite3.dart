@@ -112,9 +112,6 @@ export abstract class ProtocolChannel {
     const self = this;
 
     dispatchMessage(message, {
-      _internal_whenStartFileSystemServer() {
-        throw new Error("Should only be a top-level message.");
-      },
       _internal_whenAbortRequest() {
         // We don't currently support aborting requests handled on this side.
       },

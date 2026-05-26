@@ -290,24 +290,5 @@ final class _TestConfiguration {
       expect(actualImplementation.storage, StorageMode.indexedDb);
       await driver.execute('INSERT INTO foo DEFAULT VALUES');
     });
-
-    test('can migrate from opfs-locks to simpler setup', () async {
-      await driver.openDatabase(implementation: .opfsAtomics);
-      await driver.execute('CREATE TABLE foo (bar TEXT);');
-      await driver.closeDatabase();
-
-      await driver.driver.refresh();
-      await driver.waitReady();
-
-      final features = await driver.probeImplementations();
-      expect(features.existing, [(StorageMode.opfs, 'database')]);
-
-      final actualImplementation = await driver.openDatabase(onlyOpenVfs: true);
-      expect(actualImplementation.storage, StorageMode.opfs);
-      expect(actualImplementation, isNot(DatabaseImplementation.opfsAtomics));
-      await driver.assertFile(true);
-
-      await driver.execute('INSERT INTO foo DEFAULT VALUES');
-    });
   }
 }

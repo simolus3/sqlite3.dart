@@ -118,7 +118,6 @@ export type MissingBrowserFeature =
   | "sharedWorkers"
   | "dedicatedWorkers"
   | "dedicatedWorkersInSharedWorkers"
-  | "dedicatedWorkersCanNest"
   | "fileSystemAccess"
   | "createSyncAccessHandleReadWriteUnsafe"
   | "indexedDb";

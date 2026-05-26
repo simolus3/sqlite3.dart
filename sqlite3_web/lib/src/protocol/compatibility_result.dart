@@ -34,28 +34,12 @@ final class CompatibilityResult {
   /// On some browsers, IndexedDB is not available in private/incognito tabs.
   final bool canUseIndexedDb;
 
-  /// Whether dedicated workers can use shared array buffers and the atomics
-  /// API.
-  ///
-  /// This is required for the synchronous channel used to host an OPFS
-  /// filesystem between threads. However, it is only available when the page is
-  /// served with special headers for security purposes.
-  final bool supportsSharedArrayBuffers;
-
-  /// Whether dedicated workers can spawn their own dedicated workers.
-  ///
-  /// We need two dedicated workers with a synchronous channel between them to
-  /// host an OPFS filesystem.
-  final bool dedicatedWorkersCanNest;
-
   CompatibilityResult({
     required this.existingDatabases,
     required this.sharedCanSpawnDedicated,
     required this.canUseOpfs,
     required this.opfsSupportsReadWriteUnsafe,
     required this.canUseIndexedDb,
-    required this.supportsSharedArrayBuffers,
-    required this.dedicatedWorkersCanNest,
   });
 
   factory CompatibilityResult.fromJS(JSObject result) {
@@ -74,8 +58,6 @@ final class CompatibilityResult {
       sharedCanSpawnDedicated: (result['b'] as JSBoolean).toDart,
       canUseOpfs: (result['c'] as JSBoolean).toDart,
       canUseIndexedDb: (result['d'] as JSBoolean).toDart,
-      supportsSharedArrayBuffers: (result['e'] as JSBoolean).toDart,
-      dedicatedWorkersCanNest: (result['f'] as JSBoolean).toDart,
       opfsSupportsReadWriteUnsafe: (result['g'] as JSBoolean).toDart,
     );
   }
@@ -93,8 +75,10 @@ final class CompatibilityResult {
       ..['b'] = sharedCanSpawnDedicated.toJS
       ..['c'] = canUseOpfs.toJS
       ..['d'] = canUseIndexedDb.toJS
-      ..['e'] = supportsSharedArrayBuffers.toJS
-      ..['f'] = dedicatedWorkersCanNest.toJS
+      // In old versions: supportsSharedArrayBuffers
+      ..['e'] = false.toJS
+      // In old versions: dedicatedWorkersCanNest
+      ..['f'] = false.toJS
       ..['g'] = opfsSupportsReadWriteUnsafe.toJS;
   }
 }

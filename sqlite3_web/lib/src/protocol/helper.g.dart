@@ -3,7 +3,6 @@ import 'dart:async';
 import 'dart:js_interop';
 
 import 'package:web/web.dart' show AbortSignal;
-import 'package:sqlite3/wasm.dart' show WorkerOptions;
 
 import '../channel.dart';
 import 'messages.dart';
@@ -11,7 +10,6 @@ import 'messages.dart';
 enum MessageType<T extends Message> {
   open<OpenRequest>(),
   connect<ConnectRequest>(),
-  startFileSystemServer<StartFileSystemServer>(),
   custom<CustomRequest>(),
   fileSystemExists<FileSystemExistsQuery>(),
   fileSystemFlush<FileSystemFlushRequest>(),
@@ -244,23 +242,6 @@ ConnectRequest newConnectRequest({
     requestId: requestId,
     databaseId: databaseId,
     type: 'connect',
-  );
-}
-
-@anonymous
-extension type _StartFileSystemServer._(StartFileSystemServer _)
-    implements StartFileSystemServer {
-  external factory _StartFileSystemServer({
-    @JS('a') required WorkerOptions options,
-    @JS('t') required String type,
-  });
-}
-StartFileSystemServer newStartFileSystemServer({
-  required WorkerOptions options,
-}) {
-  return _StartFileSystemServer(
-    options: options,
-    type: 'startFileSystemServer',
   );
 }
 
@@ -810,15 +791,12 @@ JSArray<JSAny> extractTransferrable(Message message) {
 
 T dispatchMessage<T>(
   Message msg, {
-  required T Function(StartFileSystemServer) whenStartFileSystemServer,
   required T Function(AbortRequest) whenAbortRequest,
   required T Function(Notification) whenNotification,
   required T Function(Response) whenResponse,
   required T Function(Request) whenRequest,
 }) {
   switch (msg.type) {
-    case 'startFileSystemServer':
-      return whenStartFileSystemServer(msg as StartFileSystemServer);
     case 'abort':
       return whenAbortRequest(msg as AbortRequest);
     case 'notifyUpdate':

@@ -1,9 +1,11 @@
 ## 0.8.0 (unreleased)
 
 - Remove `stream_channel` dependency with custom implementation, slightly decreasing compiled size.
-- Use strings instead of URLs to reduce code size.
-- Custom Dart objects can no longer be serialized via `serializeParameters` and `serializeResultSet`.
+- __Breaking__: Use strings instead of URLs to reduce code size.
+- __Breaking__: Custom Dart objects can no longer be serialized via `serializeParameters` and `serializeResultSet`.
   Only SQLite values are supported.
+- __Breaking__: Remove `opfsAtomics` file system implementation. The new `opfsWithExternalLocksWorkaround` supports
+  the same browsers while being faster and not requiring special headers.
 - Fix raw file system writes not acquiring database locks.
 - Optimize use of navigator locks to avoid acquiring them in single-tab scenarios.
 

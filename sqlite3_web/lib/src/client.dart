@@ -591,22 +591,8 @@ final class DatabaseClient implements WebSqlite {
           MissingBrowserFeature.createSyncAccessHandleReadWriteUnsafe,
         );
       }
-      if (!result.supportsSharedArrayBuffers) {
-        _missingFeatures.add(MissingBrowserFeature.sharedArrayBuffers);
-      }
-      if (!result.dedicatedWorkersCanNest) {
-        _missingFeatures.add(MissingBrowserFeature.dedicatedWorkersCanNest);
-      }
 
       if (result.canUseOpfs) {
-        // For the OPFS storage layer in dedicated workers, we're spawning two
-        // nested workers communicating through a synchronous channel created by
-        // Atomics and SharedArrayBuffers.
-        if (result.supportsSharedArrayBuffers &&
-            result.dedicatedWorkersCanNest) {
-          available.add(DatabaseImplementation.opfsAtomics);
-        }
-
         // Another option is to use a single worker opening files with
         // readwrite-unsafe. That allows opening the database in multiple tabs,
         // but we'd then have to use weblocks to coordinate access.
@@ -804,7 +790,6 @@ extension on DatabaseImplementation {
   FileSystemImplementation resolveToVfs() {
     return switch (storage) {
       StorageMode.opfs => switch (this) {
-        .opfsAtomics => FileSystemImplementation.opfsAtomics,
         .opfsShared => FileSystemImplementation.opfsShared,
         .opfsWithExternalLocks => FileSystemImplementation.opfsExternalLocks,
         .opfsWithExternalLocksWorkaround =>

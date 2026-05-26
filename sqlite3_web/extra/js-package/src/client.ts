@@ -282,7 +282,6 @@ export class DatabaseClient implements WebSqlite {
       handleCompatibilityResult(result);
       const canUseOpfs = result.c;
       const canUseIndexedDb = result.d;
-      const dedicatedWorkersCanNest = result.f;
       const opfsSupportsReadWriteUnsafe = result.g;
 
       if (!canUseOpfs) {
@@ -293,9 +292,6 @@ export class DatabaseClient implements WebSqlite {
       }
       if (!opfsSupportsReadWriteUnsafe) {
         this.#missingFeatures.add("createSyncAccessHandleReadWriteUnsafe");
-      }
-      if (!dedicatedWorkersCanNest) {
-        this.#missingFeatures.add("dedicatedWorkersCanNest");
       }
 
       if (canUseOpfs) {
@@ -394,7 +390,8 @@ export class DatabaseClient implements WebSqlite {
         ) {
           internalFileSystemImpl = "x";
         } else if (
-          implementation === DatabaseImplementation.opfsWithExternalLocksWorkaround
+          implementation ===
+          DatabaseImplementation.opfsWithExternalLocksWorkaround
         ) {
           internalFileSystemImpl = "y";
         } else {

@@ -632,22 +632,6 @@ final class DatabaseState {
   Future<VirtualFileSystem> get vfs async {
     await (_openVfs ??= Future.sync(() async {
       switch (mode) {
-        case FileSystemImplementation.opfsAtomics:
-          final options = WasmVfs.createOptions(root: pathForOpfs(name));
-          final worker = runner._environment.connector.spawnDedicatedWorker()!;
-
-          newStartFileSystemServer(options: options).sendToWorker(worker);
-
-          // Wait for the server worker to report that it's ready
-          await EventStreamProviders.messageEvent
-              .forTarget(worker.targetForErrorEvents)
-              .first;
-
-          final wasmVfs = _resolvedVfs = WasmVfs(
-            workerOptions: options,
-            vfsName: vfsName,
-          );
-          closeHandler = wasmVfs.close;
         case FileSystemImplementation.opfsShared:
           final simple = _resolvedVfs =
               await SimpleOpfsFileSystem.loadFromStorage(
@@ -757,13 +741,6 @@ final class WorkerRunner {
       if (message.type == MessageType.connect.name) {
         final channel = (message as ConnectRequest).endpoint.connect();
         _accept(channel);
-      } else if (message.type == MessageType.startFileSystemServer.name) {
-        final worker = await VfsWorker.create(
-          (message as StartFileSystemServer).options,
-        );
-        // Inform the requester that the VFS is ready
-        (globalContext as DedicatedWorkerGlobalScope).postMessage(true.toJS);
-        await worker.start();
       } else if (isCompatibilityCheck(message.type)) {
         // A compatibility check message is sent to dedicated workers inside of
         // shared workers, we respond through the top-level port.
@@ -847,8 +824,6 @@ final class WorkerRunner {
         canUseOpfs: supportsOpfs,
         opfsSupportsReadWriteUnsafe: opfsSupportsReadWriteUnsafe,
         canUseIndexedDb: supportsIndexedDb,
-        supportsSharedArrayBuffers: globalContext.has('SharedArrayBuffer'),
-        dedicatedWorkersCanNest: globalContext.has('Worker'),
       );
     });
   }
