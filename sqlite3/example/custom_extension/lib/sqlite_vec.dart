@@ -16,10 +16,11 @@ extension LoadVectorExtension on Sqlite3 {
     ensureExtensionLoaded(
       SqliteExtension(
         Native.addressOf<
-          NativeFunction<
-            Int Function(Pointer<Void>, Pointer<Void>, Pointer<Void>)
-          >
-        >(sqlite3_vec_init).cast(),
+              NativeFunction<
+                Int Function(Pointer<Void>, Pointer<Void>, Pointer<Void>)
+              >
+            >(sqlite3_vec_init)
+            .cast(),
       ),
     );
   }

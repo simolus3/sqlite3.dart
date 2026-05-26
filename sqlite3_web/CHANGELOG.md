@@ -1,4 +1,4 @@
-## 0.8.0 (unreleased)
+## 0.8.0
 
 - Remove `stream_channel` dependency with custom implementation, slightly decreasing compiled size.
 - __Breaking__: Use strings instead of URLs to reduce code size.
