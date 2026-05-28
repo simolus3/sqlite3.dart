@@ -36,7 +36,7 @@ void main(List<String> args) async {
             );
           } catch (e, s) {
             hadFailure = true;
-            print('Build failed for $platform: $e');
+            print('Build failed for $arch: $e');
             print(s);
           }
         }
@@ -217,10 +217,10 @@ const _configArgs = [
 ];
 
 const _linuxArchitectures = [
-  // TODO: Arm seems to cause crashes
+  // TODO: Figure out remaining architectures
   //Architecture.arm,
-  Architecture.arm64,
-  Architecture.ia32,
+  //Architecture.arm64,
+  //Architecture.ia32,
   Architecture.x64,
-  Architecture.riscv64,
+  //Architecture.riscv64,
 ];
