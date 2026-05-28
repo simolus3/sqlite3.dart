@@ -143,7 +143,7 @@ void main(List<String> args) async {
 
       for (final architecture in _osToAbis[os]!) {
         // Compiling sqlite3mc for x86 on Linux does not work.
-        if (mode == 'sqlite3mc' &&
+        if (mode == SqliteFork.sqlite3mc &&
             os == OS.linux &&
             architecture == Architecture.ia32) {
           continue;

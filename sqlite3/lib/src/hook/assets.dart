@@ -8,11 +8,15 @@ enum LibraryType {
 
   /// SQLite multiple ciphers build, with sources taken from
   /// https://github.com/utelle/SQLite3MultipleCiphers.
-  sqlite3mc;
+  sqlite3mc,
+
+  /// SQLCipher build, with sources taken from https://github.com/sqlcipher/sqlcipher.
+  sqlcipher;
 
   String get basename => switch (this) {
     LibraryType.sqlite3 => 'sqlite3',
     LibraryType.sqlite3mc => 'sqlite3mc',
+    LibraryType.sqlcipher => 'sqlcipher',
   };
 
   String filename(CodeConfig config) {
