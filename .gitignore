@@ -102,3 +102,5 @@ lib/generated_plugin_registrant.dart
 sqlite-src
 sqlite-compiled
 tmp
+openssl-src
+openssl-compiled
