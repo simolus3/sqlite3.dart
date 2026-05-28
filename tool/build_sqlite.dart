@@ -135,19 +135,8 @@ void main(List<String> args) async {
     }
 
     for (final os in operatingSystems) {
-      if (mode == SqliteFork.sqlcipher &&
-          (os == OS.android || os == OS.windows)) {
-        // TODO: Port SQLCipher builds to other operating systems.
-        continue;
-      }
-
       for (final architecture in _osToAbis[os]!) {
-        // Compiling sqlite3mc for x86 on Linux does not work.
-        if (mode == SqliteFork.sqlite3mc &&
-            os == OS.linux &&
-            architecture == Architecture.ia32) {
-          continue;
-        }
+        if (_skipBuild(os, architecture, mode)) continue;
 
         scheduleTask(() => buildAndCopy(os, architecture,
             iOS: IOSCodeConfig(targetSdk: IOSSdk.iPhoneOS, targetVersion: 12)));
@@ -168,6 +157,28 @@ void main(List<String> args) async {
 
   await Future.wait(buildTasks, eagerError: true);
   print('Done building');
+}
+
+bool _skipBuild(OS targetOS, Architecture targetArch, SqliteFork type) {
+  switch (type) {
+    case SqliteFork.sqlite:
+      // SQLite supports all architectures.
+      return false;
+    case SqliteFork.sqlite3mc:
+      // Compiling sqlite3mc for x86 on Linux does not work.
+      return targetOS == OS.linux && targetArch == Architecture.ia32;
+    case SqliteFork.sqlcipher:
+      // TODO: Build for Windows
+      if (targetOS == OS.windows) return true;
+      // TODO: Build for Android
+      if (targetOS == OS.android) return true;
+      // TODO: Other Linux architectures
+      if (targetOS == OS.linux) {
+        return targetArch != Architecture.x64;
+      }
+  }
+
+  return false;
 }
 
 enum SqliteFork {
