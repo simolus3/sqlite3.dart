@@ -106,7 +106,7 @@ void main(List<String> args) async {
           defines: {
             'source': 'source',
             'path': p.relative(sourcePath, from: fs.currentDirectory.path),
-            if (mode == SqliteFork.sqlcipher)
+            if (mode == SqliteFork.sqlcipher) ...{
               'defines': {
                 'default_options': true,
                 'defines': [
@@ -121,7 +121,9 @@ void main(List<String> args) async {
                     // Link with CommonCrypto on Apple platforms
                     'SQLCIPHER_CRYPTO_CC=1',
                 ]
-              }
+              },
+              'is_sqlcipher': true,
+            }
           },
           basePath: fs.currentDirectory.uri,
         )),
@@ -133,7 +135,8 @@ void main(List<String> args) async {
     }
 
     for (final os in operatingSystems) {
-      if (mode == SqliteFork.sqlcipher && os != OS.linux) {
+      if (mode == SqliteFork.sqlcipher &&
+          (os == OS.android || os == OS.windows)) {
         // TODO: Port SQLCipher builds to other operating systems.
         continue;
       }
@@ -180,11 +183,11 @@ enum SqliteFork {
 
 const _osToAbis = {
   OS.linux: [
-//    Architecture.arm,
-//    Architecture.arm64,
-//    Architecture.ia32,
+    Architecture.arm,
+    Architecture.arm64,
+    Architecture.ia32,
     Architecture.x64,
-//    Architecture.riscv64,
+    Architecture.riscv64,
   ],
   OS.android: [
     Architecture.arm,
