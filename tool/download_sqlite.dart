@@ -7,6 +7,10 @@ const sqliteSource = 'https://sqlite.org/2026/$sqlitePath.zip';
 const sqliteMultipleCiphersSource =
     'https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.4/sqlite3mc-2.3.4-sqlite-3.53.1-amalgamation.zip';
 
+const sqlcipherVersion = '4.16.0';
+const sqlcipherSource =
+    'https://github.com/sqlcipher/sqlcipher/archive/refs/tags/v$sqlcipherVersion.zip';
+
 const tmpDir = 'tmp';
 
 /// This runs as part of a GitHub actions workflow in this repository. It's not
@@ -17,6 +21,7 @@ void main(List<String> args) async {
 
   await _downloadAndExtract(sqliteSource, 'sqlite3');
   await _downloadAndExtract(sqliteMultipleCiphersSource, 'sqlite3mc');
+  await _downloadAndExtract(sqlcipherSource, 'sqlcipher');
 
   await Directory('sqlite-src').create();
   await Directory('sqlite-src/sqlite3mc').create();
@@ -32,11 +37,23 @@ void main(List<String> args) async {
       .copy('sqlite-src/sqlite3/sqlite3.c');
   await File('$tmpDir/$sqlitePath/sqlite3ext.h')
       .copy('sqlite-src/sqlite3/sqlite3ext.h');
+
+  await _buildSqlcipherAmalgamation();
 }
 
 Future<void> _downloadAndExtract(String url, String filename) async {
   await _run('curl -L $url --output $filename.zip', workingDirectory: tmpDir);
   await _run('unzip $filename.zip', workingDirectory: tmpDir);
+}
+
+Future<void> _buildSqlcipherAmalgamation() async {
+  final dir = Directory(tmpDir).uri.resolve('sqlcipher-$sqlcipherVersion').path;
+  await _run('./configure', workingDirectory: dir);
+  await _run('make sqlite3.c -j', workingDirectory: dir);
+
+  await Directory('sqlite-src/sqlcipher').create();
+  await File('$dir/sqlite3.c')
+      .copy('sqlite-src/sqlcipher/sqlcipher_amalgamation.c');
 }
 
 Future<void> _run(String command, {String? workingDirectory}) async {
