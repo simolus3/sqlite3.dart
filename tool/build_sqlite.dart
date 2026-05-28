@@ -47,11 +47,11 @@ void main(List<String> args) async {
 
   final buildTasks = <Future<void>>[];
 
-  for (final mode in ['sqlite3', 'sqlite3mc']) {
+  for (final mode in SqliteFork.values) {
     final sourcePath = fs.currentDirectory.parent
         .childDirectory('sqlite-src')
-        .childDirectory(mode)
-        .childFile(mode == 'sqlite3' ? 'sqlite3.c' : 'sqlite3mc_amalgamation.c')
+        .childDirectory(mode.directoryName)
+        .childFile(mode.amalgamationFileName)
         .path;
 
     Future<void> buildAndCopy(OS os, Architecture architecture,
@@ -93,8 +93,8 @@ void main(List<String> args) async {
         linkingEnabled: true,
         mainMethod: hook.main,
         check: (_, output) async {
-          final name =
-              os.dylibFileName('${mode}.${architecture.name}.${osName}');
+          final name = os.dylibFileName(
+              '${mode.directoryName}.${architecture.name}.${osName}');
           for (final file in output.assets.code) {
             await fs
                 .file(file.file!)
@@ -106,6 +106,22 @@ void main(List<String> args) async {
           defines: {
             'source': 'source',
             'path': p.relative(sourcePath, from: fs.currentDirectory.path),
+            if (mode == SqliteFork.sqlcipher)
+              'defines': {
+                'default_options': true,
+                'defines': [
+                  'SQLITE_HAS_CODEC=1',
+                  'SQLITE_EXTRA_INIT=sqlcipher_extra_init',
+                  'SQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown',
+                  // SQLCipher uses it in their Community builds.
+                  // Not clear if it has an impact in all applications
+                  // https://github.com/sqlcipher/sqlcipher-android/blob/7fab57af75039e5004b087086142b11a9d2a2380/sqlcipher/src/main/jni/sqlcipher/Android.mk#L9
+                  'SQLITE_ENABLE_MEMORY_MANAGEMENT=1',
+                  if (os case OS.iOS || OS.macOS)
+                    // Link with CommonCrypto on Apple platforms
+                    'SQLCIPHER_CRYPTO_CC=1',
+                ]
+              }
           },
           basePath: fs.currentDirectory.uri,
         )),
@@ -117,6 +133,11 @@ void main(List<String> args) async {
     }
 
     for (final os in operatingSystems) {
+      if (mode == SqliteFork.sqlcipher && os != OS.linux) {
+        // TODO: Port SQLCipher builds to other operating systems.
+        continue;
+      }
+
       for (final architecture in _osToAbis[os]!) {
         // Compiling sqlite3mc for x86 on Linux does not work.
         if (mode == 'sqlite3mc' &&
@@ -146,13 +167,24 @@ void main(List<String> args) async {
   print('Done building');
 }
 
+enum SqliteFork {
+  sqlite('sqlite3', 'sqlite3.c'),
+  sqlite3mc('sqlite3mc', 'sqlite3mc_amalgamation.c'),
+  sqlcipher('sqlcipher', 'sqlcipher_amalgamation.c');
+
+  final String directoryName;
+  final String amalgamationFileName;
+
+  const SqliteFork(this.directoryName, this.amalgamationFileName);
+}
+
 const _osToAbis = {
   OS.linux: [
-    Architecture.arm,
-    Architecture.arm64,
-    Architecture.ia32,
+//    Architecture.arm,
+//    Architecture.arm64,
+//    Architecture.ia32,
     Architecture.x64,
-    Architecture.riscv64,
+//    Architecture.riscv64,
   ],
   OS.android: [
     Architecture.arm,
