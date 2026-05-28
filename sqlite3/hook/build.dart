@@ -81,6 +81,9 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               '-ffunction-sections',
               '-fdata-sections',
               '-Wl,--gc-sections',
+              if (isSqlcipher)
+                // TODO: Link OpenSSL statically?
+                '-lcrypto',
             ],
             if (isAppleTarget) ...[
               '-headerpad_max_install_names',
