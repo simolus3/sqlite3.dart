@@ -59,6 +59,10 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
 ''');
         }
 
+        final isSqlcipher = input.userDefines['is_sqlcipher'] as bool? ?? false;
+        final targetOS = input.config.code.targetOS;
+        final isAppleTarget = targetOS == OS.iOS || targetOS == OS.macOS;
+
         final library = CBuilder.library(
           name: 'sqlite3',
           packageName: 'sqlite3',
@@ -78,13 +82,20 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               '-fdata-sections',
               '-Wl,--gc-sections',
             ],
-            if (input.config.code.targetOS case OS.iOS || OS.macOS) ...[
+            if (isAppleTarget) ...[
               '-headerpad_max_install_names',
               // clang would use the temporary directory passed by
               // native_toolchain_c otherwise. So this makes improves
               // reproducibility.
               '-install_name',
               '@rpath/libsqlite3.dylib',
+              if (isSqlcipher) ...[
+                // We want to link Security.framework for CommonCrypt. Adding
+                // this to CLibrary.frameworks doesn't work because that option
+                // is only considered for Objective-C inputs.
+                '-framework', 'Foundation',
+                '-framework', 'Security',
+              ],
             ],
           ],
           libraries: [
