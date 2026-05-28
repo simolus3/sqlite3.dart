@@ -21,16 +21,24 @@ void main(List<String> args) async {
   }
   await target.create(recursive: true);
 
+  var hadFailure = false;
+
   for (final platform in args) {
     switch (platform) {
       case 'linux':
         for (final arch in _linuxArchitectures) {
-          await _buildOpenSSL(
-            targetOS: OS.linux,
-            targetArchitecture: arch,
-            sharedOutputDirectory: target,
-            openSslSrcDir: src,
-          );
+          try {
+            await _buildOpenSSL(
+              targetOS: OS.linux,
+              targetArchitecture: arch,
+              sharedOutputDirectory: target,
+              openSslSrcDir: src,
+            );
+          } catch (e, s) {
+            hadFailure = true;
+            print('Build failed for $platform: $e');
+            print(s);
+          }
         }
       case 'windows':
         break;
@@ -41,6 +49,8 @@ void main(List<String> args) async {
             'Unsupported target OS, expected linux, windows or android.');
     }
   }
+
+  if (hadFailure) exit(1);
 }
 
 Future<void> _buildOpenSSL({
@@ -207,7 +217,8 @@ const _configArgs = [
 ];
 
 const _linuxArchitectures = [
-  Architecture.arm,
+  // TODO: Arm seems to cause crashes
+  //Architecture.arm,
   Architecture.arm64,
   Architecture.ia32,
   Architecture.x64,
