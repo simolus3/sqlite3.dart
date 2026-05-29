@@ -127,14 +127,13 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
           defines: defines,
           flags: [
             if (input.config.code.targetOS == OS.linux) ...[
-              if (linkerScript != null) ...[
-                // This avoids loading issues on Linux, see comment above.
-                '-Wl,-Bsymbolic',
-                // And since we already have a designated list of symbols to
-                // export, we might as well strip the rest.
-                // TODO: Port this to other targets too.
-                '-Wl,--version-script=$linkerScript',
-              ],
+              // This avoids loading issues on Linux, see comment above.
+              '-Wl,-Bsymbolic',
+              // And since we already have a designated list of symbols to
+              // export, we might as well strip the rest.
+              // TODO: Port this to other targets too.
+              '-Wl,--version-script=$linkerScript',
+              // Strip symbols
               '-s',
               '-ffunction-sections',
               '-fdata-sections',
