@@ -42,7 +42,7 @@ sealed class SqliteBinary {
       case 'executable':
         return SimpleBinary.fromExecutable;
       case 'source':
-      final isSqlcipher = userDefines['is_sqlcipher'] as bool? ?? false;
+        final isSqlcipher = userDefines['is_sqlcipher'] as bool? ?? false;
         return CompileSqlite(
           sourceFile: userDefines.path('path')!.toFilePath(),
           defines: CompilerDefines.parse(
@@ -345,7 +345,11 @@ extension type const CompilerDefines(Map<String, String?> flags)
     return CompilerDefines({...flags, ...other.flags});
   }
 
-  static CompilerDefines parse(HookInputUserDefines defines, {required OS targetOS, required bool isSqlcipher}) {
+  static CompilerDefines parse(
+    HookInputUserDefines defines, {
+    required OS targetOS,
+    required bool isSqlcipher,
+  }) {
     final obj = defines['defines'];
 
     // Include default options when not explicitly disabled.
@@ -400,7 +404,10 @@ extension type const CompilerDefines(Map<String, String?> flags)
     return CompilerDefines(entries);
   }
 
-  static CompilerDefines defaults({required OS targetOS, required bool isSqlcipher}) {
+  static CompilerDefines defaults({
+    required OS targetOS,
+    required bool isSqlcipher,
+  }) {
     final defines = _parseLines(const LineSplitter().convert(_defaultDefines));
     if (targetOS == OS.windows) {
       defines['SQLITE_API'] = '__declspec(dllexport)';

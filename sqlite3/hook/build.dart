@@ -75,8 +75,9 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               targetOS == OS.windows;
           if (linksWithOpenSSL) {
             const openSSLCompiledRootKey = 'openssl_compiled_root';
-            final Uri? opensslCompiledRoot =
-                input.userDefines.path(openSSLCompiledRootKey);
+            final Uri? opensslCompiledRoot = input.userDefines.path(
+              openSSLCompiledRootKey,
+            );
 
             if (opensslCompiledRoot == null) {
               throw StateError(

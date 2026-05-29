@@ -12,10 +12,6 @@ import '../sqlite3/hook/build.dart' as hook;
 
 final _limitConcurrency = Pool(Platform.numberOfProcessors);
 
-const _kSQLiteMode = 'sqlite3';
-const _kSQLite3MCMode = 'sqlite3mc';
-const _kSQLCipherMode = 'sqlcipher';
-
 /// Invokes `package:sqlite3` build hooks for multiple operating systems and
 /// architectures, merging outputs into `sqlite3-compiled/`.
 void main(List<String> args) async {
@@ -139,16 +135,6 @@ void main(List<String> args) async {
     for (final os in operatingSystems) {
       for (final architecture in _osToAbis[os]!) {
         if (_skipBuild(os, architecture, mode)) continue;
-
-        if (mode == _kSQLCipherMode) {
-          // TODO: Windows build for sqlcipher
-          if (os == OS.windows) continue;
-          // TODO: Other linux archs
-          if (os == OS.linux && architecture == Architecture.arm) continue;
-          if (os == OS.linux && architecture == Architecture.arm64) continue;
-          if (os == OS.linux && architecture == Architecture.ia32) continue;
-          if (os == OS.linux && architecture == Architecture.riscv64) continue;
-        }
 
         scheduleTask(() => buildAndCopy(os, architecture,
             iOS: IOSCodeConfig(targetSdk: IOSSdk.iPhoneOS, targetVersion: 12)));
