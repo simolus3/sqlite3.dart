@@ -118,6 +118,13 @@ void main(List<String> args) async {
             'path': p.relative(sourcePath, from: fs.currentDirectory.path),
             if (mode == SqliteFork.sqlcipher) ...{
               'is_sqlcipher': true,
+              // This is the folder where all the openssl compiled archs are located
+              'openssl_compiled_root': p.relative(
+                fs.currentDirectory.parent
+                    .childDirectory('openssl-compiled')
+                    .path,
+                from: fs.currentDirectory.path,
+              ),
             }
           },
           basePath: fs.currentDirectory.uri,

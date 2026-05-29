@@ -124,6 +124,13 @@ jobs:
           name: sqlite-src
           path: sqlite-src
 
+      - name: Download compiled OpenSSL
+        if: steps.cache_build.outputs.cache-hit != 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: openssl-libs-${{ runner.os }}
+          path: openssl-compiled
+
       - uses: dart-lang/setup-dart@v1
         if: steps.cache_build.outputs.cache-hit != 'true'
 

@@ -4,10 +4,8 @@ import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
 import 'package:native_toolchain_c/native_toolchain_c.dart';
 import 'package:path/path.dart' as p;
-import 'package:sqlite3/src/hook/assets.dart';
 
 import 'package:sqlite3/src/hook/description.dart';
-import 'package:sqlite3/src/hook/openssl.dart';
 import 'package:sqlite3/src/hook/used_symbols.dart';
 
 void main(List<String> args) async {
@@ -62,20 +60,69 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
         }
 
         final isSqlcipher = input.userDefines['is_sqlcipher'] as bool? ?? false;
+
         final targetOS = input.config.code.targetOS;
+        final targetArchitecture = input.config.code.targetArchitecture;
         final isAppleTarget = targetOS == OS.iOS || targetOS == OS.macOS;
 
-        final List<String> includes = [];
-        final List<String> libraryDirectories = [];
-        final List<String> libraries = [];
-        final List<String> flags = [];
+        // Directory where the architecture compiled OpenSSL is located. Null if OpenSSL is not used
+        Directory? openSslCompileDir;
+        File? openSslStaticLib;
+        if (isSqlcipher) {
+          final linksWithOpenSSL =
+              targetOS == OS.android ||
+              targetOS == OS.linux ||
+              targetOS == OS.windows;
+          if (linksWithOpenSSL) {
+            const openSSLCompiledRootKey = 'openssl_compiled_root';
+            final Uri? opensslCompiledRoot =
+                input.userDefines.path(openSSLCompiledRootKey);
+
+            if (opensslCompiledRoot == null) {
+              throw StateError(
+                'Target $targetOS needs OpenSSL compiled dir root with \'openSSLCompiledRootKey\'',
+              );
+            }
+
+            openSslCompileDir = Directory(
+              p.join(
+                opensslCompiledRoot.toFilePath(),
+                "${targetOS.name}-${targetArchitecture.name}",
+              ),
+            );
+
+            if (!await openSslCompileDir.exists()) {
+              throw StateError(
+                'Expected OpenSSL compiled directory at ${openSslCompileDir.path}',
+              );
+            }
+
+            openSslStaticLib = File(
+              p.join(
+                openSslCompileDir.path,
+                _getOpenSslLibFolderName(targetOS, targetArchitecture),
+                targetOS.staticlibFileName('crypto'),
+              ),
+            );
+
+            if (!await openSslStaticLib.exists()) {
+              throw StateError(
+                'Expected OpenSSL static library at ${openSslStaticLib.path}',
+              );
+            }
+          }
+        }
 
         final library = CBuilder.library(
           name: 'sqlite3',
           packageName: 'sqlite3',
           assetName: name,
-          sources: [sourceFile, ...includes],
-          includes: [p.dirname(sourceFile), ...includes],
+          sources: [sourceFile],
+          includes: [
+            p.dirname(sourceFile),
+            if (openSslCompileDir != null)
+              p.join(openSslCompileDir.path, 'include'),
+          ],
           defines: defines,
           flags: [
             if (input.config.code.targetOS == OS.linux) ...[
@@ -91,9 +138,6 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               '-ffunction-sections',
               '-fdata-sections',
               '-Wl,--gc-sections',
-              if (isSqlcipher)
-                // TODO: Link OpenSSL statically?
-                '-lcrypto',
             ],
             if (isAppleTarget) ...[
               '-headerpad_max_install_names',
@@ -110,16 +154,18 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
                 '-framework', 'Security',
               ],
             ],
-            ...flags,
           ],
-          libraryDirectories: [...libraryDirectories],
+          libraryDirectories: [
+            if (openSslStaticLib != null) openSslStaticLib.parent.path,
+          ],
           libraries: [
             if (targetOS == OS.android) ...[
               // We need to link the math library on Android.
               'm',
               if (isSqlcipher) 'log',
             ],
-            ...libraries,
+            // Link with OpenSSL (SQLCipher builds)
+            if (openSslCompileDir != null) 'crypto',
           ],
         );
 
@@ -134,6 +180,13 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
         );
     }
   });
+}
+
+String _getOpenSslLibFolderName(OS os, Architecture architecture) {
+  return switch ((os, architecture)) {
+    (OS.linux, Architecture.x64) => 'lib64',
+    _ => 'lib',
+  };
 }
 
 const package = 'sqlite3';
