@@ -158,8 +158,6 @@ abstract base class ProtocolChannel extends RequestHandler {
           token.abort();
         }
       },
-      whenStartFileSystemServer: (_) =>
-          throw StateError('Should only be a top-level message'),
     );
   }
 

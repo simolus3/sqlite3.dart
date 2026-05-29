@@ -1,4 +1,4 @@
-# sqlite3_web
+# sqlite3-web
 
 Small, fast, convenient bindings for SQLite on the web.
 
@@ -9,15 +9,13 @@ It's designed with a batteries-included approach, and provides:
 
 1. Runtime feature detection: This package automatically picks a suitable database implementation (IndexedDB or OPFS)
    depending on what the current browser supports.
-2. Automatic worker management: For performance, database are accessed through a web workers managed by this library.
+2. Automatic worker management: For performance, databases are accessed through web workers managed by this library.
 3. APIs to access the underlying file system of the worker, which can be used to read and write to database files.
 4. A fully-featured SQLite build, with fts5, rtree, math, dbstat and session extensions enabled by default.
 5. Encryption support with SQLite3 Multiple Ciphers.
 
-The library itself is around 10 KB in size (uncompressed). Additionally, this includes a 220 KB web worker
-and a 750 KB WebAssembly file for SQLite.
-
-Before compression, this library is around 230KB in size (10 KB library + 220 KB worker).
+Before compression, the library itself is around 10 KB in size. Additionally, this includes a 220 KB
+web worker and a 750 KB WebAssembly file for SQLite.
 
 ## Setup
 

@@ -18,6 +18,7 @@ import 'package:sqlite3/src/wasm/js_interop/new_file_system_access.dart';
 
 import 'database.dart';
 import 'channel.dart';
+import 'external_locks_vfs.dart';
 import 'locks.dart';
 import 'protocol.dart';
 import 'shared.dart';
@@ -500,32 +501,34 @@ final class _ClientConnection extends ProtocolChannel
     final buffer = request.buffer;
 
     final vfs = await database.database.vfs;
-    final file = vfs
-        .xOpen(Sqlite3Filename(fsType.pathInVfs), SqlFlag.SQLITE_OPEN_CREATE)
-        .file;
+    return await database.useLock(null, abortSignal, () {
+      final file = vfs
+          .xOpen(Sqlite3Filename(fsType.pathInVfs), SqlFlag.SQLITE_OPEN_CREATE)
+          .file;
 
-    try {
-      if (buffer != null) {
-        final asDartBuffer = buffer.toDart;
-        file.xTruncate(asDartBuffer.lengthInBytes);
-        file.xWrite(asDartBuffer.asUint8List(), 0);
+      try {
+        if (buffer != null) {
+          final asDartBuffer = buffer.toDart;
+          file.xTruncate(asDartBuffer.lengthInBytes);
+          file.xWrite(asDartBuffer.asUint8List(), 0);
 
-        return newSimpleSuccessResponse(
-          response: null,
-          requestId: request.requestId,
-        );
-      } else {
-        final buffer = Uint8List(file.xFileSize());
-        file.xRead(buffer, 0);
+          return newSimpleSuccessResponse(
+            response: null,
+            requestId: request.requestId,
+          );
+        } else {
+          final buffer = Uint8List(file.xFileSize());
+          file.xRead(buffer, 0);
 
-        return newSimpleSuccessResponse(
-          response: buffer.buffer.toJS,
-          requestId: request.requestId,
-        );
+          return newSimpleSuccessResponse(
+            response: buffer.buffer.toJS,
+            requestId: request.requestId,
+          );
+        }
+      } finally {
+        file.xClose();
       }
-    } finally {
-      file.xClose();
-    }
+    });
   }
 
   @override
@@ -535,8 +538,12 @@ final class _ClientConnection extends ProtocolChannel
   ) async {
     final database = _requireDatabase(request);
     final vfs = await database.database.vfs;
-    final exists =
-        vfs.xAccess(FileType.values[request.fsType].pathInVfs, 0) == 1;
+
+    final exists = await database.useLock(
+      null,
+      abortSignal,
+      () => vfs.xAccess(FileType.values[request.fsType].pathInVfs, 0) == 1,
+    );
 
     return newSimpleSuccessResponse(
       response: exists.toJS,
@@ -625,22 +632,6 @@ final class DatabaseState {
   Future<VirtualFileSystem> get vfs async {
     await (_openVfs ??= Future.sync(() async {
       switch (mode) {
-        case FileSystemImplementation.opfsAtomics:
-          final options = WasmVfs.createOptions(root: pathForOpfs(name));
-          final worker = runner._environment.connector.spawnDedicatedWorker()!;
-
-          newStartFileSystemServer(options: options).sendToWorker(worker);
-
-          // Wait for the server worker to report that it's ready
-          await EventStreamProviders.messageEvent
-              .forTarget(worker.targetForErrorEvents)
-              .first;
-
-          final wasmVfs = _resolvedVfs = WasmVfs(
-            workerOptions: options,
-            vfsName: vfsName,
-          );
-          closeHandler = wasmVfs.close;
         case FileSystemImplementation.opfsShared:
           final simple = _resolvedVfs =
               await SimpleOpfsFileSystem.loadFromStorage(
@@ -649,13 +640,16 @@ final class DatabaseState {
               );
           closeHandler = simple.close;
         case FileSystemImplementation.opfsExternalLocks:
-          final simple = _resolvedVfs =
-              await SimpleOpfsFileSystem.loadFromStorage(
-                pathForOpfs(name),
-                vfsName: vfsName,
-                readWriteUnsafe: true,
-              );
-          closeHandler = simple.close;
+        case FileSystemImplementation.opfsExternalLocksWorkaround:
+          final state = await ExternalLocksState.open(
+            path: pathForOpfs(name),
+            vfsName: vfsName,
+            readWriteUnsafe: mode == .opfsExternalLocks,
+          );
+          locks.attachVfs(state);
+
+          final vfs = _resolvedVfs = state.fs;
+          closeHandler = vfs.close;
         case FileSystemImplementation.indexedDb:
           final idb = _resolvedVfs = await IndexedDbFileSystem.open(
             dbName: name,
@@ -712,6 +706,7 @@ final class DatabaseState {
     }
 
     await closeHandler?.call();
+    unawaited(locks.releaseNavigatorLocks());
   }
 }
 
@@ -746,13 +741,6 @@ final class WorkerRunner {
       if (message.type == MessageType.connect.name) {
         final channel = (message as ConnectRequest).endpoint.connect();
         _accept(channel);
-      } else if (message.type == MessageType.startFileSystemServer.name) {
-        final worker = await VfsWorker.create(
-          (message as StartFileSystemServer).options,
-        );
-        // Inform the requester that the VFS is ready
-        (globalContext as DedicatedWorkerGlobalScope).postMessage(true.toJS);
-        await worker.start();
       } else if (isCompatibilityCheck(message.type)) {
         // A compatibility check message is sent to dedicated workers inside of
         // shared workers, we respond through the top-level port.
@@ -836,8 +824,6 @@ final class WorkerRunner {
         canUseOpfs: supportsOpfs,
         opfsSupportsReadWriteUnsafe: opfsSupportsReadWriteUnsafe,
         canUseIndexedDb: supportsIndexedDb,
-        supportsSharedArrayBuffers: globalContext.has('SharedArrayBuffer'),
-        dedicatedWorkersCanNest: globalContext.has('Worker'),
       );
     });
   }

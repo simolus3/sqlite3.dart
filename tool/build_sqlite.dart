@@ -57,21 +57,11 @@ void main(List<String> args) async {
 
   final buildTasks = <Future<void>>[];
 
-  for (final mode in [
-    _kSQLiteMode,
-    _kSQLite3MCMode,
-    _kSQLCipherMode,
-  ]) {
-    final sourceFileName = switch (mode) {
-      _kSQLiteMode || _kSQLCipherMode => "sqlite3.c",
-      _kSQLite3MCMode => 'sqlite3mc_amalgamation.c',
-      _ => throw UnimplementedError(),
-    };
-
-    final sourceCFilePath = fs.currentDirectory.parent
+  for (final mode in SqliteFork.values) {
+    final sourcePath = fs.currentDirectory.parent
         .childDirectory('sqlite-src')
-        .childDirectory(mode)
-        .childFile(sourceFileName)
+        .childDirectory(mode.directoryName)
+        .childFile(mode.amalgamationFileName)
         .path;
 
     Future<void> buildAndCopy(OS os, Architecture architecture,
@@ -113,8 +103,8 @@ void main(List<String> args) async {
         linkingEnabled: true,
         mainMethod: hook.main,
         check: (_, output) async {
-          final name =
-              os.dylibFileName('${mode}.${architecture.name}.${osName}');
+          final name = os.dylibFileName(
+              '${mode.directoryName}.${architecture.name}.${osName}');
           for (final file in output.assets.code) {
             await fs
                 .file(file.file!)
@@ -125,8 +115,25 @@ void main(List<String> args) async {
             workspacePubspec: PackageUserDefinesSource(
           defines: {
             'source': 'source',
-            'path': p.relative(sourceCFilePath, from: fs.currentDirectory.path),
-            'library_type': mode,
+            'path': p.relative(sourcePath, from: fs.currentDirectory.path),
+            if (mode == SqliteFork.sqlcipher) ...{
+              'defines': {
+                'default_options': true,
+                'defines': [
+                  'SQLITE_HAS_CODEC=1',
+                  'SQLITE_EXTRA_INIT=sqlcipher_extra_init',
+                  'SQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown',
+                  // SQLCipher uses it in their Community builds.
+                  // Not clear if it has an impact in all applications
+                  // https://github.com/sqlcipher/sqlcipher-android/blob/7fab57af75039e5004b087086142b11a9d2a2380/sqlcipher/src/main/jni/sqlcipher/Android.mk#L9
+                  'SQLITE_ENABLE_MEMORY_MANAGEMENT=1',
+                  if (os case OS.iOS || OS.macOS)
+                    // Link with CommonCrypto on Apple platforms
+                    'SQLCIPHER_CRYPTO_CC=1',
+                ]
+              },
+              'is_sqlcipher': true,
+            }
           },
           basePath: fs.currentDirectory.uri,
         )),
@@ -139,12 +146,7 @@ void main(List<String> args) async {
 
     for (final os in operatingSystems) {
       for (final architecture in _osToAbis[os]!) {
-        // Compiling sqlite3mc for x86 on Linux does not work.
-        if (mode == _kSQLite3MCMode &&
-            os == OS.linux &&
-            architecture == Architecture.ia32) {
-          continue;
-        }
+        if (_skipBuild(os, architecture, mode)) continue;
 
         if (mode == _kSQLCipherMode) {
           // TODO: Windows build for sqlcipher
@@ -175,6 +177,39 @@ void main(List<String> args) async {
 
   await Future.wait(buildTasks, eagerError: true);
   print('Done building');
+}
+
+bool _skipBuild(OS targetOS, Architecture targetArch, SqliteFork type) {
+  switch (type) {
+    case SqliteFork.sqlite:
+      // SQLite supports all architectures.
+      return false;
+    case SqliteFork.sqlite3mc:
+      // Compiling sqlite3mc for x86 on Linux does not work.
+      return targetOS == OS.linux && targetArch == Architecture.ia32;
+    case SqliteFork.sqlcipher:
+      // TODO: Build for Windows
+      if (targetOS == OS.windows) return true;
+      // TODO: Build for Android
+      if (targetOS == OS.android) return true;
+      // TODO: Other Linux architectures
+      if (targetOS == OS.linux) {
+        return targetArch != Architecture.x64;
+      }
+  }
+
+  return false;
+}
+
+enum SqliteFork {
+  sqlite('sqlite3', 'sqlite3.c'),
+  sqlite3mc('sqlite3mc', 'sqlite3mc_amalgamation.c'),
+  sqlcipher('sqlcipher', 'sqlcipher_amalgamation.c');
+
+  final String directoryName;
+  final String amalgamationFileName;
+
+  const SqliteFork(this.directoryName, this.amalgamationFileName);
 }
 
 const _osToAbis = {

@@ -1,6 +1,6 @@
 {
   "name": "sqlite3-web",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Optimized SQLite and SQLite3 Multiple Ciphers builds for the web.",
   "bugs": {
     "url": "https://github.com/simolus3/sqlite3.dart/issues"

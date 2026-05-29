@@ -282,8 +282,6 @@ export class DatabaseClient implements WebSqlite {
       handleCompatibilityResult(result);
       const canUseOpfs = result.c;
       const canUseIndexedDb = result.d;
-      const supportsSharedArrayBuffers = result.e;
-      const dedicatedWorkersCanNest = result.f;
       const opfsSupportsReadWriteUnsafe = result.g;
 
       if (!canUseOpfs) {
@@ -295,18 +293,12 @@ export class DatabaseClient implements WebSqlite {
       if (!opfsSupportsReadWriteUnsafe) {
         this.#missingFeatures.add("createSyncAccessHandleReadWriteUnsafe");
       }
-      if (!supportsSharedArrayBuffers) {
-        this.#missingFeatures.add("sharedArrayBuffers");
-      }
-      if (!dedicatedWorkersCanNest) {
-        this.#missingFeatures.add("dedicatedWorkersCanNest");
-      }
 
-      if (canUseOpfs && supportsSharedArrayBuffers && dedicatedWorkersCanNest) {
-        available.push(DatabaseImplementation.opfsAtomics);
-      }
-      if (canUseOpfs && opfsSupportsReadWriteUnsafe) {
-        available.push(DatabaseImplementation.opfsWithExternalLocks);
+      if (canUseOpfs) {
+        available.push(DatabaseImplementation.opfsWithExternalLocksWorkaround);
+        if (opfsSupportsReadWriteUnsafe) {
+          available.push(DatabaseImplementation.opfsWithExternalLocks);
+        }
       }
     };
 
@@ -388,17 +380,20 @@ export class DatabaseClient implements WebSqlite {
         connection = this.#connectionToDedicated!;
     }
 
-    let internalFileSystemImpl: "s" | "l" | "x" | "i" | "m";
+    let internalFileSystemImpl: "s" | "l" | "x" | "y" | "i" | "m";
     switch (implementation.storage) {
       case opfs:
-        if (implementation === DatabaseImplementation.opfsAtomics) {
-          internalFileSystemImpl = "l";
-        } else if (implementation === DatabaseImplementation.opfsShared) {
+        if (implementation === DatabaseImplementation.opfsShared) {
           internalFileSystemImpl = "s";
         } else if (
           implementation === DatabaseImplementation.opfsWithExternalLocks
         ) {
           internalFileSystemImpl = "x";
+        } else if (
+          implementation ===
+          DatabaseImplementation.opfsWithExternalLocksWorkaround
+        ) {
+          internalFileSystemImpl = "y";
         } else {
           throw new Error("Unknown OPFS file system impl");
         }

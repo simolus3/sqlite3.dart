@@ -1,8 +1,9 @@
-## 3.3.2 (unreleased)
+## 3.3.2
 
-- Support `native_toolchain_c` versions `0.18.x`.
+- Support `package:native_toolchain_c` versions `0.18.x` and `0.19.x`.
+- Support `hooks` versions `2.x`.
 - Upgrade to SQLite version 3.53.1.
-- Allow disabling `BigInt` support via `-Dsqlite3.dartbigints=false`, which can be used to 
+- Allow disabling `BigInt` support via `-Dsqlite3.dartbigints=false`, which can be used to
   reduce code size on the web if nothing else uses `BigInt` values.
 
 ## 3.3.1

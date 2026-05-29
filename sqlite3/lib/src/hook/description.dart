@@ -83,10 +83,16 @@ final class LookupSystem implements ExternalSqliteBinary {
   @override
   LinkMode resolveLinkMode(BuildInput input) {
     final targetOS = input.config.code.targetOS;
+    final String dylibName;
 
-    return DynamicLoadingSystem(
-      Uri.parse(targetOS.libraryFileName(name, DynamicLoadingBundled())),
-    );
+    if (p.isAbsolute(name)) {
+      // Interpret name as a file name
+      dylibName = name;
+    } else {
+      dylibName = targetOS.libraryFileName(name, DynamicLoadingBundled());
+    }
+
+    return DynamicLoadingSystem(Uri.parse(dylibName));
   }
 }
 

@@ -63,64 +63,9 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
 ''');
         }
 
-        final List<String> includes = [];
-        final List<String> libraryDirectories = [];
-        final List<String> libraries = [];
-        final List<String> flags = [];
-
-        if (libraryType == LibraryType.sqlcipher) {
-          switch (targetOS) {
-            case OS.macOS:
-            case OS.iOS:
-              // Link with CommonCrypto on Apple platforms, which is optimized
-              flags.addAll([
-                '-framework',
-                'Foundation',
-                '-framework',
-                'Security',
-              ]);
-              break;
-            case OS.android:
-            case OS.linux:
-            case OS.windows:
-              // OpenSSL is downloaded next to the main source file
-              final openSslSrcDir = Directory(
-                p.join(File(sourceFile).parent.path, 'openssl-src'),
-              );
-
-              final openSslBinariesDir = (await buildOpenSSL(
-                input,
-                output,
-                openSslSrcDir: openSslSrcDir,
-              ))!;
-
-              final cryptoStaticLib = File(
-                getStaticCryptoLib(
-                  openSslBinariesDir,
-                  input.config.code.targetOS,
-                  input.config.code.targetArchitecture,
-                ),
-              );
-
-              includes.add(p.join(openSslBinariesDir.path, 'include'));
-              libraryDirectories.add(cryptoStaticLib.parent.path);
-              libraries.add('crypto');
-
-              if (targetOS == OS.android) {
-                // The android library is needed when linking
-                libraries.add('log');
-              }
-            default:
-              throw UnsupportedError(
-                'Unsupported OS: ${input.config.code.targetOS}',
-              );
-          }
-        }
-
-        // final files = Directory(kOpenSSLBuiltDir).listSync();
-        // print(files);
-
-        final isMacLike = [OS.iOS, OS.macOS].contains(targetOS);
+        final isSqlcipher = input.userDefines['is_sqlcipher'] as bool? ?? false;
+        final targetOS = input.config.code.targetOS;
+        final isAppleTarget = targetOS == OS.iOS || targetOS == OS.macOS;
 
         final library = CBuilder.library(
           name: 'sqlite3',
@@ -143,14 +88,24 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               '-ffunction-sections',
               '-fdata-sections',
               '-Wl,--gc-sections',
+              if (isSqlcipher)
+                // TODO: Link OpenSSL statically?
+                '-lcrypto',
             ],
-            if (isMacLike) ...[
+            if (isAppleTarget) ...[
               '-headerpad_max_install_names',
               // clang would use the temporary directory passed by
               // native_toolchain_c otherwise. So this makes improves
               // reproducibility.
               '-install_name',
               '@rpath/libsqlite3.dylib',
+              if (isSqlcipher) ...[
+                // We want to link Security.framework for CommonCrypt. Adding
+                // this to CLibrary.frameworks doesn't work because that option
+                // is only considered for Objective-C inputs.
+                '-framework', 'Foundation',
+                '-framework', 'Security',
+              ],
             ],
             ...flags,
           ],

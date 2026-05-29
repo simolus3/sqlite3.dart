@@ -244,7 +244,6 @@ import 'dart:async';
 import 'dart:js_interop';
 
 import 'package:web/web.dart' show AbortSignal;
-import 'package:sqlite3/wasm.dart' show WorkerOptions;
 
 import '../channel.dart';
 import 'messages.dart';

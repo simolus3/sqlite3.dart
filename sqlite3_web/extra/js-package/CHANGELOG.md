@@ -1,5 +1,6 @@
-## 0.1.2 (unreleased)
+## 0.2.0
 
+- Support OPFS on Safari without special headers.
 - Remove unused `sqlite3.debug.wasm` asset.
 - Make `typescript` a `devDependency`.
 

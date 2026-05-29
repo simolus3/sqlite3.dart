@@ -1,7 +1,6 @@
 import 'dart:js_interop';
 import 'dart:typed_data';
 
-import 'package:sqlite3/wasm.dart';
 // ignore: implementation_imports
 import 'package:sqlite3/src/wasm/js_interop/core.dart';
 // ignore: implementation_imports
@@ -45,8 +44,11 @@ extension type Response._(JSObject _) implements Message {
 
 enum FileSystemImplementation {
   opfsShared('s'),
-  opfsAtomics('l'),
   opfsExternalLocks('x'),
+
+  /// Like [opfsExternalLocks], but using a workaround based on re-opening OFPS
+  /// file handles instead of `readwrite-unsafe`.
+  opfsExternalLocksWorkaround('y'),
   indexedDb('i'),
   inMemory('m');
 
@@ -57,10 +59,7 @@ enum FileSystemImplementation {
   JSString get toJS => jsRepresentation.toJS;
 
   bool get needsExternalLocks =>
-      // Technically, opfsAtomics doesn't need external locks around each
-      // database access. We just do this to avoid contention in the underlying
-      // VFS.
-      this == opfsAtomics || this == opfsExternalLocks;
+      this == opfsExternalLocks || this == opfsExternalLocksWorkaround;
 
   static FileSystemImplementation fromJS(JSString js) {
     final toDart = js.toDart;
@@ -108,12 +107,6 @@ extension type ConnectRequest._(JSObject _) implements Request {
   @JS(_UniqueFieldNames.responseData)
   @transfer
   external WebEndpoint endpoint;
-}
-
-@MessageTypeName('startFileSystemServer')
-extension type StartFileSystemServer._(JSObject _) implements Message {
-  @JS(_UniqueFieldNames.additionalData)
-  external WorkerOptions options;
 }
 
 /// Allows users of this package to implement their own RPC calls handled by

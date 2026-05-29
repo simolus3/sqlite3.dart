@@ -1,3 +1,7 @@
+## 0.2.5
+
+- Support `package:hooks` versions `2.x`.
+
 ## 0.2.4
 
 - Fix `SqliteConnectionPool.updatedTables` emitting updates before a transaction has completed.

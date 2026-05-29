@@ -10,6 +10,7 @@ enum LibraryType {
   /// https://github.com/utelle/SQLite3MultipleCiphers.
   sqlite3mc,
 
+  /// SQLCipher build, with sources taken from https://github.com/sqlcipher/sqlcipher.
   sqlcipher;
 
   String get basename => switch (this) {

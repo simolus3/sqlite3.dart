@@ -77,11 +77,13 @@ export class DatabaseImplementation extends Object {
   );
 
   /**
-   * Open an asynchronous database stored in OPFS. It is "syncified" by using a pair of two dedicated workers
-   * implementing an RPC channel over shared array buffers and atomics.
+   * Opens a synchronous database stored in OPFS.
+   *
+   * This is similar to {@link opfsWithExternalLocks}, but also supports browsers without `readwrite-unsafe`.
+   * It works by opening file handles on most database accessses, which is substantially slower.
    */
-  static readonly opfsAtomics = new DatabaseImplementation(
-    "opfsAtomics",
+  static readonly opfsWithExternalLocksWorkaround = new DatabaseImplementation(
+    "opfsWithExternalLocksWorkaround",
     21,
     opfs,
     throughDedicatedWorker,
@@ -116,11 +118,9 @@ export type MissingBrowserFeature =
   | "sharedWorkers"
   | "dedicatedWorkers"
   | "dedicatedWorkersInSharedWorkers"
-  | "dedicatedWorkersCanNest"
   | "fileSystemAccess"
   | "createSyncAccessHandleReadWriteUnsafe"
-  | "indexedDb"
-  | "sharedArrayBuffers";
+  | "indexedDb";
 
 /**
  * The result of {@link WebSqlite.runFeatureDetection}, describing which browser features and databases are currently

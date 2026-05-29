@@ -10,7 +10,7 @@ dependencies:
   collection: ^1.19.1
   file: ^7.0.1
   pool: ^1.5.2
-  hooks: ^1.0.0
+  hooks: ^2.0.0
 
 workspace:
   - sqlite3

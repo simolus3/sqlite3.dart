@@ -8,14 +8,8 @@ const sqliteMultipleCiphersSource =
     'https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.4/sqlite3mc-2.3.4-sqlite-3.53.1-amalgamation.zip';
 
 const sqlcipherVersion = '4.16.0';
-const sqlcipherPath = 'sqlcipher-amalgamation-$sqlcipherVersion';
-const sqlCipherSource =
-    'https://github.com/chehrlic/sqlcipher-amalgamation/archive/refs/tags/v$sqlcipherVersion.zip';
-
-const openSslVersion = '3.6.2';
-const openSslSource =
-    'https://github.com/openssl/openssl/releases/download/openssl-$openSslVersion/openssl-$openSslVersion.tar.gz';
-const openSslPath = 'openssl-$openSslVersion';
+const sqlcipherSource =
+    'https://github.com/sqlcipher/sqlcipher/archive/refs/tags/v$sqlcipherVersion.zip';
 
 const tmpDir = 'tmp';
 
@@ -30,8 +24,7 @@ void main(List<String> args) async {
 
   await _downloadAndExtract(sqliteSource, 'sqlite3');
   await _downloadAndExtract(sqliteMultipleCiphersSource, 'sqlite3mc');
-  await _downloadAndExtract(sqlCipherSource, 'sqlcipher');
-  await _downloadAndExtractTarGz(openSslSource, 'openssl');
+  await _downloadAndExtract(sqlcipherSource, 'sqlcipher');
 
   if (await Directory('sqlite-src').exists()) {
     await Directory('sqlite-src').delete(recursive: true);
@@ -52,17 +45,7 @@ void main(List<String> args) async {
   await File('$tmpDir/$sqlitePath/sqlite3ext.h')
       .copy('sqlite-src/sqlite3/sqlite3ext.h');
 
-  await Directory('sqlite-src/sqlcipher').create();
-  await File('$tmpDir/$sqlcipherPath/sqlite3.h')
-      .copy('sqlite-src/sqlcipher/sqlite3.h');
-  await File('$tmpDir/$sqlcipherPath/sqlite3.c')
-      .copy('sqlite-src/sqlcipher/sqlite3.c');
-  await File('$tmpDir/$sqlcipherPath/sqlite3ext.h')
-      .copy('sqlite-src/sqlcipher/sqlite3ext.h');
-
-  // move openssl source inside sqlcipher source
-  await Directory('$tmpDir/$openSslPath')
-      .rename('sqlite-src/sqlcipher/openssl-src');
+  await _buildSqlcipherAmalgamation();
 }
 
 Future<void> _downloadAndExtract(String url, String filename) async {
@@ -70,10 +53,14 @@ Future<void> _downloadAndExtract(String url, String filename) async {
   await _run('unzip $filename.zip', workingDirectory: tmpDir);
 }
 
-Future<void> _downloadAndExtractTarGz(String url, String filename) async {
-  await _run('curl -L $url --output $filename.tar.gz',
-      workingDirectory: tmpDir);
-  await _run('tar xzf $filename.tar.gz', workingDirectory: tmpDir);
+Future<void> _buildSqlcipherAmalgamation() async {
+  final dir = Directory(tmpDir).uri.resolve('sqlcipher-$sqlcipherVersion').path;
+  await _run('./configure', workingDirectory: dir);
+  await _run('make sqlite3.c -j', workingDirectory: dir);
+
+  await Directory('sqlite-src/sqlcipher').create();
+  await File('$dir/sqlite3.c')
+      .copy('sqlite-src/sqlcipher/sqlcipher_amalgamation.c');
 }
 
 Future<void> _run(String command, {String? workingDirectory}) async {
