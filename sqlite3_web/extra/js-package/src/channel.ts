@@ -7,13 +7,13 @@ import {
   Notification,
   dispatchMessage,
   typeAbortRequest,
-} from "./generated_protocol";
+} from "./generated_protocol.js";
 import {
   interpretResponseAsError,
   ReleaseLock,
   requestNavigatorLock,
   serializeError,
-} from "./utils";
+} from "./utils.js";
 
 const disconnectMessage = "_disconnect";
 

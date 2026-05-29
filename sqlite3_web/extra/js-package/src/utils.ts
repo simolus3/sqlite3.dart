@@ -2,8 +2,8 @@ import {
   ErrorResponse,
   Response,
   typeErrorResponse,
-} from "./generated_protocol";
-import { FeatureDetectionResult, RemoteError, SqliteException } from "./api";
+} from "./generated_protocol.js";
+import { FeatureDetectionResult, RemoteError, SqliteException } from "./api.js";
 
 export type ReleaseLock = () => void;
 

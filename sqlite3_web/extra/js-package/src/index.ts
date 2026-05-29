@@ -1,16 +1,16 @@
-import { Database, WebSqlite } from "./api";
-import { WebEndpoint } from "./channel";
-import { ClientInitializationOptions, DatabaseClient } from "./client";
-import { unsupportedWorkerConnector } from "./worker_connector";
+import { Database, WebSqlite } from "./api.js";
+import { WebEndpoint } from "./channel.js";
+import { ClientInitializationOptions, DatabaseClient } from "./client.js";
+import { unsupportedWorkerConnector } from "./worker_connector.js";
 
-export * from "./api";
+export * from "./api.js";
 export {
   type WorkerConnector,
   type WorkerHandle,
   defaultWorkerConnector,
-} from "./worker_connector";
-export { type ClientInitializationOptions } from "./client";
-export { type WebEndpoint } from "./channel";
+} from "./worker_connector.js";
+export { type ClientInitializationOptions } from "./client.js";
+export { type WebEndpoint } from "./channel.js";
 
 /**
  * Prepares a {@link WebSqlite} instance.

@@ -1,11 +1,11 @@
-import { WebEndpoint } from "./channel";
+import { WebEndpoint } from "./channel.js";
 import {
   indexedDb,
   inMemory,
   opfs,
   throughDedicatedWorker,
   throughSharedWorker,
-} from "./constants";
+} from "./constants.js";
 
 /**
  * Available locations to store database content in browsers.

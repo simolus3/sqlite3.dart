@@ -36,12 +36,15 @@
     ".": {
       "types": "./lib/index.d.ts",
       "development": {
-        "module-sync": "./lib/index.js"
+        "module-sync": "./lib/index.js",
+        "module": "./lib/index.js"
       },
       "production": {
-        "module-sync": "./dist/index.mjs"
+        "module-sync": "./dist/index.mjs",
+        "module": "./dist/index.mjs"
       },
-      "module-sync": "./dist/index.mjs"
+      "module-sync": "./dist/index.mjs",
+      "module": "./dist/index.mjs"
     },
     "./worker.js": "./assets/worker.js",
     "./sqlite3.wasm": "./assets/sqlite3.wasm",

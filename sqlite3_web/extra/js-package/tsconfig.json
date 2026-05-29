@@ -7,8 +7,9 @@
         "declarationDir": "lib",
         "declaration": true,
         "noImplicitAny": true,
-        "module": "esnext",
+        "module": "nodenext",
         "moduleDetection": "force",
+        "moduleResolution": "nodenext",
         "sourceMap": true,
         "composite": true
     }

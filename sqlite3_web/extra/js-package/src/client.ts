@@ -13,15 +13,15 @@ import {
   ResultSet,
   StorageMode,
   WebSqlite,
-} from "./api";
-import { createChannel, ProtocolChannel, WebEndpoint } from "./channel";
+} from "./api.js";
+import { createChannel, ProtocolChannel, WebEndpoint } from "./channel.js";
 import {
   indexedDb,
   inMemory,
   opfs,
   throughDedicatedWorker,
   throughSharedWorker,
-} from "./constants";
+} from "./constants.js";
 import {
   Request,
   Response,
@@ -57,10 +57,10 @@ import {
   typeOpenRequest,
   typeDedicatedCompatibilityCheck,
   typeSharedCompatibilityCheck,
-} from "./generated_protocol";
-import { CompatibilityResult, typeCodesForValues } from "./types";
-import { wrapFeatureDetectionResult } from "./utils";
-import { WorkerConnector, WorkerHandle } from "./worker_connector";
+} from "./generated_protocol.js";
+import { CompatibilityResult, typeCodesForValues } from "./types.js";
+import { wrapFeatureDetectionResult } from "./utils.js";
+import { WorkerConnector, WorkerHandle } from "./worker_connector.js";
 
 class WorkerConnection extends ProtocolChannel {
   override async _internal_serveRequest(request: Request): Promise<Response> {
