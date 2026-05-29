@@ -125,7 +125,7 @@ jobs:
           path: sqlite-src
 
       - name: Download compiled OpenSSL
-        if: steps.cache_build.outputs.cache-hit != 'true'
+        if: runner.os == 'Linux' && steps.cache_build.outputs.cache-hit != 'true'
         uses: actions/download-artifact@v8
         with:
           name: openssl-libs-${{ runner.os }}
