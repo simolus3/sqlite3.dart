@@ -90,9 +90,6 @@ Future<void> _buildOpenSSL({
     targetOS,
     targetArchitecture,
   );
-  if (targetOS == OS.android) {
-    throw 'TODO: Android';
-  }
 
   final extraConfigureArgs = <String>[
     '--prefix=${outputDirectory.path}',
