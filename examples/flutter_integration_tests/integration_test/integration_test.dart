@@ -126,7 +126,9 @@ void main() {
   if (sqlcipher) {
     test('cipher_version', () {
       final db = sqlite3.openInMemory()..closeWhenDone();
-      print(db.select('select sqlite3mc_config(?)', ['cipher']));
+      final cipherVersionRows = db.select('PRAGMA cipher_version');
+      print(cipherVersionRows);
+      expect(cipherVersionRows, isNotEmpty);
     });
   }
 
