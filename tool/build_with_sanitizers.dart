@@ -60,8 +60,8 @@ void main() async {
             defines: {
               'SQLITE_ENABLE_API_ARMOR': '1',
               ...CompilerDefines.defaults(
-                input.config.code.targetOS,
-                LibraryType.sqlite3,
+                targetOS: input.config.code.targetOS,
+                isSqlcipher: false,
               ),
             },
             flags: [

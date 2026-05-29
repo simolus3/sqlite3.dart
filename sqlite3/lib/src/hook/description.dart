@@ -42,18 +42,13 @@ sealed class SqliteBinary {
       case 'executable':
         return SimpleBinary.fromExecutable;
       case 'source':
-        final libraryTypeName = userDefines['library_type'] as String?;
-        final libraryType = libraryTypeName != null
-            ? LibraryType.fromName(libraryTypeName)
-            : LibraryType.sqlite3;
-
+      final isSqlcipher = userDefines['is_sqlcipher'] as bool? ?? false;
         return CompileSqlite(
           sourceFile: userDefines.path('path')!.toFilePath(),
-          libraryType: libraryType,
           defines: CompilerDefines.parse(
-            libraryType,
             userDefines,
-            input.config.code.targetOS,
+            targetOS: input.config.code.targetOS,
+            isSqlcipher: isSqlcipher,
           ),
         );
       default:
@@ -299,20 +294,13 @@ final class PrecompiledForTesting extends PrecompiledBinary {
 }
 
 final class CompileSqlite implements SqliteBinary {
-  /// The type of build
-  final LibraryType libraryType;
-
   /// Path to the `sqlite3.c` source file to compile.
   final String sourceFile;
 
   /// User-defines for the SQLite compilation.
   final CompilerDefines defines;
 
-  CompileSqlite({
-    required this.libraryType,
-    required this.sourceFile,
-    required this.defines,
-  });
+  CompileSqlite({required this.sourceFile, required this.defines});
 }
 
 /// If we're compiling SQLite from source, a way to obtain these sources.
@@ -357,11 +345,7 @@ extension type const CompilerDefines(Map<String, String?> flags)
     return CompilerDefines({...flags, ...other.flags});
   }
 
-  static CompilerDefines parse(
-    LibraryType libraryType,
-    HookInputUserDefines defines,
-    OS targetOS,
-  ) {
+  static CompilerDefines parse(HookInputUserDefines defines, {required OS targetOS, required bool isSqlcipher}) {
     final obj = defines['defines'];
 
     // Include default options when not explicitly disabled.
@@ -379,7 +363,7 @@ extension type const CompilerDefines(Map<String, String?> flags)
     };
 
     final start = includeDefaults
-        ? CompilerDefines.defaults(targetOS, libraryType)
+        ? CompilerDefines.defaults(targetOS: targetOS, isSqlcipher: isSqlcipher)
         : const CompilerDefines({});
 
     return switch (additionalDefines) {
@@ -416,31 +400,34 @@ extension type const CompilerDefines(Map<String, String?> flags)
     return CompilerDefines(entries);
   }
 
-  static CompilerDefines defaults(OS targetOS, LibraryType libraryType) {
+  static CompilerDefines defaults({required OS targetOS, required bool isSqlcipher}) {
     final defines = _parseLines(const LineSplitter().convert(_defaultDefines));
     if (targetOS == OS.windows) {
       defines['SQLITE_API'] = '__declspec(dllexport)';
     }
 
     // Minimum extra flags to build SQLCipher
-    if (libraryType == LibraryType.sqlcipher) {
+    if (isSqlcipher) {
       defines.addAll({
         'SQLITE_HAS_CODEC': null,
         'SQLITE_TEMP_STORE': "2",
         'SQLITE_EXTRA_INIT': 'sqlcipher_extra_init',
         'SQLITE_EXTRA_SHUTDOWN': 'sqlcipher_extra_shutdown',
 
-        // Most modern unix systems support nanosleep, but if it wouldn't be available
-        // we want to fallback to usleep (microseconds) instead of sleep (seconds)
-        'HAVE_USLEEP': null,
-
-        // SQLCipher enables this by default, so better keep compatibility
-        'SQLITE_USE_URI ': null,
-
-        // SQLCipher uses it in their Community builds.
-        // Not clear if it has an impact in all applications
+        // Default flags from SQLCipher community builds to keep compatibility with the old sqlcipher_flutter_libs
+        // which was using SQLCipher Community binaries under the hood
         // https://github.com/sqlcipher/sqlcipher-android/blob/7fab57af75039e5004b087086142b11a9d2a2380/sqlcipher/src/main/jni/sqlcipher/Android.mk#L9
-        'SQLITE_ENABLE_MEMORY_MANAGEMENT': null,
+        ...{
+          // Most modern unix systems support nanosleep, but if it wouldn't be available
+          // we want to fallback to usleep (microseconds) instead of sleep (seconds)
+          'HAVE_USLEEP': null,
+
+          // URI support
+          'SQLITE_USE_URI ': null,
+
+          // Not clear if it has an impact in all applications
+          'SQLITE_ENABLE_MEMORY_MANAGEMENT': null,
+        },
 
         // Link with CommonCrypto on Apple platforms
         if (targetOS == OS.macOS || targetOS == OS.iOS)

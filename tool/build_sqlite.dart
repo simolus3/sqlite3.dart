@@ -117,21 +117,6 @@ void main(List<String> args) async {
             'source': 'source',
             'path': p.relative(sourcePath, from: fs.currentDirectory.path),
             if (mode == SqliteFork.sqlcipher) ...{
-              'defines': {
-                'default_options': true,
-                'defines': [
-                  'SQLITE_HAS_CODEC=1',
-                  'SQLITE_EXTRA_INIT=sqlcipher_extra_init',
-                  'SQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown',
-                  // SQLCipher uses it in their Community builds.
-                  // Not clear if it has an impact in all applications
-                  // https://github.com/sqlcipher/sqlcipher-android/blob/7fab57af75039e5004b087086142b11a9d2a2380/sqlcipher/src/main/jni/sqlcipher/Android.mk#L9
-                  'SQLITE_ENABLE_MEMORY_MANAGEMENT=1',
-                  if (os case OS.iOS || OS.macOS)
-                    // Link with CommonCrypto on Apple platforms
-                    'SQLCIPHER_CRYPTO_CC=1',
-                ]
-              },
               'is_sqlcipher': true,
             }
           },

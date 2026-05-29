@@ -27,15 +27,6 @@ enum LibraryType {
       OS.android || OS.linux || _ => 'lib$basename.so',
     };
   }
-
-  static LibraryType fromName(String name) {
-    return switch (name) {
-      'sqlite3' => LibraryType.sqlite3,
-      'sqlite3mc' => LibraryType.sqlite3mc,
-      'sqlcipher' => LibraryType.sqlcipher,
-      _ => throw ArgumentError('Unknown library type: $name'),
-    };
-  }
 }
 
 enum TargetOperatingSystem {

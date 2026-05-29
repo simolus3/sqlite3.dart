@@ -36,9 +36,7 @@ void main(List<String> args) async {
             file: downloaded.uri,
           ),
         );
-      case CompileSqlite(:final libraryType, :final sourceFile, :final defines):
-        final targetOS = input.config.code.targetOS;
-
+      case CompileSqlite(:final sourceFile, :final defines):
         // With Flutter on Linux (which already dynamically links SQLite through
         // its libgtk dependency), we run into issues where loading our SQLite
         // build causes internal symbols to be resolved against the already
@@ -50,7 +48,7 @@ void main(List<String> args) async {
         // For the full discussion, see https://github.com/dart-lang/native/issues/2724
 
         String? linkerScript;
-        if (targetOS == OS.linux && libraryType != LibraryType.sqlcipher) {
+        if (input.config.code.targetOS == OS.linux) {
           linkerScript = input.outputDirectory.resolve('sqlite.map').path;
 
           await File(linkerScript).writeAsString('''
@@ -67,11 +65,16 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
         final targetOS = input.config.code.targetOS;
         final isAppleTarget = targetOS == OS.iOS || targetOS == OS.macOS;
 
+        final List<String> includes = [];
+        final List<String> libraryDirectories = [];
+        final List<String> libraries = [];
+        final List<String> flags = [];
+
         final library = CBuilder.library(
           name: 'sqlite3',
           packageName: 'sqlite3',
           assetName: name,
-          sources: [sourceFile],
+          sources: [sourceFile, ...includes],
           includes: [p.dirname(sourceFile), ...includes],
           defines: defines,
           flags: [
@@ -111,9 +114,10 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
           ],
           libraryDirectories: [...libraryDirectories],
           libraries: [
-            if (targetOS == OS.android || targetOS == OS.linux) ...[
+            if (targetOS == OS.android) ...[
               // We need to link the math library on Android.
               'm',
+              if (isSqlcipher) 'log',
             ],
             ...libraries,
           ],
