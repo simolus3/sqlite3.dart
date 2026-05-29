@@ -441,3 +441,29 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: flutter test integration_test -Dsqlite3.multipleciphers=true
           working-directory: "examples/flutter_integration_tests"
+
+      - name: Enable sqlcipher
+        run: |
+          dart run tool/hook_overrides.dart compiled-sqlcipher
+
+      - name: Flutter sqlcipher tests on macOS
+        if: runner.os == 'macos'
+        working-directory: examples/flutter_integration_tests
+        run: |
+          flutter config --enable-swift-package-manager
+          flutter test integration_test -Dsqlite3.sqlcipher=true
+          flutter test integration_test -Dsqlite3.sqlcipher=true -d macos
+
+      - name: sqlcipher Android emulator tests
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
+        if: runner.os == 'linux'
+        with:
+          api-level: 34
+          force-avd-creation: false
+          target: google_apis
+          arch: x86_64
+          disable-animations: false
+          avd-name: $AVD_NAME
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: flutter test integration_test -Dsqlite3.sqlcipher=true
+          working-directory: "examples/flutter_integration_tests"

@@ -168,8 +168,6 @@ bool _skipBuild(OS targetOS, Architecture targetArch, SqliteFork type) {
     case SqliteFork.sqlcipher:
       // TODO: Build for Windows
       if (targetOS == OS.windows) return true;
-      // TODO: Build for Android
-      if (targetOS == OS.android) return true;
       // TODO: Other Linux architectures
       if (targetOS == OS.linux) {
         return targetArch != Architecture.x64;
