@@ -91,6 +91,19 @@ Future<void> _buildOpenSSL({
     targetArchitecture,
   );
 
+  final Map<String, String> extraEnv = {};
+  if (targetOS == OS.android) {
+    final String? ndkRoot = Platform.environment['ANDROID_NDK_ROOT'];
+
+    if (ndkRoot == null) {
+      throw Exception('Android NDK not found. Set ANDROID_NDK_ROOT');
+    }
+
+    final existingPath = Platform.environment['PATH'] ?? '';
+    extraEnv['PATH'] =
+        '$ndkRoot/toolchains/llvm/prebuilt/linux-x86_64/bin:$existingPath';
+  }
+
   final extraConfigureArgs = <String>[
     '--prefix=${outputDirectory.path}',
     '--openssldir=${outputDirectory.path}',
@@ -108,31 +121,37 @@ Future<void> _buildOpenSSL({
     case OS.linux:
       // run ./Configure with the target OS and architecture
       await _run(
-          'perl',
-          [
-            configureProgramPath,
-            configName,
-            ..._configArgs,
-            ...extraConfigureArgs,
-          ],
-          workingDirectory: openSslBuildDirPath);
+        'perl',
+        [
+          configureProgramPath,
+          configName,
+          ..._configArgs,
+          ...extraConfigureArgs,
+        ],
+        workingDirectory: openSslBuildDirPath,
+        environment: extraEnv,
+      );
 
       // Build static libraries
       await _run(
-          'make',
-          [
-            '-j',
-            '${Platform.numberOfProcessors}',
-          ],
-          workingDirectory: openSslBuildDirPath);
+        'make',
+        [
+          '-j',
+          '${Platform.numberOfProcessors}',
+        ],
+        workingDirectory: openSslBuildDirPath,
+        environment: extraEnv,
+      );
 
       // Copy compiled libraries into output directory
       await _run(
-          'make',
-          [
-            'install',
-          ],
-          workingDirectory: openSslBuildDirPath);
+        'make',
+        [
+          'install',
+        ],
+        workingDirectory: openSslBuildDirPath,
+        environment: extraEnv,
+      );
 
       break;
   }
@@ -140,13 +159,18 @@ Future<void> _buildOpenSSL({
   await tmp.delete(recursive: true);
 }
 
-Future<void> _run(String executable, List<String> args,
-    {String? workingDirectory}) async {
+Future<void> _run(
+  String executable,
+  List<String> args, {
+  String? workingDirectory,
+  Map<String, String>? environment,
+}) async {
   final proc = await Process.start(
     executable,
     args,
     mode: ProcessStartMode.inheritStdio,
     workingDirectory: workingDirectory,
+    environment: environment,
   );
   final exitCode = await proc.exitCode;
 
