@@ -160,8 +160,6 @@ void main() {
   }
 }
 
-void testEncryptAndOpenEncrypted() {}
-
 Matcher throwsSqlError(int resultCode, int extendedResultCode) {
   return throwsA(
     isA<SqliteException>()
