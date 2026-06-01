@@ -102,7 +102,11 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               p.join(
                 openSslCompileDir.path,
                 _getOpenSslLibFolderName(targetOS, targetArchitecture),
-                targetOS.staticlibFileName('crypto'),
+                targetOS.staticlibFileName(
+                  // OpenSSL builds include the lib prefix even on Windows, but
+                  // staticlibFileName doesn't.
+                  targetOS == OS.windows ? 'libcrypto' : 'crypto',
+                ),
               ),
             );
 
