@@ -166,8 +166,6 @@ bool _skipBuild(OS targetOS, Architecture targetArch, SqliteFork type) {
       // Compiling sqlite3mc for x86 on Linux does not work.
       return targetOS == OS.linux && targetArch == Architecture.ia32;
     case SqliteFork.sqlcipher:
-      // TODO: Build for Windows
-      if (targetOS == OS.windows) return true;
       // TODO: Other Linux architectures
       if (targetOS == OS.linux) {
         return targetArch != Architecture.x64;

@@ -70,11 +70,6 @@ jobs:
           curl -L https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz | tar --extract --gzip
           mv openssl-3.6.2 openssl-src
 
-      - name: Install jom
-        shell: powershell
-        if: runner.os == 'Windows' && steps.cache_build.outputs.cache-hit != 'true'
-        run: choco install jom -y
-
       - name: Install cross-compiling GCC
         shell: bash
         if: runner.os == 'Linux' && steps.cache_build.outputs.cache-hit != 'true'
@@ -129,7 +124,7 @@ jobs:
           path: sqlite-src
 
       - name: Download compiled OpenSSL
-        if: runner.os == 'Linux' && steps.cache_build.outputs.cache-hit != 'true'
+        if: (runner.os == 'Linux' || runner.os == 'Windows') && steps.cache_build.outputs.cache-hit != 'true'
         uses: actions/download-artifact@v8
         with:
           name: openssl-libs-${{ runner.os }}
