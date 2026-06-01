@@ -24,29 +24,42 @@ void main(List<String> args) async {
   var hadFailure = false;
 
   for (final platform in args) {
+    final OS targetOS;
+    final List<Architecture> targetArchs;
+
     switch (platform) {
       case 'linux':
-        for (final arch in _linuxArchitectures) {
-          try {
-            await _buildOpenSSL(
-              targetOS: OS.linux,
-              targetArchitecture: arch,
-              sharedOutputDirectory: target,
-              openSslSrcDir: src,
-            );
-          } catch (e, s) {
-            hadFailure = true;
-            print('Build failed for $arch: $e');
-            print(s);
-          }
-        }
-      case 'windows':
+        targetArchs = _linuxArchitectures;
+        targetOS = OS.linux;
         break;
       case 'android':
+        targetArchs = _androidArchitectures;
+        targetOS = OS.android;
+        break;
+      case 'windows':
+        targetArchs = [
+          // TODO: Windows
+        ];
+        targetOS = OS.windows;
         break;
       default:
         throw UnsupportedError(
             'Unsupported target OS, expected linux, windows or android.');
+    }
+
+    for (final arch in targetArchs) {
+      try {
+        await _buildOpenSSL(
+          targetOS: targetOS,
+          targetArchitecture: arch,
+          sharedOutputDirectory: target,
+          openSslSrcDir: src,
+        );
+      } catch (e, s) {
+        hadFailure = true;
+        print('Build failed for $platform-$arch: $e');
+        print(s);
+      }
     }
   }
 
@@ -77,8 +90,18 @@ Future<void> _buildOpenSSL({
     targetOS,
     targetArchitecture,
   );
+
+  final Map<String, String> extraEnv = {};
   if (targetOS == OS.android) {
-    throw 'TODO: Android';
+    final String? ndkRoot = Platform.environment['ANDROID_NDK_ROOT'];
+
+    if (ndkRoot == null) {
+      throw Exception('Android NDK not found. Set ANDROID_NDK_ROOT');
+    }
+
+    final existingPath = Platform.environment['PATH'] ?? '';
+    extraEnv['PATH'] =
+        '$ndkRoot/toolchains/llvm/prebuilt/linux-x86_64/bin:$existingPath';
   }
 
   final extraConfigureArgs = <String>[
@@ -98,31 +121,37 @@ Future<void> _buildOpenSSL({
     case OS.linux:
       // run ./Configure with the target OS and architecture
       await _run(
-          'perl',
-          [
-            configureProgramPath,
-            configName,
-            ..._configArgs,
-            ...extraConfigureArgs,
-          ],
-          workingDirectory: openSslBuildDirPath);
+        'perl',
+        [
+          configureProgramPath,
+          configName,
+          ..._configArgs,
+          ...extraConfigureArgs,
+        ],
+        workingDirectory: openSslBuildDirPath,
+        environment: extraEnv,
+      );
 
       // Build static libraries
       await _run(
-          'make',
-          [
-            '-j',
-            '${Platform.numberOfProcessors}',
-          ],
-          workingDirectory: openSslBuildDirPath);
+        'make',
+        [
+          '-j',
+          '${Platform.numberOfProcessors}',
+        ],
+        workingDirectory: openSslBuildDirPath,
+        environment: extraEnv,
+      );
 
       // Copy compiled libraries into output directory
       await _run(
-          'make',
-          [
-            'install',
-          ],
-          workingDirectory: openSslBuildDirPath);
+        'make',
+        [
+          'install',
+        ],
+        workingDirectory: openSslBuildDirPath,
+        environment: extraEnv,
+      );
 
       break;
   }
@@ -130,13 +159,18 @@ Future<void> _buildOpenSSL({
   await tmp.delete(recursive: true);
 }
 
-Future<void> _run(String executable, List<String> args,
-    {String? workingDirectory}) async {
+Future<void> _run(
+  String executable,
+  List<String> args, {
+  String? workingDirectory,
+  Map<String, String>? environment,
+}) async {
   final proc = await Process.start(
     executable,
     args,
     mode: ProcessStartMode.inheritStdio,
     workingDirectory: workingDirectory,
+    environment: environment,
   );
   final exitCode = await proc.exitCode;
 
@@ -223,4 +257,11 @@ const _linuxArchitectures = [
   //Architecture.ia32,
   Architecture.x64,
   //Architecture.riscv64,
+];
+
+const _androidArchitectures = [
+  Architecture.arm,
+  Architecture.arm64,
+  Architecture.ia32,
+  Architecture.x64,
 ];

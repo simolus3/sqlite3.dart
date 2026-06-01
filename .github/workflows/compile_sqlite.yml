@@ -101,6 +101,7 @@ jobs:
   build_sqlite:
     needs: [download_sqlite, build_openssl]
     strategy:
+      fail-fast: true
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
@@ -122,6 +123,13 @@ jobs:
         with:
           name: sqlite-src
           path: sqlite-src
+
+      - name: Download compiled OpenSSL
+        if: runner.os == 'Linux' && steps.cache_build.outputs.cache-hit != 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: openssl-libs-${{ runner.os }}
+          path: openssl-compiled
 
       - uses: dart-lang/setup-dart@v1
         if: steps.cache_build.outputs.cache-hit != 'true'

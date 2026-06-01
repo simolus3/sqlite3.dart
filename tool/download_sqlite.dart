@@ -17,13 +17,20 @@ const tmpDir = 'tmp';
 /// really supposed to be used outside of that, but can be used to reproduce
 /// what hooks are doing in the CI.
 void main(List<String> args) async {
+  if (await Directory(tmpDir).exists()) {
+    await Directory(tmpDir).delete(recursive: true);
+  }
   await Directory(tmpDir).create();
 
   await _downloadAndExtract(sqliteSource, 'sqlite3');
   await _downloadAndExtract(sqliteMultipleCiphersSource, 'sqlite3mc');
   await _downloadAndExtract(sqlcipherSource, 'sqlcipher');
 
+  if (await Directory('sqlite-src').exists()) {
+    await Directory('sqlite-src').delete(recursive: true);
+  }
   await Directory('sqlite-src').create();
+
   await Directory('sqlite-src/sqlite3mc').create();
   await File('$tmpDir/sqlite3mc_amalgamation.h')
       .copy('sqlite-src/sqlite3mc/sqlite3mc_amalgamation.h');
