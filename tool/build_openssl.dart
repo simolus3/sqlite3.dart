@@ -1,6 +1,9 @@
 import 'dart:io';
 
 import 'package:code_assets/code_assets.dart';
+import 'package:native_toolchain_c/native_toolchain_c.dart';
+import 'package:native_toolchain_c/src/native_toolchain/msvc.dart' as msvc;
+import 'package:native_toolchain_c/src/tool/tool_resolver.dart';
 
 /// Compiles static OpenSSL libraries.
 ///
@@ -115,6 +118,8 @@ Future<void> _buildOpenSSL({
 
   switch (OS.current) {
     case OS.windows:
+      extraEnv.addAll(await _resolveWindowsBuildConfig(targetArchitecture));
+
       await _run(
         'perl',
         [
@@ -129,11 +134,9 @@ Future<void> _buildOpenSSL({
 
       // Build static libraries
       await _run(
-        'nmake',
-        [
-          '-j',
-          '${Platform.numberOfProcessors}',
-        ],
+        'jom',
+        ['/f', 'Makefile'],
+        inShell: true,
         workingDirectory: openSslBuildDirPath,
         environment: extraEnv,
       );
@@ -144,6 +147,7 @@ Future<void> _buildOpenSSL({
         [
           'install',
         ],
+        inShell: true,
         workingDirectory: openSslBuildDirPath,
         environment: extraEnv,
       );
@@ -188,15 +192,31 @@ Future<void> _buildOpenSSL({
   await tmp.delete(recursive: true);
 }
 
+Future<Map<String, String>> _resolveWindowsBuildConfig(
+    Architecture arch) async {
+  final vcvars = switch (arch) {
+    Architecture.arm64 => msvc.vcvarsarm64,
+    Architecture.ia32 => msvc.vcvars32,
+    Architecture.x64 => msvc.vcvars64,
+    _ => throw ArgumentError.value(arch),
+  };
+
+  final resolved =
+      await vcvars.defaultResolver!.resolve(ToolResolvingContext(logger: null));
+  return await environmentFromBatchFile(resolved.first.uri);
+}
+
 Future<void> _run(
   String executable,
   List<String> args, {
   String? workingDirectory,
   Map<String, String>? environment,
+  bool inShell = false,
 }) async {
   final proc = await Process.start(
     executable,
     args,
+    runInShell: inShell,
     mode: ProcessStartMode.inheritStdio,
     workingDirectory: workingDirectory,
     environment: environment,

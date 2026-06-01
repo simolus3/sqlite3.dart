@@ -70,6 +70,11 @@ jobs:
           curl -L https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz | tar --extract --gzip
           mv openssl-3.6.2 openssl-src
 
+      - name: Install jom
+        shell: powershell
+        if: runner.os == 'Windows' && steps.cache_build.outputs.cache-hit != 'true'
+        run: choco install jom -y
+
       - name: Install cross-compiling GCC
         shell: bash
         if: runner.os == 'Linux' && steps.cache_build.outputs.cache-hit != 'true'
@@ -89,7 +94,7 @@ jobs:
           dart pub get
           dart run tool/build_openssl.dart windows
 
-      - name: Upload sqlite3 binaries
+      - name: Upload openssl binaries
         uses: actions/upload-artifact@v7
         with:
           name: openssl-libs-${{ runner.os }}
