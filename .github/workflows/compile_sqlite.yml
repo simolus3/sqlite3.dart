@@ -49,8 +49,7 @@ jobs:
     # Build a static OpenSSL build, used to build SQLCipher later.
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        #os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     name: Compile OpenSSL
     steps:

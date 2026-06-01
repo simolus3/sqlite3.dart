@@ -37,9 +37,7 @@ void main(List<String> args) async {
         targetOS = OS.android;
         break;
       case 'windows':
-        targetArchs = [
-          // TODO: Windows
-        ];
+        targetArchs = _windowsArchitectures;
         targetOS = OS.windows;
         break;
       default:
@@ -117,7 +115,38 @@ Future<void> _buildOpenSSL({
 
   switch (OS.current) {
     case OS.windows:
-      throw 'TODO: Windows';
+      await _run(
+        'perl',
+        [
+          configureProgramPath,
+          configName,
+          ..._configArgs,
+          ...extraConfigureArgs,
+        ],
+        workingDirectory: openSslBuildDirPath,
+        environment: extraEnv,
+      );
+
+      // Build static libraries
+      await _run(
+        'nmake',
+        [
+          '-j',
+          '${Platform.numberOfProcessors}',
+        ],
+        workingDirectory: openSslBuildDirPath,
+        environment: extraEnv,
+      );
+
+      // Copy compiled libraries into output directory
+      await _run(
+        'nmake',
+        [
+          'install',
+        ],
+        workingDirectory: openSslBuildDirPath,
+        environment: extraEnv,
+      );
     case OS.linux:
       // run ./Configure with the target OS and architecture
       await _run(
@@ -264,4 +293,10 @@ const _androidArchitectures = [
   Architecture.arm64,
   Architecture.ia32,
   Architecture.x64,
+];
+
+const _windowsArchitectures = [
+  Architecture.ia32,
+  Architecture.x64,
+  Architecture.arm64
 ];
