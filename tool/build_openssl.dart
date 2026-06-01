@@ -134,8 +134,8 @@ Future<void> _buildOpenSSL({
 
       // Build static libraries
       await _run(
-        'jom',
-        ['/f', 'Makefile'],
+        'nmake',
+        [],
         inShell: true,
         workingDirectory: openSslBuildDirPath,
         environment: extraEnv,
