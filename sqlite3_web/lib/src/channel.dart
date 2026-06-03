@@ -176,6 +176,10 @@ abstract base class ProtocolChannel extends RequestHandler {
     MessageType<Res> expectedType, {
     Future<void>? abortTrigger,
   }) async {
+    if (_closed.isCompleted) {
+      throw ChannelClosedException._();
+    }
+
     final id = _nextRequestId++;
     final completer = _responses[id] = Completer.sync();
 
@@ -218,12 +222,24 @@ abstract base class ProtocolChannel extends RequestHandler {
     _errorSubscription?.cancel();
 
     for (final response in _responses.values) {
-      response.completeError(
-        StateError('Channel closed before receiving response: $error'),
-      );
+      response.completeError(ChannelClosedException._(error));
     }
     _responses.clear();
 
     _closed.complete();
+  }
+}
+
+/// An exception thrown when a request is sent over a closed channel to a
+/// worker.
+final class ChannelClosedException implements Exception {
+  /// The original error causing the channel to be closed.
+  final Object? closeReason;
+
+  ChannelClosedException._([this.closeReason]);
+
+  @override
+  String toString() {
+    return 'Channel to database worker is closed: $closeReason';
   }
 }

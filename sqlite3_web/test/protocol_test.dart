@@ -190,6 +190,44 @@ void main() {
     // Closing the server should close the client.
     await client.closed;
   });
+
+  test("can't send requests after close", () async {
+    await server.close();
+    expect(
+      () => client.sendRequest(
+        newCustomRequest(payload: null, lockId: 0, requestId: 0, databaseId: 0),
+        MessageType.simpleSuccessResponse,
+      ),
+      throwsA(isA<ChannelClosedException>()),
+    );
+  });
+
+  test('aborts pending requests on close', () async {
+    server.handleRequestFunction = (request) async {
+      server.close();
+      return newSimpleSuccessResponse(
+        requestId: request.requestId,
+        response: null,
+      );
+    };
+
+    expect(
+      () => client.sendRequest(
+        newRunQuery(
+          requestId: 0,
+          databaseId: 0,
+          sql: 'sql',
+          checkInTransaction: false,
+          lockId: null,
+          parameters: JSArray(),
+          typeVector: null,
+          returnRows: true,
+        ),
+        MessageType.simpleSuccessResponse,
+      ),
+      throwsA(isA<ChannelClosedException>()),
+    );
+  });
 }
 
 const isDart2Wasm = bool.fromEnvironment('dart.tool.dart2wasm');

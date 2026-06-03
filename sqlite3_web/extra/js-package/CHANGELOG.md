@@ -1,3 +1,7 @@
+## 0.2.1
+
+- Fix internal imports to include `.js` suffix.
+
 ## 0.2.0
 
 - Support OPFS on Safari without special headers.

@@ -1,3 +1,7 @@
+## 0.8.1
+
+- Throw when new requests are made to a database closed remotely.
+
 ## 0.8.0
 
 - Remove `stream_channel` dependency with custom implementation, slightly decreasing compiled size.
