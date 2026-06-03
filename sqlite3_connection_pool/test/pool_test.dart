@@ -12,11 +12,13 @@ void main() {
   SqliteConnectionPool testPool({
     int readConnections = 5,
     int preparedStatementCacheSize = 0,
+    bool enableUpdateHooks = true,
   }) {
     final pool = createPool(
       directory: sandbox,
       readConnections: readConnections,
       preparedStatementCacheSize: preparedStatementCacheSize,
+      enableUpdateHooks: enableUpdateHooks,
     );
     addTearDown(pool.close);
     return pool;
@@ -59,7 +61,7 @@ void main() {
     final path = p.join(sandbox, 'test.db');
     final pool = await SqliteConnectionPool.openAsync(
       name: path,
-      openConnections: poolConnectionOpener(path, 5, 0),
+      openConnections: poolConnectionOpener(path, 5, 0, true),
     );
     addTearDown(pool.close);
 
@@ -182,6 +184,41 @@ void main() {
       await pool.execute('CREATE TABLE foo (id INTEGER NOT NULL PRIMARY KEY)');
       await pool.execute('INSERT INTO foo DEFAULT VALUES;');
       await expectLater(updates, emits(['foo']));
+    });
+
+    test('can disable builtin update tracking', () async {
+      final pool = testPool(enableUpdateHooks: false);
+      final updates = StreamQueue(pool.updatedTables);
+
+      expect(updates, neverEmits(anything));
+      await pool.execute('CREATE TABLE foo (id INTEGER NOT NULL PRIMARY KEY)');
+      await pool.execute('INSERT INTO foo DEFAULT VALUES;');
+      await pumpEventQueue();
+      pool.close();
+    });
+
+    test('custom update notification', () async {
+      void Function() notificationSender(String name) {
+        return () {
+          final pool = SqliteConnectionPool.open(
+            name: name,
+            openConnections: () => throw StateError('should already be open'),
+          );
+          pool.dispatchUpdateNotification(['baz']);
+          pool.close();
+        };
+      }
+
+      final pool = testPool();
+      final updates = StreamQueue(pool.updatedTables);
+      pool.dispatchUpdateNotification(['foo', 'bar']);
+      await expectLater(updates, emits(['foo', 'bar']));
+
+      await Isolate.run(notificationSender(pool.name));
+      await expectLater(updates, emits(['baz']));
+
+      pool.close();
+      expect(() => pool.dispatchUpdateNotification([]), throwsStateError);
     });
 
     test('emits updates for isolate write', () async {
@@ -446,6 +483,7 @@ SqliteConnectionPool createPool({
   required String directory,
   int readConnections = 5,
   int preparedStatementCacheSize = 0,
+  bool enableUpdateHooks = true,
 }) {
   return SqliteConnectionPool.open(
     name: directory,
@@ -453,6 +491,7 @@ SqliteConnectionPool createPool({
       p.join(directory, 'test.db'),
       readConnections,
       preparedStatementCacheSize,
+      enableUpdateHooks,
     ),
   );
 }
@@ -461,14 +500,18 @@ PoolConnections Function() poolConnectionOpener(
   String path,
   int readConnections,
   int preparedStatementCacheSize,
+  bool enableUpdateHooks,
 ) {
   Database openDatabase() {
     return sqlite3.open(path)..execute('pragma journal_mode = wal;');
   }
 
-  return () => PoolConnections(openDatabase(), [
-    for (var i = 0; i < readConnections; i++) openDatabase(),
-  ], preparedStatementCacheSize: preparedStatementCacheSize);
+  return () => PoolConnections(
+    openDatabase(),
+    [for (var i = 0; i < readConnections; i++) openDatabase()],
+    preparedStatementCacheSize: preparedStatementCacheSize,
+    enableNativeUpdateHooks: enableUpdateHooks,
+  );
 }
 
 void _startIsolateForOpenTest(SendPort notify) {

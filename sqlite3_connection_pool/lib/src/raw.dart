@@ -55,6 +55,22 @@ final class RawSqliteConnectionPool implements Finalizable {
     };
   }
 
+  void sendCustomUpdateNotification(List<String> updatedTables) {
+    using((alloc) {
+      final rawUpdates = alloc<Pointer<Char>>(updatedTables.length);
+      for (final (i, update) in updatedTables.indexed) {
+        final ptr = update.toNativeUtf8(allocator: alloc).cast<Char>();
+        rawUpdates[i] = ptr;
+      }
+
+      pkg_sqlite3_connection_pool_notify_updates_custom(
+        _pool,
+        rawUpdates,
+        updatedTables.length,
+      );
+    });
+  }
+
   (int, Completer<_PoolLease>) _createRequest() {
     final id = _requestCounter++;
     return (id, _outstandingRequests[id] = Completer());
@@ -181,6 +197,7 @@ final class RawSqliteConnectionPool implements Finalizable {
                 :readers,
                 :writer,
                 :preparedStatementCacheSize,
+                :enableNativeUpdateHooks,
               ) = open();
 
               initOptions.write = writer.leak().cast();
@@ -188,6 +205,7 @@ final class RawSqliteConnectionPool implements Finalizable {
               initOptions.reads = alloc(readers.length);
               initOptions.prepared_statement_cache_size =
                   preparedStatementCacheSize;
+              initOptions.enable_update_hooks = enableNativeUpdateHooks ? 1 : 0;
 
               for (final (i, reader) in readers.indexed) {
                 (initOptions.reads + i).value = reader.leak().cast();
@@ -234,17 +252,21 @@ final class PoolConnections {
   /// The cache is a LRU map with the indicated size.
   final int preparedStatementCacheSize;
 
+  /// Whether native update notifications backed by `sqlite3_update_hook` should
+  /// be enabled.
+  final bool enableNativeUpdateHooks;
+
   PoolConnections(
     this.writer,
     this.readers, {
     this.preparedStatementCacheSize = 0,
+    this.enableNativeUpdateHooks = true,
   }) : assert(preparedStatementCacheSize >= 0);
 }
 
 extension type PoolConnectionRef(
   /// The pool connection, used to manage cached prepared statements.
-  Pointer<PoolConnection>
-  connection
+  Pointer<PoolConnection> connection
 ) {
   /// The `sqlite3*` connection pointer.
   Pointer<Void> get rawDatabase => connection.ref.raw;

@@ -58,6 +58,7 @@ final class SqliteConnectionPool {
         (List<dynamic> msg) => _updatedTables.add(msg.cast()),
         'Receive table updates',
       );
+      port.keepIsolateAlive = false;
       _raw.addUpdateListener(port.sendPort);
     };
     _updatedTables.onCancel = () {
@@ -103,6 +104,18 @@ final class SqliteConnectionPool {
   /// [ConnectionLease.notifyUpdates] can be used to emit updates before a
   /// writer is returned.
   Stream<List<String>> get updatedTables => _updatedTables.stream;
+
+  /// Sends an update notification that will be emitted in [updatedTables].
+  ///
+  /// Calling this on a pool will also emit [updates] on all other isolates or
+  /// Dart/Flutter engines opening a pool at the same path.
+  ///
+  /// This schedules an update notification immediately, and doesn't wait for
+  /// a completed write transaction.
+  void dispatchUpdateNotification(List<String> updates) {
+    _checkNotClosed();
+    _raw.sendCustomUpdateNotification(updates);
+  }
 
   /// Obtains a connection suitable for reads from the connection pool.
   ///

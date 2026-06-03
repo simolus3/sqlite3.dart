@@ -3,7 +3,8 @@ use crate::connection::PreparedStatement;
 use crate::dart::DartPort;
 use crate::pool::{ConnectionPool, PendingMessage, PoolConnection, PoolRequestHandle, PoolState};
 use crate::registry::{PoolInitializer, PoolRegistry};
-use std::ffi::{c_int, c_void};
+use crate::update_hook::send_update_notification;
+use std::ffi::{CStr, c_char, c_int, c_void};
 use std::ptr::NonNull;
 use std::sync::{Arc, Mutex};
 use std::{ptr, slice};
@@ -142,6 +143,28 @@ extern "C" fn pkg_sqlite3_connection_pool_notify_updates(request: &PoolRequestHa
         // Safety: Dart must only call this when owning a write connection.
         pool.send_update_notifications()
     };
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_notify_updates_custom(
+    client: &PoolClient,
+    updates: *const *const c_char,
+    updates_count: usize,
+) {
+    let pool = client.pool.lock().unwrap();
+    let updates = (0..updates_count).map(|i| {
+        let c_str = unsafe {
+            // Safety: Updates is an array with length updates_count
+            updates.add(i).read()
+        };
+
+        unsafe {
+            // Safey: Dart will provide valid C strings
+            CStr::from_ptr(c_str)
+        }
+    });
+
+    send_update_notification(updates, &pool.update_listeners, &pool.functions);
 }
 
 #[unsafe(no_mangle)]

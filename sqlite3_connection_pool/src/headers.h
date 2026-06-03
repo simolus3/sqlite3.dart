@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdint.h>
 
 typedef struct ConnectionPool ConnectionPool;
@@ -25,6 +26,7 @@ typedef struct InitializedPool {
   const Connection *reads;
   uintptr_t read_count;
   uintptr_t prepared_statement_cache_size;
+  unsigned char enable_update_hooks;
 } InitializedPool;
 
 typedef struct InitializedPool *(*PoolInitializer)(void);
@@ -53,5 +55,10 @@ void pkg_sqlite3_connection_pool_request_close(PoolRequest *request);
 void pkg_sqlite3_connection_pool_update_listener(const ConnectionPool *pool, int add, DartPort listener);
 
 void pkg_sqlite3_connection_pool_notify_updates(const PoolRequest *request);
+void pkg_sqlite3_connection_pool_notify_updates_custom(
+  const ConnectionPool *request,
+  const char** updates,
+  size_t updates_count
+);
 void* pkg_sqlite3_connection_pool_stmt_cache_get(const struct PoolConnection* connection, const uint8_t* sql, uintptr_t sql_len);
 int pkg_sqlite3_connection_pool_stmt_cache_put(const struct PoolConnection* connection, const uint8_t* sql, uintptr_t sql_len, void* stmt, int (*sqlite3_finalize)(void*));

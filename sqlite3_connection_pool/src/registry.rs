@@ -1,6 +1,7 @@
 use crate::connection::Connection;
 use crate::pool::{ConnectionPool, ExternalFunctions, PoolState};
 use std::collections::HashMap;
+use std::ffi::c_uchar;
 use std::ptr::NonNull;
 use std::slice;
 use std::sync::{Arc, LazyLock, Mutex, Weak};
@@ -19,6 +20,7 @@ pub struct InitializedPool {
     reads: *const Connection,
     read_count: usize,
     prepared_statement_cache_size: usize,
+    enable_update_hooks: c_uchar,
 }
 
 pub type PoolInitializer = extern "C" fn() -> Option<NonNull<InitializedPool>>;
@@ -47,6 +49,7 @@ impl PoolRegistry {
             initialized.write,
             unsafe { slice::from_raw_parts(initialized.reads, initialized.read_count) },
             initialized.prepared_statement_cache_size,
+            initialized.enable_update_hooks != 0,
         );
 
         let pool = ConnectionPool::new(Mutex::new(state));

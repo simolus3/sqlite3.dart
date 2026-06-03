@@ -26,8 +26,8 @@ pub struct PoolState {
     ///
     /// This allows not locking in update hooks (since the SQLite connection is never used
     /// concurrently).
-    table_updates: UnsafeCell<CollectedTableUpdates>,
-    update_listeners: Vec<DartPort>,
+    table_updates: Option<UnsafeCell<CollectedTableUpdates>>,
+    pub update_listeners: Vec<DartPort>,
 }
 
 #[repr(C)]
@@ -115,6 +115,7 @@ impl PoolState {
         writer: Connection,
         reads: &[Connection],
         cache_size: usize,
+        enable_update_hooks: bool,
     ) -> Self {
         let wrap_connection = |conn: Connection| -> PoolConnection {
             PoolConnection {
@@ -135,7 +136,11 @@ impl PoolState {
                 waiters: Default::default(),
             },
             functions,
-            table_updates: Default::default(),
+            table_updates: if enable_update_hooks {
+                Some(Default::default())
+            } else {
+                None
+            },
             update_listeners: Default::default(),
         }
     }
@@ -193,10 +198,14 @@ impl PoolState {
     pub unsafe fn send_update_notifications(&self) {
         if (self.functions.sqlite3_get_autocommit)(self.writes.connection.raw) != 0 {
             // No longer in a transaction, notify clients for completed writes.
+            let Some(updates) = self.table_updates.as_ref() else {
+                return;
+            };
+
             let updates = unsafe {
                 // Safety: Because we have an exclusive reference to the write connection, we also
                 // have an exclusive reference to table updates.
-                self.table_updates.get().as_mut().unwrap_unchecked()
+                updates.get().as_mut().unwrap_unchecked()
             };
             updates.send_notification(self.update_listeners.as_slice(), &self.functions);
         }
@@ -364,7 +373,11 @@ impl PoolState {
 
     pub fn register_hooks_on_writer(arc: &ConnectionPool) {
         let pool = arc.lock().unwrap();
-        let updates_ptr = pool.table_updates.get();
+        let Some(updates) = pool.table_updates.as_ref() else {
+            return;
+        };
+
+        let updates_ptr = updates.get();
         let writer = &pool.writes.connection;
         CollectedTableUpdates::attach_to(updates_ptr, &pool.functions, writer.raw);
     }

@@ -1,3 +1,8 @@
+## 0.2.6
+
+- Allow disabling builtin update hooks.
+- Add `SqliteConnectionPool.dispatchUpdateNotification` to dispatch custom update notifications.
+
 ## 0.2.5
 
 - Support `package:hooks` versions `2.x`.

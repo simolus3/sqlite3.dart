@@ -109,6 +109,19 @@ external void pkg_sqlite3_connection_pool_notify_updates(
 );
 
 @ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<ConnectionPool>,
+    ffi.Pointer<ffi.Pointer<ffi.Char>>,
+    ffi.Size,
+  )
+>()
+external void pkg_sqlite3_connection_pool_notify_updates_custom(
+  ffi.Pointer<ConnectionPool> request,
+  ffi.Pointer<ffi.Pointer<ffi.Char>> updates,
+  int updates_count,
+);
+
+@ffi.Native<
   ffi.Pointer<ffi.Void> Function(
     ffi.Pointer<PoolConnection>,
     ffi.Pointer<ffi.Uint8>,
@@ -228,4 +241,7 @@ final class InitializedPool extends ffi.Struct {
 
   @ffi.UintPtr()
   external int prepared_statement_cache_size;
+
+  @ffi.UnsignedChar()
+  external int enable_update_hooks;
 }

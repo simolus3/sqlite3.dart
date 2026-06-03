@@ -2,7 +2,7 @@ use crate::connection::Connection;
 use crate::dart::{DartPort, RawDartCObject, RawDartCObjectArray, RawDartCObjectValue};
 use crate::pool::ExternalFunctions;
 use std::collections::HashSet;
-use std::ffi::{c_char, c_int, c_void, CStr, CString};
+use std::ffi::{CStr, CString, c_char, c_int, c_void};
 use std::mem;
 use std::ptr::NonNull;
 
@@ -78,38 +78,54 @@ impl CollectedTableUpdates {
             return;
         }
 
-        if listeners.is_empty() {
-            return;
-        }
+        send_update_notification(updates.iter().map(|c| c.as_c_str()), listeners, functions);
+    }
+}
 
-        let mut dart_strings: Vec<RawDartCObject> = Vec::with_capacity(updates.len());
-        for update in &updates {
-            dart_strings.push(RawDartCObject {
-                type_: RawDartCObject::TYPE_STRING,
-                value: RawDartCObjectValue {
-                    as_string: update.as_c_str().as_ptr(),
-                },
-            });
-        }
-        let mut dart_string_references: Vec<*mut RawDartCObject> = dart_strings
-            .iter()
-            .map(|d| d as *const _ as *mut _)
-            .collect();
+pub fn send_update_notification<'a>(
+    updates: impl IntoIterator<Item = &'a CStr>,
+    listeners: &[DartPort],
+    functions: &ExternalFunctions,
+) {
+    if listeners.is_empty() {
+        return;
+    }
 
-        // Create Dart list of strings.
-        let mut dart_msg = RawDartCObject {
-            type_: RawDartCObject::TYPE_ARRAY,
+    let iter = updates.into_iter();
+    let mut dart_strings: Vec<RawDartCObject> = Vec::with_capacity(iter.size_hint().0);
+    for update in iter {
+        dart_strings.push(RawDartCObject {
+            type_: RawDartCObject::TYPE_STRING,
             value: RawDartCObjectValue {
-                as_array: RawDartCObjectArray {
-                    length: dart_string_references.len() as isize,
-                    values: dart_string_references.as_mut_ptr(),
-                },
+                as_string: update.as_ptr(),
             },
-        };
+        });
+    }
 
-        // Send to registered update ports.
-        for listener in listeners {
-            (functions.dart_post_c_object)(*listener, &mut dart_msg);
-        }
+    raw_send_update_notification(dart_strings, listeners, functions);
+}
+
+fn raw_send_update_notification(
+    updates: Vec<RawDartCObject>,
+    listeners: &[DartPort],
+    functions: &ExternalFunctions,
+) {
+    let mut dart_string_references: Vec<*mut RawDartCObject> =
+        updates.iter().map(|d| d as *const _ as *mut _).collect();
+
+    // Create Dart list of strings.
+    let mut dart_msg = RawDartCObject {
+        type_: RawDartCObject::TYPE_ARRAY,
+        value: RawDartCObjectValue {
+            as_array: RawDartCObjectArray {
+                length: dart_string_references.len() as isize,
+                values: dart_string_references.as_mut_ptr(),
+            },
+        },
+    };
+
+    // Send to registered update ports.
+    for listener in listeners {
+        (functions.dart_post_c_object)(*listener, &mut dart_msg);
     }
 }
