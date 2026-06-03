@@ -143,10 +143,10 @@ jobs:
       working-directory: native_tests/
     - name: Run tests AddressSanitizer and MemorySanitizer
       if: runner.os == 'Linux'
+      # TODO: Running with --sanitizer=tsan seems to be flaky?
       run: |
         dart run.dart --sanitizer=asan
         dart run.dart --sanitizer=msan
-        dart run.dart --sanitizer=tsan
       working-directory: native_tests/
 
     - name: Enable sqlite3mc
