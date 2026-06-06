@@ -22,7 +22,7 @@ jobs:
       contents: write # Needed to upload release assets
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v6.0.2
       with:
         persist-credentials: false
     - uses: dart-lang/setup-dart@v1
@@ -102,7 +102,7 @@ jobs:
     # This can't use the workflow because we need to download assets to include in
     # the package.
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v6.0.2
       with:
         persist-credentials: false
     - uses: dart-lang/setup-dart@v1 # This will request an OIDC token for pub.dev
@@ -130,7 +130,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: 'npm'
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v6.0.2
       with:
         persist-credentials: false
     - uses: dart-lang/setup-dart@v1

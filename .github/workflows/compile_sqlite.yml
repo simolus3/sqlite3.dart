@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-slim
     name: Download SQLite sources
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           persist-credentials: false
       - uses: actions/cache@v5
@@ -54,7 +54,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: Compile sqlite3
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           persist-credentials: false
       - uses: actions/cache@v5
@@ -100,7 +100,7 @@ jobs:
     outputs:
       libs: ${{ steps.upload.outputs.artifact-id }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           persist-credentials: false
       - uses: actions/cache@v5
@@ -152,7 +152,7 @@ jobs:
   compile_wasm:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           persist-credentials: false
       - uses: actions/cache@v5
@@ -203,7 +203,7 @@ jobs:
   compile_pool_linux_android:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           persist-credentials: false
       - uses: actions/cache@v5
@@ -265,7 +265,7 @@ jobs:
   compile_pool_apple:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           persist-credentials: false
       - uses: actions/cache@v5
@@ -305,7 +305,7 @@ jobs:
   compile_pool_windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           persist-credentials: false
       - uses: actions/cache@v5
@@ -357,7 +357,7 @@ jobs:
       pool_libs: ${{ steps.upload_pool.outputs.artifact-id }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           persist-credentials: false
 
