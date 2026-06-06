@@ -97,7 +97,7 @@ final class ProtocolMessageType {
           continue;
         }
 
-        final name = declaration.primaryConstructor.typeName.lexeme;
+        final name = declaration.namePart.typeName.lexeme;
         var isAbstract = false;
         var messageTypeName = name;
         for (final annotation in declaration.metadata) {
