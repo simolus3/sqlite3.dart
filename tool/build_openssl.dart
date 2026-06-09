@@ -113,6 +113,7 @@ Future<void> _buildOpenSSL({
       '-ffunction-sections',
       '-fdata-sections',
       '-fvisibility=hidden',
+      '--cross-compile-prefix=${_linuxCrossCompilePrefix(targetArchitecture)}'
     ],
   ];
 
@@ -299,13 +300,23 @@ const _configArgs = [
   'no-whirlpool',
 ];
 
+String _linuxCrossCompilePrefix(Architecture architecture) {
+  return switch (architecture) {
+    Architecture.arm => 'arm-linux-gnueabihf-',
+    Architecture.arm64 => 'aarch64-linux-gnu-',
+    Architecture.x64 => 'x86_64-linux-gnu-',
+    Architecture.ia32 => 'i686-linux-gnu-',
+    Architecture.riscv64 => 'riscv64-linux-gnu-',
+    _ => throw ArgumentError('Unhandled architecture'),
+  };
+}
+
 const _linuxArchitectures = [
-  // TODO: Figure out remaining architectures
-  //Architecture.arm,
-  //Architecture.arm64,
-  //Architecture.ia32,
+  Architecture.arm,
+  Architecture.arm64,
+  Architecture.ia32,
   Architecture.x64,
-  //Architecture.riscv64,
+  Architecture.riscv64,
 ];
 
 const _androidArchitectures = [
