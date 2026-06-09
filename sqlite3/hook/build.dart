@@ -160,7 +160,8 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
             ],
           ],
           libraryDirectories: [
-            if (openSslStaticLib != null) openSslStaticLib.parent.path,
+            if (openSslStaticLib != null && targetOS != OS.windows)
+              openSslStaticLib.parent.path,
           ],
           libraries: [
             if (targetOS == OS.android) ...[
@@ -169,7 +170,14 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               if (isSqlcipher) 'log',
             ],
             // Link with OpenSSL (SQLCipher builds)
-            if (openSslCompileDir != null) 'crypto',
+            if (openSslCompileDir != null && targetOS != OS.windows) 'crypto',
+            if (openSslStaticLib != null && targetOS == OS.windows) ...[
+              p.withoutExtension(openSslStaticLib.path),
+              'crypt32',
+              'user32',
+              'advapi32',
+              'Ws2_32',
+            ],
           ],
         );
 

@@ -430,7 +430,7 @@ extension type const CompilerDefines(Map<String, String?> flags)
           'HAVE_USLEEP': null,
 
           // URI support
-          'SQLITE_USE_URI ': null,
+          'SQLITE_USE_URI': null,
 
           // Not clear if it has an impact in all applications
           'SQLITE_ENABLE_MEMORY_MANAGEMENT': null,
