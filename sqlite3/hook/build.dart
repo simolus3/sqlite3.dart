@@ -34,7 +34,14 @@ void main(List<String> args) async {
             file: downloaded.uri,
           ),
         );
-      case CompileSqlite(:final sourceFile, :final defines):
+      case CompileSqlite(
+        :final sourceFile,
+        :final defines,
+        :final additionalIncludes,
+        :final additionalFlags,
+        :final additionalLibraryDirectories,
+        :final additionalLibraries,
+      ):
         // With Flutter on Linux (which already dynamically links SQLite through
         // its libgtk dependency), we run into issues where loading our SQLite
         // build causes internal symbols to be resolved against the already
@@ -64,7 +71,7 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
           packageName: 'sqlite3',
           assetName: name,
           sources: [sourceFile],
-          includes: [p.dirname(sourceFile)],
+          includes: [p.dirname(sourceFile), ...additionalIncludes],
           defines: defines,
           flags: [
             if (input.config.code.targetOS == OS.linux) ...[
@@ -86,11 +93,15 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               '-install_name',
               '@rpath/libsqlite3.dylib',
             ],
+            ...additionalFlags,
           ],
+          libraryDirectories: [...additionalLibraryDirectories],
           libraries: [
-            if (input.config.code.targetOS == OS.android)
+            if (input.config.code.targetOS == OS.android) ...[
               // We need to link the math library on Android.
               'm',
+            ],
+            ...additionalLibraries,
           ],
         );
 

@@ -49,6 +49,16 @@ hooks:
       source: test-sqlite3mc
       directory: $outPath/
 ''');
+      case 'compiled-sqlcipher':
+        final outPath = p.relative('sqlite-compiled', from: p.dirname(path));
+
+        out.write('''
+hooks:
+  user_defines:
+    sqlite3:
+      source: test-sqlcipher
+      directory: $outPath/
+''');
       default:
         throw 'Unsupported mode, can use system, system-os-specific, '
             'compiled, compiled-ciphers';

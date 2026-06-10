@@ -22,10 +22,14 @@ sealed class SqliteBinary {
         return PrecompiledFromGithubAssets(LibraryType.sqlite3);
       case 'sqlite3mc':
         return PrecompiledFromGithubAssets(LibraryType.sqlite3mc);
+      case 'sqlcipher':
+        return PrecompiledFromGithubAssets(LibraryType.sqlcipher);
       case 'test-sqlite3':
         return PrecompiledForTesting(LibraryType.sqlite3);
       case 'test-sqlite3mc':
         return PrecompiledForTesting(LibraryType.sqlite3mc);
+      case 'test-sqlcipher':
+        return PrecompiledForTesting(LibraryType.sqlcipher);
       case 'system':
         final osSpecificNameKey = 'name_${input.config.code.targetOS.name}';
 
@@ -44,6 +48,16 @@ sealed class SqliteBinary {
             userDefines,
             input.config.code.targetOS,
           ),
+          additionalIncludes:
+              (userDefines['additional_includes'] as List?)?.cast() ?? const [],
+          additionalFlags:
+              (userDefines['additional_flags'] as List?)?.cast() ?? const [],
+          additionalLibraryDirectories:
+              (userDefines['additional_lib_directories'] as List?)?.cast() ??
+              const [],
+          additionalLibraries:
+              (userDefines['additional_libraries'] as List?)?.cast() ??
+              const [],
         );
       default:
         throw ArgumentError.value(
@@ -72,10 +86,16 @@ final class LookupSystem implements ExternalSqliteBinary {
   @override
   LinkMode resolveLinkMode(BuildInput input) {
     final targetOS = input.config.code.targetOS;
+    final String dylibName;
 
-    return DynamicLoadingSystem(
-      Uri.parse(targetOS.libraryFileName(name, DynamicLoadingBundled())),
-    );
+    if (p.isAbsolute(name)) {
+      // Interpret name as a file name
+      dylibName = name;
+    } else {
+      dylibName = targetOS.libraryFileName(name, DynamicLoadingBundled());
+    }
+
+    return DynamicLoadingSystem(Uri.parse(dylibName));
   }
 }
 
@@ -288,7 +308,25 @@ final class CompileSqlite implements SqliteBinary {
   /// User-defines for the SQLite compilation.
   final CompilerDefines defines;
 
-  CompileSqlite({required this.sourceFile, required this.defines});
+  /// Additional header search paths.
+  final List<String> additionalIncludes;
+
+  /// Additional flags to pass to the compiler.
+  final List<String> additionalFlags;
+
+  final List<String> additionalLibraryDirectories;
+
+  /// Additional libraries to link.
+  final List<String> additionalLibraries;
+
+  CompileSqlite({
+    required this.sourceFile,
+    required this.defines,
+    required this.additionalIncludes,
+    required this.additionalFlags,
+    required this.additionalLibraryDirectories,
+    required this.additionalLibraries,
+  });
 }
 
 /// If we're compiling SQLite from source, a way to obtain these sources.

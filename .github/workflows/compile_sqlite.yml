@@ -45,9 +45,62 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  build_sqlite:
-    needs: [download_sqlite]
+  build_openssl:
+    # Build a static OpenSSL build, used to build SQLCipher later.
     strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    name: Compile OpenSSL
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/cache@v5
+        id: cache_build
+        with:
+          path: openssl-compiled
+          key: openssl-prebuilt-${{ runner.os }}-${{ hashFiles('tool/build_openssl.dart') }}
+      - uses: dart-lang/setup-dart@v1
+        if: steps.cache_build.outputs.cache-hit != 'true'
+
+      - name: Download OpenSSL
+        if: steps.cache_build.outputs.cache-hit != 'true'
+        run: |
+          curl -L https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz | tar --extract --gzip
+          mv openssl-3.6.2 openssl-src
+
+      - name: Install cross-compiling GCC
+        shell: bash
+        if: runner.os == 'Linux' && steps.cache_build.outputs.cache-hit != 'true'
+        run: |
+          sudo apt update
+          sudo apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-arm-linux-gnueabihf gcc-i686-linux-gnu
+
+      - name: Compile OpenSSL for Linux and Android
+        if: steps.cache_build.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-latest'
+        run: |
+          dart pub get
+          dart run tool/build_openssl.dart linux android
+
+      - name: Compile OpenSSL for Windows
+        if: steps.cache_build.outputs.cache-hit != 'true' && matrix.os == 'windows-latest'
+        run: |
+          dart pub get
+          dart run tool/build_openssl.dart windows
+
+      - name: Upload openssl binaries
+        uses: actions/upload-artifact@v7
+        with:
+          name: openssl-libs-${{ runner.os }}
+          path: openssl-compiled
+          if-no-files-found: error
+          retention-days: 1
+
+  build_sqlite:
+    needs: [download_sqlite, build_openssl]
+    strategy:
+      fail-fast: true
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
@@ -61,7 +114,7 @@ jobs:
         id: cache_build
         with:
           path: sqlite-compiled
-          key: sqlite-prebuilt-${{ runner.os }}-${{ hashFiles('tool/**', 'sqlite3/lib/src/hook/description.dart', 'sqlite3/lib/src/hook/used_symbols.dart') }}
+          key: sqlite-prebuilt-${{ runner.os }}-${{ hashFiles('tool/**') }}
 
       - name: Download sqlite3 sources
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -69,6 +122,13 @@ jobs:
         with:
           name: sqlite-src
           path: sqlite-src
+
+      - name: Download compiled OpenSSL
+        if: (runner.os == 'Linux' || runner.os == 'Windows') && steps.cache_build.outputs.cache-hit != 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: openssl-libs-${{ runner.os }}
+          path: openssl-compiled
 
       - uses: dart-lang/setup-dart@v1
         if: steps.cache_build.outputs.cache-hit != 'true'

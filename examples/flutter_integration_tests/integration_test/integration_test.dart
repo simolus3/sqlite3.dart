@@ -1,7 +1,10 @@
 // ignore_for_file: avoid_print
 
+import 'dart:io';
+
 import 'package:integration_test/integration_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:sqlite3_connection_pool/sqlite3_connection_pool.dart';
 
@@ -118,6 +121,55 @@ void main() {
       print(db.select('select sqlite3mc_config(?)', ['cipher']));
     });
   }
+
+  const sqlcipher = bool.fromEnvironment('sqlite3.sqlcipher');
+  if (sqlcipher) {
+    test('cipher_version', () {
+      final db = sqlite3.openInMemory()..closeWhenDone();
+      final cipherVersionRows = db.select('PRAGMA cipher_version');
+      print(cipherVersionRows);
+      expect(cipherVersionRows, isNotEmpty);
+    });
+  }
+
+  if (ciphers || sqlcipher) {
+    test('encryption', () {
+      final dir = Directory.systemTemp.createTempSync();
+      final path = join(dir.path, 'test.db');
+      final db = sqlite3.open(path);
+      addTearDown(() {
+        db.close();
+      });
+
+      final key = 'my_secret';
+      db.execute("PRAGMA key = '$key'");
+      db.execute("CREATE TABLE users (id INTEGER, username TEXT)");
+      db.close();
+
+      final dbAfterEnc = sqlite3.open(path);
+      addTearDown(() => dbAfterEnc.close());
+      expect(
+        () => dbAfterEnc.select('SELECT * FROM sqlite_master'),
+        throwsSqlError(SqlError.SQLITE_NOTADB, SqlError.SQLITE_NOTADB),
+      );
+      dbAfterEnc.execute("PRAGMA key = '$key'");
+
+      // Reads the db after setting the key
+      expect(dbAfterEnc.select('SELECT * FROM sqlite_master'), isNotEmpty);
+    });
+  }
+}
+
+Matcher throwsSqlError(int resultCode, int extendedResultCode) {
+  return throwsA(
+    isA<SqliteException>()
+        .having(
+          (e) => e.extendedResultCode,
+          'extendedResultCode',
+          extendedResultCode,
+        )
+        .having((e) => e.resultCode, 'resultCode', resultCode),
+  );
 }
 
 extension on Database {

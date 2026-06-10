@@ -43,7 +43,7 @@ Web support is only officially supported for `dartdevc` and `dart2js`. Support
 for `dart2wasm` [is experimental and incomplete](https://github.com/simolus3/sqlite3.dart/issues/230).
 For more information, see [web support](#wasm-web-support) below.
 
-On all supported platforms, you can also use SQLite3MultipleCiphers instead of SQLite to encrypt
+On all supported platforms, you can also use SQLite3MultipleCiphers or SQLCipher instead of SQLite to encrypt
 databases. The [hook options page](./doc/hook.md) describe this setup.
 
 ## Supported datatypes
@@ -104,6 +104,10 @@ Then, run `dart run build_runner serve example:8080` and visit `http://localhost
 Another `../examples/multiplatform/` uses common interface to `sqlite3` on web and native platforms.
 To run this example, merge its files into a Flutter app.
 
+> [!TIP]
+> The [sqlite3_web](https://pub.dev/packages/sqlite3_web) can configure file systems based on available
+> browser features automatically.
+
 ### Sharing code between web and a Dart VM
 
 The `package:sqlite3/common.dart` library defines common interfaces that are implemented by both
@@ -111,6 +115,11 @@ the FFI-based native version in `package:sqlite3/sqlite3.dart` and the experimen
 version in `package:sqlite3/wasm.dart`.
 By having shared code depend on the common interfaces, it can be used for both native and web
 apps.
+
+> [!TIP]
+> Packages like [`sqlite_async`](https://pub.dev/packages/sqlite_async) and sqflite (through
+> [sqflite_common_ffi](https://pub.dev/packages/sqflite_common_ffi) and [sqflite_common_ffi_web](https://pub.dev/packages/sqflite_common_ffi_web))
+> provide a common interface and platform-specific implementations, which may be more convenient.
 
 ### Web encryption
 
