@@ -63,9 +63,10 @@ void main(List<String> args) async {
     Future<void> buildAndCopy(OS os, Architecture architecture,
         {IOSCodeConfig? iOS, String? osNameOverride}) async {
       final osName = osNameOverride ?? os.name;
+      final isAppleTarget = os == OS.iOS || os == OS.macOS;
       CCompilerConfig? compilerConfig;
 
-      if (os == OS.iOS || os == OS.macOS) {
+      if (isAppleTarget) {
         // Ensure we use an XCode toolchain to avoid issues when uploading apps
         // to AppStore connect.
         final xcode = Process.runSync('xcode-select', ['-p']);
@@ -81,6 +82,56 @@ void main(List<String> args) async {
           compiler: tool('clang'),
           linker: tool('ld'),
         );
+      }
+
+      final additionalIncludes = <String>[];
+      final additionalFlags = <String>[];
+      final additionalLibDirectories = <String>[];
+      final additionalLibraries = <String>[];
+
+      if (mode == SqliteFork.sqlcipher) {
+        if (isAppleTarget) {
+          // We configure SQLCipher to link CommonCrypt, this includes required
+          // frameworks.
+          additionalFlags
+              .addAll(['-framework', 'Foundation', '-framework', 'Security']);
+        } else {
+          final compiledOpenSslDirectory = fs.currentDirectory.parent
+              .childDirectory('openssl-compiled')
+              .childDirectory('${os.name}-${architecture.name}');
+
+          final openSslIncludeDir =
+              compiledOpenSslDirectory.childDirectory('include/openssl');
+          additionalIncludes.add(openSslIncludeDir.path);
+
+          final openSslStaticLibrary = compiledOpenSslDirectory
+              .childDirectory(
+                  (os == OS.linux && architecture == Architecture.x64)
+                      ? 'lib64'
+                      : 'lib')
+              .childFile(os.staticlibFileName(
+                // OpenSSL builds include the lib prefix even on Windows, but
+                // staticlibFileName doesn't.
+                os == OS.windows ? 'libcrypto' : 'crypto',
+              ));
+
+          if (os == OS.android) {
+            additionalLibraries.add('log');
+          }
+
+          if (os == OS.windows) {
+            additionalLibraries.addAll([
+              p.withoutExtension(openSslStaticLibrary.path),
+              'crypt32',
+              'user32',
+              'advapi32',
+              'Ws2_32',
+            ]);
+          } else {
+            additionalLibDirectories.add(openSslStaticLibrary.parent.path);
+            additionalLibraries.add('crypto');
+          }
+        }
       }
 
       await testBuildHook(
@@ -113,7 +164,26 @@ void main(List<String> args) async {
             'source': 'source',
             'path': p.relative(sourcePath, from: fs.currentDirectory.path),
             if (mode == SqliteFork.sqlcipher) ...{
-              'is_sqlcipher': true,
+              'additional_includes': additionalIncludes,
+              'additional_flags': additionalFlags,
+              'additional_lib_directories': additionalLibDirectories,
+              'additional_libraries': additionalLibraries,
+              'defines': {
+                'defines': [
+                  // Minimum extra flags to build SQLCipher
+                  'SQLITE_HAS_CODEC',
+                  'SQLITE_TEMP_STORE=2',
+                  'SQLITE_EXTRA_INIT=sqlcipher_extra_init',
+                  'SQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown',
+                  // Default flags from SQLCipher community builds to keep compatibility with the old sqlcipher_flutter_libs
+                  // which was using SQLCipher Community binaries under the hood
+                  // https://github.com/sqlcipher/sqlcipher-android/blob/7fab57af75039e5004b087086142b11a9d2a2380/sqlcipher/src/main/jni/sqlcipher/Android.mk#L9
+                  'HAVE_USLEEP',
+                  'SQLITE_USE_URI',
+                  'SQLITE_ENABLE_MEMORY_MANAGEMENT',
+                  if (isAppleTarget) 'SQLCIPHER_CRYPTO_CC',
+                ]
+              },
               // This is the folder where all the openssl compiled archs are located
               'openssl_compiled_root': p.relative(
                 fs.currentDirectory.parent
