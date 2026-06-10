@@ -101,7 +101,7 @@ void main(List<String> args) async {
               .childDirectory('${os.name}-${architecture.name}');
 
           final openSslIncludeDir =
-              compiledOpenSslDirectory.childDirectory('include/openssl');
+              compiledOpenSslDirectory.childDirectory('include');
           additionalIncludes.add(openSslIncludeDir.path);
 
           final openSslStaticLibrary = compiledOpenSslDirectory
