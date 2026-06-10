@@ -126,6 +126,8 @@ final class FakeWorkerEnvironment implements WorkerEnvironment, WorkerHandle {
 
   final StreamController<MessageEvent> _messages = StreamController();
 
+  bool get isClosed => _messages.isClosed;
+
   FakeWorkerEnvironment([this.connector = const WorkerConnector.unsupported()]);
 
   @override
