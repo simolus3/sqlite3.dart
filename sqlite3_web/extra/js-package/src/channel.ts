@@ -104,7 +104,7 @@ export abstract class ProtocolChannel {
     this.#port.addEventListener("message", this.#eventListener);
   }
 
-  public get closed(): Promise<void> {
+  public get _internal_closed(): Promise<void> {
     return this.#closedPromise;
   }
 
@@ -151,6 +151,10 @@ export abstract class ProtocolChannel {
     this.#port.close();
 
     this.#heldLock?.();
+  }
+
+  _internal_close() {
+    return this.#closeLocally();
   }
 
   abstract _internal_serveRequest(

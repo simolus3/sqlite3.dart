@@ -368,6 +368,11 @@ final class WorkerConnection extends ProtocolChannel {
     );
   }
 
+  @override
+  void handleNotification(Notification notification) {
+    notifications.add(notification);
+  }
+
   Future<RemoteDatabase> requestDatabase({
     required String wasmUri,
     required String databaseName,
@@ -391,11 +396,6 @@ final class WorkerConnection extends ProtocolChannel {
       connection: this,
       databaseId: (response.response as JSNumber).toDartInt,
     );
-  }
-
-  @override
-  void handleNotification(Notification notification) {
-    notifications.add(notification);
   }
 }
 
@@ -755,6 +755,14 @@ final class DatabaseClient implements WebSqlite {
       features: probed,
       implementation: implementation,
     );
+  }
+
+  @override
+  void close() {
+    _connectionToShared?.close();
+    _connectionToDedicatedInShared?.close();
+    _connectionToDedicated?.close();
+    _connectionToLocal?.close();
   }
 
   /// Compares available ways to access databases by the performance and

@@ -14,7 +14,12 @@ import {
   StorageMode,
   WebSqlite,
 } from "./api.js";
-import { createChannel, ProtocolChannel, WebEndpoint } from "./channel.js";
+import {
+  createChannel,
+  ProtocolChannel,
+  ProtocolChannelOptions,
+  WebEndpoint,
+} from "./channel.js";
 import {
   indexedDb,
   inMemory,
@@ -123,6 +128,10 @@ export class DatabaseClient implements WebSqlite {
     });
   }
 
+  #wrapAsConnection(channel: ProtocolChannelOptions) {
+    return new WorkerConnection(channel);
+  }
+
   async #startDedicated() {
     let dedicated: WorkerHandle | null = null;
     try {
@@ -146,7 +155,7 @@ export class DatabaseClient implements WebSqlite {
       r: endpoint,
     } satisfies Message;
     dedicated.postMessage(request, extractTransferrable(request));
-    this.#connectionToDedicated = new WorkerConnection(channel);
+    this.#connectionToDedicated = this.#wrapAsConnection(channel);
   }
 
   async #startShared() {
@@ -172,7 +181,7 @@ export class DatabaseClient implements WebSqlite {
       r: endpoint,
     } satisfies Message;
     shared.postMessage(request, extractTransferrable(request));
-    this.#connectionToShared = new WorkerConnection(channel);
+    this.#connectionToShared = this.#wrapAsConnection(channel);
   }
 
   async #connectToDedicatedInShared() {
@@ -190,9 +199,8 @@ export class DatabaseClient implements WebSqlite {
         typeSimpleSuccessResponse,
       );
 
-      return (this.#connectionToDedicatedInShared = new WorkerConnection(
-        channel,
-      ));
+      return (this.#connectionToDedicatedInShared =
+        this.#wrapAsConnection(channel));
     });
   }
 
@@ -459,12 +467,18 @@ export class DatabaseClient implements WebSqlite {
     // We always have zero as a database id for these pre-existing connections, as the worker will identify it through
     // the unique send port.
     return new RemoteDatabase(
-      new WorkerConnection({
+      this.#wrapAsConnection({
         _internal_port: port,
         _internal_lockName: lockName,
       }),
       0,
     );
+  }
+
+  close(): void {
+    this.#connectionToShared?._internal_close();
+    this.#connectionToDedicatedInShared?._internal_close();
+    this.#connectionToDedicated?._internal_close();
   }
 }
 
@@ -484,7 +498,7 @@ class RemoteDatabase implements Database {
       };
     });
 
-    _internal_connection.closed.finally(this.#markClosed);
+    this._internal_connection._internal_closed.finally(this.#markClosed);
   }
 
   public get fileSystem(): FileSystem {
@@ -636,8 +650,12 @@ class RemoteFileSystem implements FileSystem {
     this.#db = db;
   }
 
+  get #connection() {
+    return this.#db._internal_connection;
+  }
+
   async exists(file: FileType): Promise<boolean> {
-    const { r } = await this.#db._internal_connection._internal_sendRequest<
+    const { r } = await this.#connection._internal_sendRequest<
       FileSystemExistsQuery,
       SimpleSuccessResponse
     >(
@@ -653,7 +671,7 @@ class RemoteFileSystem implements FileSystem {
   }
 
   async readFile(file: FileType): Promise<Uint8Array> {
-    const { r } = await this.#db._internal_connection._internal_sendRequest<
+    const { r } = await this.#connection._internal_sendRequest<
       FileSystemAccess,
       SimpleSuccessResponse
     >(
@@ -673,7 +691,7 @@ class RemoteFileSystem implements FileSystem {
   async writeFile(type: FileType, content: Uint8Array): Promise<void> {
     // We need to copy since we're about to transfer contents over.
     const copy = new Uint8Array(content);
-    await this.#db._internal_connection._internal_sendRequest<
+    await this.#connection._internal_sendRequest<
       FileSystemAccess,
       SimpleSuccessResponse
     >(

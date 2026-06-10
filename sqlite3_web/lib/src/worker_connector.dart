@@ -8,7 +8,6 @@ import 'dart:js_interop_unsafe';
 import 'package:web/web.dart';
 
 /// Environment for workers hosting SQLite databases.
-
 abstract interface class WorkerEnvironment {
   /// A connector that can be used to spawn nested workers, if that feature is
   /// available in the current context.
@@ -20,6 +19,10 @@ abstract interface class WorkerEnvironment {
   /// [DedicatedWorkerGlobalScope]. For shared workers, all messages received on
   /// connecting ports.
   Stream<MessageEvent> get incomingMessages;
+
+  /// If it's safe to do so, gracefully shut down the worker after the next
+  /// yield to the event loop.
+  void close();
 
   /// The default environment for the current worker context.
   ///
@@ -51,6 +54,11 @@ final class _DedicatedWorkerEnvironment
   @override
   Stream<MessageEvent> get incomingMessages {
     return EventStreamProviders.messageEvent.forTarget(scope);
+  }
+
+  @override
+  void close() {
+    return scope.close();
   }
 }
 
@@ -94,6 +102,15 @@ final class _SharedWorkerEnvironment
       };
     });
   }
+
+  @override
+  void close() {
+    // We don't currently close shared workers. Unlike dedicated workers, which
+    // pile up if we don't close them, there will be one shared worker at most
+    // (so there's less waste to begin with). In the current protocol design,
+    // there's also a race condition where close is called but we can't know if
+    // another tab may be connecting to the shared worker at the same time.
+  }
 }
 
 /// A worker environment that isn't in an actual web worker.
@@ -109,6 +126,8 @@ final class FakeWorkerEnvironment implements WorkerEnvironment, WorkerHandle {
 
   final StreamController<MessageEvent> _messages = StreamController();
 
+  bool get isClosed => _messages.isClosed;
+
   FakeWorkerEnvironment([this.connector = const WorkerConnector.unsupported()]);
 
   @override
@@ -122,6 +141,7 @@ final class FakeWorkerEnvironment implements WorkerEnvironment, WorkerHandle {
     _messages.add(MessageEvent('message', MessageEventInit(data: message)));
   }
 
+  @override
   void close() {
     _messages.close();
   }

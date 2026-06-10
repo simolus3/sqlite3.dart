@@ -757,9 +757,14 @@ final class WorkerRunner {
       id: _nextConnectionId++,
     );
     _connections.add(connection);
-    connection.closed.whenComplete(() => _connections.remove(connection));
+    connection.closed.whenComplete(() => _removeClient(connection));
 
     return connection;
+  }
+
+  void _removeClient(_ClientConnection connection) {
+    _connections.remove(connection);
+    if (_connections.isEmpty) _environment.close();
   }
 
   Future<CompatibilityResult> checkCompatibility(CompatibilityCheck check) {

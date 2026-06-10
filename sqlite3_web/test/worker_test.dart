@@ -293,6 +293,30 @@ void main() {
       expect((await a.customRequest(null) as JSString).toDart, 'response');
     });
   });
+
+  test('can close clients', () async {
+    final client = WebSqlite.open(
+      workers: _FakeWorkerConnector(fakeWorkers),
+      wasmModule: sqlite3WasmUri,
+    );
+    final database = await client.connect(
+      'foo',
+      DatabaseImplementation.inMemoryShared,
+    );
+    await database.select('SELECT 1');
+    client.close();
+
+    // Closing the client should also mark the database as closed.
+    await database.closed;
+    await expectLater(
+      () => database.select('SELECT 1'),
+      throwsA(isA<ChannelClosedException>()),
+    );
+
+    // Additionally, the worker should close its environment.
+    await pumpEventQueue();
+    expect(fakeWorkers.isClosed, isTrue);
+  });
 }
 
 final class _FakeWorkerConnector implements WorkerConnector {
