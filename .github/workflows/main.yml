@@ -284,45 +284,13 @@ jobs:
           dart test -P gh_actions -r expanded
         working-directory: sqlite3_web
 
-# The integration tests for android are currently broken (the emulator doesn't want to
-# start up...)
-#
-#  integration_test_android:
-#    runs-on: macos-latest
-#    needs: [test]
-#    strategy:
-#      matrix:
-#        test:
-#          - flutter_libs
-#          - sqlcipher_flutter
-#    steps:
-#      - uses: actions/checkout@v6
-#      - uses: subosito/flutter-action@v2
-#        with:
-#          channel: dev
-#      - name: pub get
-#        working-directory: "integration_tests/${{ matrix.test }}"
-#        run: flutter pub get
-#
-#      - name: run tests
-#        uses: reactivecircus/android-emulator-runner@v2
-#        with:
-#          api-level: 29
-#          script: flutter test integration_test
-#          working-directory: "integration_tests/${{ matrix.test }}"
-
   # Shamelessly stolen from https://medium.com/flutter-community/run-flutter-driver-tests-on-github-actions-13c639c7e4ab
 
-  integration_test:
+  integration_test_desktop:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
-    strategy:
-      matrix:
-        runner: [ubuntu-latest, macos-latest]
     needs: [test, fetch_sqlite]
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-latest
     timeout-minutes: 30
-    env:
-      AVD_NAME: ubuntu-avd-x86_64-34
     steps:
       - name: List simulators
         if: runner.os == 'macos'
@@ -342,8 +310,77 @@ jobs:
       - name: Flutter version
         run: flutter --version
 
+      - name: Download compiled sqlite3
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
+          path: sqlite-compiled
+      - name: Download connection pool libraries
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ needs.fetch_sqlite.outputs.pool_libs_artifact_id }}
+          path: sqlite3_connection_pool/lib/src/precompiled/
+
+      - uses: actions/cache@v5
+        with:
+          path: "${{ env.PUB_CACHE }}"
+          key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
+          restore-keys: |
+            dart-dependencies-${{ matrix.dart }}-
+            dart-dependencies-
+
+      - name: Write asset hashes
+        run: |
+          dart pub get
+          dart run tool/write_asset_hashes.dart
+          dart run tool/hook_overrides.dart compiled
+
+      - name: Flutter sqlite3 tests on macOS
+        working-directory: examples/flutter_integration_tests
+        run: |
+          flutter config --enable-swift-package-manager
+          flutter test integration_test
+          flutter test integration_test -d macos
+
+      - name: Enable sqlite3mc
+        run: |
+          dart run tool/hook_overrides.dart compiled-ciphers
+
+      - name: Flutter sqlite3mc tests on macOS
+        working-directory: examples/flutter_integration_tests
+        run: |
+          flutter config --enable-swift-package-manager
+          flutter test integration_test -Dsqlite3.multipleciphers=true
+          flutter test integration_test -Dsqlite3.multipleciphers=true -d macos
+
+      - name: Enable sqlcipher
+        run: |
+          dart run tool/hook_overrides.dart compiled-sqlcipher
+
+      - name: Flutter sqlcipher tests on macOS
+        working-directory: examples/flutter_integration_tests
+        run: |
+          flutter config --enable-swift-package-manager
+          flutter test integration_test -Dsqlite3.sqlcipher=true
+          flutter test integration_test -Dsqlite3.sqlcipher=true -d macos
+
+  integration_test_android:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
+    needs: [test, fetch_sqlite]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AVD_NAME: ubuntu-avd-x86_64-34
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 #v2.23.0
+
+      - name: Flutter version
+        run: flutter --version
+
       - name: Setup runner
-        if: runner.os == 'linux'
         # https://github.com/ReactiveCircus/android-emulator-runner?tab=readme-ov-file#usage--examples
         run: |
           sudo apt-get update
@@ -387,23 +424,8 @@ jobs:
           dart run tool/write_asset_hashes.dart
           dart run tool/hook_overrides.dart compiled
 
-      - name: Flutter sqlite3 tests on macOS
-        if: runner.os == 'macos'
-        working-directory: examples/flutter_integration_tests
-        run: |
-          flutter config --enable-swift-package-manager
-          flutter test integration_test
-          flutter test integration_test -d macos
-
-      - name: Flutter sqlite3 tests on Linux
-        if: false # runner.os == 'linux' currently broken in ci, can't reproduce locally or in Ubuntu VM
-        working-directory: examples/flutter_integration_tests
-        run: |
-          flutter test integration_test -d linux
-
-      - name: SQLite Android emulator tests
-        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
-        if: runner.os == 'linux'
+      - name: Android emulator tests
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0        
         with:
           api-level: 34
           force-avd-creation: false
@@ -412,57 +434,12 @@ jobs:
           disable-animations: false
           avd-name: $AVD_NAME
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: flutter test integration_test
-          working-directory: "examples/flutter_integration_tests"
+          script: |
+            dart run tool/hook_overrides.dart compiled
+            cd examples/flutter_integration_tests && flutter test integration_test
 
-      - name: Enable sqlite3mc
-        run: |
-          dart run tool/hook_overrides.dart compiled-ciphers
+            dart run tool/hook_overrides.dart compiled-ciphers
+            cd examples/flutter_integration_tests && flutter test integration_test
 
-      - name: Flutter sqlite3mc tests on macOS
-        if: runner.os == 'macos'
-        working-directory: examples/flutter_integration_tests
-        run: |
-          flutter config --enable-swift-package-manager
-          flutter test integration_test -Dsqlite3.multipleciphers=true
-          flutter test integration_test -Dsqlite3.multipleciphers=true -d macos
-
-      - name: sqlite3mc Android emulator tests
-        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
-        if: runner.os == 'linux'
-        with:
-          api-level: 34
-          force-avd-creation: false
-          target: google_apis
-          arch: x86_64
-          disable-animations: false
-          avd-name: $AVD_NAME
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: flutter test integration_test -Dsqlite3.multipleciphers=true
-          working-directory: "examples/flutter_integration_tests"
-
-      - name: Enable sqlcipher
-        run: |
-          dart run tool/hook_overrides.dart compiled-sqlcipher
-
-      - name: Flutter sqlcipher tests on macOS
-        if: runner.os == 'macos'
-        working-directory: examples/flutter_integration_tests
-        run: |
-          flutter config --enable-swift-package-manager
-          flutter test integration_test -Dsqlite3.sqlcipher=true
-          flutter test integration_test -Dsqlite3.sqlcipher=true -d macos
-
-      - name: sqlcipher Android emulator tests
-        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
-        if: runner.os == 'linux'
-        with:
-          api-level: 34
-          force-avd-creation: false
-          target: google_apis
-          arch: x86_64
-          disable-animations: false
-          avd-name: $AVD_NAME
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: flutter test integration_test -Dsqlite3.sqlcipher=true
-          working-directory: "examples/flutter_integration_tests"
+            dart run tool/hook_overrides.dart compiled-sqlcipher
+            cd examples/flutter_integration_tests && flutter test integration_test -Dsqlite3.sqlcipher=true
