@@ -33,6 +33,7 @@ enum MessageType<T extends Message> {
   notifyCommit<CommitNotification>(),
   notifyRollback<RollbackNotification>(),
   abort<AbortRequest>(),
+  stop<StopWorkerRequest>(),
 }
 
 abstract base class RequestHandler {
@@ -747,6 +748,15 @@ AbortRequest newAbortRequest({required int requestId}) {
   return _AbortRequest(requestId: requestId, type: 'abort');
 }
 
+@anonymous
+extension type _StopWorkerRequest._(StopWorkerRequest _)
+    implements StopWorkerRequest {
+  external factory _StopWorkerRequest({@JS('t') required String type});
+}
+StopWorkerRequest newStopWorkerRequest() {
+  return _StopWorkerRequest(type: 'stop');
+}
+
 @JS('ArrayBuffer')
 external JSFunction get _arrayBufferConstructor;
 JSArray<JSAny> extractTransferrable(Message message) {
@@ -792,6 +802,7 @@ JSArray<JSAny> extractTransferrable(Message message) {
 T dispatchMessage<T>(
   Message msg, {
   required T Function(AbortRequest) whenAbortRequest,
+  required T Function(StopWorkerRequest) whenStopWorkerRequest,
   required T Function(Notification) whenNotification,
   required T Function(Response) whenResponse,
   required T Function(Request) whenRequest,
@@ -799,6 +810,8 @@ T dispatchMessage<T>(
   switch (msg.type) {
     case 'abort':
       return whenAbortRequest(msg as AbortRequest);
+    case 'stop':
+      return whenStopWorkerRequest(msg as StopWorkerRequest);
     case 'notifyUpdate':
     case 'notifyCommit':
     case 'notifyRollback':

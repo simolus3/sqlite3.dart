@@ -161,6 +161,9 @@ abstract base class ProtocolChannel extends RequestHandler {
     );
   }
 
+  /// Shut down if running in a worker.
+  void stop();
+
   /// Sends a request to the other end and expects a response of the
   /// [expectedType].
   ///

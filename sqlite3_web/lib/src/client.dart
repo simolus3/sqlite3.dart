@@ -757,6 +757,9 @@ final class DatabaseClient implements WebSqlite {
     );
   }
 
+  @override
+  void close() {}
+
   /// Compares available ways to access databases by the performance and
   /// and reliability of the implementation.
   ///

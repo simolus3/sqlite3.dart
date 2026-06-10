@@ -339,7 +339,9 @@ import 'messages.dart';
         ..writeln('});')
         ..writeln('}')
         ..write(type.name)
-        ..write(' new${type.name}({');
+        ..write(' new${type.name}(');
+      final hasParam = type.allFields.any((f) => !f.isMessageType);
+      if (hasParam) buffer.write('{');
 
       final defaultValues = <String, String>{};
       for (final field in type.allFields) {
@@ -361,8 +363,9 @@ import 'messages.dart';
           ..writeln(', ');
       }
 
+      if (hasParam) buffer.write('}');
       buffer
-        ..writeln('}) {')
+        ..writeln(') {')
         ..write('  return _$name(');
 
       for (final field in type.allFields) {

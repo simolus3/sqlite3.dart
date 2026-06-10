@@ -26,6 +26,7 @@ export const typeUpdateNotification = "notifyUpdate";
 export const typeCommitNotification = "notifyCommit";
 export const typeRollbackNotification = "notifyRollback";
 export const typeAbortRequest = "abort";
+export const typeStopWorkerRequest = "stop";
 export type Message =
   | Notification
   | Request
@@ -56,7 +57,8 @@ export type Message =
   | UpdateNotification
   | CommitNotification
   | RollbackNotification
-  | AbortRequest;
+  | AbortRequest
+  | StopWorkerRequest;
 export type Notification =
   | UpdateNotification
   | CommitNotification
@@ -346,6 +348,10 @@ export interface AbortRequest {
   // Dart name: type
   t: "abort";
 }
+export interface StopWorkerRequest {
+  // Dart name: type
+  t: "stop";
+}
 export function extractTransferrable(message: Message): Transferable[] {
   const result: Transferable[] = [];
   switch (message.t) {
@@ -384,6 +390,7 @@ export function dispatchMessage<T>(
   msg: Message,
   cb: {
     _internal_whenAbortRequest: (message: AbortRequest) => T;
+    _internal_whenStopWorkerRequest: (message: StopWorkerRequest) => T;
     _internal_whenNotification: (message: Notification) => T;
     _internal_whenResponse: (message: Response) => T;
     _internal_whenRequest: (message: Request) => T;
@@ -392,6 +399,8 @@ export function dispatchMessage<T>(
   switch (msg.t) {
     case typeAbortRequest:
       return cb._internal_whenAbortRequest(msg as AbortRequest);
+    case typeStopWorkerRequest:
+      return cb._internal_whenStopWorkerRequest(msg as StopWorkerRequest);
     case typeUpdateNotification:
     case typeCommitNotification:
     case typeRollbackNotification:

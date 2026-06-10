@@ -335,6 +335,9 @@ abstract class WebSqlite {
     JSAny? additionalOptions,
   });
 
+  /// Closes this instance and associated workers.
+  void close();
+
   /// Entrypoints for workers hosting databases.
   static void workerEntrypoint({
     required DatabaseController controller,
