@@ -228,12 +228,6 @@ abstract base class ProtocolChannel extends RequestHandler {
 
     _closed.complete();
   }
-
-  /// A finalizer that can be used to automatically close protocol channels when
-  /// they're no longer used.
-  static final Finalizer<ProtocolChannel> finalizer = Finalizer(
-    (c) => c.close(),
-  );
 }
 
 /// An exception thrown when a request is sent over a closed channel to a

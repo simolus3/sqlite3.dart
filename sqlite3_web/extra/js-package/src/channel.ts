@@ -206,9 +206,3 @@ export abstract class ProtocolChannel {
     }
   }
 }
-
-export const channelFinalizationRegistry =
-  FinalizationRegistry &&
-  new FinalizationRegistry<ProtocolChannel>((channel) =>
-    channel._internal_close(),
-  );

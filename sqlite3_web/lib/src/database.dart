@@ -336,10 +336,6 @@ abstract class WebSqlite {
   });
 
   /// Closes this instance and associated dedicated workers.
-  ///
-  /// This package will register a [Finalizer] closing workers automatically, so
-  /// calling this method is not required. However, it can still be used to be
-  /// explicit about when to close resources.
   void close();
 
   /// Entrypoints for workers hosting databases.

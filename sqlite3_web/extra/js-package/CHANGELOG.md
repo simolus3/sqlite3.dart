@@ -1,6 +1,6 @@
 ## 0.2.2
 
-- Add `WebSqlite.close()` to release associated workers. Workers are also released automatically through a finalization registry.
+- Add `WebSqlite.close()` to release associated workers.
 
 ## 0.2.1
 

@@ -20,7 +20,7 @@ final class _CommitOrRollbackStream {
 }
 
 final class RemoteDatabase implements Database {
-  final FinalizableWorkerConnection finalizableConnection;
+  final WorkerConnection connection;
   final int databaseId;
   final Completer<Object?> _isClosed = Completer();
 
@@ -30,12 +30,7 @@ final class RemoteDatabase implements Database {
   final _CommitOrRollbackStream _commits = _CommitOrRollbackStream();
   final _CommitOrRollbackStream _rollbacks = _CommitOrRollbackStream();
 
-  WorkerConnection get connection => finalizableConnection.connection;
-
-  RemoteDatabase({
-    required this.finalizableConnection,
-    required this.databaseId,
-  }) {
+  RemoteDatabase({required this.connection, required this.databaseId}) {
     connection.closed.then((_) {
       if (!isClosed) {
         _isClosed.complete();
@@ -377,19 +372,6 @@ final class WorkerConnection extends ProtocolChannel {
   void handleNotification(Notification notification) {
     notifications.add(notification);
   }
-}
-
-final class FinalizableWorkerConnection {
-  final WorkerConnection connection;
-
-  FinalizableWorkerConnection(this.connection) {
-    ProtocolChannel.finalizer.attach(this, connection, detach: this);
-  }
-
-  void close() {
-    connection.close();
-    ProtocolChannel.finalizer.detach(this);
-  }
 
   Future<RemoteDatabase> requestDatabase({
     required String wasmUri,
@@ -398,7 +380,7 @@ final class FinalizableWorkerConnection {
     required bool onlyOpenVfs,
     required JSAny? additionalOptions,
   }) async {
-    final response = await connection.sendRequest(
+    final response = await sendRequest(
       newOpenRequest(
         requestId: 0,
         wasmUri: wasmUri,
@@ -411,7 +393,7 @@ final class FinalizableWorkerConnection {
     );
 
     return RemoteDatabase(
-      finalizableConnection: this,
+      connection: this,
       databaseId: (response.response as JSNumber).toDartInt,
     );
   }
@@ -425,11 +407,11 @@ final class DatabaseClient implements WebSqlite {
 
   final Mutex _startWorkers = Mutex();
   bool _startedWorkers = false;
-  FinalizableWorkerConnection? _connectionToDedicated;
-  FinalizableWorkerConnection? _connectionToShared;
-  FinalizableWorkerConnection? _connectionToDedicatedInShared;
+  WorkerConnection? _connectionToDedicated;
+  WorkerConnection? _connectionToShared;
+  WorkerConnection? _connectionToDedicatedInShared;
 
-  FinalizableWorkerConnection? _connectionToLocal;
+  WorkerConnection? _connectionToLocal;
 
   final Set<MissingBrowserFeature> _missingFeatures = {};
 
@@ -456,10 +438,8 @@ final class DatabaseClient implements WebSqlite {
     });
   }
 
-  FinalizableWorkerConnection _connection(ConnectableChannel channel) {
-    return FinalizableWorkerConnection(
-      WorkerConnection(channel, _handleCustomRequest),
-    );
+  WorkerConnection _connection(ConnectableChannel channel) {
+    return WorkerConnection(channel, _handleCustomRequest);
   }
 
   Future<void> _startDedicated() async {
@@ -511,14 +491,14 @@ final class DatabaseClient implements WebSqlite {
     _connectionToShared = _connection(channel);
   }
 
-  Future<FinalizableWorkerConnection> _connectToDedicatedInShared() {
+  Future<WorkerConnection> _connectToDedicatedInShared() {
     return _startWorkers.withCriticalSection(() async {
       if (_connectionToDedicatedInShared case final conn?) {
         return conn;
       }
 
       final (endpoint, channel) = await createChannel();
-      await _connectionToShared!.connection.sendRequest(
+      await _connectionToShared!.sendRequest(
         newConnectRequest(requestId: 0, endpoint: endpoint, databaseId: null),
         MessageType.simpleSuccessResponse,
       );
@@ -527,7 +507,7 @@ final class DatabaseClient implements WebSqlite {
     });
   }
 
-  Future<FinalizableWorkerConnection> _connectToLocal() async {
+  Future<WorkerConnection> _connectToLocal() async {
     return _startWorkers.withCriticalSection(() async {
       if (_connectionToLocal case final conn?) {
         return conn;
@@ -667,10 +647,10 @@ final class DatabaseClient implements WebSqlite {
     }
 
     if (_connectionToDedicated case final dedicated?) {
-      await dedicatedCompatibilityCheck(dedicated.connection);
+      await dedicatedCompatibilityCheck(dedicated);
     }
     if (_connectionToShared case final shared?) {
-      await sharedCompatibilityCheck(shared.connection);
+      await sharedCompatibilityCheck(shared);
     }
 
     available.add(DatabaseImplementation.inMemoryLocal);
@@ -692,7 +672,7 @@ final class DatabaseClient implements WebSqlite {
     );
 
     return RemoteDatabase(
-      finalizableConnection: channel,
+      connection: channel,
       // The database id for this pre-existing connection is always zero.
       // It gets assigned by the worker handling the OpenAdditonalConnection
       // request.
@@ -709,7 +689,7 @@ final class DatabaseClient implements WebSqlite {
   }) async {
     await startWorkers();
 
-    FinalizableWorkerConnection connection;
+    WorkerConnection connection;
     switch (implementation.access) {
       case AccessMode.throughSharedWorker:
         if (implementation.storage == StorageMode.opfs) {

@@ -190,7 +190,7 @@ export interface Database {
    * Closes this database and instructs the worker to release associated
    * resources.
    *
-   * No methods may be called aftr a call to {@link close}.
+   * No methods may be called after a call to {@link close}.
    */
   close(): Promise<void>;
 
@@ -382,9 +382,6 @@ export interface WebSqlite {
 
   /**
    * Closes this instance and associated dedicated workers.
-   *
-   * Internally, this package also uses finalization registry to close workers automatically, so calling this method is
-   * not required. However, it can still be used to be explicit about when to close resources.
    */
   close(): void;
 }
