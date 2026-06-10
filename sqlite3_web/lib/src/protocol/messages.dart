@@ -387,10 +387,6 @@ extension type AbortRequest._(JSObject _) implements Message {
   external int requestId;
 }
 
-/// A request sent from clients, asking dedicated workers to close themselves.
-@MessageTypeName('stop')
-extension type StopWorkerRequest._(JSObject _) implements Message {}
-
 /// Field names used when serializing messages to JS objects.
 ///
 /// Since we're using unsafe JS interop here, these can't be mangled by dart2js.

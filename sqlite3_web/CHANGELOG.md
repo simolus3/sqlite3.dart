@@ -1,3 +1,8 @@
+## 0.9.0
+
+- __Breaking__: Add `WorkerEnvironment.close()` to close workers.
+- Add `WebSqlite.close` to close dedicated workers opened for a web sqlite instance.
+
 ## 0.8.1
 
 - Throw when new requests are made to a database closed remotely.

@@ -1,3 +1,6 @@
+/// @docImport 'database.dart';
+library;
+
 import 'dart:typed_data';
 import 'package:sqlite3/common.dart';
 

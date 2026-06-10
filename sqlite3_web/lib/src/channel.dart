@@ -161,9 +161,6 @@ abstract base class ProtocolChannel extends RequestHandler {
     );
   }
 
-  /// Shut down if running in a worker.
-  void stop();
-
   /// Sends a request to the other end and expects a response of the
   /// [expectedType].
   ///
@@ -231,6 +228,12 @@ abstract base class ProtocolChannel extends RequestHandler {
 
     _closed.complete();
   }
+
+  /// A finalizer that can be used to automatically close protocol channels when
+  /// they're no longer used.
+  static final Finalizer<ProtocolChannel> finalizer = Finalizer(
+    (c) => c.close(),
+  );
 }
 
 /// An exception thrown when a request is sent over a closed channel to a

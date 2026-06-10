@@ -20,74 +20,15 @@ export const typeRollbackStreamRequest = "rollbackRequest";
 export const typeCommitsStreamRequest = "commitRequest";
 export const typeDedicatedCompatibilityCheck = "dedicatedCompatibilityCheck";
 export const typeSharedCompatibilityCheck = "sharedCompatibilityCheck";
-export const typeDedicatedInSharedCompatibilityCheck =
-  "dedicatedInSharedCompatibilityCheck";
+export const typeDedicatedInSharedCompatibilityCheck = "dedicatedInSharedCompatibilityCheck";
 export const typeUpdateNotification = "notifyUpdate";
 export const typeCommitNotification = "notifyCommit";
 export const typeRollbackNotification = "notifyRollback";
 export const typeAbortRequest = "abort";
-export const typeStopWorkerRequest = "stop";
-export type Message =
-  | Notification
-  | Request
-  | Response
-  | OpenRequest
-  | ConnectRequest
-  | CustomRequest
-  | FileSystemExistsQuery
-  | FileSystemFlushRequest
-  | FileSystemAccess
-  | RunQuery
-  | RequestExclusiveLock
-  | ReleaseLock
-  | CloseDatabase
-  | OpenAdditionalConnection
-  | SimpleSuccessResponse
-  | EndpointResponse
-  | RowsResponse
-  | ErrorResponse
-  | StreamRequest
-  | UpdateStreamRequest
-  | RollbackStreamRequest
-  | CommitsStreamRequest
-  | CompatibilityCheck
-  | DedicatedCompatibilityCheck
-  | SharedCompatibilityCheck
-  | DedicatedInSharedCompatibilityCheck
-  | UpdateNotification
-  | CommitNotification
-  | RollbackNotification
-  | AbortRequest
-  | StopWorkerRequest;
-export type Notification =
-  | UpdateNotification
-  | CommitNotification
-  | RollbackNotification;
-export type Request =
-  | OpenRequest
-  | ConnectRequest
-  | CustomRequest
-  | FileSystemExistsQuery
-  | FileSystemFlushRequest
-  | FileSystemAccess
-  | RunQuery
-  | RequestExclusiveLock
-  | ReleaseLock
-  | CloseDatabase
-  | OpenAdditionalConnection
-  | StreamRequest
-  | UpdateStreamRequest
-  | RollbackStreamRequest
-  | CommitsStreamRequest
-  | CompatibilityCheck
-  | DedicatedCompatibilityCheck
-  | SharedCompatibilityCheck
-  | DedicatedInSharedCompatibilityCheck;
-export type Response =
-  | SimpleSuccessResponse
-  | EndpointResponse
-  | RowsResponse
-  | ErrorResponse;
+export type Message = Notification | Request | Response | OpenRequest | ConnectRequest | CustomRequest | FileSystemExistsQuery | FileSystemFlushRequest | FileSystemAccess | RunQuery | RequestExclusiveLock | ReleaseLock | CloseDatabase | OpenAdditionalConnection | SimpleSuccessResponse | EndpointResponse | RowsResponse | ErrorResponse | StreamRequest | UpdateStreamRequest | RollbackStreamRequest | CommitsStreamRequest | CompatibilityCheck | DedicatedCompatibilityCheck | SharedCompatibilityCheck | DedicatedInSharedCompatibilityCheck | UpdateNotification | CommitNotification | RollbackNotification | AbortRequest;
+export type Notification = UpdateNotification | CommitNotification | RollbackNotification;
+export type Request = OpenRequest | ConnectRequest | CustomRequest | FileSystemExistsQuery | FileSystemFlushRequest | FileSystemAccess | RunQuery | RequestExclusiveLock | ReleaseLock | CloseDatabase | OpenAdditionalConnection | StreamRequest | UpdateStreamRequest | RollbackStreamRequest | CommitsStreamRequest | CompatibilityCheck | DedicatedCompatibilityCheck | SharedCompatibilityCheck | DedicatedInSharedCompatibilityCheck;
+export type Response = SimpleSuccessResponse | EndpointResponse | RowsResponse | ErrorResponse;
 export interface OpenRequest {
   // Dart name: wasmUri
   u: string;
@@ -256,10 +197,7 @@ export interface ErrorResponse {
   // Dart name: type
   t: "errorResponse";
 }
-export type StreamRequest =
-  | UpdateStreamRequest
-  | RollbackStreamRequest
-  | CommitsStreamRequest;
+export type StreamRequest = UpdateStreamRequest | RollbackStreamRequest | CommitsStreamRequest;
 export interface UpdateStreamRequest {
   // Dart name: action
   a: boolean;
@@ -290,10 +228,7 @@ export interface CommitsStreamRequest {
   // Dart name: type
   t: "commitRequest";
 }
-export type CompatibilityCheck =
-  | DedicatedCompatibilityCheck
-  | SharedCompatibilityCheck
-  | DedicatedInSharedCompatibilityCheck;
+export type CompatibilityCheck = DedicatedCompatibilityCheck | SharedCompatibilityCheck | DedicatedInSharedCompatibilityCheck;
 export interface DedicatedCompatibilityCheck {
   // Dart name: databaseName
   d: string | null;
@@ -348,69 +283,36 @@ export interface AbortRequest {
   // Dart name: type
   t: "abort";
 }
-export interface StopWorkerRequest {
-  // Dart name: type
-  t: "stop";
-}
 export function extractTransferrable(message: Message): Transferable[] {
-  const result: Transferable[] = [];
-  switch (message.t) {
-    case typeConnectRequest: {
-      result.push((message as ConnectRequest).r.port);
-      break;
-    }
-    case typeFileSystemAccess: {
-      const bufferTmp = (message as FileSystemAccess).b;
-      if (bufferTmp != null) result.push(bufferTmp);
-      break;
-    }
-    case typeRunQuery: {
-      const typeVectorTmp = (message as RunQuery).v;
-      if (typeVectorTmp != null) result.push(typeVectorTmp);
-      break;
-    }
-    case typeSimpleSuccessResponse: {
-      const responseTmp = (message as SimpleSuccessResponse).r;
-      if (responseTmp instanceof ArrayBuffer) result.push(responseTmp);
-      break;
-    }
-    case typeEndpointResponse: {
-      result.push((message as EndpointResponse).r.port);
-      break;
-    }
-    case typeRowsResponse: {
-      const typeVectorTmp = (message as RowsResponse).v;
-      if (typeVectorTmp != null) result.push(typeVectorTmp);
-      break;
-    }
-  }
-  return result;
+const result: Transferable[] = [];
+switch (message.t) {
+case typeConnectRequest: {result.push((message as ConnectRequest).r.port);break;}
+case typeFileSystemAccess: {const bufferTmp = (message as FileSystemAccess).b;if (bufferTmp != null) result.push(bufferTmp);;break;}
+case typeRunQuery: {const typeVectorTmp = (message as RunQuery).v;if (typeVectorTmp != null) result.push(typeVectorTmp);;break;}
+case typeSimpleSuccessResponse: {const responseTmp = (message as SimpleSuccessResponse).r;if (responseTmp instanceof ArrayBuffer) result.push(responseTmp);;break;}
+case typeEndpointResponse: {result.push((message as EndpointResponse).r.port);break;}
+case typeRowsResponse: {const typeVectorTmp = (message as RowsResponse).v;if (typeVectorTmp != null) result.push(typeVectorTmp);;break;}
 }
-export function dispatchMessage<T>(
-  msg: Message,
-  cb: {
-    _internal_whenAbortRequest: (message: AbortRequest) => T;
-    _internal_whenStopWorkerRequest: (message: StopWorkerRequest) => T;
-    _internal_whenNotification: (message: Notification) => T;
-    _internal_whenResponse: (message: Response) => T;
-    _internal_whenRequest: (message: Request) => T;
-  },
-): T {
-  switch (msg.t) {
-    case typeAbortRequest:
-      return cb._internal_whenAbortRequest(msg as AbortRequest);
-    case typeStopWorkerRequest:
-      return cb._internal_whenStopWorkerRequest(msg as StopWorkerRequest);
-    case typeUpdateNotification:
-    case typeCommitNotification:
-    case typeRollbackNotification:
-      return cb._internal_whenNotification(msg as Notification);
-    case typeSimpleSuccessResponse:
-    case typeEndpointResponse:
-    case typeRowsResponse:
-    case typeErrorResponse:
-      return cb._internal_whenResponse(msg as Response);
-    default:
-      return cb._internal_whenRequest(msg as Request);
-  }
+return result;
+}
+export function dispatchMessage<T>(msg: Message, cb: {
+  _internal_whenAbortRequest: (message: AbortRequest) => T,
+  _internal_whenNotification: (message: Notification) => T,
+  _internal_whenResponse: (message: Response) => T,
+  _internal_whenRequest: (message: Request) => T,
+}): T {
+switch (msg.t) {
+case typeAbortRequest:
+return cb._internal_whenAbortRequest(msg as AbortRequest);
+case typeUpdateNotification:
+case typeCommitNotification:
+case typeRollbackNotification:
+return cb._internal_whenNotification(msg as Notification);
+case typeSimpleSuccessResponse:
+case typeEndpointResponse:
+case typeRowsResponse:
+case typeErrorResponse:
+return cb._internal_whenResponse(msg as Response);
+default:return cb._internal_whenRequest(msg as Request);
+}
 }
