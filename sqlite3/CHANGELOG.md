@@ -1,3 +1,7 @@
+## 3.3.3
+
+- Restore support for SQLCipher (thanks to [@davidmartos96](https://github.com/davidmartos96)!).
+
 ## 3.3.2
 
 - Support `package:native_toolchain_c` versions `0.18.x` and `0.19.x`.

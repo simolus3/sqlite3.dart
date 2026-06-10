@@ -46,11 +46,12 @@ SQLITE_HAVE_MALLOC_USABLE_SIZE
 SQLITE_HAVE_STRCHRNUL
 ```
 
-For each platform, two sets of binaries are available:
+For each platform, three sets of binaries are available:
 
 - [Upstream SQLite](https://sqlite.org/download.html).
 - The [SQLite3MultipleCiphers build](https://github.com/utelle/SQLite3MultipleCiphers/releases)
   providing encryption support.
+- A [SQLCipher](https://www.zetetic.net/sqlcipher/) community edition build.
 
 SQLite is used by default, but SQLite3MultipleCiphers can be selected through user defines, e.g.
 by adding this to `pubspec.yaml`:
@@ -59,8 +60,15 @@ by adding this to `pubspec.yaml`:
 hooks:
   user_defines:
     sqlite3:
-      source: sqlite3mc # for SQLite3MultipleCiphers, default is sqlite3
+      source: sqlite3mc # for SQLite3MultipleCiphers, default is sqlite3. sqlcipher is also available.
 ```
+
+> [!IMPORTANT]
+> While SQLite3 is released into the [public domain](https://sqlite.org/copyright.html), SQLite3 Multiple Ciphers
+> and SQLCipher have their own licenses. Additionally, the SQLCipher build links OpenSSL on Windows, Linux
+> and Android.
+> The SQLCipher build included in `package:sqlite3` releases may include an older SQLite version than
+> the default and SQLite3 Multiple Ciphers builds.
 
 ## System-provided SQLite
 
@@ -126,6 +134,12 @@ hooks:
           - SQLITE_THREADSAFE=1
           - SQLITE_LIKE_DOESNT_MATCH_BLOBS
 ```
+
+The build can be configured further with these additional options:
+
+- `additional_includes`: Additional include directories to add to the header search path.
+- `additional_flags`: Additional compiler options.
+- `additional_lib_directories` and `additional_libraries`: Additional libraries to link.
 
 ### Alternatives
 

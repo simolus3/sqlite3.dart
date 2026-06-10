@@ -437,9 +437,7 @@ jobs:
           script: |
             dart run tool/hook_overrides.dart compiled
             cd examples/flutter_integration_tests && flutter test integration_test
-
             dart run tool/hook_overrides.dart compiled-ciphers
             cd examples/flutter_integration_tests && flutter test integration_test
-
             dart run tool/hook_overrides.dart compiled-sqlcipher
             cd examples/flutter_integration_tests && flutter test integration_test -Dsqlite3.sqlcipher=true
