@@ -1,3 +1,7 @@
+## 0.2.2
+
+- Add `WebSqlite.close()` to release associated workers. Workers are also released automatically through a finalization registry.
+
 ## 0.2.1
 
 - Fix internal imports to include `.js` suffix.

@@ -50,6 +50,18 @@ export function sqliteTestCases(module: typeof sqlite) {
     console.log(`${results}`);
   });
 
+  test("close", async ({ sqlite }) => {
+    const db = await sqlite.connect(
+      `db-${crypto.randomUUID()}`,
+      module.DatabaseImplementation.inMemoryShared,
+    );
+    await db.execute("SELECT 1");
+    sqlite.close();
+
+    await db.closed;
+    await expect(db.execute("SELECT 1")).rejects.toThrow();
+  });
+
   describe("database", () => {
     databaseTest("smoke test", async ({ database }) => {
       const db = await database.connect();

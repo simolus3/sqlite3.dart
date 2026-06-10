@@ -24,7 +24,7 @@ export type AccessMode = "throughSharedWorker" | "throughDedicatedWorker";
  * This library can automatically pick one after feature detection, but it's also possible to open databases with a
  * selected implementation.
  */
-export class DatabaseImplementation extends Object {
+export class DatabaseImplementation {
   readonly #name: string;
 
   private constructor(
@@ -33,11 +33,10 @@ export class DatabaseImplementation extends Object {
     readonly storage: StorageMode,
     readonly access: AccessMode,
   ) {
-    super();
     this.#name = name;
   }
 
-  override toString() {
+  toString() {
     return this.#name;
   }
 
@@ -380,6 +379,14 @@ export interface WebSqlite {
     name: string,
     options?: ConnectOptions,
   ): Promise<ConnectToRecommendedResult>;
+
+  /**
+   * Closes this instance and associated dedicated workers.
+   *
+   * Internally, this package also uses finalization registry to close workers automatically, so calling this method is
+   * not required. However, it can still be used to be explicit about when to close resources.
+   */
+  close(): void;
 }
 
 /**
@@ -440,6 +447,7 @@ export interface SqliteException {
 
   /** An error message indicating what went wrong. */
   message: string;
+
   /** An optional explanation providing more detail on what went wrong. */
   explanation: string | undefined;
 
