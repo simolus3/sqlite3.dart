@@ -901,9 +901,13 @@ Future<OpfsSupport> checkOpfsSupport() async {
   FileSystemDirectoryHandle? opfsRoot;
   FileSystemFileHandle? fileHandle;
   JSObject? openedFile;
+  HeldLock? lock;
   var canOpenWithReadWriteUnsafe = false;
 
   try {
+    // We can't use OPFS concurrently, this avoids races when multiple tabs try
+    // to open a database at the same time.
+    lock = await WebLocks.instance?.request(testFileName);
     opfsRoot = await storage.directory;
 
     fileHandle = await opfsRoot.openFile(testFileName, create: true);
@@ -927,6 +931,7 @@ Future<OpfsSupport> checkOpfsSupport() async {
   } on Object {
     return noSupport;
   } finally {
+    lock?.release();
     if (openedFile != null) {
       (openedFile as FileSystemSyncAccessHandle).close();
     }

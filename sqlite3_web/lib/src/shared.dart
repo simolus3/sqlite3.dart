@@ -10,6 +10,8 @@ import 'dart:js_interop_unsafe';
 import 'package:sqlite3/src/wasm/js_interop/new_file_system_access.dart';
 import 'package:web/web.dart';
 
+import 'locks.dart';
+
 /// Checks whether IndexedDB is working in the current browser.
 Future<bool> checkIndexedDbSupport() async {
   if (!globalContext.has('indexedDB') ||
@@ -19,15 +21,18 @@ Future<bool> checkIndexedDbSupport() async {
   }
 
   final idb = globalContext['indexedDB'] as IDBFactory;
+  const name = 'drift_mock_db';
+  // Avoid blocked errors here by not using the database concurrently.
+  final lock = await WebLocks.instance?.request(name);
 
   try {
-    const name = 'drift_mock_db';
-
     final mockDb = await idb.open(name).completeOpen<IDBDatabase>();
     mockDb.close();
     idb.deleteDatabase(name);
   } catch (error) {
     return false;
+  } finally {
+    lock?.release();
   }
 
   return true;

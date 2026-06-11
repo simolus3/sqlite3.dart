@@ -1,3 +1,7 @@
+## 0.9.1 (unreleased)
+
+- Avoid races when opening a database in multiple tabs causing OPFS to be reported as unsupported.
+
 ## 0.9.0
 
 - __Breaking__: Add `WorkerEnvironment.close()` to close workers.
