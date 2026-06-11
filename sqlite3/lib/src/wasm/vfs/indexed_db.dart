@@ -172,6 +172,12 @@ class AsynchronousIndexedDbFileSystem {
       final row = reader.current;
       final key = (row.key as JSArray).toDart;
       final rowOffset = (key[1] as JSNumber).toDartInt;
+      if (rowOffset >= file.length) {
+        // In older versions of this implementation, we sometimes generated
+        // trailing blocks. We'll just ignore them here to avoid crashing, these
+        // don't cause any damage otherwise.
+        break;
+      }
       final length = min(_blockSize, file.length - rowOffset);
 
       // We can't have an async suspension in here because that would close the
@@ -191,89 +197,6 @@ class AsynchronousIndexedDbFileSystem {
     await Future.wait(readOperations);
 
     return result;
-  }
-
-  Future<int> read(int fileId, int offset, Uint8List target) async {
-    final transaction = _database!.transaction(_storesJs, 'readonly');
-    final blocks = transaction.objectStore(_blocksStore);
-
-    final file = await _readFile(transaction, fileId);
-
-    final previousBlockStart = (offset ~/ _blockSize) * _blockSize;
-    final range = _rangeOverFile(fileId, startOffset: previousBlockStart);
-    var bytesRead = 0;
-
-    final readOperations = <Future<void>>[];
-
-    final iterator = blocks
-        .openCursor(range)
-        .cursorIterator<web.IDBCursorWithValue>();
-    while (await iterator.moveNext()) {
-      final row = iterator.current;
-
-      final key = (row.key as JSArray).toDart;
-      final rowOffset = (key[1] as JSNumber).toDartInt;
-      final value = row.value;
-      final isBlob = value.instanceOfString('Blob');
-      final valueSize = isBlob
-          ? (value as web.Blob).size
-          : (value as _JSArrayBuffer).byteLength;
-
-      final dataLength = min(valueSize, file.length - rowOffset);
-
-      if (rowOffset < offset) {
-        // This block starts before the section that we're interested in, so cut
-        // off the initial bytes.
-        final startInRow = offset - rowOffset;
-        final lengthToCopy = min(dataLength, target.length);
-        bytesRead += lengthToCopy;
-
-        // Do the reading async because we loose the transaction on the first
-        // suspension.
-        readOperations.add(
-          Future.sync(() async {
-            final data = isBlob
-                ? await (value as web.Blob).byteBuffer()
-                : (value as _JSArrayBuffer).toDart;
-
-            target.setRange(
-              0,
-              lengthToCopy,
-              data.asUint8List(startInRow, lengthToCopy),
-            );
-          }),
-        );
-
-        if (lengthToCopy >= target.length) {
-          break;
-        }
-      } else {
-        final startInTarget = rowOffset - offset;
-        final lengthToCopy = min(dataLength, target.length - startInTarget);
-        if (lengthToCopy < 0) {
-          // This row starts past the end of the section we're interested in.
-          break;
-        }
-
-        bytesRead += lengthToCopy;
-        readOperations.add(
-          Future.sync(() async {
-            final data = isBlob
-                ? await (value as web.Blob).byteBuffer()
-                : (value as _JSArrayBuffer).toDart;
-
-            target.setAll(startInTarget, data.asUint8List(0, lengthToCopy));
-          }),
-        );
-
-        if (lengthToCopy >= target.length - startInTarget) {
-          break;
-        }
-      }
-    }
-
-    await Future.wait(readOperations);
-    return bytesRead;
   }
 
   Future<void> _write(int fileId, _FileWriteRequest writes) async {
@@ -329,13 +252,15 @@ class AsynchronousIndexedDbFileSystem {
     final fileLength = file.length;
 
     if (fileLength > length) {
-      final lastBlock = (length ~/ _blockSize) * _blockSize;
+      final endOffset = (length ~/ _blockSize) * _blockSize;
 
-      // Delete all higher blocks
+      // Delete all higher blocks (those starting at or past the end offset).
       await blocks
-          .delete(_rangeOverFile(fileId, startOffset: lastBlock + 1))
+          .delete(_rangeOverFile(fileId, startOffset: endOffset))
           .complete();
-    } else if (fileLength < length) {}
+    } else if (fileLength < length) {
+      // We don't need to do anything here, missing blocks count as zero bytes.
+    }
 
     // Update the file length as recorded in the database
     final fileCursor = files.openCursor(fileId.toJS).cursorIterator();
@@ -893,9 +818,4 @@ final class _WriteFileWorkItem extends _IndexedDbWorkItem {
       request,
     );
   }
-}
-
-@JS('ArrayBuffer')
-extension type _JSArrayBuffer(JSArrayBuffer _) implements JSArrayBuffer {
-  external int get byteLength;
 }

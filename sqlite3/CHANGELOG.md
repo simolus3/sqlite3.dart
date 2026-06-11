@@ -1,6 +1,7 @@
 ## 3.3.3
 
 - Restore support for SQLCipher (thanks to [@davidmartos96](https://github.com/davidmartos96)!).
+- Fix crash when loading IndexedDB databases with blocks past the file length ([#380](https://github.com/simolus3/sqlite3.dart/issues/380)).
 
 ## 3.3.2
 
