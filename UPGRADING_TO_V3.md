@@ -30,9 +30,20 @@ are available in [sqlite3_wasm_build](./sqlite3_wasm_build/).
 
 ## Encryption
 
-If you've been using SQLCipher to use encrypted databases, note that SQLCipher is
-no longer available with version 3. However, a precompiled version of SQLite3MultipleCiphers
-can easily be enabled by adding this to your pubspec:
+There are two encryption options available: SQLCipher and SQLite3 Multiple Ciphers.
+
+SQLCipher can be enabled by adding this to your pubspec, `sqlcipher_flutter_libs` is no
+longer functional:
+
+```yaml
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlcipher
+```
+
+Alternatively, SQLite3 Multiple Ciphers is a variant also available on the web and can be enabled
+by adding this:
 
 ```yaml
 hooks:
