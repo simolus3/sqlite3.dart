@@ -267,10 +267,6 @@ base class DatabaseImplementation implements CommonDatabase {
       return;
     }
 
-    database.sqlite3_update_hook(null);
-    database.sqlite3_commit_hook(null);
-    database.sqlite3_rollback_hook(null);
-
     final code = database.sqlite3_close_v2();
     SqliteException? exception;
     if (code != SqlError.SQLITE_OK) {
@@ -623,15 +619,17 @@ final class DatabaseConfigImplementation extends DatabaseConfig {
 /// commits into rollbacks. This is represented by [_syncCallback].
 final class _StreamHandlers<T, SyncCallback> {
   final DatabaseImplementation _database;
+  var _isInstalled = false;
+
   final List<({MultiStreamController<T> controller, bool sync})>
   _asyncListeners = [];
   SyncCallback? _syncCallback;
 
   /// Registers a native callback on the database.
-  final void Function() _register;
+  final void Function() _registerNatively;
 
   /// Unregisters the native callback on the database.
-  final void Function() _unregister;
+  final void Function() _unregisterNatively;
 
   Stream<T>? _stream;
   Stream<T>? _syncStream;
@@ -644,8 +642,8 @@ final class _StreamHandlers<T, SyncCallback> {
     required void Function() register,
     required void Function() unregister,
   }) : _database = database,
-       _register = register,
-       _unregister = unregister;
+       _registerNatively = register,
+       _unregisterNatively = unregister;
 
   Stream<T> _generateStream(bool dispatchSynchronously) {
     return Stream.multi((newListener) {
@@ -675,6 +673,18 @@ final class _StreamHandlers<T, SyncCallback> {
 
   SyncCallback? get syncCallback => _syncCallback;
 
+  void _install() {
+    assert(!_isInstalled);
+    _registerNatively();
+    _isInstalled = true;
+  }
+
+  void _uninstall() {
+    assert(_isInstalled);
+    _unregisterNatively();
+    _isInstalled = false;
+  }
+
   set syncCallback(SyncCallback? value) {
     if (value != _syncCallback) {
       final hadListenerBefore = hasListener;
@@ -682,9 +692,9 @@ final class _StreamHandlers<T, SyncCallback> {
       final hasListenerNow = hasListener;
 
       if (!hadListenerBefore && hasListenerNow) {
-        _register();
+        _install();
       } else if (hadListenerBefore && !hasListenerNow) {
-        _unregister();
+        _uninstall();
       }
     }
   }
@@ -694,7 +704,7 @@ final class _StreamHandlers<T, SyncCallback> {
     _asyncListeners.add((controller: listener, sync: sync));
 
     if (isFirstListener) {
-      _register();
+      _install();
     }
   }
 
@@ -702,7 +712,7 @@ final class _StreamHandlers<T, SyncCallback> {
     _asyncListeners.remove((controller: listener, sync: sync));
 
     if (!hasListener && !_database.isClosed) {
-      _unregister();
+      _uninstall();
     }
   }
 
@@ -721,5 +731,9 @@ final class _StreamHandlers<T, SyncCallback> {
       listener.controller.close();
     }
     _syncCallback = null;
+
+    if (_isInstalled) {
+      _uninstall();
+    }
   }
 }
