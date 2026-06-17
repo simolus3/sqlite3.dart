@@ -1,6 +1,8 @@
-## 0.9.1 (unreleased)
+## 0.9.1
 
 - Avoid races when opening a database in multiple tabs causing OPFS to be reported as unsupported.
+- Add `package:sqlite3_web/types.dart` import exposing types that can be
+  imported on all platforms.
 
 ## 0.9.0
 
