@@ -21,7 +21,7 @@ jobs:
       security-events: write # To report results
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -38,13 +38,13 @@ jobs:
     name: Analyze ${{ matrix.package }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         persist-credentials: false
     - uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{ matrix.dart }}
-    - uses: actions/cache@v5
+    - uses: actions/cache@v5.0.5
       with:
         path: "${{ env.PUB_CACHE }}"
         key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
@@ -85,7 +85,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         persist-credentials: false
     - uses: dart-lang/setup-dart@v1
@@ -107,7 +107,7 @@ jobs:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.sanitized_artifact_id }}
         path: sqlite-sanitized/
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v5.0.5
       with:
         path: "${{ env.PUB_CACHE }}"
         key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
@@ -196,7 +196,7 @@ jobs:
     needs: [test, fetch_sqlite]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         persist-credentials: false
     - uses: dart-lang/setup-dart@v1
@@ -205,7 +205,7 @@ jobs:
       with:
         artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
         path: sqlite-compiled
-    - uses: actions/cache@v5
+    - uses: actions/cache@v5.0.5
       with:
         path: "${{ env.PUB_CACHE }}"
         key: dart-dependencies-beta-${{ runner.os }}
@@ -232,7 +232,7 @@ jobs:
     needs: [analyze, fetch_sqlite]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: dart-lang/setup-dart@v1
@@ -241,7 +241,7 @@ jobs:
         with:
           artifact-ids: ${{ needs.fetch_sqlite.outputs.artifact_id }}
           path: sqlite-compiled
-      - uses: actions/cache@v5
+      - uses: actions/cache@v5.0.5
         with:
           path: "${{ env.PUB_CACHE }}"
           key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
@@ -267,7 +267,7 @@ jobs:
           package-manager-cache: false
 
       - name: Install pnpm
-        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
           package_json_file: sqlite3_web/extra/js-package/package.json
 
@@ -302,7 +302,7 @@ jobs:
           IPHONE=$(xcrun xctrace list devices  2>&1 | grep -m 1 "iPhone" | awk -F'[()]' '{print $4}')
           xcrun simctl boot $IPHONE
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 #v2.23.0
@@ -321,7 +321,7 @@ jobs:
           artifact-ids: ${{ needs.fetch_sqlite.outputs.pool_libs_artifact_id }}
           path: sqlite3_connection_pool/lib/src/precompiled/
 
-      - uses: actions/cache@v5
+      - uses: actions/cache@v5.0.5
         with:
           path: "${{ env.PUB_CACHE }}"
           key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
@@ -372,7 +372,7 @@ jobs:
     env:
       AVD_NAME: ubuntu-avd-x86_64-34
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 #v2.23.0
@@ -390,7 +390,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: AVD Cache
-        uses: actions/cache@v5
+        uses: actions/cache@v5.0.5
         id: avd-cache
         if: runner.os == 'linux'
         with:
@@ -410,7 +410,7 @@ jobs:
           artifact-ids: ${{ needs.fetch_sqlite.outputs.pool_libs_artifact_id }}
           path: sqlite3_connection_pool/lib/src/precompiled/
 
-      - uses: actions/cache@v5
+      - uses: actions/cache@v5.0.5
         with:
           path: "${{ env.PUB_CACHE }}"
           key: dart-dependencies-${{ matrix.dart }}-${{ runner.os }}
