@@ -1,7 +1,9 @@
 /// @docImport 'pool.dart';
 library;
 
+import 'dart:convert';
 import 'dart:ffi';
+import 'dart:typed_data';
 
 import 'package:sqlite3/sqlite3.dart';
 
@@ -46,7 +48,8 @@ final class PoolConnection {
   /// Run a query on this connection, using the prepared statement cache if it
   /// has been enabled.
   ResultSet select(String sql, [List<Object?> parameters = const []]) {
-    final cached = lookupCachedStatement(sql);
+    final encoded = utf8.encode(sql);
+    final cached = _lookupCached(sql, encoded);
 
     final ResultSet resultSet;
     if (cached != null) {
@@ -56,7 +59,7 @@ final class PoolConnection {
       final stmt = database.prepare(sql, checkNoTail: true);
       resultSet = stmt.select(parameters);
       stmt.reset();
-      if (!storeCachedStatement(sql, stmt)) {
+      if (!_storeCached(encoded, stmt)) {
         stmt.close();
       }
     }
@@ -70,7 +73,9 @@ final class PoolConnection {
   /// statement. Otherwise, this relies on prepared statements which might be
   /// cached depending on how the pool is configured.
   void execute(String sql, [List<Object?> parameters = const []]) {
-    if (lookupCachedStatement(sql) case final cached?) {
+    final encoded = utf8.encode(sql);
+
+    if (_lookupCached(sql, encoded) case final cached?) {
       cached
         ..execute(parameters)
         ..reset();
@@ -79,7 +84,7 @@ final class PoolConnection {
       stmt
         ..execute(parameters)
         ..reset();
-      if (!storeCachedStatement(sql, stmt)) {
+      if (!_storeCached(encoded, stmt)) {
         stmt.close();
       }
     } else {
@@ -90,7 +95,11 @@ final class PoolConnection {
   }
 
   PreparedStatement? lookupCachedStatement(String sql) {
-    final ptr = _ref.lookupCachedStatement(sql);
+    return _lookupCached(sql, utf8.encode(sql));
+  }
+
+  PreparedStatement? _lookupCached(String sql, Uint8List encoded) {
+    final ptr = _ref.lookupCachedStatement(encoded);
     if (ptr.address == 0) return null;
 
     return database.statementFromPointer(
@@ -104,7 +113,15 @@ final class PoolConnection {
   /// values, as the underlying statement could have been evicted from this
   /// call.
   bool storeCachedStatement(String sql, PreparedStatement stmt) {
-    final didInsert = _ref.putCachedStatement(sql, stmt.handle.cast());
+    return _storeCached(utf8.encode(sql), stmt);
+  }
+
+  bool _storeCached(Uint8List encoded, PreparedStatement stmt) {
+    // Avoid caching EXPLAIN statements, as their information can become
+    // outdated with schema changes.
+    if (stmt.isExplain) return false;
+
+    final didInsert = _ref.putCachedStatement(encoded, stmt.handle.cast());
     if (didInsert) {
       // Detach Dart finalizer to move ownership into the pool.
       stmt.leak();

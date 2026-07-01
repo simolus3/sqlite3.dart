@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
 import 'package:meta/meta.dart';
@@ -271,21 +272,19 @@ extension type PoolConnectionRef(
   /// The `sqlite3*` connection pointer.
   Pointer<Void> get rawDatabase => connection.ref.raw;
 
-  Pointer<Void> lookupCachedStatement(String sql) {
-    final encoded = utf8.encode(sql);
+  Pointer<Void> lookupCachedStatement(Uint8List sql) {
     return pkg_sqlite3_connection_pool_stmt_cache_get(
       connection,
-      encoded.address,
-      encoded.length,
+      sql.address,
+      sql.length,
     );
   }
 
-  bool putCachedStatement(String sql, Pointer<Void> statement) {
-    final encoded = utf8.encode(sql);
+  bool putCachedStatement(Uint8List sql, Pointer<Void> statement) {
     return pkg_sqlite3_connection_pool_stmt_cache_put(
           connection,
-          encoded.address,
-          encoded.length,
+          sql.address,
+          sql.length,
           statement,
           libsqlite3.addresses.sqlite3_finalize.cast(),
         ) !=

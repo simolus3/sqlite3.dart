@@ -1,3 +1,7 @@
+## 0.2.7
+
+- Avoid caching `EXPLAIN` statements.
+
 ## 0.2.6
 
 - Allow disabling builtin update hooks.

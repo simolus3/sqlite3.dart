@@ -288,36 +288,64 @@ void main() {
     });
   });
 
-  test('prepared statement cache', () async {
-    final pool = testPool(preparedStatementCacheSize: 16);
-    final writer = await pool.writer();
+  group('prepared statement cache', () {
+    test('can cache statements', () async {
+      final pool = testPool(preparedStatementCacheSize: 16);
+      final writer = await pool.writer();
 
-    for (var i = 0; i < 16; i++) {
-      await writer.select('SELECT $i');
-    }
-
-    await writer.unsafeAccess((connection) {
       for (var i = 0; i < 16; i++) {
-        final statement = connection.lookupCachedStatement('SELECT $i');
-        expect(statement, isNotNull, reason: 'Should lookup $i');
-        expect(statement!.select(), [
-          {'$i': i},
-        ]);
+        await writer.select('SELECT $i');
       }
+
+      await writer.unsafeAccess((connection) {
+        for (var i = 0; i < 16; i++) {
+          final statement = connection.lookupCachedStatement('SELECT $i');
+          expect(statement, isNotNull, reason: 'Should lookup $i');
+          expect(statement!.select(), [
+            {'$i': i},
+          ]);
+        }
+      });
+
+      // Prepare more statements replacing existing ones.
+      for (var i = 0; i < 16; i++) {
+        await writer.select('SELECT $i AS another');
+      }
+
+      await writer.unsafeAccess((connection) {
+        for (var i = 0; i < 16; i++) {
+          expect(connection.lookupCachedStatement('SELECT $i'), isNull);
+        }
+      });
+
+      writer.returnLease();
     });
 
-    // Prepare more statements replacing existing ones.
-    for (var i = 0; i < 16; i++) {
-      await writer.select('SELECT $i AS another');
-    }
+    test('does not cache EXPLAIN statements', () async {
+      final pool = testPool(preparedStatementCacheSize: 16);
+      final writer = await pool.writer();
 
-    await writer.unsafeAccess((connection) {
-      for (var i = 0; i < 16; i++) {
-        expect(connection.lookupCachedStatement('SELECT $i'), isNull);
-      }
+      await writer.execute(
+        'create table test(id integer primary key, description text)',
+      );
+      await writer.execute('create index i1 on test(description)');
+      final (firstPlan, _) = await writer.select(
+        'explain query plan select * from test where description = ?',
+        ['test'],
+      );
+      expect(firstPlan.single['detail'], contains('USING COVERING INDEX i1'));
+
+      await writer.execute('drop index i1');
+      final (secondPlan, _) = await writer.select(
+        'explain query plan select * from test where description = ?',
+        ['test'],
+      );
+      expect(
+        secondPlan.single['detail'],
+        isNot(contains('USING COVERING INDEX i1')),
+      );
+      writer.returnLease();
     });
-
-    writer.returnLease();
   });
 
   group('aborting request', () {
