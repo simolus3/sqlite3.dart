@@ -200,6 +200,7 @@ extension type _OpenRequest._(OpenRequest _) implements OpenRequest {
     @JS('s') required JSString storageMode,
     @JS('o') required bool onlyOpenVfs,
     @JS('a') required JSAny? additionalData,
+    @JS('c') required int preparedStatementCacheSize,
     @JS('i') required int requestId,
     @JS('t') required String type,
   });
@@ -210,6 +211,7 @@ OpenRequest newOpenRequest({
   required JSString storageMode,
   required bool onlyOpenVfs,
   required JSAny? additionalData,
+  required int preparedStatementCacheSize,
   required int requestId,
 }) {
   return _OpenRequest(
@@ -218,6 +220,7 @@ OpenRequest newOpenRequest({
     storageMode: storageMode,
     onlyOpenVfs: onlyOpenVfs,
     additionalData: additionalData,
+    preparedStatementCacheSize: preparedStatementCacheSize,
     requestId: requestId,
     type: 'open',
   );

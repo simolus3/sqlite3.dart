@@ -8,6 +8,7 @@ import 'package:sqlite3/common.dart';
 import 'package:sqlite3/src/wasm/sqlite3.dart';
 import 'package:sqlite3_web/sqlite3_web.dart';
 import 'package:sqlite3_web/src/client.dart';
+import 'package:sqlite3_web/src/statement_cache.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -316,6 +317,90 @@ void main() {
     // Additionally, the worker should close its environment.
     await pumpEventQueue();
     expect(fakeWorkers.isClosed, isTrue);
+  });
+
+  group('statement cache', () {
+    late WasmSqlite3 sqlite3;
+
+    setUpAll(() async {
+      sqlite3 = await WasmSqlite3.loadFromUrlString(sqlite3WasmUri);
+      sqlite3.registerVirtualFileSystem(
+        InMemoryFileSystem(),
+        makeDefault: true,
+      );
+    });
+
+    CommonDatabase openDatabase() {
+      final db = sqlite3.openInMemory();
+      addTearDown(db.close);
+      return db;
+    }
+
+    test('can cache statements', () async {
+      final db = openDatabase();
+      final cache = PreparedStatementCache(size: 10);
+      for (var i = 0; i < 10; i++) {
+        cache.addNew(db.prepare('SELECT $i'));
+      }
+
+      for (var i = 0; i < 10; i++) {
+        expect(cache.use('SELECT $i'), isNotNull);
+      }
+
+      cache.addNew(db.prepare('SELECT 10'));
+      expect(cache.use('SELECT 0'), isNull);
+      expect(cache.use('SELECT 1'), isNotNull);
+    });
+
+    test('lookup promotes entry to most recently used', () async {
+      final db = openDatabase();
+      final cache = PreparedStatementCache(size: 3);
+      cache.addNew(db.prepare('SELECT 0'));
+      cache.addNew(db.prepare('SELECT 1'));
+      cache.addNew(db.prepare('SELECT 2'));
+
+      expect(cache.use('SELECT 0'), isNotNull);
+
+      // Oldest entry is SELECT 1, as SELECT 0 was just used.
+      cache.addNew(db.prepare('SELECT 3'));
+      expect(cache.use('SELECT 1'), isNull);
+      expect(cache.use('SELECT 0'), isNotNull);
+    });
+
+    test('does not cache explain statements', () async {
+      final client = WebSqlite.open(
+        workers: _FakeWorkerConnector(fakeWorkers),
+        wasmModule: sqlite3WasmUri,
+      );
+      final database = await client.connect(
+        'foo',
+        DatabaseImplementation.inMemoryShared,
+        preparedStatementCacheSize: 64,
+      );
+
+      await database.execute(
+        'create table test(id integer primary key, description text)',
+      );
+      await database.execute('create index i1 on test(description)');
+      final firstPlan = await database.select(
+        'explain query plan select * from test where description = ?',
+        parameters: ['test'],
+      );
+      expect(
+        firstPlan.result.single['detail'],
+        contains('USING COVERING INDEX i1'),
+      );
+
+      await database.execute('drop index i1');
+      final secondPlan = await database.select(
+        'explain query plan select * from test where description = ?',
+        parameters: ['test'],
+      );
+      expect(
+        secondPlan.result.single['detail'],
+        isNot(contains('USING COVERING INDEX i1')),
+      );
+    });
   });
 }
 

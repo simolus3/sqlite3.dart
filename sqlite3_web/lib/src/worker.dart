@@ -22,6 +22,7 @@ import 'external_locks_vfs.dart';
 import 'locks.dart';
 import 'protocol.dart';
 import 'shared.dart';
+import 'statement_cache.dart';
 import 'types.dart';
 import 'worker_connector.dart';
 
@@ -275,6 +276,7 @@ final class _ClientConnection extends ProtocolChannel
         database = _runner.findDatabase(
           request.databaseName,
           FileSystemImplementation.fromJS(request.storageMode),
+          request.preparedStatementCacheSize,
           request.additionalData,
         );
 
@@ -304,6 +306,7 @@ final class _ClientConnection extends ProtocolChannel
     AbortSignal abortSignal,
   ) async {
     final database = _requireDatabase(request);
+    final state = database.database;
     final openedDatabase = await database.database.opened;
 
     return database.useLock(request.lockId, abortSignal, () {
@@ -318,9 +321,8 @@ final class _ClientConnection extends ProtocolChannel
         request.typeVector,
       );
 
-      ResultSet? resultSet;
       if (request.returnRows) {
-        resultSet = db.select(request.sql, parameters);
+        final resultSet = state.select(db, request.sql, parameters);
 
         return RowsResponseUtils.wrapResultSet(
           request.requestId,
@@ -329,7 +331,7 @@ final class _ClientConnection extends ProtocolChannel
           lastInsertRowId: db.lastInsertRowId,
         );
       } else {
-        db.execute(request.sql, parameters);
+        state.execute(db, request.sql, parameters);
 
         return newRowsResponse(
           columnNames: null,
@@ -609,6 +611,7 @@ final class DatabaseState {
   final FileSystemImplementation mode;
   final JSAny? additionalOptions;
   final DatabaseLocks locks;
+  final PreparedStatementCache? statementCache;
   int refCount = 1;
 
   Future<WorkerDatabase>? _database;
@@ -625,7 +628,12 @@ final class DatabaseState {
     required this.name,
     required this.mode,
     required this.additionalOptions,
-  }) : locks = DatabaseLocks('pkg-sqlite3-web-$name', mode.needsExternalLocks);
+    required int statementCacheSize,
+  }) : locks = DatabaseLocks('pkg-sqlite3-web-$name', mode.needsExternalLocks),
+       assert(statementCacheSize >= 0),
+       statementCache = statementCacheSize == 0
+           ? null
+           : PreparedStatementCache(size: statementCacheSize);
 
   String get vfsName => 'vfs-web-$id';
 
@@ -698,6 +706,7 @@ final class DatabaseState {
     final sqlite3 = await runner._sqlite3!;
     if (_database case final dbFuture?) {
       final database = await dbFuture;
+      statementCache?.disposeAll();
       database.database.close();
 
       if (_resolvedVfs case final vfs?) {
@@ -707,6 +716,60 @@ final class DatabaseState {
 
     await closeHandler?.call();
     unawaited(locks.releaseNavigatorLocks());
+  }
+
+  /// Returns a prepared statement for [sql] and reports whether this statement
+  /// was cached.
+  (CommonPreparedStatement, bool) _prepareStatement(
+    CommonDatabase db,
+    String sql,
+  ) {
+    final cache = statementCache;
+    if (cache?.use(sql) case final stmt?) {
+      return (stmt, true);
+    }
+
+    final stmt = db.prepare(sql, checkNoTail: true);
+    // Avoid caching EXPLAIN statements, as they're only evaluated once and
+    // can return stale information after schema changes.
+    if (cache != null && !stmt.isExplain) {
+      cache.addNew(stmt);
+      return (stmt, true);
+    }
+
+    return (stmt, false);
+  }
+
+  void execute(CommonDatabase db, String sql, List<Object?> parameters) {
+    if (parameters.isEmpty) {
+      // Don't use cached statements here since SQL is allowed to contain more
+      // than one statement.
+      return db.execute(sql, parameters);
+    } else {
+      final (stmt, isCached) = _prepareStatement(db, sql);
+      try {
+        stmt.execute(parameters);
+      } finally {
+        if (isCached) {
+          stmt.reset();
+        } else {
+          stmt.close();
+        }
+      }
+    }
+  }
+
+  ResultSet select(CommonDatabase db, String sql, List<Object?> parameters) {
+    final (stmt, isCached) = _prepareStatement(db, sql);
+    try {
+      return stmt.select(parameters);
+    } finally {
+      if (isCached) {
+        stmt.reset();
+      } else {
+        stmt.close();
+      }
+    }
   }
 }
 
@@ -861,6 +924,7 @@ final class WorkerRunner {
   DatabaseState findDatabase(
     String name,
     FileSystemImplementation mode,
+    int cacheSize,
     JSAny? additionalOptions,
   ) {
     for (final existing in openedDatabases.values) {
@@ -879,6 +943,7 @@ final class WorkerRunner {
       name: name,
       mode: mode,
       additionalOptions: additionalOptions,
+      statementCacheSize: cacheSize,
     );
   }
 }

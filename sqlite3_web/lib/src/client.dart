@@ -378,6 +378,7 @@ final class WorkerConnection extends ProtocolChannel {
     required String databaseName,
     required DatabaseImplementation implementation,
     required bool onlyOpenVfs,
+    required int statementCacheSize,
     required JSAny? additionalOptions,
   }) async {
     final response = await sendRequest(
@@ -388,6 +389,7 @@ final class WorkerConnection extends ProtocolChannel {
         storageMode: implementation.resolveToVfs().toJS,
         onlyOpenVfs: onlyOpenVfs,
         additionalData: additionalOptions,
+        preparedStatementCacheSize: statementCacheSize,
       ),
       MessageType.simpleSuccessResponse,
     );
@@ -686,6 +688,7 @@ final class DatabaseClient implements WebSqlite {
     DatabaseImplementation implementation, {
     bool onlyOpenVfs = false,
     JSAny? additionalOptions,
+    int preparedStatementCacheSize = 0,
   }) async {
     await startWorkers();
 
@@ -711,6 +714,7 @@ final class DatabaseClient implements WebSqlite {
       implementation: implementation,
       onlyOpenVfs: onlyOpenVfs,
       additionalOptions: additionalOptions,
+      statementCacheSize: preparedStatementCacheSize,
     );
   }
 
@@ -719,6 +723,7 @@ final class DatabaseClient implements WebSqlite {
     String name, {
     bool onlyOpenVfs = false,
     JSAny? additionalOptions,
+    int preparedStatementCacheSize = 0,
   }) async {
     final probed = await runFeatureDetection(databaseName: name);
 
@@ -748,6 +753,7 @@ final class DatabaseClient implements WebSqlite {
       implementation,
       onlyOpenVfs: onlyOpenVfs,
       additionalOptions: additionalOptions,
+      preparedStatementCacheSize: preparedStatementCacheSize,
     );
 
     return ConnectToRecommendedResult(

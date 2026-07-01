@@ -309,11 +309,15 @@ abstract class WebSqlite {
   /// The optional [additionalOptions] must be sendable over message ports and
   /// is passed to [DatabaseController.openDatabase] on the worker opening the
   /// database.
+  ///
+  /// [preparedStatementCacheSize] controls the maximum amount of statements a
+  /// worker should cache. It defaults to 0, which disables the cache.
   Future<Database> connect(
     String name,
     DatabaseImplementation implementation, {
     bool onlyOpenVfs = false,
     JSAny? additionalOptions,
+    int preparedStatementCacheSize = 0,
   });
 
   /// Starts a feature detection via [runFeatureDetection] and then [connect]s
@@ -329,10 +333,14 @@ abstract class WebSqlite {
   /// The optional [additionalOptions] must be sendable over message ports and
   /// is passed to [DatabaseController.openDatabase] on the worker opening the
   /// database.
+  ///
+  /// [preparedStatementCacheSize] controls the maximum amount of statements a
+  /// worker should cache. It defaults to 0, which disables the cache.
   Future<ConnectToRecommendedResult> connectToRecommended(
     String name, {
     bool onlyOpenVfs = false,
     JSAny? additionalOptions,
+    int preparedStatementCacheSize = 0,
   });
 
   /// Closes this instance and associated dedicated workers.

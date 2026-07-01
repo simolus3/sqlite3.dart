@@ -423,6 +423,7 @@ export class DatabaseClient implements WebSqlite {
       a: {
         useMultipleCiphersVfs: options?.enableEncryptedVfs ?? false,
       },
+      c: options?.preparedStatementCacheSize ?? 0,
     });
   }
 

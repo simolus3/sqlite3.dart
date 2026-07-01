@@ -1,3 +1,7 @@
+## 0.9.2
+
+- Allow caching prepared statements via the `preparedStatementCacheSize` option on `WebSqlite.connect`.
+
 ## 0.9.1
 
 - Avoid races when opening a database in multiple tabs causing OPFS to be reported as unsupported.

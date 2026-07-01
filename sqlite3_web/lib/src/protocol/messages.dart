@@ -87,6 +87,9 @@ extension type OpenRequest._(JSObject _) implements Request {
   /// Additional data passsed to `DatabaseController.openDatabase`.
   @JS(_UniqueFieldNames.additionalData)
   external JSAny? additionalData;
+
+  @JS(_UniqueFieldNames.cacheSize)
+  external int preparedStatementCacheSize;
 }
 
 /// Requests the receiving end of this message to connect to the channel
@@ -398,6 +401,7 @@ class _UniqueFieldNames {
   // no clash, used in RowResponse and RunQuery
   static const columnNames = 'c';
   static const checkInTransaction = 'c';
+  static const cacheSize = 'c';
   static const databaseId = 'd';
   static const databaseName = 'd'; // no clash, used on different types
   static const errorMessage = 'e';

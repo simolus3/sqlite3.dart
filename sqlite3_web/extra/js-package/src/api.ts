@@ -406,6 +406,12 @@ export interface ConnectOptions {
    * This is required to open encrypted databases, see this package's README for details.
    */
   enableEncryptedVfs?: boolean | undefined;
+
+  /**
+   * The maximum amount of prepared statements a worker should cache. It defaults to 0, which disables caching prepared
+   * statements.
+   */
+  preparedStatementCacheSize?: number | undefined;
 }
 
 /**

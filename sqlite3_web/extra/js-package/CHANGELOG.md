@@ -1,3 +1,7 @@
+## 0.2.3
+
+- Add `preparedStatementCacheSize` to `ConnectOptions`, which can be used to make workers cache prepared statements.
+
 ## 0.2.2
 
 - Add `WebSqlite.close()` to release associated workers.

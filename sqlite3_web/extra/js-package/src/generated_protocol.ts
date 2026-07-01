@@ -97,6 +97,8 @@ export interface OpenRequest {
   o: boolean;
   // Dart name: additionalData
   a: unknown /* JSAny */ | null;
+  // Dart name: preparedStatementCacheSize
+  c: number /* int */;
   // Dart name: requestId
   i: number /* int */;
   // Dart name: type
