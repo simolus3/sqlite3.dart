@@ -106,7 +106,13 @@ final class PrebuiltSqliteLibrary {
   /// this library.
   ///
   /// There's a test asserting that this is unique for all valid values.
-  String get dirname => 'download-${hashCode.toRadixString(16)}';
+  ///
+  /// Uses a deterministic name so the download cache survives across separate
+  /// hook invocations (different Dart processes). Previously this used
+  /// [hashCode], but [Object.hash] is seeded per-isolate and produces
+  /// different values in every process, making the cache useless.
+  String get dirname =>
+      'download-${releaseTag}_${type.basename}_${os.name}_${architecture.name}';
 
   @override
   int get hashCode => Object.hash(
