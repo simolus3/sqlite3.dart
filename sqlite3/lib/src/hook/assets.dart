@@ -1,3 +1,6 @@
+/// @docImport 'package:hooks/hooks.dart';
+library;
+
 import 'package:code_assets/code_assets.dart';
 
 import 'asset_hashes.dart';
@@ -102,11 +105,25 @@ final class PrebuiltSqliteLibrary {
     );
   }
 
+  String get contentSha256Hash {
+    final filename = sourceFilename;
+    final expectedHash = assetNameToSha256Hash[filename];
+    if (expectedHash == null) {
+      throw UnsupportedError(
+        'No known file hash for $filename. '
+        'Please file an issue on https://github.com/simolus3/sqlite3.dart with '
+        'the version of the sqlite3 package in use.',
+      );
+    }
+
+    return expectedHash;
+  }
+
   /// The directory under [HookInput.outputDirectoryShared] used to download
   /// this library.
   ///
   /// There's a test asserting that this is unique for all valid values.
-  String get dirname => 'download-${hashCode.toRadixString(16)}';
+  String get dirname => 'download-${contentSha256Hash.substring(0, 8)}';
 
   @override
   int get hashCode => Object.hash(
@@ -184,7 +201,6 @@ final class PrebuiltSqliteLibrary {
     TargetOperatingSystem.android: [
       Architecture.ia32,
       Architecture.x64,
-      Architecture.riscv64,
       Architecture.arm,
       Architecture.arm64,
     ],

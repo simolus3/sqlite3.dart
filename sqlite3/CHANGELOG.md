@@ -1,3 +1,7 @@
+## 3.3.4
+
+- Build hook: Fix assets being re-downloaded too often.
+
 ## 3.3.3
 
 - Restore support for SQLCipher (thanks to [@davidmartos96](https://github.com/davidmartos96)!).

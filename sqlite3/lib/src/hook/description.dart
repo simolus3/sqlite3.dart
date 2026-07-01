@@ -139,7 +139,8 @@ sealed class PrecompiledBinary implements SqliteBinary {
     PrebuiltSqliteLibrary library,
   ) {
     return Stream.multi((listener) {
-      final (filename, hash) = _filenameAndHash(library);
+      final filename = library.sourceFilename;
+      final hash = library.contentSha256Hash;
       final source = _fetchFromSource(input, output, filename);
 
       final digestSink = OnceSink<Digest>();
@@ -167,20 +168,6 @@ sealed class PrecompiledBinary implements SqliteBinary {
         },
       );
     });
-  }
-
-  (String, String) _filenameAndHash(PrebuiltSqliteLibrary library) {
-    final filename = library.sourceFilename;
-    final expectedHash = assetNameToSha256Hash[filename];
-    if (expectedHash == null) {
-      throw UnsupportedError(
-        'No known file hash for $filename. '
-        'Please file an issue on https://github.com/simolus3/sqlite3.dart with '
-        'the version of the sqlite3 package in use.',
-      );
-    }
-
-    return (filename, expectedHash);
   }
 
   /// Downloads this file into [BuildInput.outputDirectoryShared].
@@ -211,7 +198,7 @@ sealed class PrecompiledBinary implements SqliteBinary {
     if (downloadedFile.existsSync()) {
       // Hook is re-run with an existing cache. Does the file match what we
       // expect?
-      final (_, expectedHash) = _filenameAndHash(library);
+      final expectedHash = library.contentSha256Hash;
       final actualHash = await downloadedFile
           .openRead()
           .transform(sha256)
