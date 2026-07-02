@@ -96,11 +96,13 @@ final class _ConnectionDatabase {
     AbortSignal abortSignal,
     T Function() block,
   ) {
+    Future<T>? work;
+
     if (lockId == null) {
       // Not in an explicit lock context, just use global database lock.
       if (!database.locks.canRunSynchronousBlockDirectly) {
         final started = _startAbortableOperation(abortSignal);
-        return database.locks.lock(block, started.signal).whenComplete(() {
+        work = database.locks.lock(block, started.signal).whenComplete(() {
           _removeAbortableOperation(started);
         });
       }
@@ -111,7 +113,12 @@ final class _ConnectionDatabase {
     }
 
     // Can run synchronous block directly.
-    return Future.sync(block);
+    work ??= Future.sync(block);
+    if (database._resolvedVfs case final IndexedDbFileSystem idb) {
+      work = work.whenComplete(idb.flush);
+    }
+
+    return work;
   }
 
   Future<int> obtainLockAsync(AbortSignal abortSignal) {
@@ -662,6 +669,7 @@ final class DatabaseState {
           final idb = _resolvedVfs = await IndexedDbFileSystem.open(
             dbName: name,
             vfsName: vfsName,
+            writeAutomatically: false,
           );
           closeHandler = idb.close;
         case FileSystemImplementation.inMemory:

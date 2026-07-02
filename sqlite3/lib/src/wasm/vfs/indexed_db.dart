@@ -389,6 +389,8 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
   var _isClosing = false;
   _IndexedDbWorkItem? _currentWorkItem;
 
+  bool _writeAutomatically = true;
+
   // A cache so that synchronous changes are visible right away
   final InMemoryFileSystem _memory;
   final LinkedList<_IndexedDbWorkItem> _pendingWork = LinkedList();
@@ -412,8 +414,10 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
     required String dbName,
     String vfsName = 'indexeddb',
     Random? random,
+    bool writeAutomatically = true,
   }) async {
     final fs = IndexedDbFileSystem._(dbName, vfsName: vfsName, random: random);
+    fs._writeAutomatically = writeAutomatically;
     await fs._asynchronous.open();
     await fs._readFiles();
     return fs;
@@ -454,7 +458,7 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
 
     // See if this unit of work can be combined with scheduled work units.
     if (work.insertInto(_pendingWork)) {
-      _startWorkingIfNeeded();
+      _startWorkingIfNeeded(isImplicit: true);
       return work.completer.future;
     } else {
       // This item determined that it doesn't need to do any work at its place
@@ -470,7 +474,9 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
     return _submitWork(_FunctionWorkItem(work, description));
   }
 
-  void _startWorkingIfNeeded() {
+  void _startWorkingIfNeeded({required bool isImplicit}) {
+    if (isImplicit && !_writeAutomatically) return;
+
     if (_currentWorkItem == null && _pendingWork.isNotEmpty) {
       final item = _currentWorkItem = _pendingWork.first;
       _pendingWork.remove(item);
@@ -479,7 +485,7 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
         _currentWorkItem = null;
 
         // In case there's another item in the waiting list
-        _startWorkingIfNeeded();
+        _startWorkingIfNeeded(isImplicit: isImplicit);
       });
       item.completer.complete(workUnit);
     }
@@ -533,8 +539,10 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
   /// Each call to [flush] will await pending operations made _before_ the call.
   /// Operations started after this [flush] call will not be awaited by the
   /// returned future.
-  Future<void> flush() {
-    return _submitWorkFunction(() {}, 'flush');
+  Future<void> flush() async {
+    final item = _submitWorkFunction(() {}, 'flush');
+    _startWorkingIfNeeded(isImplicit: false);
+    await item;
   }
 
   @override
