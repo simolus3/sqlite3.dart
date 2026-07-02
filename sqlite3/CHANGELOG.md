@@ -1,3 +1,8 @@
+## 3.4.0 (unreleased)
+
+- Allow VFS implementation in Dart to implement `xFileControl`.
+- Enable `SQLITE_ENABLE_BATCH_ATOMIC_WRITE` to support atomic writes on compatible VFS implementations.
+
 ## 3.3.4
 
 - Build hook: Fix assets being re-downloaded too often.

@@ -89,9 +89,7 @@ int dartvfs_checkReservedLock(sqlite3_file* file, int* pResOut) {
 }
 
 int dartvfs_fileControl(sqlite3_file* file, int op, void* pArg) {
-  // "VFS implementations should return SQLITE_NOTFOUND for file control opcodes
-  // that they do not recognize". Well, we don't recognize any.
-  return SQLITE_NOTFOUND;
+  return xFileControl(DART_FILE(file), op, pArg);
 }
 
 int dartvfs_deviceCharacteristics(sqlite3_file* file) {

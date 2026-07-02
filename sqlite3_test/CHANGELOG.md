@@ -1,3 +1,7 @@
+## 0.2.1 (unreleased)
+
+- Support version 3.4.0 of `package:sqlite3`.
+
 ## 0.2.0
 
 - Use version 3.x of `package:sqlite3`.

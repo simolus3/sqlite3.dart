@@ -404,7 +404,7 @@ final class _RegisteredVfs {
         )
         ..xFileControl = Pointer.fromFunction(
           _xFileControl,
-          SqlError.SQLITE_NOTFOUND,
+          SqlError.SQLITE_IOERR,
         )
         ..xSectorSize = Pointer.fromFunction(_xSectorSize, 4096)
         ..xDeviceCharacteristics = Pointer.fromFunction(
@@ -587,8 +587,9 @@ final class _RegisteredVfs {
     int op,
     Pointer<Void> pArg,
   ) {
-    // We don't currently support filecontrol operations in the VFS.
-    return SqlError.SQLITE_NOTFOUND;
+    final id = ptr.cast<_DartFile>().ref.dartFileId;
+    final dartFile = _files[id]!;
+    return dartFile.xFileControl(SqliteFileControl(op), pArg.address);
   }
 
   static int _xSectorSize(Pointer<sqlite3_file> ptr) {
@@ -597,7 +598,9 @@ final class _RegisteredVfs {
   }
 
   static int _xDeviveCharacteristics(Pointer<sqlite3_file> ptr) {
-    return _runFile(ptr, (file) => file.xDeviceCharacteristics);
+    final id = ptr.cast<_DartFile>().ref.dartFileId;
+    final dartFile = _files[id]!;
+    return dartFile.xDeviceCharacteristics;
   }
 }
 

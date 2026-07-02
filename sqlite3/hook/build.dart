@@ -5,8 +5,8 @@ import 'package:hooks/hooks.dart';
 import 'package:native_toolchain_c/native_toolchain_c.dart';
 import 'package:path/path.dart' as p;
 
-import 'package:sqlite3/src/hook/description.dart';
-import 'package:sqlite3/src/hook/used_symbols.dart';
+import 'package:sqlite3/src/hook/compile/description.dart';
+import 'package:sqlite3/src/hook/compile/used_symbols.dart';
 
 void main(List<String> args) async {
   await build(args, (input, output) async {

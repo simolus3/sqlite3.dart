@@ -538,6 +538,7 @@ final class SqlFunctionFlag {
 
 final class SqlDeviceCharacteristics {
   static const SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN = 0x00000800;
+  static const SQLITE_IOCAP_BATCH_ATOMIC = 0x00004000;
 }
 
 const SQLITE_DELETE = 9;
@@ -547,3 +548,11 @@ const SQLITE_UPDATE = 23;
 // Connection config options https://www.sqlite.org/c3ref/c_dbconfig_defensive.html
 const SQLITE_DBCONFIG_DQS_DML = 1013;
 const SQLITE_DBCONFIG_DQS_DDL = 1014;
+
+/// A [file control opcode](https://sqlite.org/c3ref/c_fcntl_begin_atomic_write.html)
+/// used by sqlite.
+extension type const SqliteFileControl(int code) implements int {
+  static const beginAtomicWrite = 31;
+  static const commitAtomicWrite = 32;
+  static const rollbackAtomicWrite = 33;
+}

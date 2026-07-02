@@ -70,6 +70,30 @@ void testVfs(FutureOr<CommonSqlite3> Function() loadSqlite) {
     }
     insert.close();
   });
+
+  test(
+    'can use atomic writes',
+    () {
+      final vfs = _AtomicWritesVfs(name: 'dart-atomic');
+      sqlite3.registerVirtualFileSystem(vfs);
+      addTearDown(() => sqlite3.unregisterVirtualFileSystem(vfs));
+
+      final db = sqlite3.open('/db', vfs: vfs.name);
+      addTearDown(db.close);
+
+      db.execute('CREATE TABLE foo (bar TEXT)');
+      // The first transaction creating a database file will always use a journal.
+      expect(vfs.fileControlEvents, isEmpty);
+
+      db.execute('INSERT INTO foo DEFAULT VALUES');
+      expect(vfs.fileControlEvents, [
+        SqliteFileControl.beginAtomicWrite,
+        SqliteFileControl.commitAtomicWrite,
+      ]);
+    },
+    // This test requires SQLITE_ENABLE_BATCH_ATOMIC_WRITE.
+    tags: 'require_built',
+  );
 }
 
 final class TestVfs extends VirtualFileSystem {
@@ -118,5 +142,109 @@ final class TestVfs extends VirtualFileSystem {
   @override
   void xSleep(Duration duration) {
     xSleepDelegate?.call(duration);
+  }
+}
+
+final class _AtomicWritesVfs extends BaseVirtualFileSystem {
+  final InMemoryFileSystem memory = InMemoryFileSystem();
+  final List<SqliteFileControl> fileControlEvents = [];
+
+  _AtomicWritesVfs({required super.name});
+
+  @override
+  int xAccess(String path, int flags) => memory.xAccess(path, flags);
+
+  @override
+  void xDelete(String path, int syncDir) => memory.xDelete(path, syncDir);
+
+  @override
+  String xFullPathName(String path) => memory.xFullPathName(path);
+
+  @override
+  XOpenResult xOpen(Sqlite3Filename path, int flags) {
+    final result = memory.xOpen(path, flags);
+    return (
+      outFlags: result.outFlags,
+      file: _AtomicWriteFile(result.file, this),
+    );
+  }
+
+  @override
+  void xSleep(Duration duration) {}
+}
+
+final class _AtomicWriteFile implements VirtualFileSystemFile {
+  final VirtualFileSystemFile _memoryFile;
+  final _AtomicWritesVfs _vfs;
+
+  Map<int, Uint8List>? batchedWrite;
+
+  _AtomicWriteFile(this._memoryFile, this._vfs);
+
+  @override
+  int get xDeviceCharacteristics {
+    return SqlDeviceCharacteristics.SQLITE_IOCAP_BATCH_ATOMIC;
+  }
+
+  @override
+  void xRead(Uint8List target, int fileOffset) {
+    return _memoryFile.xRead(target, fileOffset);
+  }
+
+  @override
+  int xCheckReservedLock() => _memoryFile.xCheckReservedLock();
+
+  @override
+  void xClose() => _memoryFile.xClose();
+
+  @override
+  int xFileSize() => _memoryFile.xFileSize();
+
+  @override
+  void xLock(int mode) => _memoryFile.xLock(mode);
+
+  @override
+  void xSync(int flags) => _memoryFile.xSync(flags);
+
+  @override
+  void xTruncate(int size) => _memoryFile.xTruncate(size);
+
+  @override
+  void xUnlock(int mode) => _memoryFile.xUnlock(mode);
+
+  @override
+  void xWrite(Uint8List buffer, int fileOffset) {
+    if (batchedWrite case final batch?) {
+      batch[fileOffset] = buffer;
+    } else {
+      _memoryFile.xWrite(buffer, fileOffset);
+    }
+  }
+
+  @override
+  int xFileControl(SqliteFileControl op, int ptr) {
+    switch (op) {
+      case SqliteFileControl.beginAtomicWrite:
+        _vfs.fileControlEvents.add(op);
+        assert(batchedWrite == null);
+        batchedWrite = {};
+        return SqlError.SQLITE_OK;
+      case SqliteFileControl.commitAtomicWrite:
+        _vfs.fileControlEvents.add(op);
+        assert(batchedWrite != null);
+        batchedWrite!.forEach(
+          (offset, bytes) => _memoryFile.xWrite(bytes, offset),
+        );
+
+        batchedWrite = null;
+        return SqlError.SQLITE_OK;
+      case SqliteFileControl.rollbackAtomicWrite:
+        _vfs.fileControlEvents.add(op);
+        assert(batchedWrite != null);
+        batchedWrite = null;
+        return SqlError.SQLITE_OK;
+    }
+
+    return SqlError.SQLITE_NOTFOUND;
   }
 }
