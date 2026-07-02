@@ -7,9 +7,9 @@ import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
 import 'package:path/path.dart' as p;
 
-import 'assets.dart';
-import 'asset_hashes.dart';
-import 'utils.dart';
+import '../assets.dart';
+import '../asset_hashes.dart';
+import '../utils.dart';
 
 /// Possible sources to obtain a `libsqlite3.so` (or the equivalent for other
 /// platforms).
