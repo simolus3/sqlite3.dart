@@ -102,7 +102,7 @@ final class TestSqliteFileSystem extends BaseVirtualFileSystem {
   void xSleep(Duration duration) {}
 }
 
-final class _TestFile implements VirtualFileSystemFile {
+final class _TestFile extends BaseVfsFile {
   final File _path;
   final RandomAccessFile _file;
   final bool _deleteOnClose;
@@ -125,13 +125,10 @@ final class _TestFile implements VirtualFileSystemFile {
   int xFileSize() => _file.lengthSync();
 
   @override
-  void xRead(Uint8List target, int fileOffset) {
+  int readInto(Uint8List target, int fileOffset) {
     _file.setPositionSync(fileOffset);
     final bytesRead = _file.readIntoSync(target);
-    if (bytesRead < target.length) {
-      target.fillRange(bytesRead, target.length, 0);
-      throw VfsException(SqlExtendedError.SQLITE_IOERR_SHORT_READ);
-    }
+    return bytesRead;
   }
 
   @override

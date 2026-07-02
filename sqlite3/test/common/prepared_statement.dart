@@ -715,6 +715,12 @@ final class _ErrorInjectingFile implements VirtualFileSystemFile {
   }
 
   @override
+  int xFileControl(SqliteFileControl op, int ptr) {
+    _vfs._op();
+    return _base.xFileControl(op, ptr);
+  }
+
+  @override
   void xLock(int mode) {
     _vfs._op();
     _base.xLock(mode);

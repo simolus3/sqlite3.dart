@@ -7,6 +7,8 @@ set(triple wasm32-unknown-wasi)
 set(wasi_sysroot "/usr/share/wasi-sysroot" CACHE PATH "Path to wasi sysroot")
 set(clang "clang" CACHE FILEPATH "Path to wasm-capable clang executable")
 
+file(GLOB headers ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -86,7 +88,7 @@ macro(base_sqlite3_target name debug crypto)
       --sysroot ${wasi_sysroot}
       ${sources}
       @${CMAKE_CURRENT_BINARY_DIR}/required_symbols.txt
-    DEPENDS ${sources} required_symbols
+    DEPENDS ${sources} ${headers} required_symbols
     VERBATIM
   )
 

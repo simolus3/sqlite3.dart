@@ -615,6 +615,11 @@ class _IndexedDbFile implements VirtualFileSystemFile {
   }
 
   @override
+  int xFileControl(int op, int ptr) {
+    return SqlError.SQLITE_NOTFOUND;
+  }
+
+  @override
   void xTruncate(int size) {
     vfs._checkClosed();
     memoryFile.xTruncate(size);

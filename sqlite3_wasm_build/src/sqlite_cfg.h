@@ -28,6 +28,9 @@
 #define SQLITE_DEFAULT_CACHE_SIZE -16384
 #define SQLITE_DEFAULT_PAGE_SIZE 8192
 
+// On VFS implementations that support it, this speeds up transactions
+#define SQLITE_ENABLE_BATCH_ATOMIC_WRITE 1
+
 // We have them, so we may as well let sqlite3 use them?
 #define HAVE_ISNAN 1
 #define HAVE_LOCALTIME_R 1

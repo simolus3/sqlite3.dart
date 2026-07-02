@@ -127,7 +127,12 @@ abstract interface class VirtualFileSystemFile {
   /// Returns the lock state held by any process on this file.
   int xCheckReservedLock();
 
-  ///
+  /// Handle a [file control](https://sqlite.org/c3ref/file_control.html)
+  /// request with the given operand and pointer (represented as its address to
+  /// avoid a `dart:ffi` import in common code).
+  int xFileControl(SqliteFileControl op, int ptr);
+
+  /// Returns a bitvector of [device flags](https://sqlite.org/c3ref/c_iocap_atomic.html).
   int get xDeviceCharacteristics;
 }
 
@@ -179,6 +184,13 @@ abstract class BaseVfsFile implements VirtualFileSystemFile {
 
   @override
   int get xDeviceCharacteristics => 0;
+
+  @override
+  int xFileControl(int op, int ptr) {
+    // "VFS implementations should return SQLITE_NOTFOUND for file control
+    // opcodes that they do not recognize."
+    return SqlError.SQLITE_NOTFOUND;
+  }
 
   @override
   void xRead(Uint8List target, int fileOffset) {

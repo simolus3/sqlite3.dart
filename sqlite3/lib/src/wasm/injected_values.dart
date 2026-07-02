@@ -263,6 +263,19 @@ final class DartBridgeCallbacks {
     return file.toDartObject.xDeviceCharacteristics;
   }
 
+  @JSExport()
+  int xFileControl(
+    ExternalDartReference<VirtualFileSystemFile> file,
+    int op,
+    int pArg,
+  ) {
+    try {
+      return file.toDartObject.xFileControl(SqliteFileControl(op), pArg);
+    } on VfsException catch (e) {
+      return e.returnCode;
+    }
+  }
+
   @JSExport('dispatch_()v')
   void dispatchVoid(ExternalDartReference<void Function()> fn) {
     fn.toDartObject();
