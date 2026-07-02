@@ -3,6 +3,7 @@ tags:
     test_on: dart-vm
   wasm:
     test_on: browser
+  require_built:
   ci_only:
     skip: "This test requires special setup and only runs in the GitHub CI action"
 
@@ -42,3 +43,7 @@ presets:
     tags:
       ci_only:
         skip: false
+  system:
+    tags:
+      require_built:
+        skip: "Requires SQLite build from this package"

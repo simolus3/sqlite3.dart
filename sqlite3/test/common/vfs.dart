@@ -71,24 +71,29 @@ void testVfs(FutureOr<CommonSqlite3> Function() loadSqlite) {
     insert.close();
   });
 
-  test('can use atomic writes', () {
-    final vfs = _AtomicWritesVfs(name: 'dart-atomic');
-    sqlite3.registerVirtualFileSystem(vfs);
-    addTearDown(() => sqlite3.unregisterVirtualFileSystem(vfs));
+  test(
+    'can use atomic writes',
+    () {
+      final vfs = _AtomicWritesVfs(name: 'dart-atomic');
+      sqlite3.registerVirtualFileSystem(vfs);
+      addTearDown(() => sqlite3.unregisterVirtualFileSystem(vfs));
 
-    final db = sqlite3.open('/db', vfs: vfs.name);
-    addTearDown(db.close);
+      final db = sqlite3.open('/db', vfs: vfs.name);
+      addTearDown(db.close);
 
-    db.execute('CREATE TABLE foo (bar TEXT)');
-    // The first transaction creating a database file will always use a journal.
-    expect(vfs.fileControlEvents, isEmpty);
+      db.execute('CREATE TABLE foo (bar TEXT)');
+      // The first transaction creating a database file will always use a journal.
+      expect(vfs.fileControlEvents, isEmpty);
 
-    db.execute('INSERT INTO foo DEFAULT VALUES');
-    expect(vfs.fileControlEvents, [
-      SqliteFileControl.beginAtomicWrite,
-      SqliteFileControl.commitAtomicWrite,
-    ]);
-  });
+      db.execute('INSERT INTO foo DEFAULT VALUES');
+      expect(vfs.fileControlEvents, [
+        SqliteFileControl.beginAtomicWrite,
+        SqliteFileControl.commitAtomicWrite,
+      ]);
+    },
+    // This test requires SQLITE_ENABLE_BATCH_ATOMIC_WRITE.
+    tags: 'require_built',
+  );
 }
 
 final class TestVfs extends VirtualFileSystem {
