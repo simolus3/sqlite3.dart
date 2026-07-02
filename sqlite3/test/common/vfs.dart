@@ -79,8 +79,11 @@ void testVfs(FutureOr<CommonSqlite3> Function() loadSqlite) {
     final db = sqlite3.open('/db', vfs: vfs.name);
     addTearDown(db.close);
 
-    expect(vfs.fileControlEvents, isEmpty);
     db.execute('CREATE TABLE foo (bar TEXT)');
+    // The first transaction creating a database file will always use a journal.
+    expect(vfs.fileControlEvents, isEmpty);
+
+    db.execute('INSERT INTO foo DEFAULT VALUES');
     expect(vfs.fileControlEvents, [
       SqliteFileControl.beginAtomicWrite,
       SqliteFileControl.commitAtomicWrite,
@@ -174,8 +177,9 @@ final class _AtomicWriteFile implements VirtualFileSystemFile {
   _AtomicWriteFile(this._memoryFile, this._vfs);
 
   @override
-  int get xDeviceCharacteristics =>
-      SqlDeviceCharacteristics.SQLITE_IOCAP_BATCH_ATOMIC;
+  int get xDeviceCharacteristics {
+    return SqlDeviceCharacteristics.SQLITE_IOCAP_BATCH_ATOMIC;
+  }
 
   @override
   void xRead(Uint8List target, int fileOffset) {
@@ -219,6 +223,7 @@ final class _AtomicWriteFile implements VirtualFileSystemFile {
         _vfs.fileControlEvents.add(op);
         assert(batchedWrite == null);
         batchedWrite = {};
+        return SqlError.SQLITE_OK;
       case SqliteFileControl.commitAtomicWrite:
         _vfs.fileControlEvents.add(op);
         assert(batchedWrite != null);
@@ -227,10 +232,12 @@ final class _AtomicWriteFile implements VirtualFileSystemFile {
         );
 
         batchedWrite = null;
+        return SqlError.SQLITE_OK;
       case SqliteFileControl.rollbackAtomicWrite:
         _vfs.fileControlEvents.add(op);
         assert(batchedWrite != null);
         batchedWrite = null;
+        return SqlError.SQLITE_OK;
     }
 
     return SqlError.SQLITE_NOTFOUND;
