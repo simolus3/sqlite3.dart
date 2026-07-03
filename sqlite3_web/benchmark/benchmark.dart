@@ -144,14 +144,14 @@ final class BenchmarkState extends Notifier<Result<List<BenchmarkResult>>> {
     await target.configuration.delete(sqlite);
 
     publish();
+
+    final db = await target.configuration.connect(sqlite);
+
     for (final (i, name) in SingleTabBenchmarkTarget.names.indexed) {
       results.add(BenchmarkResult(null, name, null));
       publish();
 
-      final (sql, db) = await (
-        _fetchBenchmarkSql(i),
-        target.configuration.connect(sqlite),
-      ).wait;
+      final sql = await _fetchBenchmarkSql(i);
 
       results.removeLast();
 
@@ -162,6 +162,8 @@ final class BenchmarkState extends Notifier<Result<List<BenchmarkResult>>> {
       results.add(BenchmarkResult(null, name, stopwatch.elapsed));
       publish();
     }
+
+    await db.dispose();
   }
 
   Future<String> _fetchBenchmarkSql(int index) async {

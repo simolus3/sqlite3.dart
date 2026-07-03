@@ -138,7 +138,7 @@ final class RemoteDatabase implements Database {
   Future<void> get closed => _isClosed.future;
 
   @override
-  Future<void> dispose() async {
+  Future<void> dispose() {
     if (!isClosed) {
       _isClosed.complete(
         (
@@ -153,7 +153,7 @@ final class RemoteDatabase implements Database {
       );
     }
 
-    return await closed;
+    return closed;
   }
 
   @override

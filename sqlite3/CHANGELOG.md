@@ -2,6 +2,10 @@
 
 - Allow VFS implementation in Dart to implement `xFileControl`.
 - Enable `SQLITE_ENABLE_BATCH_ATOMIC_WRITE` to support atomic writes on compatible VFS implementations.
+- IndexedDB fileystem: Add `writeAutomatically` option. When disabled, writes are not automatically
+  persisted and one needs to call `flush` manually. This explicit control can make database access more
+  efficient in some cases.
+- IndexedDB filesystem: Restructure IndexedDB code to use much fewer transactions, improving performance.
 
 ## 3.3.4
 
