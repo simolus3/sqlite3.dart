@@ -4,11 +4,11 @@ import 'dart:js_interop_unsafe';
 
 import 'package:web/web.dart'
     show
-        IDBFactory,
-        IDBDatabaseInfo,
-        IDBRequest,
+        EventStreamProviders,
         IDBCursor,
-        EventStreamProviders;
+        IDBDatabaseInfo,
+        IDBFactory,
+        IDBRequest;
 
 extension RequestExt on IDBRequest {
   /// A [StreamIterator] to asynchronously iterate over a [Cursor].
@@ -111,7 +111,7 @@ extension CompleteOpenIdbRequest on IDBRequest {
       completer.completeError(error ?? event);
     });
     EventStreamProviders.blockedEvent.forTarget(this).listen((event) {
-      completer.completeError(error ?? event);
+      completer.completeError(StateError('IndexedDB open blocked'));
     });
 
     return completer.future;

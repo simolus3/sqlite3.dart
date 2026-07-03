@@ -2,12 +2,14 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
 import 'package:sqlite3/src/wasm/js_interop/indexed_db.dart';
+import 'package:sqlite3/src/wasm/vfs/indexed_db.dart';
 import 'package:sqlite3/wasm.dart';
 import 'package:test/test.dart';
 import 'package:web/web.dart' as web;
@@ -35,49 +37,81 @@ Future<void> main() async {
       () => IndexedDbFileSystem.open(dbName: _randomName(), random: random),
     );
 
+    test('can read blobs', () async {
+      final name = _randomName();
+
+      // Create an IndexedDB database storing file chunks as Blobs instead of
+      // array buffer, a format used by older versions of this package. We
+      // should still be able to read that.
+      {
+        final idb = AsynchronousIndexedDbFileSystem(name);
+        await idb.open();
+
+        final db = idb.database!;
+        final txn = db.transaction(
+          ['files'.toJS, 'blocks'.toJS].toJS,
+          'readwrite',
+        );
+        final filesStore = txn.objectStore('files');
+        final blocksStore = txn.objectStore('blocks');
+
+        final fileEntry = JSObject();
+        fileEntry.setProperty('name'.toJS, '/database'.toJS);
+        fileEntry.setProperty('length'.toJS, 4096.toJS);
+        final fileId =
+            (await filesStore.put(fileEntry).complete<JSNumber>()).toDartInt;
+
+        final contents = Uint8List(4096);
+        contents.setAll(0, utf8.encode('Old contents'));
+
+        final blob = web.Blob([contents.toJS].toJS);
+        await blocksStore
+            .put(blob, [fileId.toJS, 0.toJS].toJS)
+            .complete<JSAny?>();
+        idb.close();
+      }
+
+      final second = await IndexedDbFileSystem.open(dbName: name);
+      final file = second.xOpen(Sqlite3Filename('/database'), 0).file;
+      final target = Uint8List(12);
+      file.xRead(target, 0);
+      expect(utf8.decode(target), 'Old contents');
+    });
+
     test('trailing blocks are ignored when loading', () async {
       final name = _randomName();
 
       // Directly write an IndexedDB database in the broken state that older
       // versions of the library could produce: a file with recorded length
       // 8192 but with a trailing block stored at offset 8192.
-      final openRequest = indexedDB!.open(name, 1);
-      openRequest.onupgradeneeded = (web.IDBVersionChangeEvent e) {
-        final database = openRequest.result as web.IDBDatabase;
-        final files = database.createObjectStore(
-          'files',
-          web.IDBObjectStoreParameters(autoIncrement: true),
+      {
+        final idb = AsynchronousIndexedDbFileSystem(name);
+        await idb.open();
+
+        final db = idb.database!;
+        final txn = db.transaction(
+          ['files'.toJS, 'blocks'.toJS].toJS,
+          'readwrite',
         );
-        files.createIndex(
-          'fileName',
-          'name'.toJS,
-          web.IDBIndexParameters(unique: true),
-        );
-        database.createObjectStore('blocks');
-      }.toJS;
-      final db = await openRequest.completeOrBlocked<web.IDBDatabase>();
+        final filesStore = txn.objectStore('files');
+        final blocksStore = txn.objectStore('blocks');
 
-      final txn = db.transaction(
-        ['files'.toJS, 'blocks'.toJS].toJS,
-        'readwrite',
-      );
-      final filesStore = txn.objectStore('files');
-      final blocksStore = txn.objectStore('blocks');
+        final fileEntry = JSObject();
+        fileEntry.setProperty('name'.toJS, '/database'.toJS);
+        fileEntry.setProperty('length'.toJS, 8192.toJS);
+        final fileId =
+            (await filesStore.put(fileEntry).complete<JSNumber>()).toDartInt;
 
-      final fileEntry = JSObject();
-      fileEntry.setProperty('name'.toJS, '/database'.toJS);
-      fileEntry.setProperty('length'.toJS, 8192.toJS);
-      final fileId =
-          (await filesStore.put(fileEntry).complete<JSNumber>()).toDartInt;
+        // Write two valid blocks and two trailing blocks past the file's length.
+        final block = Uint8List(4096).buffer.toJS;
+        for (final blockIdx in [0, 1, 2, 3]) {
+          await blocksStore
+              .put(block, [fileId.toJS, (blockIdx * 4096).toJS].toJS)
+              .complete<JSAny?>();
+        }
 
-      // Write two valid blocks and two trailing blocks past the file's length.
-      final block = Uint8List(4096).buffer.toJS;
-      for (final blockIdx in [0, 1, 2, 3]) {
-        await blocksStore
-            .put(block, [fileId.toJS, (blockIdx * 4096).toJS].toJS)
-            .complete<JSAny?>();
+        idb.close();
       }
-      db.close();
 
       // Should not crash; the trailing block at offset 8192 must be ignored.
       // https://github.com/simolus3/sqlite3.dart/issues/380#issuecomment-4680401092
