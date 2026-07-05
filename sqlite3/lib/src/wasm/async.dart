@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:js_interop';
 
-final class _AsyncCallbackEntry {
+final class _AsyncCallbackEntry extends LinkedListEntry<_AsyncCallbackEntry> {
   final void Function() callback;
-  _AsyncCallbackEntry? next;
 
   _AsyncCallbackEntry(this.callback);
 }
@@ -21,26 +21,22 @@ final class _AsyncCallbackEntry {
 /// transactions. This function patches [scheduleMicrotask] to be based on
 /// native microtasks instead.
 T runWithNativeMicrotasks<T>(T Function() callback) {
-  _AsyncCallbackEntry? firstPendingTask;
+  final callbackList = LinkedList<_AsyncCallbackEntry>();
 
   void runTasks() {
-    while (true) {
-      if (firstPendingTask case final task?) {
-        firstPendingTask = task.next;
-        task.callback();
-      } else {
-        break;
-      }
+    while (callbackList.isNotEmpty) {
+      final item = callbackList.first..unlink();
+      item.callback();
     }
   }
 
   final runTasksJs = runTasks.toJS;
 
   void addTask(void Function() callback) {
-    if (firstPendingTask case final existing?) {
-      existing.next = _AsyncCallbackEntry(callback);
-    } else {
-      firstPendingTask = _AsyncCallbackEntry(callback);
+    final emptyBefore = callbackList.isEmpty;
+    callbackList.add(_AsyncCallbackEntry(callback));
+
+    if (emptyBefore) {
       _promiseResolve().then(runTasksJs);
     }
   }
