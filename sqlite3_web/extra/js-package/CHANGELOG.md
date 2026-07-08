@@ -1,3 +1,8 @@
+## 0.2.4
+
+- Expose `typeCodesForValues`.
+- Support custom requests.
+
 ## 0.2.3
 
 - Add `preparedStatementCacheSize` to `ConnectOptions`, which can be used to make workers cache prepared statements.

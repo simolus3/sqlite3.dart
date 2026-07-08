@@ -4,6 +4,11 @@ import 'package:sqlite3/src/database.dart';
 import 'package:sqlite3/src/wasm/sqlite3.dart';
 import 'package:sqlite3_web/sqlite3_web.dart';
 
+const isForTest = bool.fromEnvironment(
+  'sqlite3web.testing',
+  defaultValue: false,
+);
+
 void main() {
   WebSqlite.workerEntrypoint(controller: _DefaultDatabaseController());
 }
@@ -54,6 +59,13 @@ final class _DefaultDatabase extends WorkerDatabase {
     ClientConnection connection,
     CustomClientDatabaseRequest request,
   ) async {
+    if (isForTest) {
+      final response = await connection.customRequest(
+        'customRequestFromServer'.toJS,
+      );
+      return response;
+    }
+
     return null;
   }
 }

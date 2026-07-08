@@ -68,8 +68,24 @@ import { wrapFeatureDetectionResult } from "./utils.js";
 import { WorkerConnector, WorkerHandle } from "./worker_connector.js";
 
 class WorkerConnection extends ProtocolChannel {
+  #handleRequest: CustomRequestHandler | undefined;
+
+  constructor(
+    options: ProtocolChannelOptions,
+    handleRequest?: CustomRequestHandler | undefined,
+  ) {
+    super(options);
+    this.#handleRequest = handleRequest;
+  }
+
   override async _internal_serveRequest(request: Request): Promise<Response> {
-    if (request.t == typeCustomRequest) {
+    if (this.#handleRequest && request.t == typeCustomRequest) {
+      const response = await this.#handleRequest(request.r);
+      return {
+        r: response,
+        i: request.i,
+        t: typeSimpleSuccessResponse,
+      } satisfies SimpleSuccessResponse;
     }
 
     throw new Error("Method not implemented.");
@@ -91,6 +107,8 @@ class WorkerConnection extends ProtocolChannel {
   }
 }
 
+export type CustomRequestHandler = (request: unknown) => Promise<unknown>;
+
 export interface ClientInitializationOptions {
   /**
    * How to open web workers. Use {@link defaultWorkerConnector} as a sensible default.
@@ -100,7 +118,7 @@ export interface ClientInitializationOptions {
    * The URI of the `sqlite3.wasm` or `sqlite3mc.wasm` module to load.
    */
   wasmUri: string;
-  handleCustomRequest?: ((request: unknown) => Promise<unknown>) | undefined;
+  handleCustomRequest?: CustomRequestHandler | undefined;
 }
 
 export class DatabaseClient implements WebSqlite {
@@ -129,7 +147,7 @@ export class DatabaseClient implements WebSqlite {
   }
 
   #wrapAsConnection(channel: ProtocolChannelOptions) {
-    return new WorkerConnection(channel);
+    return new WorkerConnection(channel, this.#options.handleCustomRequest);
   }
 
   async #startDedicated() {

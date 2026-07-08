@@ -11,6 +11,7 @@ export {
 } from "./worker_connector.js";
 export { type ClientInitializationOptions } from "./client.js";
 export { type WebEndpoint } from "./channel.js";
+export { typeCodesForValues } from "./types.js";
 
 /**
  * Prepares a {@link WebSqlite} instance.

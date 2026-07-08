@@ -234,7 +234,7 @@ export interface Database {
    */
   customRequest(
     request: unknown,
-    options: { token?: number | undefined; abort?: AbortSignal },
+    options?: { token?: number | undefined; abort?: AbortSignal },
   ): Promise<unknown>;
 
   /**

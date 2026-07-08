@@ -275,6 +275,7 @@ jobs:
         working-directory: sqlite3_web/extra/js-package
         run: |
           pnpm build:worker
+          pnpm node tool/build_worker_testing.js
           pnpm build
 
       - name: Web tests

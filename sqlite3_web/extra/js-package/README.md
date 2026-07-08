@@ -14,7 +14,7 @@ It's designed with a batteries-included approach, and provides:
 4. A fully-featured SQLite build, with fts5, rtree, math, dbstat and session extensions enabled by default.
 5. Encryption support with SQLite3 Multiple Ciphers.
 
-Before compression, the library itself is around 10 KB in size. Additionally, this includes a 220 KB
+Before compression, the library itself is around 10 KB in size. Additionally, this includes a 225 KB
 web worker and a 750 KB WebAssembly file for SQLite.
 
 ## Setup

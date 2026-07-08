@@ -4,7 +4,7 @@ import type * as sqlite from "../lib/index";
 import type { WebSqlite, ConnectOptions, Database } from "../lib/index";
 
 // @ts-expect-error
-import workerUrl from "../assets/worker.js?url";
+import workerUrl from "../assets/worker_testing.js?url";
 // @ts-expect-error
 import wasmCiphersUrl from "../assets/sqlite3mc.wasm?url";
 
@@ -15,6 +15,10 @@ export function sqliteTestCases(module: typeof sqlite) {
         module.openWebSqlite({
           workers: module.defaultWorkerConnector(workerUrl),
           wasmUri: wasmCiphersUrl,
+          async handleCustomRequest(request) {
+            expect(request).toStrictEqual("customRequestFromServer");
+            return "client-side response";
+          },
         }),
       );
     },
@@ -134,6 +138,12 @@ export function sqliteTestCases(module: typeof sqlite) {
       expect(
         (await firstInstance.select("SELECT * FROM foo")).result.rows,
       ).toHaveLength(0);
+    });
+
+    databaseTest("custom request", async ({ database }) => {
+      const instance = await database.connect();
+      const response = await instance.customRequest("foo");
+      expect(response).toStrictEqual("client-side response");
     });
 
     baseTest("encryption", async () => {

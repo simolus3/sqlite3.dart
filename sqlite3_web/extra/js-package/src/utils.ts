@@ -44,6 +44,9 @@ export function serializeError(
   if (error instanceof DOMException && error.name == "AbortError") {
     serializedExceptionType = typeAbortException;
   }
+  if (error instanceof Error) {
+    message += `: ${error.message}`;
+  }
 
   return {
     t: typeErrorResponse,

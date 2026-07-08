@@ -8,5 +8,6 @@ export default defineConfig({
       enabled: true,
       instances: [{ browser: "chromium" }],
     },
+    testTimeout: 1000,
   },
 });
