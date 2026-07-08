@@ -73,12 +73,19 @@ Future<File> _createNativeAssetsConfig(
   String? sanitizer,
 ) async {
   if (sanitizer == null) {
-    final file = File('.dart_tool/native_assets.yaml');
-    if (!await file.exists()) {
-      throw 'Expected $file to exist, are you using dart run?';
+    // Depending on the Dart version, this file is in the workspace root or
+    // local to the package.
+    final candidates = <String>[
+      '.dart_tool/native_assets.yaml',
+      '../.dart_tool/native_assets.yaml',
+    ];
+
+    for (final candidate in candidates) {
+      final file = File(candidate);
+      if (await file.exists()) return file;
     }
 
-    return file;
+    throw 'Expected any of $candidates to exist, are you using dart run?';
   }
 
   final name = switch (sanitizer) {
