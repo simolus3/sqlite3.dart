@@ -241,7 +241,7 @@ final class PrecompiledFromGithubAssets extends PrecompiledBinary {
   Uri downloadUri(String filename) {
     return Uri.parse(
       urlPattern
-          .replaceAll(r'$RELEASE_TAG', releaseTag!)
+          .replaceAll(r'$RELEASE_TAG', releaseTag ?? 'null')
           .replaceAll(r'$FILENAME', filename),
     );
   }
