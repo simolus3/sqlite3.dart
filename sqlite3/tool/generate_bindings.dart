@@ -43,6 +43,7 @@ FfiGenerator createGenerator(
           RawVarArgFunction('', ['int', 'int*']),
         ],
       }, const {}),
+      isLeaf: (decl) => _leafFunctions.contains(decl.originalName),
     ),
     globals: Globals(include: _includeSqlite3Only),
   );
@@ -177,5 +178,27 @@ const usedSqliteSymbols = {
   }
 
   buffer.writeln('};');
-  File('lib/src/hook/used_symbols.dart').writeAsString(buffer.toString());
+  File(
+    'lib/src/hook/compile/used_symbols.dart',
+  ).writeAsString(buffer.toString());
 }
+
+/// Note: Leaf functions must never call back into Dart.
+///
+/// Almost all SQLite functions could do that (e.g. due to an update hook, a
+/// user-defined function, or a VFS). So we only enable this on a few trivial
+/// functions to reduce their overhead.
+const _leafFunctions = <String>{
+  'sqlite3_last_insert_rowid',
+  'sqlite3_changes',
+  'sqlite3_get_autocommit',
+  // Just to configure the hook itself, it's invoked from sqlite3_step which
+  // can't be a leaf function.
+  'sqlite3_update_hook',
+  'sqlite3_commit_hook',
+  'sqlite3_rollback_hook',
+  'sqlite3_stmt_isexplain',
+  'sqlite3_stmt_readonly',
+  'sqlite3_column_count',
+  'sqlite3_bind_parameter_count',
+};

@@ -7,6 +7,7 @@
   efficient in some cases.
 - IndexedDB filesystem: Restructure IndexedDB code to use much fewer transactions, improving performance.
 - Update SQLCipher to 4.17.0.
+- Mark a few functions as `isLeaf`, reducing the native overhead of calling them.
 
 ## 3.3.4
 
