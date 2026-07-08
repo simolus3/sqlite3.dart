@@ -139,10 +139,11 @@ jobs:
       run: dart test
       working-directory: sqlite3/example/custom_extension
     - name: Run tests with AOT executable
+      if: matrix.dart != 'dev' # TODO: Investigate native asset changes with Dart dev
       run: dart run run.dart
       working-directory: native_tests/
     - name: Run tests AddressSanitizer and MemorySanitizer
-      if: runner.os == 'Linux'
+      if: runner.os == 'Linux' && matrix.dart != 'dev' # TODO: Investigate native asset changes with Dart dev
       # TODO: Running with --sanitizer=tsan seems to be flaky?
       run: |
         dart run.dart --sanitizer=asan
