@@ -70,6 +70,19 @@ hooks:
 > The SQLCipher build included in `package:sqlite3` releases may include an older SQLite version than
 > the default and SQLite3 Multiple Ciphers builds.
 
+In some environments, you may want to use an internal artifact repository instead of the public
+GitHub releases. This is possible by providing the `url_pattern` user-define:
+
+```yaml
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3
+      # "$RELEASE_TAG" is replaced with the version of the `sqlite3` package (e.g. sqlite3-3.4.0).
+      # "$FILENAME" is replaced with the name of the file to download, e.g. libsqlite3.arm64.macos.dylib.
+      url_pattern: "https://artifacts.example.org/$RELEASE_TAG/$FILENAME"
+```
+
 ## System-provided SQLite
 
 Depending on how you distribute your app, you may want to use the SQLite version shipped with

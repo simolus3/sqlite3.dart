@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:code_assets/code_assets.dart';
 import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 
 import '../assets.dart';
@@ -16,14 +17,23 @@ import '../utils.dart';
 sealed class SqliteBinary {
   static SqliteBinary forBuild(BuildInput input) {
     final userDefines = input.userDefines;
+
+    PrecompiledFromGithubAssets fromGitHub(LibraryType type) {
+      final pattern =
+          userDefines['url_pattern'] as String? ??
+          PrecompiledFromGithubAssets.defaultUrlPattern;
+
+      return PrecompiledFromGithubAssets(type, urlPattern: pattern);
+    }
+
     switch (userDefines['source']) {
       case null:
       case 'sqlite3':
-        return PrecompiledFromGithubAssets(LibraryType.sqlite3);
+        return fromGitHub(LibraryType.sqlite3);
       case 'sqlite3mc':
-        return PrecompiledFromGithubAssets(LibraryType.sqlite3mc);
+        return fromGitHub(LibraryType.sqlite3mc);
       case 'sqlcipher':
-        return PrecompiledFromGithubAssets(LibraryType.sqlcipher);
+        return fromGitHub(LibraryType.sqlcipher);
       case 'test-sqlite3':
         return PrecompiledForTesting(LibraryType.sqlite3);
       case 'test-sqlite3mc':
@@ -220,7 +230,21 @@ sealed class PrecompiledBinary implements SqliteBinary {
 /// Download pre-compiled binaries from the GH release for the `sqlite3`
 /// package.
 final class PrecompiledFromGithubAssets extends PrecompiledBinary {
-  const PrecompiledFromGithubAssets(super.type) : super._();
+  final String urlPattern;
+
+  const PrecompiledFromGithubAssets(
+    super.type, {
+    this.urlPattern = defaultUrlPattern,
+  }) : super._();
+
+  @visibleForTesting
+  Uri downloadUri(String filename) {
+    return Uri.parse(
+      urlPattern
+          .replaceAll(r'$RELEASE_TAG', releaseTag!)
+          .replaceAll(r'$FILENAME', filename),
+    );
+  }
 
   @override
   Stream<Uint8List> _fetchFromSource(
@@ -234,10 +258,7 @@ final class PrecompiledFromGithubAssets extends PrecompiledBinary {
       // environments where that's required
       // https://github.com/simolus3/sqlite3.dart/issues/335
       ..findProxy = HttpClient.findProxyFromEnvironment;
-    final uri = Uri.https(
-      'github.com',
-      'simolus3/sqlite3.dart/releases/download/${releaseTag!}/$filename',
-    );
+    final uri = downloadUri(filename);
 
     HttpClientResponse response;
     try {
@@ -259,6 +280,9 @@ final class PrecompiledFromGithubAssets extends PrecompiledBinary {
 
     client.close();
   }
+
+  static const defaultUrlPattern =
+      r'https://github.com/simolus3/sqlite3.dart/releases/download/$RELEASE_TAG/$FILENAME';
 }
 
 /// A variant of [PrecompiledFromGithubAssets] that doesn't require a github
