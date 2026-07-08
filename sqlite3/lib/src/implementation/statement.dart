@@ -76,6 +76,7 @@ base class StatementImplementation extends CommonPreparedStatement {
       result = _step();
     } while (result == SqlError.SQLITE_ROW);
 
+    reset();
     if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
       throwException(
         database,
@@ -106,6 +107,7 @@ base class StatementImplementation extends CommonPreparedStatement {
       rows.add(<Object?>[for (var i = 0; i < columnCount; i++) _readValue(i)]);
     }
 
+    reset();
     if (resultCode != SqlError.SQLITE_OK &&
         resultCode != SqlError.SQLITE_DONE) {
       throwException(
@@ -382,6 +384,7 @@ class _ActiveCursorIterator extends IteratingCursor {
       // Statements failing with SQLITE_BUSY can be retried in some instances,
       // so we don't want to detach the cursor.
       statement._currentCursor = null;
+      statement.reset();
     }
 
     if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
