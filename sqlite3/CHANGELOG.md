@@ -6,6 +6,7 @@
   persisted and one needs to call `flush` manually. This explicit control can make database access more
   efficient in some cases.
 - IndexedDB filesystem: Restructure IndexedDB code to use much fewer transactions, improving performance.
+- Update SQLCipher to 4.17.0.
 
 ## 3.3.4
 
