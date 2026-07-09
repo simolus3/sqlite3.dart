@@ -22,13 +22,17 @@ export interface WebEndpoint {
   lockName: string | null;
 }
 
+export function randomLockName() {
+  return `sqlite3-web-${crypto.randomUUID()}`;
+}
+
 export async function createChannel(
   options: Partial<ProtocolChannelOptions> = {},
 ): Promise<[WebEndpoint, ProtocolChannelOptions]> {
   const { port1, port2 } = new MessageChannel();
   // Request a random lock. We include its name in WebEndpoint. Since tabs return locks
   // when they're closed, that allows clients to reliably detect dead remotes.
-  const lockName = `sqlite3-web-client-${crypto.randomUUID()}`;
+  const lockName = randomLockName();
   const lock = await requestNavigatorLock(lockName);
 
   return [

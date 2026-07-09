@@ -18,6 +18,7 @@ import {
   createChannel,
   ProtocolChannel,
   ProtocolChannelOptions,
+  randomLockName,
   WebEndpoint,
 } from "./channel.js";
 import {
@@ -122,7 +123,7 @@ export interface ClientInitializationOptions {
 }
 
 export class DatabaseClient implements WebSqlite {
-  readonly #workerInitializationLock = `web-sqlite-init-${crypto.randomUUID()}`;
+  readonly #workerInitializationLock = randomLockName();
   readonly #missingFeatures = new Set<MissingBrowserFeature>();
   readonly #options: ClientInitializationOptions;
 
