@@ -590,7 +590,7 @@ final class _RegisteredVfs {
     final id = ptr.cast<_DartFile>().ref.dartFileId;
     final dartFile = _files[id]!;
     if (dartFile is VirtualFileSystemFileV1) {
-      return dartFile.xSectorSize;
+      return dartFile.xFileControl(SqliteFileControl(op), pArg.address);
     }
 
     return SqlError.SQLITE_NOTFOUND;
