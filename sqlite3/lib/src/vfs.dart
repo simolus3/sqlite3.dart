@@ -85,6 +85,7 @@ typedef XOpenResult = ({int outFlags, VirtualFileSystemFile file});
 /// To avoid common pitfalls, consider extending [BaseVfsFile] instead.
 ///
 /// {@category common}
+@Deprecated.implement('Implement VirtualFileSystemFileV1 instead')
 abstract interface class VirtualFileSystemFile {
   /// Close this file.
   void xClose();
@@ -127,13 +128,25 @@ abstract interface class VirtualFileSystemFile {
   /// Returns the lock state held by any process on this file.
   int xCheckReservedLock();
 
+  /// Returns a bitvector of [device flags](https://sqlite.org/c3ref/c_iocap_atomic.html).
+  int get xDeviceCharacteristics;
+}
+
+/// A subinterface of [VirtualFileSystemFile] implementing all methods part of
+/// the v1 [sqlite3_io_methods](https://sqlite.org/c3ref/io_methods.html)
+/// interface.
+abstract interface class VirtualFileSystemFileV1
+    implements VirtualFileSystemFile {
   /// Handle a [file control](https://sqlite.org/c3ref/file_control.html)
   /// request with the given operand and pointer (represented as its address to
   /// avoid a `dart:ffi` import in common code).
   int xFileControl(SqliteFileControl op, int ptr);
 
-  /// Returns a bitvector of [device flags](https://sqlite.org/c3ref/c_iocap_atomic.html).
-  int get xDeviceCharacteristics;
+  /// The sector size of the device that underlies the file.
+  ///
+  /// The sector size is the minimum write that can be performed without
+  /// disturbing other bytes in the file.
+  int get xSectorSize;
 }
 
 /// A [VirtualFileSystem] implementation that uses a [Random] instance for
@@ -174,7 +187,7 @@ abstract base class BaseVirtualFileSystem extends VirtualFileSystem {
 /// the buffer in case of short reads.
 ///
 /// {@category common}
-abstract class BaseVfsFile implements VirtualFileSystemFile {
+abstract class BaseVfsFile implements VirtualFileSystemFileV1 {
   /// Reads from the file at [offset] into the [buffer] and returns the amount
   /// of bytes read.
   ///
@@ -191,6 +204,9 @@ abstract class BaseVfsFile implements VirtualFileSystemFile {
     // opcodes that they do not recognize."
     return SqlError.SQLITE_NOTFOUND;
   }
+
+  @override
+  int get xSectorSize => 4096;
 
   @override
   void xRead(Uint8List target, int fileOffset) {

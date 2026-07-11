@@ -589,11 +589,21 @@ final class _RegisteredVfs {
   ) {
     final id = ptr.cast<_DartFile>().ref.dartFileId;
     final dartFile = _files[id]!;
-    return dartFile.xFileControl(SqliteFileControl(op), pArg.address);
+    if (dartFile is VirtualFileSystemFileV1) {
+      return dartFile.xSectorSize;
+    }
+
+    return SqlError.SQLITE_NOTFOUND;
   }
 
   static int _xSectorSize(Pointer<sqlite3_file> ptr) {
-    // We don't currently support custom sector sizes.
+    final id = ptr.cast<_DartFile>().ref.dartFileId;
+    final dartFile = _files[id]!;
+    if (dartFile is VirtualFileSystemFileV1) {
+      return dartFile.xSectorSize;
+    }
+
+    // The older base interface does not support xSectorSize.
     return 4096;
   }
 

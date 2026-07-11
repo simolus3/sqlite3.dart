@@ -173,7 +173,7 @@ final class _AtomicWritesVfs extends BaseVirtualFileSystem {
   void xSleep(Duration duration) {}
 }
 
-final class _AtomicWriteFile implements VirtualFileSystemFile {
+final class _AtomicWriteFile implements VirtualFileSystemFileV1 {
   final VirtualFileSystemFile _memoryFile;
   final _AtomicWritesVfs _vfs;
 
@@ -185,6 +185,9 @@ final class _AtomicWriteFile implements VirtualFileSystemFile {
   int get xDeviceCharacteristics {
     return SqlDeviceCharacteristics.SQLITE_IOCAP_BATCH_ATOMIC;
   }
+
+  @override
+  int get xSectorSize => 4096;
 
   @override
   void xRead(Uint8List target, int fileOffset) {

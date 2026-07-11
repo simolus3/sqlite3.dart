@@ -92,15 +92,12 @@ int dartvfs_fileControl(sqlite3_file* file, int op, void* pArg) {
   return xFileControl(DART_FILE(file), op, pArg);
 }
 
-int dartvfs_deviceCharacteristics(sqlite3_file* file) {
+int dartvfs_sectorSize(sqlite3_file* file) {
   return xDeviceCharacteristics(DART_FILE(file));
 }
 
-int dartvfs_sectorSize(sqlite3_file* file) {
-  // This is also the value of SQLITE_DEFAULT_SECTOR_SIZE, which would be picked
-  // if this function didn't exist. We need this method because vfstrace does
-  // not support null callbacks.
-  return 4096;
+int dartvfs_deviceCharacteristics(sqlite3_file* file) {
+  return xDeviceCharacteristics(DART_FILE(file));
 }
 
 static int dartvfs_open(sqlite3_vfs* vfs, sqlite3_filename zName,
@@ -120,12 +117,8 @@ static int dartvfs_open(sqlite3_vfs* vfs, sqlite3_filename zName,
       .xUnlock = &dartvfs_unlock,
       .xCheckReservedLock = &dartvfs_checkReservedLock,
       .xFileControl = &dartvfs_fileControl,
+      .xSectorSize = &dartvfs_sectorSize,
       .xDeviceCharacteristics = &dartvfs_deviceCharacteristics,
-#ifdef SQLITE_ENABLE_VFSTRACE
-      .xSectorSize = &dartvfs_sectorSize
-#else
-      .xSectorSize = NULL
-#endif
   };
 
   // The xOpen call will also set the dart_fd field.

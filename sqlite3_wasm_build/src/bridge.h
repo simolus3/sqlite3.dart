@@ -48,6 +48,7 @@ import_dart("xCheckReservedLock") extern int xCheckReservedLock(__externref_t,
                                                                 int* pResOut);
 import_dart("xFileControl") extern int xFileControl(__externref_t, int op,
                                                     void* pArg);
+import_dart("xSectorSize") extern int xSectorSize(__externref_t);
 import_dart("xDeviceCharacteristics") extern int xDeviceCharacteristics(
     __externref_t);
 

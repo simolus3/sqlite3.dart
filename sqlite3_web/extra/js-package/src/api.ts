@@ -41,7 +41,7 @@ export class DatabaseImplementation {
   }
 
   /**
-   * Host an in-memory datbaase in a shared worker.
+   * Host an in-memory database in a shared worker.
    *
    * This isn't all that useful as it provides no persistence, but it's convenient for testing.
    */
@@ -79,7 +79,7 @@ export class DatabaseImplementation {
    * Opens a synchronous database stored in OPFS.
    *
    * This is similar to {@link opfsWithExternalLocks}, but also supports browsers without `readwrite-unsafe`.
-   * It works by opening file handles on most database accessses, which is substantially slower.
+   * It works by opening file handles on most database accesses, which is substantially slower.
    */
   static readonly opfsWithExternalLocksWorkaround = new DatabaseImplementation(
     "opfsWithExternalLocksWorkaround",

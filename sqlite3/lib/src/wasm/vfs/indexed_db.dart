@@ -652,7 +652,7 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
   }
 }
 
-class _IndexedDbFile implements VirtualFileSystemFile {
+class _IndexedDbFile implements VirtualFileSystemFileV1 {
   final IndexedDbFileSystem vfs;
   final VirtualFileSystemFile memoryFile;
   final String path;
@@ -666,6 +666,9 @@ class _IndexedDbFile implements VirtualFileSystemFile {
 
   @override
   int get xDeviceCharacteristics => 0;
+
+  @override
+  int get xSectorSize => 4096;
 
   @override
   int xCheckReservedLock() => memoryFile.xCheckReservedLock();

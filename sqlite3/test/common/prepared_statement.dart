@@ -671,7 +671,7 @@ final class _ErrorInjectingVfs extends BaseVirtualFileSystem {
     final inner = _base.xOpen(path, flags);
     return (
       outFlags: inner.outFlags,
-      file: _ErrorInjectingFile(this, inner.file),
+      file: _ErrorInjectingFile(this, inner.file as VirtualFileSystemFileV1),
     );
   }
 
@@ -681,9 +681,9 @@ final class _ErrorInjectingVfs extends BaseVirtualFileSystem {
   }
 }
 
-final class _ErrorInjectingFile implements VirtualFileSystemFile {
+final class _ErrorInjectingFile implements VirtualFileSystemFileV1 {
   final _ErrorInjectingVfs _vfs;
-  final VirtualFileSystemFile _base;
+  final VirtualFileSystemFileV1 _base;
 
   _ErrorInjectingFile(this._vfs, this._base);
 
@@ -701,6 +701,9 @@ final class _ErrorInjectingFile implements VirtualFileSystemFile {
 
   @override
   int get xDeviceCharacteristics => _base.xDeviceCharacteristics;
+
+  @override
+  int get xSectorSize => _base.xSectorSize;
 
   @override
   void xClose() {

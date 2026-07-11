@@ -269,7 +269,22 @@ final class DartBridgeCallbacks {
     int op,
     int pArg,
   ) {
-    return file.toDartObject.xFileControl(SqliteFileControl(op), pArg);
+    final asDart = file.toDartObject;
+    if (asDart is VirtualFileSystemFileV1) {
+      return asDart.xFileControl(SqliteFileControl(op), pArg);
+    }
+
+    return SqlError.SQLITE_NOTFOUND;
+  }
+
+  @JSExport()
+  int xSectorSize(ExternalDartReference<VirtualFileSystemFile> file) {
+    final asDart = file.toDartObject;
+    if (asDart is VirtualFileSystemFileV1) {
+      return asDart.xSectorSize;
+    }
+
+    return 4096;
   }
 
   @JSExport('dispatch_()v')
