@@ -6,7 +6,7 @@
   persisted and one needs to call `flush` manually. This explicit control can make database access more
   efficient in some cases.
 - IndexedDB filesystem: Restructure IndexedDB code to use much fewer transactions, improving performance.
-- Update SQLite to 3.53.3 and SQLCipher to 4.17.0.
+- Update SQLite to 3.53.3, SQLite3 Multiple Ciphers to 2.3.6 and SQLCipher to 4.17.0.
 - Mark a few functions as `isLeaf`, reducing the native overhead of calling them.
 - Reset statements in `execute` and `select`.
 - Allow custom download URLs for pre-compiled binaries through the `url_pattern` user-define.
