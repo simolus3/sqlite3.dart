@@ -1,4 +1,4 @@
-## 3.4.0 (unreleased)
+## 3.4.0
 
 - Add `VirtualFileSystemFileV1`, allowing VFS implementations in Dart to implement `xFileControl` and `xSectorSize`.
 - Enable `SQLITE_ENABLE_BATCH_ATOMIC_WRITE` to support atomic writes on compatible VFS implementations.
