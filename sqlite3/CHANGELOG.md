@@ -1,6 +1,6 @@
 ## 3.4.0 (unreleased)
 
-- Add `VirtualFileSystemFileV1`, allowing VFS implementation in Dart to implement `xFileControl` and `xSectorSize`.
+- Add `VirtualFileSystemFileV1`, allowing VFS implementations in Dart to implement `xFileControl` and `xSectorSize`.
 - Enable `SQLITE_ENABLE_BATCH_ATOMIC_WRITE` to support atomic writes on compatible VFS implementations.
 - IndexedDB fileystem: Add `writeAutomatically` option. When disabled, writes are not automatically
   persisted and one needs to call `flush` manually. This explicit control can make database access more
@@ -8,7 +8,7 @@
 - IndexedDB filesystem: Restructure IndexedDB code to use much fewer transactions, improving performance.
 - Update SQLite to 3.53.3, SQLite3 Multiple Ciphers to 2.3.6 and SQLCipher to 4.17.0.
 - Mark a few functions as `isLeaf`, reducing the native overhead of calling them.
-- Reset statements in `execute` and `select`.
+- Reset statements after `execute` and `select`.
 - Allow custom download URLs for pre-compiled binaries through the `url_pattern` user-define.
 
 ## 3.3.4
