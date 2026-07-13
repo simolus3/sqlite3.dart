@@ -1,3 +1,7 @@
+## 0.9.3
+
+- Automatically flush pending IndexedDB writes after each write.
+
 ## 0.9.2
 
 - Allow caching prepared statements via the `preparedStatementCacheSize` option on `WebSqlite.connect`.
