@@ -474,11 +474,11 @@ final class WasmStatement implements RawSqliteStatement {
 
   @override
   int sqlite3_bind_int64BigInt(int index, BigInt value) {
-    return bindings.sqlite3_bind_int64(
-      stmt,
-      index,
-      JsBigInt.fromBigInt(value).jsObject,
-    );
+    return sqlite3_bind_jsBigInt(index, JsBigInt.fromBigInt(value).jsObject);
+  }
+
+  int sqlite3_bind_jsBigInt(int index, JSBigInt value) {
+    return bindings.sqlite3_bind_int64(stmt, index, value);
   }
 
   @override
@@ -542,10 +542,13 @@ final class WasmStatement implements RawSqliteStatement {
     return bindings.sqlite3_column_double(stmt, index);
   }
 
+  JsBigInt sqlite3_column_bigint(int index) {
+    return bindings.sqlite3_column_int64(stmt, index);
+  }
+
   @override
   int sqlite3_column_int64(int index) {
-    final jsBigInt = bindings.sqlite3_column_int64(stmt, index);
-    return jsBigInt.asDartInt;
+    return sqlite3_column_bigint(index).asDartInt;
   }
 
   @override
@@ -572,8 +575,8 @@ final class WasmStatement implements RawSqliteStatement {
   }
 
   @override
-  int sqlite3_column_type(int index) {
-    return bindings.sqlite3_column_type(stmt, index);
+  SqlType sqlite3_column_type(int index) {
+    return bindings.sqlite3_column_type(stmt, index) as SqlType;
   }
 
   @override

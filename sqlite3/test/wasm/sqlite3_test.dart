@@ -129,6 +129,34 @@ void main() {
           ),
         );
       });
+
+      test('can bind js big ints', () {
+        final db = sqlite3.openInMemory();
+        addTearDown(db.close);
+
+        final stmt = db.prepare('SELECT ?, typeof(?1)');
+        addTearDown(stmt.close);
+        final [row] = stmt.selectWith(
+          .bindCustom((stmt) {
+            stmt.raw.bindJSBigInt(1, _bigInt(123.toJS));
+          }),
+        );
+
+        expect(row.values, [123, 'integer']);
+      });
+
+      test('can read js big ints', () {
+        final db = sqlite3.openInMemory();
+        addTearDown(db.close);
+
+        final stmt = db.prepare('SELECT 1234');
+        addTearDown(stmt.close);
+
+        final raw = stmt.raw;
+        expect(raw.step(), isTrue);
+        expect(raw.columnType(0), SqlType.SQLITE_INTEGER);
+        expect(_number(raw.columnJSBigInt(0)), 1234);
+      });
     });
   }
 
@@ -198,3 +226,9 @@ void main() {
     }
   });
 }
+
+@JS('Number')
+external JSNumber _number(JSBigInt a);
+
+@JS('BigInt')
+external JSBigInt _bigInt(JSNumber a);

@@ -1,3 +1,7 @@
+## 3.5.0 (unreleased)
+
+- Add `CommonPreparedStatement.raw` and `RawPreparedStatement`, providing raw access to prepared statements. On the web, this also allows binding JS big integers directly.
+
 ## 3.4.0
 
 - Add `VirtualFileSystemFileV1`, allowing VFS implementations in Dart to implement `xFileControl` and `xSectorSize`.

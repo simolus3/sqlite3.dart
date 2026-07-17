@@ -16,5 +16,9 @@ export 'src/jsonb.dart';
 export 'src/result_set.dart';
 export 'src/sqlite3.dart';
 export 'src/statement.dart'
-    show CommonPreparedStatement, StatementParameters, CustomStatementParameter;
+    show
+        CommonPreparedStatement,
+        StatementParameters,
+        CustomStatementParameter,
+        RawPreparedStatement;
 export 'src/vfs.dart';

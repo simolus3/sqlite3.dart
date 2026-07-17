@@ -1,12 +1,25 @@
+/// @docImport 'wasm/sqlite3.dart';
+library;
+
+import 'dart:typed_data';
+
 import 'package:meta/meta.dart';
 
+import 'constants.dart';
 import 'exception.dart';
+import 'implementation/bindings.dart';
+import 'implementation/statement.dart';
 import 'result_set.dart';
 
 /// A prepared statement.
 ///
 /// {@category common}
 abstract class CommonPreparedStatement {
+  /// Unsafe, raw access to the underlying SQLite statement.
+  ///
+  /// For more details, see [RawPreparedStatement].
+  RawPreparedStatement get raw;
+
   /// The SQL statement backing this prepared statement.
   String get sql;
 
@@ -135,6 +148,147 @@ abstract class CommonPreparedStatement {
   /// See also:
   ///  - `sqlite3_finalize`: https://www.sqlite.org/c3ref/finalize.html
   void close();
+}
+
+/// Unsafe, raw access to a prepared statement.
+///
+/// [CommonPreparedStatement] automatically converts columns to Dart objects
+/// based on their [columnType] and uses high-level types like lists to
+/// represent parameters and results.
+///
+/// In some cases, it may be more efficient to call the underlying `sqlite3_`
+/// methodsmdirectly. This class provides methods mapping directly to raw SQLite
+/// C function calls, with no additional checks or implicit conversions.
+///
+/// Typically, this API would be used by:
+///
+/// 1. Calling `bind` methods to bind prepared statement parameters.
+/// 2. While [step] returns `true`,
+///    - call [columnType] and other `column` methods to read values.
+/// 3. Call [CommonPreparedStatement.reset].
+///
+/// On the web, this can also be used to bind JavaScript `BigInt` values to
+/// statements via [WasmRawPreparedStatement].
+///
+/// None of these methods may be called after a statement is
+/// [CommonPreparedStatement.close]d. Unlike [CommonPreparedStatement] methods
+/// which validate that invariant, calling raw methods on finalized statements
+/// is an unchecked use-after-free.
+///
+/// {@category common}
+@experimental
+extension type RawPreparedStatement._(StatementImplementation _stmt) {
+  /// Calls `sqlite3_bind_null` with the 1-based index.
+  void bindNull(int index) {
+    handleBindRc(rawStatement.sqlite3_bind_null(index));
+  }
+
+  /// Calls `sqlite3_bind_int64` with the 1-based index and the target value.
+  void bindInt64(int index, int value) {
+    handleBindRc(rawStatement.sqlite3_bind_int64(index, value));
+  }
+
+  /// Calls `sqlite3_bind_double` with the 1-based index and the target value.
+  void bindDouble(int index, double value) {
+    handleBindRc(rawStatement.sqlite3_bind_double(index, value));
+  }
+
+  /// Calls `sqlite3_bind_text` with the 1-based index and the target value.
+  void bindText(int index, String value) {
+    handleBindRc(rawStatement.sqlite3_bind_text(index, value));
+  }
+
+  /// Calls `sqlite3_bind_blob64` with the 1-based index and the target value.
+  void bindBlob(int index, List<int> value) {
+    handleBindRc(rawStatement.sqlite3_bind_blob64(index, value));
+  }
+
+  /// Calls `sqlite3_step`.
+  ///
+  /// This returns true if a row was returned, false if the end of the statement
+  /// cursor was reached. For other return values, throws a [SqliteException].
+  bool step() {
+    final rc = _stmt.stepExternalCursor();
+    return switch (rc) {
+      SqlError.SQLITE_ROW => true,
+      SqlError.SQLITE_DONE || SqlError.SQLITE_OK => false,
+      _ => _stmt.throwStatementException(rc, 'step'),
+    };
+  }
+
+  /// Calls `sqlite3_column_count`, returning the amount of columns of this
+  /// prepared statement.
+  int get columnCount {
+    return rawStatement.sqlite3_column_count();
+  }
+
+  /// Calls `sqlite3_column_name` with the given index.
+  ///
+  /// Note that this performs no bounds check against [columnCount] in Dart.
+  String columnName(int index) {
+    return rawStatement.sqlite3_column_name(index);
+  }
+
+  /// If supported by the current SQLite build, calls
+  /// `sqlite3_column_table_name` with the given index.
+  String? columnTableName(int index) {
+    final stmt = rawStatement;
+    if (!stmt.supportsReadingTableNameForColumn) return null;
+
+    return stmt.sqlite3_column_table_name(index);
+  }
+
+  /// Calls `sqlite3_column_type`, returning the type of a column.
+  ///
+  /// Note that this performs no bounds check against [columnCount] in Dart.
+  ///
+  /// See also: https://sqlite.org/c3ref/column_blob.html
+  SqlType columnType(int index) {
+    return rawStatement.sqlite3_column_type(index);
+  }
+
+  /// Calls `sqlite3_column_int64` with the given index.
+  ///
+  /// Note that this performs no bounds check against [columnCount] in Dart.
+  int columnInt64(int index) {
+    return rawStatement.sqlite3_column_int64(index);
+  }
+
+  /// Calls `sqlite3_column_double` with the given index.
+  ///
+  /// Note that this performs no bounds check against [columnCount] in Dart.
+  double columnDouble(int index) {
+    return rawStatement.sqlite3_column_double(index);
+  }
+
+  /// Calls `sqlite3_column_text` with the given index.
+  ///
+  /// Note that this performs no bounds check against [columnCount] in Dart.
+  String columnText(int index) {
+    return rawStatement.sqlite3_column_text(index);
+  }
+
+  /// Calls `sqlite3_column_blob` with the given index.
+  ///
+  /// Note that this performs no bounds check against [columnCount] in Dart.
+  Uint8List columnBlob(int index) {
+    return rawStatement.sqlite3_column_bytes(index);
+  }
+}
+
+@internal
+extension InternalRawPreparedStatement on RawPreparedStatement {
+  static RawPreparedStatement wrap(StatementImplementation stmt) {
+    return RawPreparedStatement._(stmt);
+  }
+
+  RawSqliteStatement get rawStatement => _stmt.statement;
+
+  void handleBindRc(int rc) {
+    if (rc != SqlError.SQLITE_OK) {
+      _stmt.throwStatementException(rc, 'binding parameter');
+    }
+  }
 }
 
 /// A set of values that can be used to bind [parameters] in a SQL query.

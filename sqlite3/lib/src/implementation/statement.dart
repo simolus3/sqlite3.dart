@@ -28,6 +28,9 @@ base class StatementImplementation extends CommonPreparedStatement {
     this.isBorrowed = false,
   });
 
+  @override
+  RawPreparedStatement get raw => InternalRawPreparedStatement.wrap(this);
+
   List<String> get _columnNames {
     final columnCount = statement.sqlite3_column_count();
 
@@ -43,6 +46,16 @@ base class StatementImplementation extends CommonPreparedStatement {
 
     final columnCount = statement.sqlite3_column_count();
     return List.generate(columnCount, statement.sqlite3_column_table_name);
+  }
+
+  Never throwStatementException(int resultCode, String operation) {
+    throwException(
+      database,
+      resultCode,
+      operation: operation,
+      previousStatement: sql,
+      statementArgs: _latestArguments,
+    );
   }
 
   void _ensureNotFinalized() {
@@ -66,6 +79,12 @@ base class StatementImplementation extends CommonPreparedStatement {
 
   int _step() => statement.sqlite3_step();
 
+  int stepExternalCursor() {
+    _inResetState = false;
+    _currentCursor = null;
+    return _step();
+  }
+
   void _execute() {
     int result;
 
@@ -78,13 +97,7 @@ base class StatementImplementation extends CommonPreparedStatement {
 
     reset();
     if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
-      throwException(
-        database,
-        result,
-        operation: 'executing statement',
-        previousStatement: sql,
-        statementArgs: _latestArguments,
-      );
+      throwStatementException(result, 'executing statement');
     }
   }
 
@@ -110,13 +123,7 @@ base class StatementImplementation extends CommonPreparedStatement {
     reset();
     if (resultCode != SqlError.SQLITE_OK &&
         resultCode != SqlError.SQLITE_DONE) {
-      throwException(
-        database,
-        resultCode,
-        operation: 'selecting from statement',
-        previousStatement: sql,
-        statementArgs: _latestArguments,
-      );
+      throwStatementException(resultCode, 'selecting from statement');
     }
 
     final names = _columnNames;
@@ -225,13 +232,7 @@ base class StatementImplementation extends CommonPreparedStatement {
     };
 
     if (rc != SqlError.SQLITE_OK) {
-      throwException(
-        database,
-        rc,
-        operation: 'binding parameter',
-        previousStatement: sql,
-        statementArgs: _latestArguments,
-      );
+      throwStatementException(rc, 'binding parameter');
     }
   }
 
@@ -388,13 +389,7 @@ class _ActiveCursorIterator extends IteratingCursor {
     }
 
     if (result != SqlError.SQLITE_OK && result != SqlError.SQLITE_DONE) {
-      throwException(
-        statement.database,
-        result,
-        operation: 'iterating through statement',
-        previousStatement: statement.sql,
-        statementArgs: statement._latestArguments,
-      );
+      statement.throwStatementException(result, 'iterating through statement');
     }
 
     return false;

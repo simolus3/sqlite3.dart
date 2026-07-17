@@ -7,6 +7,7 @@ import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
 
+import '../constants.dart';
 import '../functions.dart';
 import '../vfs.dart';
 
@@ -291,7 +292,7 @@ abstract interface class RawSqliteStatement {
   bool get supportsReadingTableNameForColumn;
   String? sqlite3_column_table_name(int index);
 
-  int sqlite3_column_type(int index);
+  SqlType sqlite3_column_type(int index);
   int sqlite3_column_int64(int index);
 
   /// (Only used on the web): Like [sqlite3_column_int64], but wrapping the

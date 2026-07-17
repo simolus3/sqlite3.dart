@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:web/web.dart' as web;
 
 import '../implementation/sqlite3.dart';
+import '../statement.dart';
 import 'bindings.dart';
 import 'js_interop.dart';
 import 'loader.dart';
@@ -97,4 +98,29 @@ final class WasmSqlite3 extends Sqlite3Implementation {
   }
 
   WasmSqlite3._(WasmBindings bindings) : super(WasmSqliteBindings(bindings));
+}
+
+/// Web-specific extensions for [RawPreparedStatement], which allows binding
+/// and reading big integers directly from JavaScript.
+///
+/// {@category wasm}
+extension WasmRawPreparedStatement on RawPreparedStatement {
+  /// Calls `sqlite3_bind_int64` with the 1-based index and the target value.
+  void bindJSBigInt(int index, JSBigInt value) {
+    final impl = rawStatement as WasmStatement;
+    handleBindRc(impl.sqlite3_bind_jsBigInt(index, value));
+  }
+
+  /// Calls `sqlite3_bind_int64` with the 1-based index and the target value.
+  void bindBigInt(int index, BigInt value) {
+    handleBindRc(rawStatement.sqlite3_bind_int64BigInt(index, value));
+  }
+
+  /// Calls `sqlite3_column_int64` with the given index.
+  ///
+  /// Note that this performs no bounds check against [columnCount] in Dart.
+  JSBigInt columnJSBigInt(int index) {
+    final impl = rawStatement as WasmStatement;
+    return impl.sqlite3_column_bigint(index);
+  }
 }

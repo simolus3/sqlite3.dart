@@ -11,6 +11,9 @@ external JSBigInt _bigInt(JSAny? s);
 @JS('Number')
 external JSNumber _number(JSAny? obj);
 
+@JS('Number.isSafeInteger')
+external JSBoolean _numberIsSafeInteger(JSAny? obj);
+
 extension type WrappedJSAny._(JSAny _) implements JSAny {
   external static JSArray<JSAny?> keys(JSObject o);
 
@@ -40,13 +43,7 @@ extension type JsBigInt(JSBigInt _jsBigInt) implements JSBigInt {
 
   JSBigInt get jsObject => _jsBigInt;
 
-  bool get isSafeInteger {
-    const maxSafeInteger = 9007199254740992;
-    const minSafeInteger = -maxSafeInteger;
-
-    return minSafeInteger.toJS.lessThanOrEqualTo(_jsBigInt).toDart &&
-        _jsBigInt.lessThanOrEqualTo(maxSafeInteger.toJS).toDart;
-  }
+  bool get isSafeInteger => _numberIsSafeInteger(_number(_jsBigInt)).toDart;
 
   Object toDart() {
     return isSafeInteger ? asDartInt : asDartBigInt;

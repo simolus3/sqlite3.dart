@@ -1320,8 +1320,8 @@ final class FfiStatement implements RawSqliteStatement, Finalizable {
   }
 
   @override
-  int sqlite3_column_type(int index) {
-    return libsqlite3.sqlite3_column_type(stmt, index);
+  SqlType sqlite3_column_type(int index) {
+    return libsqlite3.sqlite3_column_type(stmt, index) as SqlType;
   }
 
   @override

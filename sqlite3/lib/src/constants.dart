@@ -460,12 +460,12 @@ final class SqlPrepareFlag {
 /// Datatypes, https://sqlite.org/c3ref/c_blob.html
 ///
 /// {@category common}
-final class SqlType {
-  static const int SQLITE_INTEGER = 1;
-  static const int SQLITE_FLOAT = 2;
-  static const int SQLITE_TEXT = 3;
-  static const int SQLITE_BLOB = 4;
-  static const int SQLITE_NULL = 5;
+extension type const SqlType._(int _code) implements int {
+  static const SqlType SQLITE_INTEGER = SqlType._(1);
+  static const SqlType SQLITE_FLOAT = SqlType._(2);
+  static const SqlType SQLITE_TEXT = SqlType._(3);
+  static const SqlType SQLITE_BLOB = SqlType._(4);
+  static const SqlType SQLITE_NULL = SqlType._(5);
 }
 
 /// Text Encodings, https://www.sqlite.org/c3ref/c_any.html

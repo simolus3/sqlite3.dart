@@ -532,6 +532,94 @@ void testPreparedStatements(
         : 'RETURNING not supported by current sqlite3 version',
   );
 
+  group('raw', () {
+    late CommonDatabase database;
+
+    setUp(() {
+      database = sqlite3.openInMemory()
+        ..execute('CREATE TABLE tbl (foo TEXT);');
+    });
+    tearDown(() => database.close());
+
+    test('binding parameters', () {
+      final stmt = database.prepare('SELECT typeof(?)');
+      final raw = stmt.raw;
+
+      void expectType(String expected) {
+        expect(raw.step(), isTrue);
+        expect(raw.columnCount, 1);
+        expect(raw.columnType(0), SqlType.SQLITE_TEXT);
+        expect(raw.columnText(0), expected);
+        stmt.reset();
+      }
+
+      raw.bindInt64(1, 123);
+      expectType('integer');
+
+      raw.bindDouble(1, 123.0);
+      expectType('real');
+
+      raw.bindText(1, 'test');
+      expectType('text');
+
+      raw.bindBlob(1, Uint8List(10));
+      expectType('blob');
+
+      raw.bindNull(1);
+      expectType('null');
+
+      expect(() => raw.bindText(2, 'foo'), throwsSqlError(25, 25));
+
+      stmt.close();
+    });
+
+    test('reading values', () {
+      final stmt = database.prepare(
+        'values (NULL), (123), (123.0), (\'123\'), (x\'0123\')',
+      );
+
+      final raw = stmt.raw;
+      expect(raw.step(), isTrue);
+      expect(raw.columnType(0), SqlType.SQLITE_NULL);
+
+      expect(raw.step(), isTrue);
+      expect(raw.columnType(0), SqlType.SQLITE_INTEGER);
+      expect(raw.columnInt64(0), 123);
+
+      expect(raw.step(), isTrue);
+      expect(raw.columnType(0), SqlType.SQLITE_FLOAT);
+      expect(raw.columnInt64(0), 123.0);
+
+      expect(raw.step(), isTrue);
+      expect(raw.columnType(0), SqlType.SQLITE_TEXT);
+      expect(raw.columnText(0), '123');
+
+      expect(raw.step(), isTrue);
+      expect(raw.columnType(0), SqlType.SQLITE_BLOB);
+      expect(raw.columnBlob(0), isA<Uint8List>());
+
+      expect(raw.columnCount, 1);
+      expect(raw.columnName(0), 'column1');
+      expect(raw.columnTableName(0), isNull);
+
+      stmt.close();
+    });
+
+    test('throws exception from step()', () {
+      database.createFunction(
+        functionName: 'fail',
+        function: (_) {
+          throw 'expected failure';
+        },
+      );
+
+      final stmt = database.prepare('SELECT fail()');
+      addTearDown(stmt.close);
+      final raw = stmt.raw;
+      expect(() => raw.step(), throwsSqlError(1, 1));
+    });
+  });
+
   group('errors', () {
     late CommonDatabase db;
 
