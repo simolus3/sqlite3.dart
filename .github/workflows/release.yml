@@ -152,7 +152,7 @@ jobs:
         cp sqlite-compiled/sqlite3mc.wasm sqlite3_web/extra/js-package/assets/
 
     - name: Setup node
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@v6.4.0
       with:
         node-version: latest
         package-manager-cache: false
