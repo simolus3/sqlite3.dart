@@ -1,7 +1,13 @@
 import { test as baseTest, describe, onTestFinished, expect } from "vitest";
 
 import type * as sqlite from "../lib/index";
-import type { WebSqlite, ConnectOptions, Database } from "../lib/index";
+import type {
+  WebSqlite,
+  ConnectOptions,
+  Database,
+  RemoteError,
+  SqliteException,
+} from "../lib/index";
 
 // @ts-expect-error
 import workerUrl from "../assets/worker_testing.js?url";
@@ -163,6 +169,29 @@ export function sqliteTestCases(module: typeof sqlite) {
 
       expect(result.rows).toStrictEqual([[3, 3]]);
       expect(result.types).toStrictEqual(new Uint8Array([1, 3]).buffer);
+    });
+
+    databaseTest("provides exception details", async ({ database }) => {
+      const instance = await database.connect();
+      let error: RemoteError | undefined;
+
+      try {
+        await instance.execute("syntax error");
+      } catch (e) {
+        error = e as RemoteError;
+      }
+
+      expect(error).toBeInstanceOf(module.RemoteError);
+      expect(error?.cause).toMatchObject({
+        extendedResultCode: 1,
+        message: 'near "syntax": syntax error',
+        explanation: "SQL logic error (code 1)",
+        causingStatement: "syntax error",
+        parametersToStatement: [],
+        types: new ArrayBuffer(0),
+        operation: "executing",
+        offset: 0,
+      } satisfies SqliteException);
     });
 
     baseTest("encryption", async () => {

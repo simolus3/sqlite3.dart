@@ -471,9 +471,11 @@ export interface ExistingDatabase {
  * An exception thrown when a operation fails on the remote worker.
  *
  * Because the worker is implemented in Dart, and Dart objects can't be sent
- * across send ports, {@link exception} is typically serialized and a string.
+ * across send ports, {@link cause} is typically serialized and a string.
  */
 export class RemoteError extends Error {
+  declare cause?: DOMException | SqliteException;
+
   constructor(message: string, cause?: DOMException | SqliteException) {
     super(message, { cause });
   }
