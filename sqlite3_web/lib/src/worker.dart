@@ -331,14 +331,11 @@ final class _ClientConnection extends ProtocolChannel
       );
 
       if (request.returnRows) {
-        final resultSet = state.select(db, request.sql, parameters);
-
-        return RowsResponseUtils.wrapResultSet(
-          request.requestId,
-          resultSet: resultSet,
-          autoCommit: db.autocommit,
-          lastInsertRowId: db.lastInsertRowId,
-        );
+        final rowsResponse = state.select(db, request.sql, parameters);
+        rowsResponse.requestId = request.requestId;
+        rowsResponse.autoCommit = db.autocommit;
+        rowsResponse.lastInsertRowId = db.lastInsertRowId;
+        return rowsResponse;
       } else {
         state.execute(db, request.sql, parameters);
 
@@ -769,10 +766,13 @@ final class DatabaseState {
     }
   }
 
-  ResultSet select(CommonDatabase db, String sql, List<Object?> parameters) {
+  RowsResponse select(CommonDatabase db, String sql, List<Object?> parameters) {
     final (stmt, isCached) = _prepareStatement(db, sql);
     try {
-      return stmt.select(parameters);
+      return RowsResponseUtils.iterateAndEncodeResults(
+        stmt,
+        StatementParameters(parameters),
+      );
     } finally {
       if (isCached) {
         stmt.reset();

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:sqlite3/wasm.dart';
 import 'package:web/web.dart' show MessagePort;
 
+import '../js_array_buffer.dart';
 import '../types.dart';
 import '../worker_connector.dart';
 import 'helper.g.dart';
@@ -140,6 +141,7 @@ extension UpdateNotificationUtils on UpdateNotification {
 }
 
 extension RowsResponseUtils on RowsResponse {
+  @Deprecated('Use iterateAndEncodeResults instead')
   static RowsResponse wrapResultSet(
     int requestId, {
     required ResultSet resultSet,
@@ -182,6 +184,81 @@ extension RowsResponseUtils on RowsResponse {
       autoCommit: autoCommit,
       lastInsertRowId: lastInsertRowId,
       requestId: requestId,
+    );
+  }
+
+  static RowsResponse iterateAndEncodeResults(
+    CommonPreparedStatement statement,
+    StatementParameters parameters,
+  ) {
+    final jsRows = JSArray<JSArray<JSAny?>>();
+    final types = GrowableArrayBuffer();
+    final rawStmt = statement.raw;
+    var columnCount = 0;
+
+    // To bind parameters.
+    statement.iterateWith(parameters);
+
+    var isFirst = true;
+    while (rawStmt.step()) {
+      if (isFirst) {
+        columnCount = rawStmt.columnCount;
+        isFirst = false;
+      }
+
+      final typesForRow = types.newChunk(columnCount);
+      final row = JSArray.withLength(columnCount);
+      for (var i = 0; i < columnCount; i++) {
+        JSAny? value;
+        TypeCode code;
+
+        switch (rawStmt.columnType(i)) {
+          case SqlType.SQLITE_INTEGER:
+            final bigInt = rawStmt.columnJSBigInt(i);
+            final asJsNumber = _number(bigInt);
+            if (_numberIsSafeInteger(asJsNumber).toDart) {
+              value = asJsNumber;
+              code = TypeCode.integer;
+            } else {
+              value = bigInt;
+              code = TypeCode.bigInt;
+            }
+          case SqlType.SQLITE_FLOAT:
+            value = rawStmt.columnDouble(i).toJS;
+            code = TypeCode.float;
+          case SqlType.SQLITE_TEXT:
+            value = rawStmt.columnText(i).toJS;
+            code = TypeCode.text;
+          case SqlType.SQLITE_BLOB:
+            value = rawStmt.columnBlob(i).toJS;
+            code = TypeCode.blob;
+          case SqlType.SQLITE_NULL:
+          default:
+            code = TypeCode.$null;
+        }
+
+        row[i] = value;
+        typesForRow.setUint8(i, code.index);
+      }
+
+      jsRows.add(row);
+    }
+
+    final columnNames = JSArray<JSString>.withLength(columnCount);
+    final tableNames = JSArray<JSString?>.withLength(columnCount);
+    for (var i = 0; i < columnCount; i++) {
+      columnNames[i] = rawStmt.columnName(i).toJS;
+      tableNames[i] = rawStmt.columnTableName(i)?.toJS;
+    }
+
+    return newRowsResponse(
+      columnNames: columnNames,
+      tableNames: tableNames,
+      typeVector: types.take(),
+      rows: jsRows,
+      autoCommit: false,
+      lastInsertRowId: 0,
+      requestId: 0,
     );
   }
 
@@ -235,3 +312,9 @@ bool isCompatibilityCheck(String messageType) {
     return false;
   }
 }
+
+@JS('Number')
+external JSNumber _number(JSAny? e);
+
+@JS('Number.isSafeInteger')
+external JSBoolean _numberIsSafeInteger(JSAny? e);

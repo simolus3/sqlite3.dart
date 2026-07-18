@@ -26,6 +26,7 @@ List<Object?> deserializeParameters(JSArray values, JSArrayBuffer? types) {
 }
 
 /// Serializes a [ResultSet] into a serializable [JSObject].
+@Deprecated('Use runStatementAndEncodeResults instead')
 JSObject serializeResultSet(ResultSet resultSet) {
   return RowsResponseUtils.wrapResultSet(
     0,
@@ -33,6 +34,19 @@ JSObject serializeResultSet(ResultSet resultSet) {
     autoCommit: false,
     lastInsertRowId: 0,
   );
+}
+
+/// Steps through the statement, encoding each row as a JavaScript value that
+/// can later be deserialized with [deserializeResultSet].
+///
+/// This correctly preserves type information for numeric values. For example, a
+/// double `3.0` would be encoded differently than the int `3`, allowing clients
+/// where those values are non-identical (i.e., dart2wasm) to tell them apart.
+JSObject runStatementAndEncodeResults(
+  CommonPreparedStatement statement,
+  StatementParameters parameters,
+) {
+  return RowsResponseUtils.iterateAndEncodeResults(statement, parameters);
 }
 
 /// Deserializes a result set from the format in [serializeResultSet].

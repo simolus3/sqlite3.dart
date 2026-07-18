@@ -1,3 +1,7 @@
+## 0.9.4 (unreleased)
+
+- When returning rows, correctly encode doubles with integer values as doubles. This is only observable from dart2wasm clients.
+
 ## 0.9.3
 
 - Automatically flush pending IndexedDB writes after each write.

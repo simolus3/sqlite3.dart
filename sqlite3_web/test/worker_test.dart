@@ -11,6 +11,8 @@ import 'package:sqlite3_web/src/client.dart';
 import 'package:sqlite3_web/src/statement_cache.dart';
 import 'package:test/test.dart';
 
+import 'protocol_test.dart';
+
 void main() {
   late String sqlite3WasmUri;
   late FakeWorkerEnvironment fakeWorkers;
@@ -132,6 +134,24 @@ void main() {
       a.execute('SELECT 1', checkInTransaction: true),
       throwsA(isA<RemoteException>()),
     );
+  });
+
+  test('returns correct integer types', () async {
+    final a = await requestDatabase(
+      'foo',
+      DatabaseImplementation.inMemoryShared,
+    );
+    final result = await a.select('SELECT 3, 3.0');
+    final [row] = result.result;
+    expect(row.values, [3, 3.0]);
+
+    if (isDart2Wasm) {
+      // 3 and 3.0 are equal, but should still be represented as their correct
+      // type. We can't test this on dart2js, which only uses a single number
+      // type.
+      expect(row.columnAt(0).runtimeType, int);
+      expect(row.columnAt(1).runtimeType, double);
+    }
   });
 
   group('locks', () {
