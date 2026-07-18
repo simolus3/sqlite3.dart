@@ -106,12 +106,16 @@ final class WasmSqlite3 extends Sqlite3Implementation {
 /// {@category wasm}
 extension WasmRawPreparedStatement on RawPreparedStatement {
   /// Calls `sqlite3_bind_int64` with the 1-based index and the target value.
+  ///
+  /// The value must fit in a signed 64-bit integer.
   void bindJSBigInt(int index, JSBigInt value) {
     final impl = rawStatement as WasmStatement;
     handleBindRc(impl.sqlite3_bind_jsBigInt(index, value));
   }
 
   /// Calls `sqlite3_bind_int64` with the 1-based index and the target value.
+  ///
+  /// The value must fit in a signed 64-bit integer.
   void bindBigInt(int index, BigInt value) {
     handleBindRc(rawStatement.sqlite3_bind_int64BigInt(index, value));
   }

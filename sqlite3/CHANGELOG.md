@@ -1,4 +1,4 @@
-## 3.5.0 (unreleased)
+## 3.5.0
 
 - Add `CommonPreparedStatement.raw` and `RawPreparedStatement`, providing raw access to prepared statements. On the web, this also allows binding JS big integers directly.
 

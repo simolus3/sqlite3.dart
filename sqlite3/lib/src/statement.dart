@@ -157,7 +157,7 @@ abstract class CommonPreparedStatement {
 /// represent parameters and results.
 ///
 /// In some cases, it may be more efficient to call the underlying `sqlite3_`
-/// methodsmdirectly. This class provides methods mapping directly to raw SQLite
+/// methods directly. This class provides methods mapping directly to raw SQLite
 /// C function calls, with no additional checks or implicit conversions.
 ///
 /// Typically, this API would be used by:
@@ -165,7 +165,7 @@ abstract class CommonPreparedStatement {
 /// 1. Calling `bind` methods to bind prepared statement parameters.
 /// 2. While [step] returns `true`,
 ///    - call [columnType] and other `column` methods to read values.
-/// 3. Call [CommonPreparedStatement.reset].
+/// 3. Call [CommonPreparedStatement.reset] or [CommonPreparedStatement.close].
 ///
 /// On the web, this can also be used to bind JavaScript `BigInt` values to
 /// statements via [WasmRawPreparedStatement].
@@ -181,7 +181,7 @@ extension type RawPreparedStatement._(StatementImplementation _stmt) {
   /// A list of parameters used in [SqliteException.parametersToStatement] for
   /// exceptions thrown on this statement.
   ///
-  /// THis is only used for exceptions and does not bind values.
+  /// This is only used for exceptions and does not bind values.
   set debugParameters(List<Object?> parameters) {
     _stmt.latestArguments = parameters;
   }

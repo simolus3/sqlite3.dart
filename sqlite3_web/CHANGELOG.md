@@ -1,4 +1,4 @@
-## 0.9.4 (unreleased)
+## 0.9.4
 
 - For apps compiled with dart2wasm, preserve types of doubles that are exact
   integers (e.g. `3.0`) when binding parameters and reading results.
