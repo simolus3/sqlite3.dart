@@ -3,6 +3,7 @@ library;
 
 import 'dart:async';
 import 'dart:js_interop';
+import 'dart:typed_data';
 
 import 'package:sqlite3/common.dart';
 import 'package:sqlite3/src/wasm/sqlite3.dart';
@@ -134,6 +135,32 @@ void main() {
       a.execute('SELECT 1', checkInTransaction: true),
       throwsA(isA<RemoteException>()),
     );
+  });
+
+  test('types of bound parameters', () async {
+    final a = await requestDatabase(
+      'foo',
+      DatabaseImplementation.inMemoryShared,
+    );
+
+    Future<void> expectType(Object? dartValue, String type) async {
+      final result = await a.select(
+        'SELECT typeof(?)',
+        parameters: [dartValue],
+      );
+
+      final type = result.result.rows.single.single;
+      expect(type, type);
+    }
+
+    await expectType(null, 'null');
+    await expectType('foo', 'text');
+    await expectType(3, 'integer');
+    // When compiling to JavaScript, we can't tell 3 and 3.0 apart as distinct
+    // types. The worker must support this for dart2wasm clients, though.
+    await expectType(3.0, isDart2Wasm ? 'real' : 'integer');
+    await expectType(3.1, 'real');
+    await expectType(Uint8List(10), 'blob');
   });
 
   test('returns correct integer types', () async {

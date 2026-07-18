@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:js_interop';
 import 'dart:typed_data';
 
@@ -7,6 +8,7 @@ import 'package:sqlite3/src/wasm/js_interop/core.dart';
 import 'package:sqlite3/src/platform/web.dart';
 // ignore: implementation_imports
 import 'package:sqlite3/src/compile_options.dart';
+import 'package:sqlite3/wasm.dart';
 
 import '../channel.dart';
 import 'dsl.dart';
@@ -268,6 +270,10 @@ enum TypeCode {
   }
 
   static (JSArray, JSArrayBuffer) encodeValues(List<Object?> values) {
+    if (values is DecodedTypedValues) {
+      return (values._array, values._buffer);
+    }
+
     final jsParams = <JSAny?>[];
     final typeCodes = Uint8List(values.length);
     for (var i = 0; i < values.length; i++) {
@@ -280,19 +286,85 @@ enum TypeCode {
     return (jsParams.toJS, jsTypes);
   }
 
-  static List<Object?> decodeValues(JSArray array, JSArrayBuffer? types) {
-    final rawParameters = array.toDart;
-    final typeVector = types?.toDart.asUint8List();
+  static DecodedTypedValues decodeValues(JSArray array, JSArrayBuffer? types) {
+    return DecodedTypedValues._(array, types!);
+  }
+}
 
-    final parameters = List<Object?>.filled(rawParameters.length, null);
-    for (var i = 0; i < parameters.length; i++) {
-      final typeCode = typeVector != null
-          ? TypeCode.of(typeVector[i])
-          : TypeCode.unknown;
-      parameters[i] = typeCode.decodeColumn(rawParameters[i]);
+/// A lazily-created list of Dart objects from an encoded JS array and type
+/// codes.
+final class DecodedTypedValues extends ListBase<Object?> {
+  final JSArray _array;
+  final JSArrayBuffer _buffer;
+  final Uint8List _types;
+
+  DecodedTypedValues._(this._array, this._buffer)
+    : _types = _buffer.toDart.asUint8List();
+
+  StatementParameters get asParameters {
+    return StatementParameters.bindCustom(bindAsParameters);
+  }
+
+  void bindAsParameters(CommonPreparedStatement stmt) {
+    final expectedParameterCount = stmt.parameterCount;
+    final actualLength = length;
+
+    if (actualLength != expectedParameterCount) {
+      throw ArgumentError(
+        'Expected $expectedParameterCount parameters, got $actualLength',
+      );
     }
 
-    return parameters;
+    final raw = stmt.raw;
+    raw.debugParameters = this;
+
+    for (var i = 0; i < actualLength; i++) {
+      final code = TypeCode.of(_types[i]);
+      final sqliteIndex = i + 1;
+      final rawValue = _array[i];
+
+      switch (code) {
+        case TypeCode.integer:
+          raw.bindInt64(sqliteIndex, (rawValue as JSNumber).toDartInt);
+        case TypeCode.bigInt:
+          raw.bindJSBigInt(sqliteIndex, rawValue as JSBigInt);
+        case TypeCode.float:
+          raw.bindDouble(sqliteIndex, (rawValue as JSNumber).toDartDouble);
+        case TypeCode.text:
+          raw.bindText(sqliteIndex, (rawValue as JSString).toDart);
+        case TypeCode.blob:
+          raw.bindBlob(sqliteIndex, (rawValue as JSUint8Array).toDart);
+        case TypeCode.$null:
+          raw.bindNull(sqliteIndex);
+        case TypeCode.boolean:
+          raw.bindInt64(sqliteIndex, (rawValue as JSBoolean).toDart ? 1 : 0);
+        case TypeCode.unknown:
+          throw UnsupportedError('Unknown type code');
+      }
+    }
+  }
+
+  @override
+  int get length => _array.length;
+
+  @override
+  set length(int value) {
+    _unmodifiable();
+  }
+
+  @override
+  Object? operator [](int index) {
+    final typeCode = TypeCode.of(_types[index]);
+    return typeCode.decodeColumn(_array[index]);
+  }
+
+  @override
+  void operator []=(int index, Object? value) {
+    _unmodifiable();
+  }
+
+  Never _unmodifiable() {
+    throw UnsupportedError('decodeValues list is unmodifiable');
   }
 }
 

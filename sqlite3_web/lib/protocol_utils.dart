@@ -1,6 +1,8 @@
 /// Utilities for encoding sqlite3 types across web message ports.
 library;
 
+export 'src/protocol/messages.dart' show DecodedTypedValues;
+
 import 'dart:js_interop';
 
 import 'package:sqlite3/wasm.dart';
@@ -21,7 +23,7 @@ import 'src/protocol.dart';
 
 /// Given an array of values and optionally also type information obtained from
 /// [serializeParameters], return the parameters.
-List<Object?> deserializeParameters(JSArray values, JSArrayBuffer? types) {
+DecodedTypedValues deserializeParameters(JSArray values, JSArrayBuffer? types) {
   return TypeCode.decodeValues(values, types);
 }
 
@@ -44,7 +46,7 @@ JSObject serializeResultSet(ResultSet resultSet) {
 /// where those values are non-identical (i.e., dart2wasm) to tell them apart.
 JSObject runStatementAndEncodeResults(
   CommonPreparedStatement statement,
-  StatementParameters parameters,
+  DecodedTypedValues parameters,
 ) {
   return RowsResponseUtils.iterateAndEncodeResults(statement, parameters);
 }

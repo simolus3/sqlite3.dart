@@ -747,15 +747,15 @@ final class DatabaseState {
     return (stmt, false);
   }
 
-  void execute(CommonDatabase db, String sql, List<Object?> parameters) {
+  void execute(CommonDatabase db, String sql, DecodedTypedValues parameters) {
     if (parameters.isEmpty) {
       // Don't use cached statements here since SQL is allowed to contain more
       // than one statement.
-      return db.execute(sql, parameters);
+      return db.execute(sql, const []);
     } else {
       final (stmt, isCached) = _prepareStatement(db, sql);
       try {
-        stmt.execute(parameters);
+        stmt.executeWith(parameters.asParameters);
       } finally {
         if (isCached) {
           stmt.reset();
@@ -766,13 +766,14 @@ final class DatabaseState {
     }
   }
 
-  RowsResponse select(CommonDatabase db, String sql, List<Object?> parameters) {
+  RowsResponse select(
+    CommonDatabase db,
+    String sql,
+    DecodedTypedValues parameters,
+  ) {
     final (stmt, isCached) = _prepareStatement(db, sql);
     try {
-      return RowsResponseUtils.iterateAndEncodeResults(
-        stmt,
-        StatementParameters(parameters),
-      );
+      return RowsResponseUtils.iterateAndEncodeResults(stmt, parameters);
     } finally {
       if (isCached) {
         stmt.reset();

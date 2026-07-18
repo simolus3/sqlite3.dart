@@ -15,7 +15,7 @@ base class StatementImplementation extends CommonPreparedStatement {
 
   @override
   final String sql;
-  List<Object?>? _latestArguments;
+  List<Object?>? latestArguments;
   bool _inResetState = true;
   bool _closed = false;
 
@@ -54,7 +54,7 @@ base class StatementImplementation extends CommonPreparedStatement {
       resultCode,
       operation: operation,
       previousStatement: sql,
-      statementArgs: _latestArguments,
+      statementArgs: latestArguments,
     );
   }
 
@@ -168,7 +168,7 @@ base class StatementImplementation extends CommonPreparedStatement {
       _bindParam(param, i);
     }
 
-    _latestArguments = params;
+    latestArguments = params;
   }
 
   void _bindMapParams(Map<String, Object?> params) {
@@ -213,7 +213,7 @@ base class StatementImplementation extends CommonPreparedStatement {
       );
     }
 
-    _latestArguments = paramsAsList;
+    latestArguments = paramsAsList;
   }
 
   void _bindParam(Object? param, int i) {

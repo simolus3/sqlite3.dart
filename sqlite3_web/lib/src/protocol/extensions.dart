@@ -189,15 +189,14 @@ extension RowsResponseUtils on RowsResponse {
 
   static RowsResponse iterateAndEncodeResults(
     CommonPreparedStatement statement,
-    StatementParameters parameters,
+    DecodedTypedValues parameters,
   ) {
     final jsRows = JSArray<JSArray<JSAny?>>();
     final types = GrowableArrayBuffer();
     final rawStmt = statement.raw;
     var columnCount = 0;
 
-    // To bind parameters.
-    statement.iterateWith(parameters);
+    parameters.bindAsParameters(statement);
 
     var isFirst = true;
     while (rawStmt.step()) {

@@ -178,6 +178,14 @@ abstract class CommonPreparedStatement {
 /// {@category common}
 @experimental
 extension type RawPreparedStatement._(StatementImplementation _stmt) {
+  /// A list of parameters used in [SqliteException.parametersToStatement] for
+  /// exceptions thrown on this statement.
+  ///
+  /// THis is only used for exceptions and does not bind values.
+  set debugParameters(List<Object?> parameters) {
+    _stmt.latestArguments = parameters;
+  }
+
   /// Calls `sqlite3_bind_null` with the 1-based index.
   void bindNull(int index) {
     handleBindRc(rawStatement.sqlite3_bind_null(index));

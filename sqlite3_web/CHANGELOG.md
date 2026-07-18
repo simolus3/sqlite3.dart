@@ -1,6 +1,7 @@
 ## 0.9.4 (unreleased)
 
-- When returning rows, correctly encode doubles with integer values as doubles. This is only observable from dart2wasm clients.
+- For apps compiled with dart2wasm, preserve types of doubles that are exact
+  integers (e.g. `3.0`) when binding parameters and reading results.
 
 ## 0.9.3
 
