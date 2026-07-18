@@ -1,14 +1,15 @@
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
-/// Utility to growing an array buffer directly in JavaScript.
+/// A growing [JSArrayBuffer].
 ///
 /// We don't use resizable array buffers since support for `transfer` is easier
-/// to probe for and similarly efficient.
+/// to probe for, doesn't require a fixed upper bound ahead of time and is
+/// similarly efficient.
 ///
 /// We don't use typed buffers from the `typed_data` package because we want to
-/// convert to JavaScript in the end, so allocating buffers in Dart would be
-/// more expensive for `dart2wasm`.
+/// convert to JavaScript in the end, and allocating buffers in Dart would
+/// require an additional copy in the end.
 final class GrowableArrayBuffer {
   JSArrayBuffer _buffer;
   int _capacity;
