@@ -162,7 +162,7 @@ export interface RunQuery {
   // Dart name: parameters
   p: unknown[];
   // Dart name: typeVector
-  v: ArrayBuffer | null;
+  v: ArrayBuffer;
   // Dart name: lockId
   z: number /* int */ | null;
   // Dart name: returnRows
@@ -361,8 +361,7 @@ export function extractTransferrable(message: Message): Transferable[] {
       break;
     }
     case typeRunQuery: {
-      const typeVectorTmp = (message as RunQuery).v;
-      if (typeVectorTmp != null) result.push(typeVectorTmp);
+      result.push((message as RunQuery).v);
       break;
     }
     case typeSimpleSuccessResponse: {

@@ -69,7 +69,7 @@ function deserializeException(
         operation,
         causingStatement,
         paramData,
-        _paramTypes,
+        paramTypes,
         offset,
       ] = e.r as unknown[];
 
@@ -80,6 +80,7 @@ function deserializeException(
         operation: operation as string | undefined,
         causingStatement: causingStatement as string | undefined,
         parametersToStatement: paramData as unknown[] | undefined,
+        types: paramTypes as ArrayBuffer,
         offset: offset as number | undefined,
       } satisfies SqliteException;
     case typeAbortException:

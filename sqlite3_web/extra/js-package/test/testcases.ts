@@ -75,6 +75,7 @@ export function sqliteTestCases(module: typeof sqlite) {
         columnNames: ["1"],
         tableNames: null,
         rows: [[1]],
+        types: new Uint8Array([1]).buffer,
       });
     });
 
@@ -144,6 +145,24 @@ export function sqliteTestCases(module: typeof sqlite) {
       const instance = await database.connect();
       const response = await instance.customRequest("foo");
       expect(response).toStrictEqual("client-side response");
+    });
+
+    databaseTest("bind types", async ({ database }) => {
+      const instance = await database.connect();
+      const { result } = await instance.select("SELECT typeof(?), typeof(?)", {
+        parameters: [3, 3],
+        types: new Uint8Array([1, 3]).buffer,
+      });
+
+      expect(result.rows).toStrictEqual([["integer", "real"]]);
+    });
+
+    databaseTest("result types", async ({ database }) => {
+      const instance = await database.connect();
+      const { result } = await instance.select("SELECT 3, 3.0");
+
+      expect(result.rows).toStrictEqual([[3, 3]]);
+      expect(result.types).toStrictEqual(new Uint8Array([1, 3]).buffer);
     });
 
     baseTest("encryption", async () => {

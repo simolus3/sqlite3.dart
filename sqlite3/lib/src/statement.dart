@@ -237,13 +237,20 @@ extension type RawPreparedStatement._(StatementImplementation _stmt) {
     return rawStatement.sqlite3_column_name(index);
   }
 
-  /// If supported by the current SQLite build, calls
-  /// `sqlite3_column_table_name` with the given index.
-  String? columnTableName(int index) {
-    final stmt = rawStatement;
-    if (!stmt.supportsReadingTableNameForColumn) return null;
+  /// Whether the SQLite library supports extracting the table name information
+  /// out of a column.
+  bool get supportsColumnTableName {
+    return rawStatement.supportsReadingTableNameForColumn;
+  }
 
-    return stmt.sqlite3_column_table_name(index);
+  /// Calls `sqlite3_column_table_name` with the given index.
+  ///
+  /// Note that SQLite does not provide this information by default,
+  /// [supportsColumnTableName] should be called first to check whether this is
+  /// available.
+  String? columnTableName(int index) {
+    assert(supportsColumnTableName);
+    return rawStatement.sqlite3_column_table_name(index);
   }
 
   /// Calls `sqlite3_column_type`, returning the type of a column.

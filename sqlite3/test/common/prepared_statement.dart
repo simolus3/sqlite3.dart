@@ -600,7 +600,9 @@ void testPreparedStatements(
 
       expect(raw.columnCount, 1);
       expect(raw.columnName(0), 'column1');
-      expect(raw.columnTableName(0), isNull);
+      if (raw.supportsColumnTableName) {
+        expect(raw.columnTableName(0), isNull);
+      }
 
       stmt.close();
     });

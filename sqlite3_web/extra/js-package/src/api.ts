@@ -247,6 +247,33 @@ export interface Database {
 }
 
 /**
+ * Additional type information for {@link ResultSet.rows} or {@link DatabaseExecuteOptions.parameters}.
+ *
+ * Workers interpret the array buffer as a `Uint8Array`, and expect or generate one byte per parameter or result value,
+ * respectively.
+ *
+ * Valid type codes are:
+ *
+ *  - `1`: Integer (encoded as a JavaScript number).
+ *  - `2`: Integer (encoded as a JavaScript bigint).
+ *  - `3`: Double (encoded as a JavaScript number).
+ *  - `4`: Text (encoded as a JavaScript string).
+ *  - `5`: Blob (encoded as a JavaScript `Uint8Array`).
+ *  - `7`: Null (data is ignored).
+ *  - `8`: Boolean (encoded as a JavaScript `boolean`). This is not used in results, as SQLite does not have a boolean
+ *         type.
+ *
+ * `SELECT 3` will encode as an integer (type code 1), while `SELECT 3.0` encodes as a double (type code 3). For
+ * parameters, passing `3.0` as a JS number binds an integer parameter by default but this can be changed to a double by
+ * passing type code `3` explicitly.
+ *
+ * When interpreting results, column at index `c` in row at index `r` will have its type encoded at index
+ * `r * numColumns + c`.
+ *
+ */
+export type EncodedTypes = ArrayBuffer;
+
+/**
  * Options for {@link Database.select} and {@link Database.execute}.
  */
 export interface DatabaseExecuteOptions {
@@ -254,6 +281,11 @@ export interface DatabaseExecuteOptions {
    * Prepared statement parameters to bind to the statement.
    */
   parameters?: (string | null | number | BigInt | Uint8Array)[] | undefined;
+
+  /**
+   * Optional, additional type information to tell integers and doubles apart since both may be encoded as a JS number.
+   */
+  types?: EncodedTypes;
 
   /**
    * Whether to check the `autocommit` state of the database before running the statement.
@@ -296,6 +328,13 @@ export interface ResultSet {
    * as {@link columnNames}.
    */
   rows: (string | null | Uint8Array | number)[][];
+
+  /**
+   * A buffer providing additional information for types in {@link ResultSet.rows}.
+   *
+   * See {@link EncodedTypes} for more information.
+   */
+  types: EncodedTypes;
 }
 
 /**
@@ -466,6 +505,8 @@ export interface SqliteException {
    * passed to that statement.
    */
   parametersToStatement: unknown[] | undefined;
+
+  types: EncodedTypes;
 
   /**
    * An information description of what `package:sqlite3` in Dart was doing when

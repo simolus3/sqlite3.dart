@@ -244,10 +244,14 @@ extension RowsResponseUtils on RowsResponse {
     }
 
     final columnNames = JSArray<JSString>.withLength(columnCount);
-    final tableNames = JSArray<JSString?>.withLength(columnCount);
+    final tableNames = rawStmt.supportsColumnTableName
+        ? JSArray<JSString?>.withLength(columnCount)
+        : null;
     for (var i = 0; i < columnCount; i++) {
       columnNames[i] = rawStmt.columnName(i).toJS;
-      tableNames[i] = rawStmt.columnTableName(i)?.toJS;
+      if (tableNames != null) {
+        tableNames[i] = rawStmt.columnTableName(i)?.toJS;
+      }
     }
 
     return newRowsResponse(

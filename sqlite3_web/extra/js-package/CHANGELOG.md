@@ -1,3 +1,7 @@
+## 0.2.5
+
+- Allow passing custom type codes for requests, include them in responses.
+
 ## 0.2.4
 
 - Expose `typeCodesForValues`.

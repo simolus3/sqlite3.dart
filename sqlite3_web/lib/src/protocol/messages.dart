@@ -153,7 +153,7 @@ extension type RunQuery._(JSObject _) implements Request {
   external JSArray parameters;
   @JS(_UniqueFieldNames.typeVector)
   @transfer
-  external JSArrayBuffer? typeVector;
+  external JSArrayBuffer typeVector;
 
   @JS(_UniqueFieldNames.lockId)
   external int? lockId;

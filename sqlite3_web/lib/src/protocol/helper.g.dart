@@ -347,7 +347,7 @@ extension type _RunQuery._(RunQuery _) implements RunQuery {
   external factory _RunQuery({
     @JS('s') required String sql,
     @JS('p') required JSArray parameters,
-    @JS('v') required JSArrayBuffer? typeVector,
+    @JS('v') required JSArrayBuffer typeVector,
     @JS('z') required int? lockId,
     @JS('r') required bool returnRows,
     @JS('c') required bool checkInTransaction,
@@ -359,7 +359,7 @@ extension type _RunQuery._(RunQuery _) implements RunQuery {
 RunQuery newRunQuery({
   required String sql,
   required JSArray parameters,
-  required JSArrayBuffer? typeVector,
+  required JSArrayBuffer typeVector,
   required int? lockId,
   required bool returnRows,
   required bool checkInTransaction,
@@ -767,7 +767,7 @@ JSArray<JSAny> extractTransferrable(Message message) {
       }
     case 'runQuery':
       {
-        if ((message as RunQuery).typeVector case final e?) result.add(e);
+        result.add((message as RunQuery).typeVector);
         break;
       }
     case 'simpleSuccessResponse':
