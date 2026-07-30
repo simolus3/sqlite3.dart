@@ -29,7 +29,11 @@ abstract interface class WorkerEnvironment {
   /// This should only be called in Dart programs compiled to workers.
   factory WorkerEnvironment() {
     final context = globalContext;
-    if (context.instanceOfString('DedicatedWorkerGlobalScope')) {
+    final dedicatedWorkerScope =
+        context['DedicatedWorkerGlobalScope'] as JSFunction?;
+
+    if (dedicatedWorkerScope != null &&
+        context.instanceof(dedicatedWorkerScope)) {
       return _DedicatedWorkerEnvironment();
     } else {
       return _SharedWorkerEnvironment();

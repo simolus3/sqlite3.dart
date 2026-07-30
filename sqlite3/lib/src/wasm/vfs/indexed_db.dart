@@ -35,6 +35,9 @@ final _storesJs = [_filesStore.toJS, _blocksStore.toJS].toJS;
 const _blockSize = 4096;
 const _maxFileSize = 9007199254740992;
 
+@JS('Blob')
+external JSFunction get _blobConstructor;
+
 /// An (asynchronous) file system implementation backed by IndexedDB.
 ///
 /// For a synchronous variant of this that implements [FileSystem], use
@@ -235,7 +238,7 @@ final class _IndexedDbTransaction {
         result.setAll(rowOffset, data.asUint8List(0, length));
       }
 
-      if (row.value.instanceOfString('Blob')) {
+      if (row.value.instanceof(_blobConstructor)) {
         // We can't have an async suspension in here because that would close
         // the transaction. Launch the reader now and wait for all reads later.
         additionalReads.add(
