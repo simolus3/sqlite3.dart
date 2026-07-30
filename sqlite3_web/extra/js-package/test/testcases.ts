@@ -171,6 +171,29 @@ export function sqliteTestCases(module: typeof sqlite) {
       expect(result.types).toStrictEqual(new Uint8Array([1, 3]).buffer);
     });
 
+    databaseTest("big integers", async ({ database }) => {
+      const instance = await database.connect();
+
+      {
+        const { result } = await instance.select(
+          "SELECT ? = 9223372036854775807, ? = -9223372036854775808",
+          { parameters: [9223372036854775807n, -9223372036854775808n] },
+        );
+
+        expect(result.rows).toStrictEqual([[1, 1]]);
+      }
+
+      {
+        const { result } = await instance.select(
+          "SELECT 9223372036854775807, -9223372036854775808",
+        );
+
+        expect(result.rows).toStrictEqual([
+          [9223372036854775807n, -9223372036854775808n],
+        ]);
+      }
+    });
+
     databaseTest("provides exception details", async ({ database }) => {
       const instance = await database.connect();
       let error: RemoteError | undefined;
