@@ -1,3 +1,7 @@
+## 0.2.8-wip
+
+- Add `SqliteConnectionPool.addReaders` to add new read connections to a connection pool.
+
 ## 0.2.7
 
 - Avoid caching `EXPLAIN` statements.

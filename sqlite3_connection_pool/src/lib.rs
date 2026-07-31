@@ -1,5 +1,5 @@
 use crate::client::PoolClient;
-use crate::connection::PreparedStatement;
+use crate::connection::{Connection, PreparedStatement};
 use crate::dart::DartPort;
 use crate::pool::{ConnectionPool, PendingMessage, PoolConnection, PoolRequestHandle, PoolState};
 use crate::registry::{PoolInitializer, PoolRegistry};
@@ -87,6 +87,19 @@ extern "C" fn pkg_sqlite3_connection_pool_obtain_exclusive(
     Box::into_raw(Box::new(
         state.request_exclusive(pool, PendingMessage { tag, port }),
     ))
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_add_readers(
+    client: &PoolClient,
+    count: usize,
+    reads: *const Connection,
+) {
+    let pool = &client.pool;
+    let mut state = pool.lock().unwrap();
+
+    let connections = unsafe { slice::from_raw_parts(reads, count) };
+    state.add_readers(connections);
 }
 
 #[unsafe(no_mangle)]

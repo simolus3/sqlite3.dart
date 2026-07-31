@@ -72,6 +72,22 @@ final class RawSqliteConnectionPool implements Finalizable {
     });
   }
 
+  void addReaders(List<Database> connections) {
+    using((alloc) {
+      final readConnectionPointers = alloc<Pointer<Void>>(connections.length);
+
+      for (final (i, reader) in connections.indexed) {
+        (readConnectionPointers + i).value = reader.leak().cast();
+      }
+
+      pkg_sqlite3_connection_pool_add_readers(
+        _pool,
+        connections.length,
+        readConnectionPointers,
+      );
+    });
+  }
+
   (int, Completer<_PoolLease>) _createRequest() {
     final id = _requestCounter++;
     return (id, _outstandingRequests[id] = Completer());

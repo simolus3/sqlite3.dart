@@ -58,10 +58,9 @@ void main() {
   });
 
   test('can open pool asynchronously', () async {
-    final path = p.join(sandbox, 'test.db');
     final pool = await SqliteConnectionPool.openAsync(
-      name: path,
-      openConnections: poolConnectionOpener(path, 5, 0, true),
+      name: sandbox,
+      openConnections: poolConnectionOpener(sandbox, 5, 0, true),
     );
     addTearDown(pool.close);
 
@@ -174,6 +173,22 @@ void main() {
     expect(await db.autocommit, isTrue);
 
     db.returnLease();
+  });
+
+  test('can add additional readers', () async {
+    final pool = testPool(readConnections: 1);
+    final originalRead = await pool.reader();
+    final secondReadFuture = pool.reader();
+
+    pool.addReaders([for (var i = 0; i < 10; i++) openDatabase(sandbox)]);
+    final secondRead = await secondReadFuture;
+
+    originalRead.returnLease();
+    secondRead.returnLease();
+
+    final exclusive = await pool.exclusiveAccess();
+    expect(exclusive.readers, hasLength(11));
+    exclusive.close();
   });
 
   group('updates stream', () {
@@ -516,7 +531,7 @@ SqliteConnectionPool createPool({
   return SqliteConnectionPool.open(
     name: directory,
     openConnections: poolConnectionOpener(
-      p.join(directory, 'test.db'),
+      directory,
       readConnections,
       preparedStatementCacheSize,
       enableUpdateHooks,
@@ -525,21 +540,22 @@ SqliteConnectionPool createPool({
 }
 
 PoolConnections Function() poolConnectionOpener(
-  String path,
+  String directory,
   int readConnections,
   int preparedStatementCacheSize,
   bool enableUpdateHooks,
 ) {
-  Database openDatabase() {
-    return sqlite3.open(path)..execute('pragma journal_mode = wal;');
-  }
-
   return () => PoolConnections(
-    openDatabase(),
-    [for (var i = 0; i < readConnections; i++) openDatabase()],
+    openDatabase(directory),
+    [for (var i = 0; i < readConnections; i++) openDatabase(directory)],
     preparedStatementCacheSize: preparedStatementCacheSize,
     enableNativeUpdateHooks: enableUpdateHooks,
   );
+}
+
+Database openDatabase(String directory) {
+  return sqlite3.open(p.join(directory, 'test.db'))
+    ..execute('pragma journal_mode = wal;');
 }
 
 void _startIsolateForOpenTest(SendPort notify) {

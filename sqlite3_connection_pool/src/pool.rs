@@ -28,6 +28,7 @@ pub struct PoolState {
     /// concurrently).
     table_updates: Option<UnsafeCell<CollectedTableUpdates>>,
     pub update_listeners: Vec<DartPort>,
+    cache_size: usize,
 }
 
 #[repr(C)]
@@ -142,6 +143,7 @@ impl PoolState {
                 None
             },
             update_listeners: Default::default(),
+            cache_size,
         }
     }
 
@@ -247,6 +249,24 @@ impl PoolState {
         msg: PendingMessage,
     ) -> PoolRequestHandle {
         self.register_waiter(pool, msg, Waiter::Exclusive(Default::default()), true, true)
+    }
+
+    pub fn add_readers(&mut self, connections: &[Connection]) {
+        self.reads.connections.reserve(connections.len());
+        self.reads.idle_connections.reserve(connections.len());
+
+        let start_index = self.reads.connections.len();
+        for connection in connections {
+            self.reads.connections.push(PoolConnection {
+                raw: *connection,
+                cached_statements: StatementCache::new(self.cache_size),
+            });
+        }
+
+        let end_index = start_index + connections.len();
+        for i in start_index..end_index {
+            self.return_read_connection(i);
+        }
     }
 
     /// Returns the write and all read connections of this pool.

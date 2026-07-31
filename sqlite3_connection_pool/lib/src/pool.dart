@@ -227,6 +227,18 @@ final class SqliteConnectionPool {
     }
   }
 
+  /// Adds additional readers into the pool.
+  ///
+  /// The additional connections will be used to serve outstanding and
+  /// subsequent calls to [reader]. These connections should all point to the
+  /// same database file already used by existing pool connections.
+  ///
+  /// New readers can be added even when an existing read, write or exclusive
+  /// lock on the pool is active. An exclusive lock started before new readers
+  /// were added will not see added connections in
+  /// [ExclusivePoolAccess.readers].
+  void addReaders(List<Database> connections) => _raw.addReaders(connections);
+
   /// Closes this connection pool.
   ///
   /// This will prevent subsequent [reader] and [writer] requests, but existing
