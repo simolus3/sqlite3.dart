@@ -70,6 +70,7 @@ void writeWasmDefinitions() {
     filter,
     headers: ['assets/sqlite3_dart_wasm.h', 'assets/sqlite3.h'],
   );
+  final context = Context(Logger.detached('ignored'), generator);
 
   final library = ffigen.parse(Context(Logger.root, generator));
   final buffer = StringBuffer('''
@@ -91,10 +92,10 @@ extension type SqliteExports(JSObject raw) implements JSObject {
 
     switch (type) {
       case PointerType():
-        if (type.child.getNativeType() == 'externref ') {
+        if (type.child.getNativeType(context) == 'externref ') {
           buffer.write('ExternalDartReference<Object>?');
         } else {
-          buffer.write('Pointer /*<${type.getNativeType().trim()}>*/');
+          buffer.write('Pointer /*<${type.getNativeType(context).trim()}>*/');
         }
 
         return;
