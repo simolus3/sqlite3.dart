@@ -1,6 +1,7 @@
 ## 0.2.8-wip
 
 - Add `SqliteConnectionPool.addReaders` to add new read connections to a connection pool.
+- Support single-connection pools without dedicated readers.
 
 ## 0.2.7
 

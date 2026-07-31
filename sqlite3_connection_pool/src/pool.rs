@@ -97,6 +97,11 @@ enum Waiter {
 #[derive(Default)]
 struct ReadPoolRequest {
     assigned_connection: Option<usize>,
+    /// Whether the write connection was assigned to this read request.
+    ///
+    /// We allow this for read requests created when the pool only consists of a single write
+    /// connection.
+    has_writer: bool,
 }
 
 #[derive(Default)]
@@ -165,6 +170,10 @@ impl PoolState {
                 if let Some(ref connection) = reader.assigned_connection {
                     self.return_read_connection(*connection);
                 }
+
+                if reader.has_writer {
+                    self.return_write_connection();
+                }
             }
             Waiter::Writer(ref writer) => {
                 if writer.has_writer {
@@ -187,7 +196,7 @@ impl PoolState {
 
         if let Some(mut waiting) = self.reads.waiters.first {
             let waiter = unsafe { waiting.as_mut() };
-            let did_complete = self.try_complete(waiter);
+            let did_complete = self.try_complete(waiter, &mut false, &mut false);
             if did_complete {
                 self.reads.waiters.unlink(waiter);
             }
@@ -224,7 +233,7 @@ impl PoolState {
         // See if we can complete the next writer.
         if let Some(mut waiting) = self.writes.waiters.first {
             let waiter = unsafe { waiting.as_mut() };
-            let did_complete = self.try_complete(waiter);
+            let did_complete = self.try_complete(waiter, &mut false, &mut false);
             if did_complete {
                 self.writes.waiters.unlink(waiter);
             }
@@ -232,7 +241,7 @@ impl PoolState {
     }
 
     pub fn request_read(&mut self, pool: ConnectionPool, msg: PendingMessage) -> PoolRequestHandle {
-        self.register_waiter(pool, msg, Waiter::Reader(Default::default()), true, false)
+        self.register_waiter(pool, msg, Waiter::Reader(Default::default()))
     }
 
     pub fn request_write(
@@ -240,7 +249,7 @@ impl PoolState {
         pool: ConnectionPool,
         msg: PendingMessage,
     ) -> PoolRequestHandle {
-        self.register_waiter(pool, msg, Waiter::Writer(Default::default()), false, true)
+        self.register_waiter(pool, msg, Waiter::Writer(Default::default()))
     }
 
     pub fn request_exclusive(
@@ -248,7 +257,7 @@ impl PoolState {
         pool: ConnectionPool,
         msg: PendingMessage,
     ) -> PoolRequestHandle {
-        self.register_waiter(pool, msg, Waiter::Exclusive(Default::default()), true, true)
+        self.register_waiter(pool, msg, Waiter::Exclusive(Default::default()))
     }
 
     pub fn add_readers(&mut self, connections: &[Connection]) {
@@ -282,8 +291,6 @@ impl PoolState {
         pool: ConnectionPool,
         msg: PendingMessage,
         waiter: Waiter,
-        reads: bool,
-        writes: bool,
     ) -> PoolRequestHandle {
         let request = Box::new(WaitNode {
             read_entry: None,
@@ -292,7 +299,9 @@ impl PoolState {
             waiter,
         });
         let request = Box::leak(request);
-        let request_completed = self.try_complete(request);
+        let mut reads = false;
+        let mut writes = false;
+        let request_completed = self.try_complete(request, &mut reads, &mut writes);
         let request = NonNull::from(request);
 
         if !request_completed {
@@ -316,23 +325,42 @@ impl PoolState {
     ///
     /// Returns whether the node is completed and no longer waiting (in which case this function
     /// would have notified the Dart port). The node can be removed from its queues in that case.
-    fn try_complete(&mut self, waiter: &mut WaitNode) -> bool {
+    fn try_complete(
+        &mut self,
+        waiter: &mut WaitNode,
+        waiting_for_reads: &mut bool,
+        waiting_for_writes: &mut bool,
+    ) -> bool {
         match &mut waiter.waiter {
             Waiter::Reader(reads) => {
-                assert!(reads.assigned_connection.is_none());
+                *waiting_for_reads = true;
+                assert!(reads.assigned_connection.is_none() && !reads.has_writer);
 
-                if let Some(conn_idx) = self.reads.idle_connections.pop_front() {
+                let connection = if let Some(conn_idx) = self.reads.idle_connections.pop_front() {
                     reads.assigned_connection = Some(conn_idx);
-                    waiter.port.send_did_obtain_connection(
-                        &self.reads.connections[conn_idx],
-                        &self.functions,
-                    );
-                    return true;
-                }
+                    Some(&self.reads.connections[conn_idx])
+                } else if self.reads.connections.is_empty()
+                    && self.try_assign_write(&mut reads.has_writer)
+                {
+                    // Special case: When the pool has no read connections (i.e., consists of a
+                    // single write connection), also allow reads to use that connection.
+                    *waiting_for_writes = true;
+                    Some(&self.writes.connection)
+                } else {
+                    None
+                };
 
-                false
+                if let Some(connection) = connection {
+                    waiter
+                        .port
+                        .send_did_obtain_connection(connection, &self.functions);
+                    true
+                } else {
+                    false
+                }
             }
             Waiter::Writer(writes) => {
+                *waiting_for_writes = true;
                 assert!(!writes.has_writer);
 
                 if self.try_assign_write(&mut writes.has_writer) {
@@ -345,6 +373,9 @@ impl PoolState {
                 false
             }
             Waiter::Exclusive(exclusive) => {
+                *waiting_for_reads = true;
+                *waiting_for_writes = true;
+
                 if !self.try_assign_write(&mut exclusive.has_writer) {
                     return false;
                 }

@@ -126,22 +126,17 @@ final class SqliteConnectionPool {
   /// call [ConnectionLease.returnLease]. Explicitly returning the lease is
   /// strongly recommended though.
   ///
+  /// If the underlying [PoolConnections] have no underlying
+  /// [PoolConnections.readers], read requests may also resolve to the
+  /// [PoolConnections.writer] connection. As soon as a reader is added to the
+  /// pool (via [addReaders]), new read requests will only resolve to read
+  /// connections.
+  ///
   /// If an [abortSignal] is given and the future completes before the write
   /// connection became available, the future may complete with an
   /// [PoolAbortException] instead.
   Future<ConnectionLease> reader({Future<void>? abortSignal}) async {
-    _checkNotClosed();
-    final (request, future) = _raw.requestRead();
-    _installAbortSignal(request, abortSignal);
-
-    final connectionPointer = await future;
-    final lease = ConnectionLease._(
-      PoolConnection.unsafeFromPointer(connectionPointer.connection),
-      request,
-      false,
-    );
-    await lease._rollbackPendingTransaction();
-    return lease;
+    return _requestReaderOrWriter(false, abortSignal);
   }
 
   /// Obtains a connection suitable for writes from the connection pool.
@@ -161,8 +156,15 @@ final class SqliteConnectionPool {
   /// connection became available, the future may complete with an
   /// [PoolAbortException] instead.
   Future<ConnectionLease> writer({Future<void>? abortSignal}) async {
+    return _requestReaderOrWriter(true, abortSignal);
+  }
+
+  Future<ConnectionLease> _requestReaderOrWriter(
+    bool writer,
+    Future<void>? abortSignal,
+  ) async {
     _checkNotClosed();
-    final (request, future) = _raw.requestWrite();
+    final (request, future) = writer ? _raw.requestWrite() : _raw.requestRead();
     _installAbortSignal(request, abortSignal);
 
     final connectionPointer = await future;

@@ -245,9 +245,9 @@ final class RawSqliteConnectionPool implements Finalizable {
     });
 
     if (pool.address == 0) {
-      if (openException case final exception?) {
+      if (openException case (final exception, final trace)?) {
         // Couldn't open because the callback threw an exception, rethrow that.
-        Error.throwWithStackTrace(exception.$1, exception.$2);
+        Error.throwWithStackTrace(exception, trace);
       }
 
       // Unreachable, opening a pool can only fail due to the callback throwing.
@@ -259,8 +259,19 @@ final class RawSqliteConnectionPool implements Finalizable {
 }
 
 /// A write and a collection of read connections to put into a connection pool.
+///
+/// All connections ([readers] and [writer]) should point to the same database
+/// file to form a valid pool. Additionally, connections should use the
+/// [WAL](https://sqlite.org/wal.html) journal mode to support parallel reads
+/// and writes.
 final class PoolConnections {
+  /// The connection used for writes to the database.
   final Database writer;
+
+  /// Connections used to serve database reads.
+  ///
+  /// This can be empty, in which case reads on the pool can also use the
+  /// [writer] connection as a fallback.
   final List<Database> readers;
 
   /// If set to a positive value, creates a cache of prepared statements for

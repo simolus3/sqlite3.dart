@@ -175,20 +175,62 @@ void main() {
     db.returnLease();
   });
 
-  test('can add additional readers', () async {
-    final pool = testPool(readConnections: 1);
-    final originalRead = await pool.reader();
-    final secondReadFuture = pool.reader();
+  group('can add additional readers', () {
+    test('completes previous requests', () async {
+      final pool = testPool(readConnections: 1);
+      final originalRead = await pool.reader();
+      final secondReadFuture = pool.reader();
 
-    pool.addReaders([for (var i = 0; i < 10; i++) openDatabase(sandbox)]);
-    final secondRead = await secondReadFuture;
+      pool.addReaders([for (var i = 0; i < 10; i++) openDatabase(sandbox)]);
+      final secondRead = await secondReadFuture;
 
-    originalRead.returnLease();
-    secondRead.returnLease();
+      originalRead.returnLease();
+      secondRead.returnLease();
 
-    final exclusive = await pool.exclusiveAccess();
-    expect(exclusive.readers, hasLength(11));
-    exclusive.close();
+      final exclusive = await pool.exclusiveAccess();
+      expect(exclusive.readers, hasLength(11));
+      exclusive.close();
+    });
+
+    test('can use write connection for reads', () async {
+      final pool = testPool(readConnections: 0);
+      // Pool has no readers, this should still resolve (to the writer).
+      final originalReader = await pool.reader();
+
+      // Which means there can't be a concurrent write.
+      var hasWriter = false;
+      final originalWriterFuture = pool.writer().whenComplete(
+        () => hasWriter = true,
+      );
+      expect(hasWriter, isFalse);
+      await pumpEventQueue();
+      expect(hasWriter, isFalse);
+
+      originalReader.returnLease();
+      final originalWriter = await originalWriterFuture;
+      expect(hasWriter, isTrue);
+
+      // This read request can resolve to the writer (which is currently locked)
+      // or a reader.
+      final secondReaderFuture = pool.reader();
+      pool.addReaders([openDatabase(sandbox)]);
+      final secondReader = await secondReaderFuture;
+
+      // At this stage, because there is a read connection in the pool,
+      // subsequent read requests must go to a read connection.
+      var hasThirdReader = false;
+      final thirdReaderFuture = pool.reader().whenComplete(
+        () => hasThirdReader = true,
+      );
+      originalWriter.returnLease();
+      await pumpEventQueue();
+      expect(hasThirdReader, isFalse);
+
+      secondReader.returnLease();
+      final thirdReader = await thirdReaderFuture;
+      expect(hasThirdReader, isTrue);
+      thirdReader.returnLease();
+    });
   });
 
   group('updates stream', () {
