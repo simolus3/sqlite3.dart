@@ -1,6 +1,6 @@
-## 0.2.1 (unreleased)
+## 0.2.1
 
-- Support version 3.4.0 of `package:sqlite3`.
+- Fix deprecation warnings from version 3.4.0 of `package:sqlite3`.
 
 ## 0.2.0
 
