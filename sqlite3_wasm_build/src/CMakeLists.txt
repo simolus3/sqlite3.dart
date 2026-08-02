@@ -20,7 +20,7 @@ FetchContent_Declare(
 
 FetchContent_Declare(
     sqlite3mc
-    URL https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.4.0/sqlite3mc-2.4.0-sqlite-3.53.4-amalgamation.zip
+    URL https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.5.0/sqlite3mc-2.5.0-sqlite-3.53.4-amalgamation.zip
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
 )
 
