@@ -17,6 +17,7 @@ import '../utils.dart';
 sealed class SqliteBinary {
   static SqliteBinary forBuild(BuildInput input) {
     final userDefines = input.userDefines;
+    final userDefinesBase = _userDefinesBase(input);
 
     PrecompiledFromGithubAssets fromGitHub(LibraryType type) {
       final pattern =
@@ -24,6 +25,20 @@ sealed class SqliteBinary {
           PrecompiledFromGithubAssets.defaultUrlPattern;
 
       return PrecompiledFromGithubAssets(type, urlPattern: pattern);
+    }
+
+    List<String> resolvedPaths(String key) {
+      final List<String> entries =
+          (userDefines[key] as List?)?.cast() ?? const [];
+      if (userDefinesBase == null) return entries;
+
+      return [
+        for (final entry in entries)
+          if (p.isAbsolute(entry))
+            entry
+          else
+            userDefinesBase.resolve(entry).toFilePath(),
+      ];
     }
 
     switch (userDefines['source']) {
@@ -58,13 +73,12 @@ sealed class SqliteBinary {
             userDefines,
             input.config.code.targetOS,
           ),
-          additionalIncludes:
-              (userDefines['additional_includes'] as List?)?.cast() ?? const [],
+          additionalIncludes: resolvedPaths('additional_includes'),
           additionalFlags:
               (userDefines['additional_flags'] as List?)?.cast() ?? const [],
-          additionalLibraryDirectories:
-              (userDefines['additional_lib_directories'] as List?)?.cast() ??
-              const [],
+          additionalLibraryDirectories: resolvedPaths(
+            'additional_lib_directories',
+          ),
           additionalLibraries:
               (userDefines['additional_libraries'] as List?)?.cast() ??
               const [],
@@ -77,6 +91,22 @@ sealed class SqliteBinary {
               'executable',
         );
     }
+  }
+
+  /// The `pubspec.yaml` the user-defines were read from.
+  ///
+  /// Relative paths are resolved against this file, matching what
+  /// [HookInputUserDefines.path] does for `path`. That method only resolves a
+  /// single string, so list-valued options need the base itself.
+  static Uri? _userDefinesBase(BuildInput input) {
+    final userDefines = input.json['user_defines'];
+    if (userDefines is! Map) return null;
+
+    final source = userDefines['workspace_pubspec'];
+    if (source is! Map) return null;
+
+    final basePath = source['base_path'];
+    return basePath is String ? Uri.file(basePath) : null;
   }
 }
 

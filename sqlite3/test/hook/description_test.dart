@@ -3,6 +3,7 @@ library;
 
 import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
+import 'package:path/path.dart' as p;
 import 'package:sqlite3/src/hook/asset_hashes.dart';
 import 'package:sqlite3/src/hook/compile/description.dart';
 import 'package:test/test.dart';
@@ -34,6 +35,45 @@ void main() {
           targetArchitecture: Architecture.arm64,
           targetOS: OS.windows,
           linkModePreference: LinkModePreference.dynamic,
+        ),
+      ],
+    );
+  });
+
+  test('resolves relative paths against the pubspec', () async {
+    await testBuildHook(
+      userDefines: PackageUserDefines(
+        workspacePubspec: PackageUserDefinesSource(
+          defines: {
+            'source': 'source',
+            'path': 'native/sqlite3.c',
+            'additional_includes': ['native/include', '/absolute/include'],
+            'additional_lib_directories': ['native/lib'],
+          },
+          basePath: Uri.file(p.join(d.sandbox, 'pubspec.yaml')),
+        ),
+      ),
+      mainMethod: (args) {
+        return build(args, (input, outputs) async {
+          final config = SqliteBinary.forBuild(input) as CompileSqlite;
+
+          expect(config.sourceFile, p.join(d.sandbox, 'native', 'sqlite3.c'));
+          expect(config.additionalIncludes, [
+            p.join(d.sandbox, 'native', 'include'),
+            '/absolute/include',
+          ]);
+          expect(config.additionalLibraryDirectories, [
+            p.join(d.sandbox, 'native', 'lib'),
+          ]);
+        });
+      },
+      check: (_, _) {},
+      extensions: [
+        CodeAssetExtension(
+          targetArchitecture: Architecture.arm64,
+          targetOS: OS.macOS,
+          linkModePreference: LinkModePreference.dynamic,
+          macOS: MacOSCodeConfig(targetVersion: 13),
         ),
       ],
     );
