@@ -150,6 +150,7 @@ hooks:
 
 The build can be configured further with these additional options:
 
+- `additional_sources`: Additional C sources to compile, each as its own translation unit.
 - `additional_includes`: Additional include directories to add to the header search path.
 - `additional_flags`: Additional compiler options.
 - `additional_lib_directories` and `additional_libraries`: Additional libraries to link.

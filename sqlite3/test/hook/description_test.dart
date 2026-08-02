@@ -47,6 +47,7 @@ void main() {
           defines: {
             'source': 'source',
             'path': 'native/sqlite3.c',
+            'additional_sources': ['native/extension.c'],
             'additional_includes': ['native/include', '/absolute/include'],
             'additional_lib_directories': ['native/lib'],
           },
@@ -58,6 +59,9 @@ void main() {
           final config = SqliteBinary.forBuild(input) as CompileSqlite;
 
           expect(config.sourceFile, p.join(d.sandbox, 'native', 'sqlite3.c'));
+          expect(config.additionalSources, [
+            p.join(d.sandbox, 'native', 'extension.c'),
+          ]);
           expect(config.additionalIncludes, [
             p.join(d.sandbox, 'native', 'include'),
             '/absolute/include',

@@ -73,6 +73,7 @@ sealed class SqliteBinary {
             userDefines,
             input.config.code.targetOS,
           ),
+          additionalSources: resolvedPaths('additional_sources'),
           additionalIncludes: resolvedPaths('additional_includes'),
           additionalFlags:
               (userDefines['additional_flags'] as List?)?.cast() ?? const [],
@@ -349,6 +350,9 @@ final class CompileSqlite implements SqliteBinary {
   /// User-defines for the SQLite compilation.
   final CompilerDefines defines;
 
+  /// Additional sources to compile, each as its own translation unit.
+  final List<String> additionalSources;
+
   /// Additional header search paths.
   final List<String> additionalIncludes;
 
@@ -363,6 +367,7 @@ final class CompileSqlite implements SqliteBinary {
   CompileSqlite({
     required this.sourceFile,
     required this.defines,
+    required this.additionalSources,
     required this.additionalIncludes,
     required this.additionalFlags,
     required this.additionalLibraryDirectories,
