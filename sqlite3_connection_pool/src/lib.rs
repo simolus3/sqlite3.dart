@@ -45,33 +45,21 @@ fn clone_arc(pool: &Mutex<PoolState>) -> ConnectionPool {
 }
 
 #[unsafe(no_mangle)]
-extern "C" fn pkg_sqlite3_connection_pool_obtain_read(
+extern "C" fn pkg_sqlite3_connection_pool_obtain_single(
     client: &PoolClient,
     tag: i64,
     port: DartPort,
+    read: c_char,
 ) -> *mut PoolRequestHandle {
     let pool = &client.pool;
     let mut state = pool.lock().unwrap();
     let pool = clone_arc(pool);
 
-    Box::into_raw(Box::new(
-        state.request_read(pool, PendingMessage { tag, port }),
-    ))
-}
-
-#[unsafe(no_mangle)]
-extern "C" fn pkg_sqlite3_connection_pool_obtain_write(
-    client: &PoolClient,
-    tag: i64,
-    port: DartPort,
-) -> *mut PoolRequestHandle {
-    let pool = &client.pool;
-    let mut state = pool.lock().unwrap();
-    let pool = clone_arc(pool);
-
-    Box::into_raw(Box::new(
-        state.request_write(pool, PendingMessage { tag, port }),
-    ))
+    Box::into_raw(Box::new(state.request_single(
+        pool,
+        PendingMessage { tag, port },
+        read != 0,
+    )))
 }
 
 #[unsafe(no_mangle)]

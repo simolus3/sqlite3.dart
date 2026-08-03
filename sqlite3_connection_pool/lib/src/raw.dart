@@ -93,26 +93,19 @@ final class RawSqliteConnectionPool implements Finalizable {
     return (id, _outstandingRequests[id] = Completer());
   }
 
-  (RawPoolRequest, Future<PoolConnectionRef>) requestRead() {
+  (RawPoolRequest, Future<PoolConnectionRef>) requestSingleConnection(
+    bool read,
+  ) {
     final (tag, completer) = _createRequest();
     final request = RawPoolRequest._(
       tag,
       this,
-      pkg_sqlite3_connection_pool_obtain_read(_pool, tag, _nativePort),
-    );
-
-    return (
-      request,
-      completer.future.then((f) => (f as _SingleConnectionLease)._connection),
-    );
-  }
-
-  (RawPoolRequest, Future<PoolConnectionRef>) requestWrite() {
-    final (tag, completer) = _createRequest();
-    final request = RawPoolRequest._(
-      tag,
-      this,
-      pkg_sqlite3_connection_pool_obtain_write(_pool, tag, _nativePort),
+      pkg_sqlite3_connection_pool_obtain_single(
+        _pool,
+        tag,
+        _nativePort,
+        read ? 1 : 0,
+      ),
     );
 
     return (

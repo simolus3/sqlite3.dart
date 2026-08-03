@@ -164,7 +164,7 @@ final class SqliteConnectionPool {
     Future<void>? abortSignal,
   ) async {
     _checkNotClosed();
-    final (request, future) = writer ? _raw.requestWrite() : _raw.requestRead();
+    final (request, future) = _raw.requestSingleConnection(!writer);
     _installAbortSignal(request, abortSignal);
 
     final connectionPointer = await future;

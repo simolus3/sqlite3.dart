@@ -65,25 +65,14 @@ external ffi.Pointer<PoolRequest> pkg_sqlite3_connection_pool_obtain_exclusive(
     ffi.Pointer<ConnectionPool>,
     ffi.Int64,
     ffi.Int64,
+    ffi.Char,
   )
 >(isLeaf: true)
-external ffi.Pointer<PoolRequest> pkg_sqlite3_connection_pool_obtain_read(
+external ffi.Pointer<PoolRequest> pkg_sqlite3_connection_pool_obtain_single(
   ffi.Pointer<ConnectionPool> pool,
   int tag,
   int port,
-);
-
-@ffi.Native<
-  ffi.Pointer<PoolRequest> Function(
-    ffi.Pointer<ConnectionPool>,
-    ffi.Int64,
-    ffi.Int64,
-  )
->(isLeaf: true)
-external ffi.Pointer<PoolRequest> pkg_sqlite3_connection_pool_obtain_write(
-  ffi.Pointer<ConnectionPool> pool,
-  int tag,
-  int port,
+  int read,
 );
 
 @ffi.Native<

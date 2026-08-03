@@ -39,12 +39,8 @@ ConnectionPool* pkg_sqlite3_connection_pool_open(const uint8_t* name,
 
 void pkg_sqlite3_connection_pool_close(const ConnectionPool* pool);
 
-PoolRequest* pkg_sqlite3_connection_pool_obtain_read(const ConnectionPool* pool,
-                                                     int64_t tag,
-                                                     DartPort port);
-
-PoolRequest* pkg_sqlite3_connection_pool_obtain_write(
-    const ConnectionPool* pool, int64_t tag, DartPort port);
+PoolRequest* pkg_sqlite3_connection_pool_obtain_single(
+    const ConnectionPool* pool, int64_t tag, DartPort port, char read);
 
 PoolRequest* pkg_sqlite3_connection_pool_obtain_exclusive(
     const ConnectionPool* pool, int64_t tag, DartPort port);

@@ -240,16 +240,21 @@ impl PoolState {
         }
     }
 
-    pub fn request_read(&mut self, pool: ConnectionPool, msg: PendingMessage) -> PoolRequestHandle {
-        self.register_waiter(pool, msg, Waiter::Reader(Default::default()))
-    }
-
-    pub fn request_write(
+    pub fn request_single(
         &mut self,
         pool: ConnectionPool,
         msg: PendingMessage,
+        read: bool,
     ) -> PoolRequestHandle {
-        self.register_waiter(pool, msg, Waiter::Writer(Default::default()))
+        self.register_waiter(
+            pool,
+            msg,
+            if read {
+                Waiter::Reader(Default::default())
+            } else {
+                Waiter::Writer(Default::default())
+            },
+        )
     }
 
     pub fn request_exclusive(
