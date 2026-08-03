@@ -2,15 +2,24 @@ use crate::connection::Connection;
 use crate::pool::{ConnectionPool, ExternalFunctions, PoolState};
 use std::collections::HashMap;
 use std::ffi::c_uchar;
-use std::ptr::NonNull;
 use std::slice;
-use std::sync::{Arc, LazyLock, Mutex, Weak};
+use std::sync::{Arc, LazyLock, Mutex, MutexGuard, Weak};
 
 static REGISTRY: LazyLock<PoolRegistry> = LazyLock::new(|| PoolRegistry::default());
 
 #[derive(Default)]
 pub struct PoolRegistry {
     pools: Mutex<HashMap<String, Weak<Mutex<PoolState>>>>,
+}
+
+pub struct UninitializedPool<'a> {
+    name: &'a str,
+    guard: MutexGuard<'a, HashMap<String, Weak<Mutex<PoolState>>>>,
+}
+
+pub enum MaybeInitializedPool<'a> {
+    Pool(ConnectionPool),
+    Uninitialized(UninitializedPool<'a>),
 }
 
 #[repr(C)]
@@ -23,27 +32,25 @@ pub struct InitializedPool {
     enable_update_hooks: c_uchar,
 }
 
-pub type PoolInitializer = extern "C" fn() -> Option<NonNull<InitializedPool>>;
-
 impl PoolRegistry {
-    fn lookup_internal(&self, name: &str, initialize: PoolInitializer) -> Option<ConnectionPool> {
-        let mut pools = self.pools.lock().unwrap();
+    fn lookup_internal<'a>(&'a self, name: &'a str) -> MaybeInitializedPool<'a> {
+        let pools = self.pools.lock().unwrap();
         if let Some(pool) = pools.get(name) {
             if let Some(pool) = Weak::upgrade(pool) {
-                return Some(pool);
+                return MaybeInitializedPool::Pool(pool);
             }
         };
 
-        // The pool doesn't exist, obtain connections from Dart callback.
-        let Some(initialized) = initialize() else {
-            // Initialization failed, don't insert a pool.
-            return None;
-        };
-        let initialized = unsafe {
-            // The returned pointer is valid until this function returns.
-            initialized.as_ref()
-        };
+        return MaybeInitializedPool::Uninitialized(UninitializedPool { name, guard: pools });
+    }
 
+    pub fn lookup<'a>(name: &'a str) -> MaybeInitializedPool<'a> {
+        REGISTRY.lookup_internal(name)
+    }
+}
+
+impl<'a> UninitializedPool<'a> {
+    pub fn initialize(mut self, initialized: &InitializedPool) -> ConnectionPool {
         let state = PoolState::new(
             initialized.functions,
             initialized.write,
@@ -55,11 +62,8 @@ impl PoolRegistry {
         let pool = ConnectionPool::new(Mutex::new(state));
         PoolState::register_hooks_on_writer(&pool);
 
-        pools.insert(name.to_string(), Arc::downgrade(&pool));
-        Some(pool)
-    }
-
-    pub fn lookup(name: &str, initialize: PoolInitializer) -> Option<ConnectionPool> {
-        REGISTRY.lookup_internal(name, initialize)
+        self.guard
+            .insert(self.name.to_string(), Arc::downgrade(&pool));
+        pool
     }
 }

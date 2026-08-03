@@ -174,80 +174,75 @@ final class RawSqliteConnectionPool implements Finalizable {
     String name,
     PoolConnections Function() open,
   ) {
-    (Object, StackTrace)? openException;
-
-    final pool = using((alloc) {
+    return using((alloc) {
       final encoded = utf8.encode(name);
       final namePtr = alloc<Uint8>(encoded.length);
+      final initializerAndPool = alloc<Pointer<Void>>(2);
+      final initializerOut = initializerAndPool
+          .cast<Pointer<UninitializedPool>>();
+      final poolClientOut = (initializerAndPool + 1)
+          .cast<Pointer<ConnectionPool>>();
+
       namePtr.asTypedList(encoded.length).setAll(0, encoded);
 
-      final initializeCallable =
-          NativeCallable<Pointer<InitializedPool> Function()>.isolateLocal(() {
-            final initOptionsPtr = alloc<InitializedPool>();
-            final initOptions = initOptionsPtr.ref;
-            initOptions.functions
-              ..sqlite3_update_hook = libsqlite3.addresses.sqlite3_update_hook
-                  .cast()
-              ..sqlite3_rollback_hook = libsqlite3
-                  .addresses
-                  .sqlite3_rollback_hook
-                  .cast()
-              ..sqlite3_commit_hook = libsqlite3.addresses.sqlite3_commit_hook
-                  .cast()
-              ..sqlite3_get_autocommit = libsqlite3
-                  .addresses
-                  .sqlite3_get_autocommit
-                  .cast()
-              ..sqlite3_finalize = libsqlite3.addresses.sqlite3_finalize.cast()
-              ..sqlite3_close_v2 = libsqlite3.addresses.sqlite3_close_v2.cast()
-              ..dart_post_c_object = NativeApi.postCObject.cast();
-
-            try {
-              final PoolConnections(
-                :readers,
-                :writer,
-                :preparedStatementCacheSize,
-                :enableNativeUpdateHooks,
-              ) = open();
-
-              initOptions.write = writer.leak().cast();
-              initOptions.read_count = readers.length;
-              initOptions.reads = alloc(readers.length);
-              initOptions.prepared_statement_cache_size =
-                  preparedStatementCacheSize;
-              initOptions.enable_update_hooks = enableNativeUpdateHooks ? 1 : 0;
-
-              for (final (i, reader) in readers.indexed) {
-                (initOptions.reads + i).value = reader.leak().cast();
-              }
-            } catch (e, s) {
-              openException = (e, s);
-              return nullptr;
-            }
-
-            return initOptionsPtr;
-          });
-
-      final connection = pkg_sqlite3_connection_pool_open(
+      pkg_sqlite3_connection_pool_open(
         namePtr,
         encoded.length,
-        initializeCallable.nativeFunction,
+        initializerOut,
+        poolClientOut,
       );
-      initializeCallable.close();
-      return connection;
-    });
 
-    if (pool.address == 0) {
-      if (openException case (final exception, final trace)?) {
-        // Couldn't open because the callback threw an exception, rethrow that.
-        Error.throwWithStackTrace(exception, trace);
+      final initializer = initializerOut.value;
+      final poolClient = poolClientOut.value;
+
+      // If a pool with this name already exists, it is written to poolClient.
+      if (poolClient.address != 0) {
+        return RawSqliteConnectionPool._(poolClient);
       }
 
-      // Unreachable, opening a pool can only fail due to the callback throwing.
-      throw AssertionError();
-    }
+      // Otherwise, we're given an initializer and it's our responsibility to
+      // open the pool now.
+      assert(initializer.address != 0);
 
-    return RawSqliteConnectionPool._(pool);
+      final initOptionsPtr = alloc<InitializedPool>();
+      final initOptions = initOptionsPtr.ref;
+      initOptions.functions
+        ..sqlite3_update_hook = libsqlite3.addresses.sqlite3_update_hook.cast()
+        ..sqlite3_rollback_hook = libsqlite3.addresses.sqlite3_rollback_hook
+            .cast()
+        ..sqlite3_commit_hook = libsqlite3.addresses.sqlite3_commit_hook.cast()
+        ..sqlite3_get_autocommit = libsqlite3.addresses.sqlite3_get_autocommit
+            .cast()
+        ..sqlite3_finalize = libsqlite3.addresses.sqlite3_finalize.cast()
+        ..sqlite3_close_v2 = libsqlite3.addresses.sqlite3_close_v2.cast()
+        ..dart_post_c_object = NativeApi.postCObject.cast();
+
+      try {
+        final PoolConnections(
+          :readers,
+          :writer,
+          :preparedStatementCacheSize,
+          :enableNativeUpdateHooks,
+        ) = open();
+
+        initOptions.write = writer.leak().cast();
+        initOptions.read_count = readers.length;
+        initOptions.reads = alloc(readers.length);
+        initOptions.prepared_statement_cache_size = preparedStatementCacheSize;
+        initOptions.enable_update_hooks = enableNativeUpdateHooks ? 1 : 0;
+
+        for (final (i, reader) in readers.indexed) {
+          (initOptions.reads + i).value = reader.leak().cast();
+        }
+
+        return RawSqliteConnectionPool._(
+          pkg_sqlite3_connection_pool_initialize(initializer, initOptionsPtr),
+        );
+      } on Object {
+        pkg_sqlite3_connection_pool_close_uninitialized(initializer);
+        rethrow;
+      }
+    });
   }
 }
 

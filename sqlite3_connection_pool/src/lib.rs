@@ -2,9 +2,10 @@ use crate::client::PoolClient;
 use crate::connection::{Connection, PreparedStatement};
 use crate::dart::DartPort;
 use crate::pool::{ConnectionPool, PendingMessage, PoolConnection, PoolRequestHandle, PoolState};
-use crate::registry::{PoolInitializer, PoolRegistry};
+use crate::registry::{InitializedPool, MaybeInitializedPool, PoolRegistry, UninitializedPool};
 use crate::update_hook::send_update_notification;
 use std::ffi::{CStr, c_char, c_int, c_void};
+use std::mem::MaybeUninit;
 use std::ptr::NonNull;
 use std::sync::{Arc, Mutex};
 use std::{ptr, slice};
@@ -16,19 +17,61 @@ mod pool;
 mod registry;
 mod update_hook;
 
+fn to_client(pool: ConnectionPool) -> NonNull<PoolClient> {
+    let boxed = Box::new(PoolClient::new(pool));
+    let ptr = Box::into_raw(boxed);
+    unsafe { NonNull::new_unchecked(ptr) }
+}
+
+/// Attempts to open a connection pool with the given utf-8 encoded name.
+///
+/// If a pool with that name exists, it is written to `client` and `initializer` is set to [None].
+///
+/// Otherwise `client` is set to [None] and the [UninitializedPool] is heap-allocated and written to
+/// `initializer`. The unitialized pool must be completed with either a call to
+/// [pkg_sqlite3_connection_pool_initialize] or to
+/// [pkg_sqlite3_connection_pool_close_uninitialized].
 #[unsafe(no_mangle)]
 extern "C" fn pkg_sqlite3_connection_pool_open(
     name: *const u8,
     name_len: usize,
-    initialize: PoolInitializer,
-) -> Option<NonNull<PoolClient>> {
+    initializer: &mut MaybeUninit<Option<NonNull<UninitializedPool<'_>>>>,
+    client: &mut MaybeUninit<Option<NonNull<PoolClient>>>,
+) {
     let name = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(name, name_len)) };
 
-    PoolRegistry::lookup(name, initialize).map(|pool| {
-        let client = PoolClient::new(pool);
+    match PoolRegistry::lookup(name) {
+        MaybeInitializedPool::Pool(pool) => {
+            initializer.write(None);
+            client.write(Some(to_client(pool)));
+        }
+        MaybeInitializedPool::Uninitialized(uninitialized_pool) => {
+            client.write(None);
+            let boxed = Box::new(uninitialized_pool);
+            let ptr = Box::into_raw(boxed);
+            initializer.write(Some(unsafe { NonNull::new_unchecked(ptr) }));
+        }
+    }
+}
 
-        unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(client))) }
-    })
+/// Consumes an uninitialized pool by transforming it into an opened connection pool.
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_initialize(
+    uninitialized: NonNull<UninitializedPool>,
+    initialize: &InitializedPool,
+) -> NonNull<PoolClient> {
+    let guard = unsafe { Box::from_raw(uninitialized.as_ptr()) };
+    to_client(guard.initialize(initialize))
+}
+
+/// Consumes an uninitialized pool by releasing resources without turning it into an opened
+/// connection pool.
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_close_uninitialized(
+    uninitialized: NonNull<UninitializedPool>,
+) {
+    let guard = unsafe { Box::from_raw(uninitialized.as_ptr()) };
+    drop(guard);
 }
 
 #[unsafe(no_mangle)]
