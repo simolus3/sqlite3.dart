@@ -155,7 +155,7 @@ jobs:
       working-directory: sqlite3_connection_pool
       run: |
         dart build cli --target test/pool_test.dart -o out
-        systemd-run --user --pty --property=MemoryDenyWriteExecute=yes ./out/bundle/bin/pool_test
+        systemd-run --user --pipe --wait --collect --property=MemoryDenyWriteExecute=yes --property=RuntimeMaxSec=10 ./out/bundle/bin/pool_test
         rm -rf out
 
     - name: Enable sqlite3mc
