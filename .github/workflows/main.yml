@@ -149,6 +149,15 @@ jobs:
         dart run.dart --sanitizer=msan
       working-directory: native_tests/
 
+    # Regression test for https://github.com/simolus3/sqlite3.dart/issues/396
+    - name: Test sqlite3_connection_pool with MemoryDenyWriteExecute
+      if: runner.os == 'Linux'
+      working-directory: sqlite3_connection_pool
+      run: |
+        dart build cli --target test/pool_test.dart -o out
+        systemd-run --user --pty --property=MemoryDenyWriteExecute=yes ./out/bundle/bin/pool_test
+        rm -rf out
+
     - name: Enable sqlite3mc
       run: |
         dart run tool/hook_overrides.dart compiled-ciphers
