@@ -1,3 +1,7 @@
+## 0.2.9-wip
+
+- Avoid native callbacks to support platforms like GrapheneOS where `mprotect` is forbidden.
+
 ## 0.2.8
 
 - Add `SqliteConnectionPool.addReaders` to add new read connections to a connection pool.
