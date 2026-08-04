@@ -1,4 +1,4 @@
-## 3.5.1-wip
+## 3.5.1
 
 - Upgrade SQLite to 3.53.4 and SQLite3 Multiple Ciphers to 2.5.0.
 

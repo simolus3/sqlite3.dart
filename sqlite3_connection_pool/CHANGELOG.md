@@ -1,6 +1,6 @@
-## 0.2.9-wip
+## 0.2.9
 
-- Avoid native callbacks to support platforms like GrapheneOS where `mprotect` is forbidden.
+- Avoid `NativeCallable` to support platforms like GrapheneOS where `mprotect` is forbidden.
 
 ## 0.2.8
 
