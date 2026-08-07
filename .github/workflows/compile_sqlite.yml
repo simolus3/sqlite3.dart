@@ -2,6 +2,11 @@ name: Download and compile SQLite
 
 on:
   workflow_call:
+    inputs:
+      attest:
+        description: "Whether to generate a signed attestation for compiled artifacts"
+        type: boolean
+        default: false
     outputs:
       artifact_id:
         description: "ID of the artifact containing prebuilt SQLite libraries"
@@ -411,6 +416,10 @@ jobs:
       - compile_pool_linux_android
       - compile_pool_apple
       - compile_pool_windows
+    permissions:
+      attestations: write
+      id-token: write
+      artifact-metadata: write
     name: Merge prebuilt libraries into single directory
     outputs:
       sqlite_merged: ${{ steps.upload.outputs.artifact-id }}
@@ -435,6 +444,14 @@ jobs:
 
       - run: ls -al out/
       - run: ls -al sqlite3_connection_pool/lib/src/precompiled/
+
+      - name: Attest
+        if: inputs.attest
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            out/*
+            sqlite3_connection_pool/lib/src/precompiled/*
 
       - name: Upload sqlite3 binaries
         uses: actions/upload-artifact@v7
