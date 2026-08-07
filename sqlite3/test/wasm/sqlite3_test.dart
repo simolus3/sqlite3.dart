@@ -157,6 +157,23 @@ void main() {
         expect(raw.columnType(0), SqlType.SQLITE_INTEGER);
         expect(_number(raw.columnJSBigInt(0)), 1234);
       });
+
+      if (throughFetch) {
+        test('can request with additional headers', () async {
+          // Regression test for https://github.com/simolus3/sqlite3.dart/issues/398
+          final channel = spawnHybridUri('/test/wasm/asset_server.dart');
+          final port = (await channel.stream.first as double).toInt();
+          // Fetching from this URL fails  when request headers are missing.
+          final uri = Uri.parse('http://localhost:$port/require_headers.wasm');
+          await expectLater(WasmSqlite3.loadFromUrl(uri), throwsA(anything));
+
+          final sqlite = await WasmSqlite3.loadFromUrl(
+            uri,
+            headers: {'x-foo': 'bar'},
+          );
+          sqlite.version;
+        });
+      }
     });
   }
 

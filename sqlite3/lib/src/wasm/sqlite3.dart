@@ -53,7 +53,7 @@ final class WasmSqlite3 extends Sqlite3Implementation {
     Map<String, String>? headers,
     WasmModuleLoader? loader,
   }) {
-    return loadFromUrlString(uri.toString());
+    return loadFromUrlString(uri.toString(), headers: headers, loader: loader);
   }
 
   /// Loads a web version of the sqlite3 libraries.

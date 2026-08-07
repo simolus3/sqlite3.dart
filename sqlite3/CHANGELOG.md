@@ -1,3 +1,7 @@
+## 3.5.2-wip
+
+- Fix `WasmSqlite3.loadFromUrl` silently dropping request headers and a custom WASM loader.
+
 ## 3.5.1
 
 - Upgrade SQLite to 3.53.4 and SQLite3 Multiple Ciphers to 2.5.0.

@@ -15,7 +15,6 @@ override_platforms:
       arguments: "-headless"
   chrome:
     settings:
-      executable: google-chrome-stable
       arguments: "--enable-features=SharedArrayBuffer"
   edge:
     settings:
