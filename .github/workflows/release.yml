@@ -14,6 +14,12 @@ permissions: {}
 jobs:
   fetch_sqlite:
     uses: ./.github/workflows/compile_sqlite.yml
+    permissions:
+      attestations: write # Attest assets with SLSA build provenance
+      id-token: write # To obtain keys used to sign attestation
+      artifact-metadata: write # To upload attestation metadata
+    with:
+      attest: true
 
   prepare_release:
     needs: [fetch_sqlite]

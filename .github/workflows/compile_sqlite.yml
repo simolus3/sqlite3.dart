@@ -2,6 +2,11 @@ name: Download and compile SQLite
 
 on:
   workflow_call:
+    inputs:
+      attest:
+        description: "Whether to generate a signed attestation for compiled artifacts"
+        type: boolean
+        default: false
     outputs:
       artifact_id:
         description: "ID of the artifact containing prebuilt SQLite libraries"
@@ -453,3 +458,46 @@ jobs:
           path: sqlite3_connection_pool/lib/src/precompiled/
           if-no-files-found: error
           retention-days: 1
+
+  attest_binaries:
+    runs-on: ubuntu-latest
+    needs:
+      - build_sqlite
+      - compile_wasm
+      - compile_pool_linux_android
+      - compile_pool_apple
+      - compile_pool_windows
+    permissions:
+      attestations: write
+      id-token: write
+      artifact-metadata: write
+    name: Attest binaries
+    if: inputs.attest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: out/
+          merge-multiple: true
+          pattern: sqlite3-libs-*
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: sqlite3_connection_pool/lib/src/precompiled
+          merge-multiple: true
+          pattern: connection-pool-*
+
+      - run: ls -al out/
+      - run: ls -al sqlite3_connection_pool/lib/src/precompiled/
+
+      - name: Attest
+        if: inputs.attest
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            out/*
+            sqlite3_connection_pool/lib/src/precompiled/*
