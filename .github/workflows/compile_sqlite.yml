@@ -416,10 +416,6 @@ jobs:
       - compile_pool_linux_android
       - compile_pool_apple
       - compile_pool_windows
-    permissions:
-      attestations: write
-      id-token: write
-      artifact-metadata: write
     name: Merge prebuilt libraries into single directory
     outputs:
       sqlite_merged: ${{ steps.upload.outputs.artifact-id }}
@@ -445,14 +441,6 @@ jobs:
       - run: ls -al out/
       - run: ls -al sqlite3_connection_pool/lib/src/precompiled/
 
-      - name: Attest
-        if: inputs.attest
-        uses: actions/attest@v4
-        with:
-          subject-path: |
-            out/*
-            sqlite3_connection_pool/lib/src/precompiled/*
-
       - name: Upload sqlite3 binaries
         uses: actions/upload-artifact@v7
         id: upload
@@ -470,3 +458,61 @@ jobs:
           path: sqlite3_connection_pool/lib/src/precompiled/
           if-no-files-found: error
           retention-days: 1
+
+  attest_binaries:
+    runs-on: ubuntu-slim
+    needs:
+      - build_sqlite
+      - compile_wasm
+      - compile_pool_linux_android
+      - compile_pool_apple
+      - compile_pool_windows
+    permissions:
+      attestations: write
+      id-token: write
+      artifact-metadata: write
+    name: Attest binaries
+    if: inputs.attest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: out/
+          merge-multiple: true
+          pattern: sqlite3-libs-*
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: sqlite3_connection_pool/lib/src/precompiled
+          merge-multiple: true
+          pattern: connection-pool-*
+
+      - run: ls -al out/
+      - run: ls -al sqlite3_connection_pool/lib/src/precompiled/
+
+      - name: Install cargo-cyclonedx
+        run: brew install cargo-cyclonedx
+
+      - name: Generate SBOM for connection pool crate
+        working-directory: sqlite3_connection_pool
+        run: |
+          cargo cyclonedx --format json --spec-version 1.5 --describe binaries --target all
+          cat sqlite3_connection_pool_cdylib.cdx.json
+
+      # - name: Attest
+      #   if: inputs.attest
+      #   uses: actions/attest@v4
+      #   with:
+      #     subject-path: |
+      #       out/*
+      #       sqlite3_connection_pool/lib/src/precompiled/*
+
+      # - name: Attest connection pool libraries with SBOM
+      #   uses: actions/attest-sbom@v2
+      #   with:
+      #     subject-path: sqlite3_connection_pool/lib/src/precompiled/*
+      #     sbom-path: sqlite3_connection_pool_cdylib.cdx.json
