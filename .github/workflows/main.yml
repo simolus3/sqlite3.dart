@@ -15,11 +15,9 @@ jobs:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     uses: ./.github/workflows/compile_sqlite.yml
     permissions:
-      attestations: write
-      id-token: write
-      artifact-metadata: write
-    with:
-      attest: true #todo revert
+      attestations: write # Unused without attestations enabled
+      id-token: write # Unused without attestations enabled
+      artifact-metadata: write # Unused without attestations enabled
 
   zizmor:
     runs-on: ubuntu-latest
