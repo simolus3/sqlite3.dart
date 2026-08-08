@@ -494,25 +494,10 @@ jobs:
       - run: ls -al out/
       - run: ls -al sqlite3_connection_pool/lib/src/precompiled/
 
-      - name: Install cargo-cyclonedx
-        run: brew install cargo-cyclonedx
-
-      - name: Generate SBOM for connection pool crate
-        working-directory: sqlite3_connection_pool
-        run: |
-          cargo cyclonedx --format json --spec-version 1.5 --describe binaries --target all
-          cat sqlite3_connection_pool_cdylib.cdx.json
-
-      # - name: Attest
-      #   if: inputs.attest
-      #   uses: actions/attest@v4
-      #   with:
-      #     subject-path: |
-      #       out/*
-      #       sqlite3_connection_pool/lib/src/precompiled/*
-
-      # - name: Attest connection pool libraries with SBOM
-      #   uses: actions/attest-sbom@v2
-      #   with:
-      #     subject-path: sqlite3_connection_pool/lib/src/precompiled/*
-      #     sbom-path: sqlite3_connection_pool_cdylib.cdx.json
+      - name: Attest
+        if: inputs.attest
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            out/*
+            sqlite3_connection_pool/lib/src/precompiled/*
