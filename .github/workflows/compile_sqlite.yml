@@ -495,9 +495,7 @@ jobs:
       - run: ls -al sqlite3_connection_pool/lib/src/precompiled/
 
       - name: Install cargo-cyclonedx
-        run: |
-          rustup install
-          cargo install cargo-cyclonedx
+        run: brew install cargo-cyclonedx
 
       - name: Generate SBOM for connection pool crate
         working-directory: sqlite3_connection_pool
