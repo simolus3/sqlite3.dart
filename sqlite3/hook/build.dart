@@ -37,6 +37,7 @@ void main(List<String> args) async {
       case CompileSqlite(
         :final sourceFile,
         :final defines,
+        :final additionalSources,
         :final additionalIncludes,
         :final additionalFlags,
         :final additionalLibraryDirectories,
@@ -70,7 +71,7 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
           name: 'sqlite3',
           packageName: 'sqlite3',
           assetName: name,
-          sources: [sourceFile],
+          sources: [sourceFile, ...additionalSources],
           includes: [p.dirname(sourceFile), ...additionalIncludes],
           defines: defines,
           flags: [
