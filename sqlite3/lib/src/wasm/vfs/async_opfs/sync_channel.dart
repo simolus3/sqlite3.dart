@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import '../../js_interop.dart';
 
-const protocolVersion = 1;
+const protocolVersion = 2;
 const asyncIdleWaitTimeMs = 150;
 const asyncIdleWaitTime = Duration(milliseconds: asyncIdleWaitTimeMs);
 
@@ -103,16 +103,35 @@ class MessageSerializer {
     if (message is EmptyMessage) {
       // Nothing to do
     } else if (message is Flags) {
-      dataView.setInt32(0, message.flag0);
-      dataView.setInt32(4, message.flag1);
-      dataView.setInt32(8, message.flag2);
+      // File offsets and sizes can exceed the signed 32-bit range. Dart
+      // integers compiled to JavaScript are exact up to 53 bits, which covers
+      // SQLite's maximum database size. ByteData's int64 accessors are not
+      // supported by dart2js, so encode each value as low/high 32-bit words.
+      _writeInt64(0, message.flag0);
+      _writeInt64(8, message.flag1);
+      _writeInt64(16, message.flag2);
 
       if (message is NameAndInt32Flags) {
-        _writeString(12, message.name);
+        _writeString(24, message.name);
       }
     } else {
       throw UnsupportedError('Message $message');
     }
+  }
+
+  static const _uint32Range = 0x100000000;
+
+  void _writeInt64(int offset, int value) {
+    final high = (value / _uint32Range).floor();
+    final low = value - high * _uint32Range;
+    dataView.setUint32(offset, low);
+    dataView.setInt32(offset + 4, high);
+  }
+
+  int _readInt64(int offset) {
+    final low = dataView.getUint32(offset);
+    final high = dataView.getInt32(offset + 4);
+    return high * _uint32Range + low;
   }
 
   Uint8List viewByteRange(int offset, int length) {
@@ -140,19 +159,15 @@ class MessageSerializer {
   }
 
   static Flags readFlags(MessageSerializer msg) {
-    return Flags(
-      msg.dataView.getInt32(0),
-      msg.dataView.getInt32(4),
-      msg.dataView.getInt32(8),
-    );
+    return Flags(msg._readInt64(0), msg._readInt64(8), msg._readInt64(16));
   }
 
   static NameAndInt32Flags readNameAndFlags(MessageSerializer msg) {
     return NameAndInt32Flags(
-      msg._readString(12),
-      msg.dataView.getInt32(0),
-      msg.dataView.getInt32(4),
-      msg.dataView.getInt32(8),
+      msg._readString(24),
+      msg._readInt64(0),
+      msg._readInt64(8),
+      msg._readInt64(16),
     );
   }
 }
