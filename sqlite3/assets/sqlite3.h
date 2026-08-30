@@ -49,6 +49,7 @@ void* sqlite3_update_hook(sqlite3*,
 void* sqlite3_commit_hook(sqlite3*, int (*)(void*), void*);
 void* sqlite3_rollback_hook(sqlite3*, void (*)(void*), void*);
 int sqlite3_get_autocommit(sqlite3* db);
+void sqlite3_interrupt(sqlite3* db);
 
 // Statements
 int sqlite3_prepare_v2(sqlite3* db, const sqlite3_char* zSql, int nByte,
