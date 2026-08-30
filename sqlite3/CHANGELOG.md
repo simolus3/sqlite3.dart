@@ -2,7 +2,7 @@
 
 - Hooks: Support relative paths in `additional_includes` and `additional_lib_directories`.
 - Hooks: Support multiple source files to compile with `source: source`.
-- Add native bindings for `sqlite3_interrupt`, available through the unstable `ffi_bindings.dart` library.
+- Add native bindings for `sqlite3_interrupt` and `sqlite3_is_interrupted`, available through the unstable `ffi_bindings.dart` library.
 
 ## 3.5.2
 

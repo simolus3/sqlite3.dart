@@ -454,6 +454,9 @@ external int sqlite3_initialize();
 @ffi.Native<ffi.Void Function(ffi.Pointer<sqlite3>)>()
 external void sqlite3_interrupt(ffi.Pointer<sqlite3> db);
 
+@ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3>)>()
+external int sqlite3_is_interrupted(ffi.Pointer<sqlite3> db);
+
 @ffi.Native<ffi.Int64 Function(ffi.Pointer<sqlite3>)>(isLeaf: true)
 external int sqlite3_last_insert_rowid(ffi.Pointer<sqlite3> db);
 
@@ -1213,6 +1216,9 @@ class _SymbolAddresses {
       ffi.Native.addressOf(self.sqlite3_initialize);
   ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<sqlite3>)>>
   get sqlite3_interrupt => ffi.Native.addressOf(self.sqlite3_interrupt);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3>)>>
+  get sqlite3_is_interrupted =>
+      ffi.Native.addressOf(self.sqlite3_is_interrupted);
   ffi.Pointer<ffi.NativeFunction<ffi.Int64 Function(ffi.Pointer<sqlite3>)>>
   get sqlite3_last_insert_rowid =>
       ffi.Native.addressOf(self.sqlite3_last_insert_rowid);
