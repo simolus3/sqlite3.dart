@@ -54,6 +54,7 @@ int sqlite3_db_status64(sqlite3* db, int op, int64_t* pCur, int64_t* pHiwtr,
                         int resetFlg);
 sqlite3_stmt* sqlite3_next_stmt(sqlite3* pDb, sqlite3_stmt* pStmt);
 void sqlite3_interrupt(sqlite3* db);
+int sqlite3_is_interrupted(sqlite3* db);
 int sqlite3_stmt_busy(sqlite3_stmt*);
 
 // Statements
