@@ -47,6 +47,8 @@ const usedSqliteSymbols = {
   'sqlite3_free',
   'sqlite3_get_autocommit',
   'sqlite3_initialize',
+  'sqlite3_interrupt',
+  'sqlite3_is_interrupted',
   'sqlite3_last_insert_rowid',
   'sqlite3_libversion',
   'sqlite3_libversion_number',
