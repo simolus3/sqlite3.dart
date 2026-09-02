@@ -65,7 +65,7 @@ jobs:
         id: cache_build
         with:
           path: openssl-compiled
-          key: openssl-prebuilt-${{ runner.os }}-3.6.3-${{ hashFiles('tool/build_openssl.dart') }}
+          key: openssl-prebuilt-${{ runner.os }}-3.6.4-${{ hashFiles('tool/build_openssl.dart') }}
       - uses: dart-lang/setup-dart@v1
         if: steps.cache_build.outputs.cache-hit != 'true'
 
@@ -73,8 +73,8 @@ jobs:
         if: steps.cache_build.outputs.cache-hit != 'true'
         # When updating this, also update the version in tool/generate_sbom.dart
         run: |
-          curl -L https://github.com/openssl/openssl/releases/download/openssl-3.6.3/openssl-3.6.3.tar.gz | tar --extract --gzip
-          mv openssl-3.6.3 openssl-src
+          curl -L https://github.com/openssl/openssl/releases/download/openssl-3.6.4/openssl-3.6.4.tar.gz | tar --extract --gzip
+          mv openssl-3.6.4 openssl-src
 
       - name: Install cross-compiling GCC
         shell: bash
