@@ -113,9 +113,10 @@ When using `source: system`, you can also add a `name` key to customize the name
 library.
 For instance, `name: sqlcipher` would load `libsqlcipher.dylib` on macOS, `libsqlcipher.so` on Linux
 and `sqlcipher.dll` on Windows.
-To further customize the name for specific operating systems, you can use `name_$os` keys, where `$os`
-is the [target operating system](https://pub.dev/documentation/code_assets/latest/code_assets/OS-class.html)
-passed to hooks:
+To further customize the name for specific operating systems, `name` can be a map with an entry per
+[target operating system](https://pub.dev/documentation/code_assets/latest/code_assets/OS-class.html)
+passed to hooks. The `default` entry applies to operating systems not listed in the map, and the
+package's usual default (`sqlite3`) is used for them if there is no `default` entry either:
 
 ```yaml
 hooks:
@@ -123,9 +124,13 @@ hooks:
     sqlite3:
       source: system
       # Use winsqlite3.dll on Windows, libsqlite3.{so,dylib} on Linux and macOS
-      name_windows: winsqlite3
-      name: sqlite3
+      name:
+        windows: winsqlite3
+        default: sqlite3
 ```
+
+Earlier versions used `name_$os` keys (e.g. `name_windows: winsqlite3`) for this, which keep
+working and take precedence over `name`.
 
 A name containing a directory component is passed to the dynamic loader as-is instead of being
 turned into a library file name.
@@ -137,15 +142,14 @@ hooks:
   user_defines:
     sqlite3:
       source: system
-      name_ios: my_native_lib.framework/my_native_lib
-      # Names like `@rpath/libsqlite3.dylib` are supported as well.
+      name:
+        ios: my_native_lib.framework/my_native_lib
+        # Names like `@rpath/libsqlite3.dylib` are supported as well.
 ```
 
-### Per-OS sources and names
-
-`source` and `name` can also be maps from target operating systems to values. The `default`
-entry applies to operating systems not listed in the map (without it, the key is treated as
-unset for those):
+The same map syntax is available for `source`, for instance to only use the app's own library on
+mobile platforms. Without a `default` entry, the package falls back to downloading its own binaries
+for the other operating systems:
 
 ```yaml
 hooks:

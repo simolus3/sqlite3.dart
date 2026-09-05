@@ -76,6 +76,7 @@ sealed class SqliteBinary {
       case 'test-sqlcipher':
         return PrecompiledForTesting(LibraryType.sqlcipher);
       case 'system':
+        // For backwards compatibility, before per-OS subkeys were supported.
         final osSpecificNameKey = 'name_${targetOS.name}';
 
         return LookupSystem(
