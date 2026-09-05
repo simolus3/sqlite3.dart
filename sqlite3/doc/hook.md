@@ -141,21 +141,23 @@ hooks:
       # Names like `@rpath/libsqlite3.dylib` are supported as well.
 ```
 
-### Per-OS sources
+### Per-OS sources and names
 
-Like `name`, the `source` key can be overridden for specific operating systems with `source_$os`
-keys. This allows using a library from the system (or from the app) on some platforms while
-keeping the default binaries on others:
+`source` and `name` can also be maps from target operating systems to values. The `default`
+entry applies to operating systems not listed in the map (without it, the key is treated as
+unset for those):
 
 ```yaml
 hooks:
   user_defines:
     sqlite3:
-      source: sqlite3 # default, used for platforms not listed below
-      source_android: system
-      source_ios: system
-      name_android: my_native_lib
-      name_ios: my_native_lib.framework/my_native_lib
+      source:
+        android: system
+        ios: system
+        default: sqlite3
+      name:
+        android: my_native_lib
+        ios: my_native_lib.framework/my_native_lib
 ```
 
 ## Custom SQLite builds

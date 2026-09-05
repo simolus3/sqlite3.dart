@@ -63,7 +63,9 @@ void main() {
   });
 
   test('os-specific source', () async {
-    const defines = {'source': 'sqlite3', 'source_ios': 'system'};
+    const defines = {
+      'source': {'ios': 'system', 'default': 'sqlite3'},
+    };
 
     expect(
       await resolveForOS(OS.iOS, defines, (_, binary) => binary),
@@ -72,6 +74,38 @@ void main() {
     expect(
       await resolveForOS(OS.macOS, defines, (_, binary) => binary),
       isA<PrecompiledFromGithubAssets>(),
+    );
+  });
+
+  test('os-specific name', () async {
+    const defines = {
+      'source': 'system',
+      'name': {'ios': 'my_lib.framework/my_lib', 'default': 'sqlcipher'},
+    };
+
+    expect(
+      await systemLinkMode(OS.iOS, defines),
+      DynamicLoadingSystem(Uri.parse('my_lib.framework/my_lib')),
+    );
+    expect(
+      await systemLinkMode(OS.macOS, defines),
+      DynamicLoadingSystem(Uri.parse('libsqlcipher.dylib')),
+    );
+  });
+
+  test('map without entry for target os', () async {
+    expect(
+      await resolveForOS(OS.macOS, {
+        'source': {'android': 'system'},
+      }, (_, binary) => binary),
+      isA<PrecompiledFromGithubAssets>(),
+    );
+    expect(
+      await systemLinkMode(OS.macOS, {
+        'source': 'system',
+        'name': {'android': 'my_lib'},
+      }),
+      DynamicLoadingSystem(Uri.parse('libsqlite3.dylib')),
     );
   });
 

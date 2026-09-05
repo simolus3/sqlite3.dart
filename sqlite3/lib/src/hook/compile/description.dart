@@ -38,11 +38,28 @@ sealed class SqliteBinary {
       return [for (final path in value) resolvePath(base: baseUri, path: path)];
     }
 
-    // Like `name`, the source can be overridden per target OS with a
-    // `source_$os` key (e.g. `source_ios: system`).
     final targetOS = input.config.code.targetOS;
-    final source =
-        userDefines['source_${targetOS.name}'] ?? userDefines['source'];
+
+    // `source` and `name` are either a string or a map from target OS names
+    // (or `default`) to strings.
+    String? forTargetOS(String key) {
+      final value = userDefines[key];
+      final resolved = value is Map
+          ? value[targetOS.name] ?? value['default']
+          : value;
+
+      return switch (resolved) {
+        null => null,
+        final String string => string,
+        _ => throw ArgumentError.value(
+          value,
+          key,
+          'Expected a string or a map of strings',
+        ),
+      };
+    }
+
+    final source = forTargetOS('source');
 
     switch (source) {
       case null:
@@ -62,7 +79,7 @@ sealed class SqliteBinary {
         final osSpecificNameKey = 'name_${targetOS.name}';
 
         return LookupSystem(
-          ((userDefines[osSpecificNameKey] ?? userDefines['name'] ?? 'sqlite3')
+          ((userDefines[osSpecificNameKey] ?? forTargetOS('name') ?? 'sqlite3')
               as String),
         );
       case 'process':
