@@ -38,7 +38,13 @@ sealed class SqliteBinary {
       return [for (final path in value) resolvePath(base: baseUri, path: path)];
     }
 
-    switch (userDefines['source']) {
+    // Like `name`, the source can be overridden per target OS with a
+    // `source_$os` key (e.g. `source_ios: system`).
+    final targetOS = input.config.code.targetOS;
+    final source =
+        userDefines['source_${targetOS.name}'] ?? userDefines['source'];
+
+    switch (source) {
       case null:
       case 'sqlite3':
         return fromGitHub(LibraryType.sqlite3);
@@ -53,7 +59,7 @@ sealed class SqliteBinary {
       case 'test-sqlcipher':
         return PrecompiledForTesting(LibraryType.sqlcipher);
       case 'system':
-        final osSpecificNameKey = 'name_${input.config.code.targetOS.name}';
+        final osSpecificNameKey = 'name_${targetOS.name}';
 
         return LookupSystem(
           ((userDefines[osSpecificNameKey] ?? userDefines['name'] ?? 'sqlite3')
@@ -100,7 +106,7 @@ sealed class SqliteBinary {
         );
       default:
         throw ArgumentError.value(
-          userDefines['source'],
+          source,
           'source',
           'Unknown source. Must be sqlite3, sqlite3mc, system, process or '
               'executable',
@@ -127,8 +133,10 @@ final class LookupSystem implements ExternalSqliteBinary {
     final targetOS = input.config.code.targetOS;
     final String dylibName;
 
-    if (p.isAbsolute(name)) {
-      // Interpret name as a file name
+    if (p.isAbsolute(name) || p.split(name).length > 1) {
+      // Interpret name as a path. Relative paths are passed to the dynamic
+      // loader unchanged, which allows loading e.g. `foo.framework/foo` or
+      // `@rpath/libfoo.dylib` on Apple platforms.
       dylibName = name;
     } else {
       dylibName = targetOS.libraryFileName(name, DynamicLoadingBundled());

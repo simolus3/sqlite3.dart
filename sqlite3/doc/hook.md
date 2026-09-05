@@ -127,6 +127,37 @@ hooks:
       name: sqlite3
 ```
 
+A name containing a directory component is passed to the dynamic loader as-is instead of being
+turned into a library file name.
+On iOS, this can be used to load SQLite from a framework in the app bundle, for instance when
+another native library of the app already links SQLite and exports its symbols:
+
+```yaml
+hooks:
+  user_defines:
+    sqlite3:
+      source: system
+      name_ios: my_native_lib.framework/my_native_lib
+      # Names like `@rpath/libsqlite3.dylib` are supported as well.
+```
+
+### Per-OS sources
+
+Like `name`, the `source` key can be overridden for specific operating systems with `source_$os`
+keys. This allows using a library from the system (or from the app) on some platforms while
+keeping the default binaries on others:
+
+```yaml
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3 # default, used for platforms not listed below
+      source_android: system
+      source_ios: system
+      name_android: my_native_lib
+      name_ios: my_native_lib.framework/my_native_lib
+```
+
 ## Custom SQLite builds
 
 If you want to customize the SQLite build to use with `package:sqlite3`, you can

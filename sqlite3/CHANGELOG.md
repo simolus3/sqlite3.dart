@@ -2,6 +2,7 @@
 
 - Hooks: Support relative paths in `additional_includes` and `additional_lib_directories`.
 - Hooks: Support multiple source files to compile with `source: source`.
+- Hooks: Allow `source_<os>` user-defines and path-like `name`s for `source: system`.
 
 ## 3.5.2
 
