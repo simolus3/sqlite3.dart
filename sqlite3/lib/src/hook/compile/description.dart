@@ -38,7 +38,30 @@ sealed class SqliteBinary {
       return [for (final path in value) resolvePath(base: baseUri, path: path)];
     }
 
-    switch (userDefines['source']) {
+    final targetOS = input.config.code.targetOS;
+
+    // `source` and `name` are either a string or a map from target OS names
+    // (or `default`) to strings.
+    String? forTargetOS(String key) {
+      final value = userDefines[key];
+      final resolved = value is Map
+          ? value[targetOS.name] ?? value['default']
+          : value;
+
+      return switch (resolved) {
+        null => null,
+        final String string => string,
+        _ => throw ArgumentError.value(
+          value,
+          key,
+          'Expected a string or a map of strings',
+        ),
+      };
+    }
+
+    final source = forTargetOS('source');
+
+    switch (source) {
       case null:
       case 'sqlite3':
         return fromGitHub(LibraryType.sqlite3);
@@ -53,10 +76,11 @@ sealed class SqliteBinary {
       case 'test-sqlcipher':
         return PrecompiledForTesting(LibraryType.sqlcipher);
       case 'system':
-        final osSpecificNameKey = 'name_${input.config.code.targetOS.name}';
+        // For backwards compatibility, before per-OS subkeys were supported.
+        final osSpecificNameKey = 'name_${targetOS.name}';
 
         return LookupSystem(
-          ((userDefines[osSpecificNameKey] ?? userDefines['name'] ?? 'sqlite3')
+          ((userDefines[osSpecificNameKey] ?? forTargetOS('name') ?? 'sqlite3')
               as String),
         );
       case 'process':
@@ -100,7 +124,7 @@ sealed class SqliteBinary {
         );
       default:
         throw ArgumentError.value(
-          userDefines['source'],
+          source,
           'source',
           'Unknown source. Must be sqlite3, sqlite3mc, system, process or '
               'executable',
@@ -127,8 +151,10 @@ final class LookupSystem implements ExternalSqliteBinary {
     final targetOS = input.config.code.targetOS;
     final String dylibName;
 
-    if (p.isAbsolute(name)) {
-      // Interpret name as a file name
+    if (p.isAbsolute(name) || p.split(name).length > 1) {
+      // Interpret name as a path. Relative paths are passed to the dynamic
+      // loader unchanged, which allows loading e.g. `foo.framework/foo` or
+      // `@rpath/libfoo.dylib` on Apple platforms.
       dylibName = name;
     } else {
       dylibName = targetOS.libraryFileName(name, DynamicLoadingBundled());

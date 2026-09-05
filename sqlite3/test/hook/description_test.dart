@@ -40,6 +40,75 @@ void main() {
     );
   });
 
+  test('system with path-like name', () async {
+    expect(
+      await systemLinkMode(OS.iOS, {
+        'source': 'system',
+        'name_ios': 'my_lib.framework/my_lib',
+      }),
+      DynamicLoadingSystem(Uri.parse('my_lib.framework/my_lib')),
+    );
+    expect(
+      await systemLinkMode(OS.macOS, {
+        'source': 'system',
+        'name': '@rpath/libsqlcipher.dylib',
+      }),
+      DynamicLoadingSystem(Uri.parse('@rpath/libsqlcipher.dylib')),
+    );
+    // Plain names are still turned into platform-specific file names.
+    expect(
+      await systemLinkMode(OS.iOS, {'source': 'system', 'name': 'sqlcipher'}),
+      DynamicLoadingSystem(Uri.parse('libsqlcipher.dylib')),
+    );
+  });
+
+  test('os-specific source', () async {
+    const defines = {
+      'source': {'ios': 'system', 'default': 'sqlite3'},
+    };
+
+    expect(
+      await resolveForOS(OS.iOS, defines, (_, binary) => binary),
+      isA<LookupSystem>(),
+    );
+    expect(
+      await resolveForOS(OS.macOS, defines, (_, binary) => binary),
+      isA<PrecompiledFromGithubAssets>(),
+    );
+  });
+
+  test('os-specific name', () async {
+    const defines = {
+      'source': 'system',
+      'name': {'ios': 'my_lib.framework/my_lib', 'default': 'sqlcipher'},
+    };
+
+    expect(
+      await systemLinkMode(OS.iOS, defines),
+      DynamicLoadingSystem(Uri.parse('my_lib.framework/my_lib')),
+    );
+    expect(
+      await systemLinkMode(OS.macOS, defines),
+      DynamicLoadingSystem(Uri.parse('libsqlcipher.dylib')),
+    );
+  });
+
+  test('map without entry for target os', () async {
+    expect(
+      await resolveForOS(OS.macOS, {
+        'source': {'android': 'system'},
+      }, (_, binary) => binary),
+      isA<PrecompiledFromGithubAssets>(),
+    );
+    expect(
+      await systemLinkMode(OS.macOS, {
+        'source': 'system',
+        'name': {'android': 'my_lib'},
+      }),
+      DynamicLoadingSystem(Uri.parse('libsqlite3.dylib')),
+    );
+  });
+
   test('resolves relative paths against the pubspec', () async {
     await testBuildHook(
       userDefines: PackageUserDefines(
@@ -128,7 +197,13 @@ void main() {
         });
       },
       check: (_, _) {},
-      extensions: [],
+      extensions: [
+        CodeAssetExtension(
+          targetArchitecture: Architecture.arm64,
+          targetOS: OS.linux,
+          linkModePreference: LinkModePreference.dynamic,
+        ),
+      ],
     );
 
     await testBuildHook(
@@ -154,7 +229,57 @@ void main() {
         });
       },
       check: (_, _) {},
-      extensions: [],
+      extensions: [
+        CodeAssetExtension(
+          targetArchitecture: Architecture.arm64,
+          targetOS: OS.linux,
+          linkModePreference: LinkModePreference.dynamic,
+        ),
+      ],
     );
   });
+}
+
+/// Resolves the [SqliteBinary] for a build targeting [os] with [defines] as
+/// user-defines and returns the result of [body].
+Future<T> resolveForOS<T>(
+  OS os,
+  Map<String, Object?> defines,
+  T Function(BuildInput input, SqliteBinary binary) body,
+) async {
+  late T result;
+  await testBuildHook(
+    userDefines: PackageUserDefines(
+      workspacePubspec: PackageUserDefinesSource(
+        defines: defines,
+        basePath: Uri.file(d.sandbox),
+      ),
+    ),
+    mainMethod: (args) {
+      return build(args, (input, output) async {
+        result = body(input, SqliteBinary.forBuild(input));
+      });
+    },
+    check: (_, _) {},
+    extensions: [
+      CodeAssetExtension(
+        targetArchitecture: Architecture.arm64,
+        targetOS: os,
+        linkModePreference: LinkModePreference.dynamic,
+        iOS: os == OS.iOS
+            ? IOSCodeConfig(targetSdk: IOSSdk.iPhoneOS, targetVersion: 13)
+            : null,
+        macOS: os == OS.macOS ? MacOSCodeConfig(targetVersion: 13) : null,
+      ),
+    ],
+  );
+  return result;
+}
+
+Future<LinkMode> systemLinkMode(OS os, Map<String, Object?> defines) {
+  return resolveForOS(
+    os,
+    defines,
+    (input, binary) => (binary as LookupSystem).resolveLinkMode(input),
+  );
 }
