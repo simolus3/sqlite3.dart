@@ -103,7 +103,7 @@ Future<void> main(List<String> args) {
   });
 }
 
-const _prebuiltAssets = {
+final _prebuiltAssets = {
   (OS.windows, Architecture.x64): 'win_x64',
   (OS.windows, Architecture.arm64): 'win_aarch64',
 

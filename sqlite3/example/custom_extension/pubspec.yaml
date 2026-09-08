@@ -8,7 +8,7 @@ environment:
 dependencies:
   sqlite3:
 
-  code_assets: ^1.0.0
+  code_assets: '>=1.0.0 <3.0.0'
   hooks: ^2.0.0
   http: ^1.5.0
   tar: ^2.0.0

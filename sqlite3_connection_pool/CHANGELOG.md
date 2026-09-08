@@ -1,3 +1,7 @@
+## 0.2.11
+
+- Support `code_assets` versions 2.x.
+
 ## 0.2.10
 
 - Fix race condition when `ConnectionLease.notifyUpdates` is called on a

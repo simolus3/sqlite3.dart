@@ -6,29 +6,33 @@ void main() {
 
   final generator = FfiGenerator(
     output: Output(
-      dartFile: Uri.parse('lib/src/ffi.g.dart'),
+      dart: DartOutput(path: Uri.parse('lib/src/ffi.g.dart')),
       preamble: '// ignore_for_file: type=lint',
       style: NativeExternalBindings(
         assetId: 'package:sqlite3_connection_pool/sqlite3_connection_pool.dart',
       ),
     ),
-    headers: Headers(entryPoints: [Uri.parse('src/headers.h')]),
-    functions: Functions(
-      include: (d) => d.originalName.startsWith('pkg_sqlite3_connection_pool'),
-      // The obtain functions post completions to a port and don't obtain any
-      // locks, so we can mark them as isLeaf.
-      isLeaf: (d) =>
-          d.originalName.contains('obtain') ||
-          d.originalName.contains('stmt_cache'),
-      // Close functions are used for native finalizers
-      includeSymbolAddress: (d) => d.originalName.contains('close'),
-    ),
-    structs: Structs(
-      include: Declarations.includeSet(const {
-        'InitializedPool',
-        'PoolConnection',
-      }),
-    ),
+    input: Input(entryPoints: [Uri.parse('src/headers.h')]),
+    visitors: [
+      Visitor(
+        func: (node) {
+          node
+            ..isIncluded = node.originalName.startsWith(
+              'pkg_sqlite3_connection_pool',
+            )
+            // The obtain functions post completions to a port and don't obtain any
+            // locks, so we can mark them as isLeaf.
+            ..isLeaf =
+                node.originalName.contains('obtain') ||
+                node.originalName.contains('stmt_cache')
+            // Close functions are used for native finalizers
+            ..exposeSymbolAddress = node.originalName.contains('close');
+        },
+        struct: (s) => s.isIncluded =
+            s.originalName == 'InitializedPool' ||
+            s.originalName == 'PoolConnection',
+      ),
+    ],
   );
   generator.generate();
 }

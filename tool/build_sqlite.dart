@@ -251,7 +251,7 @@ enum SqliteFork {
   const SqliteFork(this.directoryName, this.amalgamationFileName);
 }
 
-const _osToAbis = {
+final _osToAbis = {
   OS.linux: [
     Architecture.arm,
     Architecture.arm64,

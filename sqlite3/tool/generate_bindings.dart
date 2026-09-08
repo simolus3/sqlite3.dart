@@ -1,9 +1,7 @@
 import 'dart:io';
 
 import 'package:dart_style/dart_style.dart';
-import 'package:ffigen/ffigen.dart';
-import 'package:ffigen/src/config_provider/config_types.dart';
-import 'package:ffigen/src/config_provider/spec_utils.dart';
+import 'package:ffigen/ffigen.dart' hide Func, Global;
 import 'package:ffigen/src/code_generator.dart';
 import 'package:ffigen/src/context.dart';
 import 'package:ffigen/src/header_parser.dart' as ffigen;
@@ -20,48 +18,50 @@ void main() {
 }
 
 FfiGenerator createGenerator(
-  bool Function(Declaration) filter, {
+  bool Function(DeclNode) filter, {
   List<String> headers = const ['assets/sqlite3.h'],
 }) {
   return FfiGenerator(
     output: Output(
-      dartFile: Uri.parse('lib/src/ffi/libsqlite3.g.dart'),
+      dart: DartOutput(path: Uri.parse('lib/src/ffi/libsqlite3.g.dart')),
       preamble: '// ignore_for_file: type=lint',
       style: NativeExternalBindings(
         assetId: 'package:sqlite3/src/ffi/libsqlite3.g.dart',
       ),
     ),
-    headers: Headers(
+    input: Input(
       entryPoints: [for (final header in headers) Uri.parse(header)],
     ),
-    structs: Structs(include: filter),
-    functions: Functions(
-      include: filter,
-      includeSymbolAddress: Declarations.includeAll,
-      varArgs: makeVarArgFunctionsMapping({
-        'sqlite3_db_config': [
-          RawVarArgFunction('', ['int', 'int*']),
-        ],
-      }, const {}),
-      isLeaf: (decl) => _leafFunctions.contains(decl.originalName),
-    ),
-    globals: Globals(include: _includeSqlite3Only),
+    visitors: [
+      Visitor(
+        struct: (s) => s.isIncluded = filter(s),
+        func: (f) {
+          final included = filter(f);
+          f.isIncluded = included;
+          f.exposeSymbolAddress = included;
+          if (f.originalName == 'sqlite3_db_config') {
+            f.varArgs = [
+              VarArgFunction(types: ['int', 'int*']),
+            ];
+          }
+          f.isLeaf = _leafFunctions.contains(f.originalName);
+        },
+        global: (g) => g.isIncluded = g.isSqlite3Symbol,
+      ),
+    ],
   );
 }
 
 void _ffigen() {
-  createGenerator(_includeSqlite3Only).generate();
+  createGenerator((d) => d.isSqlite3Symbol).generate();
 }
 
-bool _includeSqlite3Only(Declaration declaration) =>
-    declaration.isSqlite3Symbol;
-
-extension on Declaration {
+extension on DeclNode {
   bool get isSqlite3Symbol => originalName.startsWith('sqlite3');
 }
 
 void writeWasmDefinitions() {
-  bool filter(Declaration d) {
+  bool filter(DeclNode d) {
     return stableFunctions.contains(d.originalName) ||
         unstable.contains(d.originalName);
   }
@@ -169,7 +169,7 @@ void writeUsedSymbols() {
 const usedSqliteSymbols = {
 ''');
   final library = ffigen.parse(
-    Context(Logger.root, createGenerator(_includeSqlite3Only)),
+    Context(Logger.root, createGenerator((f) => f.isSqlite3Symbol)),
   );
 
   for (final binding in library.bindings) {
