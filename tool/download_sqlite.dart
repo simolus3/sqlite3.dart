@@ -7,7 +7,7 @@ const sqliteSource = 'https://sqlite.org/2026/$sqlitePath.zip';
 const sqliteMultipleCiphersSource =
     'https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.5.0/sqlite3mc-2.5.0-sqlite-3.53.4-amalgamation.zip';
 
-const sqlcipherVersion = '4.18.0';
+const sqlcipherVersion = '4.19.0';
 const sqlcipherSource =
     'https://github.com/sqlcipher/sqlcipher/archive/refs/tags/v$sqlcipherVersion.zip';
 
