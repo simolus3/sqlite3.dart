@@ -124,6 +124,9 @@ jobs:
     - name: Write asset hashes
       run: dart run tool/write_asset_hashes.dart
 
+    - name: Check bundles for glibc compatibility
+      run: dart tool/check_glibc_version.dart sqlite-compiled/*linux* sqlite3_connection_pool/lib/src/precompiled/*linux*
+
     - name: Prepare for tests with pre-compiled SQLite
       run: |
         dart run tool/hook_overrides.dart compiled
