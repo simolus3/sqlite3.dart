@@ -133,6 +133,7 @@ void main(List<String> args) async {
               ..add('-include')
               ..add(avoidC23.toFilePath());
             additionalFlags.add('-Wl,--trace-symbol=__isoc23_strtol');
+            additionalFlags.add('-Wl,--trace-symbol=__isoc23_strtoul');
           }
 
           if (os == OS.windows) {
