@@ -15,6 +15,7 @@ final _limitConcurrency = Pool(Platform.numberOfProcessors);
 /// Invokes `package:sqlite3` build hooks for multiple operating systems and
 /// architectures, merging outputs into `sqlite3-compiled/`.
 void main(List<String> args) async {
+  final avoidC23 = Platform.script.resolve('avoid_c23.h');
   Directory.current = Directory('sqlite3');
 
   var operatingSystems = args.map(OS.fromString).toList();
@@ -125,6 +126,12 @@ void main(List<String> args) async {
 
           if (os == OS.android) {
             additionalLibraries.add('log');
+          }
+
+          if (os == OS.linux) {
+            additionalFlags
+              ..add('-include')
+              ..add(avoidC23.toFilePath());
           }
 
           if (os == OS.windows) {
