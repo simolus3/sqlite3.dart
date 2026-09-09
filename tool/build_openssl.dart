@@ -45,7 +45,8 @@ void main(List<String> args) async {
         break;
       default:
         throw UnsupportedError(
-            'Unsupported target OS, expected linux, windows or android.');
+          'Unsupported target OS, expected linux, windows or android.',
+        );
     }
 
     for (final arch in targetArchs) {
@@ -75,22 +76,22 @@ Future<void> _buildOpenSSL({
 }) async {
   final tmp = await Directory.systemTemp.createTemp('compile-openssl');
 
-  final outputDirectory = Directory.fromUri(sharedOutputDirectory.uri
-          .resolve('${targetOS.name}-${targetArchitecture.name}'))
-      .absolute;
+  final outputDirectory = Directory.fromUri(
+    sharedOutputDirectory.uri.resolve(
+      '${targetOS.name}-${targetArchitecture.name}',
+    ),
+  ).absolute;
 
   // We configure the project from a separate folder per ABI, to support parallel builds
 
   final openSslBuildDirPath = tmp.path;
 
   // Absolute path of the Configure program in the src folder
-  final String configureProgramPath =
-      openSslSrcDir.absolute.uri.resolve('Configure').toFilePath();
+  final String configureProgramPath = openSslSrcDir.absolute.uri
+      .resolve('Configure')
+      .toFilePath();
 
-  final configName = _resolveConfigName(
-    targetOS,
-    targetArchitecture,
-  );
+  final configName = _resolveConfigName(targetOS, targetArchitecture);
 
   final Map<String, String> extraEnv = {};
   if (targetOS == OS.android) {
@@ -113,7 +114,7 @@ Future<void> _buildOpenSSL({
       '-ffunction-sections',
       '-fdata-sections',
       '-fvisibility=hidden',
-      '--cross-compile-prefix=${_linuxCrossCompilePrefix(targetArchitecture)}'
+      '--cross-compile-prefix=${_linuxCrossCompilePrefix(targetArchitecture)}',
     ],
   ];
 
@@ -145,9 +146,7 @@ Future<void> _buildOpenSSL({
       // Copy compiled libraries into output directory
       await _run(
         'nmake',
-        [
-          'install',
-        ],
+        ['install'],
         inShell: true,
         workingDirectory: openSslBuildDirPath,
         environment: extraEnv,
@@ -169,10 +168,7 @@ Future<void> _buildOpenSSL({
       // Build static libraries
       await _run(
         'make',
-        [
-          '-j',
-          '${Platform.numberOfProcessors}',
-        ],
+        ['-j', '${Platform.numberOfProcessors}'],
         workingDirectory: openSslBuildDirPath,
         environment: extraEnv,
       );
@@ -180,9 +176,7 @@ Future<void> _buildOpenSSL({
       // Copy compiled libraries into output directory
       await _run(
         'make',
-        [
-          'install',
-        ],
+        ['install'],
         workingDirectory: openSslBuildDirPath,
         environment: extraEnv,
       );
@@ -194,7 +188,8 @@ Future<void> _buildOpenSSL({
 }
 
 Future<Map<String, String>> _resolveWindowsBuildConfig(
-    Architecture arch) async {
+  Architecture arch,
+) async {
   final vcvars = switch (arch) {
     Architecture.arm64 => msvc.vcvarsarm64,
     Architecture.ia32 => msvc.vcvars32,
@@ -202,8 +197,9 @@ Future<Map<String, String>> _resolveWindowsBuildConfig(
     _ => throw ArgumentError.value(arch),
   };
 
-  final resolved =
-      await vcvars.defaultResolver!.resolve(ToolResolvingContext(logger: null));
+  final resolved = await vcvars.defaultResolver!.resolve(
+    ToolResolvingContext(logger: null),
+  );
   return await environmentFromBatchFile(resolved.first.uri);
 }
 
@@ -250,8 +246,8 @@ String _resolveConfigName(OS os, Architecture architecture) {
     (OS.windows, Architecture.ia32) => 'VC-WIN32',
     (OS.windows, Architecture.x64) => 'VC-WIN64A',
     _ => throw UnsupportedError(
-        'Unsupported target combination: ${os.name}-${architecture.name}',
-      ),
+      'Unsupported target combination: ${os.name}-${architecture.name}',
+    ),
   };
 }
 
@@ -330,5 +326,5 @@ const _androidArchitectures = [
 const _windowsArchitectures = [
   Architecture.ia32,
   Architecture.x64,
-  Architecture.arm64
+  Architecture.arm64,
 ];

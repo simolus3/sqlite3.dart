@@ -20,8 +20,9 @@ void main(List<String> args) async {
   final (sqliteDirectory, poolDirectory) = switch (args) {
     [final sqlite, final pool] => (Directory(sqlite), Directory(pool)),
     _ => throw ArgumentError(
-        'Usage: dart tool/generate_sbom.dart <path to pool libraries> '
-        '<path to sqlite libraries>')
+      'Usage: dart tool/generate_sbom.dart <path to pool libraries> '
+      '<path to sqlite libraries>',
+    ),
   };
 
   final output = Directory('sbom');
@@ -33,34 +34,55 @@ void main(List<String> args) async {
   final encoder = JsonEncoder.withIndent(' ' * 2).fuse(Utf8Encoder());
 
   final writes = <Future<void>>[];
-  void generateAndWriteSbom(String path,
-      Future<Object?> Function(Directory) function, Directory input) {
-    writes.add(Future(() async {
-      final sbom = await _generateOnIsolate(function, input);
-      await File('sbom/$path').writeAsBytes(encoder.convert(sbom));
-    }));
+  void generateAndWriteSbom(
+    String path,
+    Future<Object?> Function(Directory) function,
+    Directory input,
+  ) {
+    writes.add(
+      Future(() async {
+        final sbom = await _generateOnIsolate(function, input);
+        await File('sbom/$path').writeAsBytes(encoder.convert(sbom));
+      }),
+    );
   }
 
   generateAndWriteSbom(
-      'sqlite3.bom.json', _generateForSqlite3, sqliteDirectory);
+    'sqlite3.bom.json',
+    _generateForSqlite3,
+    sqliteDirectory,
+  );
   generateAndWriteSbom(
-      'sqlite3mc.bom.json', _generateForSqliteMultipleCiphers, sqliteDirectory);
+    'sqlite3mc.bom.json',
+    _generateForSqliteMultipleCiphers,
+    sqliteDirectory,
+  );
   generateAndWriteSbom(
-      'sqlcipher.bom.json', _generateForSqlCipher, sqliteDirectory);
-  generateAndWriteSbom('connection_pool.bom.json',
-      _generateForSqlite3ConnectionPool, poolDirectory);
+    'sqlcipher.bom.json',
+    _generateForSqlCipher,
+    sqliteDirectory,
+  );
+  generateAndWriteSbom(
+    'connection_pool.bom.json',
+    _generateForSqlite3ConnectionPool,
+    poolDirectory,
+  );
   await writes.wait;
 }
 
 Future<Object?> _generateOnIsolate(
-    Future<Object?> Function(Directory) generate, Directory directory) async {
+  Future<Object?> Function(Directory) generate,
+  Directory directory,
+) async {
   return await Isolate.run(() => generate(directory));
 }
 
 typedef _Binary = ({String ref, String name, Map<String, Object?> component});
 
-Future<List<_Binary>> _scanBinaries(Directory directory,
-    [bool Function(String name)? matches]) async {
+Future<List<_Binary>> _scanBinaries(
+  Directory directory, [
+  bool Function(String name)? matches,
+]) async {
   final binaries = <_Binary>[];
   await for (final entry in directory.list()) {
     final name = p.basename(entry.path);
@@ -75,7 +97,7 @@ Future<List<_Binary>> _scanBinaries(Directory directory,
         'bom-ref': ref,
         'type': 'library',
         'hashes': [
-          {'alg': 'SHA-256', 'content': await _sha256(entry as File)}
+          {'alg': 'SHA-256', 'content': await _sha256(entry as File)},
         ],
       },
     ));
@@ -94,7 +116,7 @@ Map<String, Object?> _metadata({
   return {
     'timestamp': DateTime.now().toIso8601String(),
     'lifecycles': [
-      {'phase': 'post-build'}
+      {'phase': 'post-build'},
     ],
     'authors': _authors,
     'component': {
@@ -103,14 +125,14 @@ Map<String, Object?> _metadata({
       'name': name,
       'version': version,
       'licenses': [
-        {'expression': 'MIT'}
+        {'expression': 'MIT'},
       ],
       if (bomRef != null) 'bom-ref': bomRef,
       'externalReferences': [
         {'type': 'vcs', 'url': 'https://github.com/simolus3/sqlite3.git'},
         {
           'type': 'documentation',
-          'url': 'https://pub.dev/documentation/$docsPath/'
+          'url': 'https://pub.dev/documentation/$docsPath/',
         },
       ],
     },
@@ -141,8 +163,10 @@ Future<Object?> _generateForSqlite3(Directory precompiledLibraries) async {
   final sqlite3Major = versionNumber;
   final version = '$sqlite3Major.$sqlite3Minor.$sqlite3Patch';
 
-  final binaries = await _scanBinaries(precompiledLibraries,
-      (name) => name.startsWith('libsqlite3.') || name.startsWith('sqlite3.'));
+  final binaries = await _scanBinaries(
+    precompiledLibraries,
+    (name) => name.startsWith('libsqlite3.') || name.startsWith('sqlite3.'),
+  );
 
   return _bom(
     metadata: _metadata(
@@ -156,7 +180,7 @@ Future<Object?> _generateForSqlite3(Directory precompiledLibraries) async {
         'version': version,
         'bom-ref': 'sqlite3',
         'license': [
-          {'expression': 'blessing'}
+          {'expression': 'blessing'},
         ],
         'externalReferences': [
           {'url': 'https://sqlite.org/', 'type': 'website'},
@@ -170,22 +194,23 @@ Future<Object?> _generateForSqlite3(Directory precompiledLibraries) async {
         {
           'ref': binary.ref,
           'dependsOn': ['sqlite3'],
-        }
+        },
     ],
   );
 }
 
 Future<Object?> _generateForSqliteMultipleCiphers(
-    Directory precompiledLibraries) async {
+  Directory precompiledLibraries,
+) async {
   final pubspec = await _parsePubspec('sqlite3');
   final ciphersUri = Uri.parse(download_sqlite.sqliteMultipleCiphersSource);
   // Format: utelle/SQLite3MultipleCiphers/releases/download/v$version
   final ciphersVersion = ciphersUri.pathSegments[4].substring(1);
 
   final binaries = await _scanBinaries(
-      precompiledLibraries,
-      (name) =>
-          name.startsWith('libsqlite3mc.') || name.startsWith('sqlite3mc.'));
+    precompiledLibraries,
+    (name) => name.startsWith('libsqlite3mc.') || name.startsWith('sqlite3mc.'),
+  );
 
   return _bom(
     metadata: _metadata(
@@ -199,16 +224,16 @@ Future<Object?> _generateForSqliteMultipleCiphers(
         'version': ciphersVersion,
         'bom-ref': 'sqlite3mc',
         'license': [
-          {'expression': 'MIT'}
+          {'expression': 'MIT'},
         ],
         'externalReferences': [
           {
             'type': 'vcs',
-            'url': 'https://github.com/utelle/SQLite3MultipleCiphers'
+            'url': 'https://github.com/utelle/SQLite3MultipleCiphers',
           },
           {
             'url': 'https://utelle.github.io/SQLite3MultipleCiphers/',
-            'type': 'website'
+            'type': 'website',
           },
         ],
       },
@@ -219,7 +244,7 @@ Future<Object?> _generateForSqliteMultipleCiphers(
         {
           'ref': binary.ref,
           'dependsOn': ['sqlite3mc'],
-        }
+        },
     ],
   );
 }
@@ -228,9 +253,9 @@ Future<Object?> _generateForSqlCipher(Directory precompiledLibraries) async {
   final pubspec = await _parsePubspec('sqlite3');
 
   final binaries = await _scanBinaries(
-      precompiledLibraries,
-      (name) =>
-          name.startsWith('libsqlcipher.') || name.startsWith('sqlcipher.'));
+    precompiledLibraries,
+    (name) => name.startsWith('libsqlcipher.') || name.startsWith('sqlcipher.'),
+  );
 
   return _bom(
     metadata: _metadata(
@@ -244,7 +269,7 @@ Future<Object?> _generateForSqlCipher(Directory precompiledLibraries) async {
         'version': download_sqlite.sqlcipherVersion,
         'bom-ref': 'sqlcipher',
         'license': [
-          {'expression': 'BSD-3-Clause'}
+          {'expression': 'BSD-3-Clause'},
         ],
         'externalReferences': [
           {'type': 'vcs', 'url': 'https://github.com/sqlcipher/sqlcipher'},
@@ -257,7 +282,7 @@ Future<Object?> _generateForSqlCipher(Directory precompiledLibraries) async {
         'version': openSslVersion,
         'bom-ref': 'openssl',
         'license': [
-          {'expression': 'Apache-2.0'}
+          {'expression': 'Apache-2.0'},
         ],
         'externalReferences': [
           {'type': 'vcs', 'url': 'https://github.com/openssl/openssl/'},
@@ -280,27 +305,27 @@ Future<Object?> _generateForSqlCipher(Directory precompiledLibraries) async {
                 binary.name.contains('android'))
               'openssl',
           ],
-        }
+        },
     ],
   );
 }
 
 Future<Object?> _generateForSqlite3ConnectionPool(
-    Directory poolLibraries) async {
+  Directory poolLibraries,
+) async {
   // Currently, all Rust dependencies end up in the library (we have no build or
   // proc-macro dependencies).
-  final processOutput = await Process.run(
-    'cargo',
-    ['metadata', '--format-version=1'],
-    workingDirectory: 'sqlite3_connection_pool',
-  );
+  final processOutput = await Process.run('cargo', [
+    'metadata',
+    '--format-version=1',
+  ], workingDirectory: 'sqlite3_connection_pool');
   if (processOutput.exitCode != 0) {
     throw 'Could not run cargo metadata: ${processOutput.stderr}';
   }
 
   final cargoMetadata = jsonDecode(processOutput.stdout);
-  final packages =
-      (cargoMetadata['packages'] as List).cast<Map<String, Object?>>();
+  final packages = (cargoMetadata['packages'] as List)
+      .cast<Map<String, Object?>>();
   final pubspec = await _parsePubspec('sqlite3_connection_pool');
 
   final binaries = await _scanBinaries(poolLibraries);
@@ -326,7 +351,7 @@ Future<Object?> _generateForSqlite3ConnectionPool(
       'type': 'library',
       'version': version,
       'licenses': [
-        {'expression': license}
+        {'expression': license},
       ],
       'bom-ref': bomRef,
       'description': description,
@@ -354,10 +379,7 @@ Future<Object?> _generateForSqlite3ConnectionPool(
     ],
     dependencies: [
       for (final binary in binaries)
-        {
-          'ref': binary.ref,
-          'dependsOn': cargoRefs,
-        }
+        {'ref': binary.ref, 'dependsOn': cargoRefs},
     ],
   );
 }
@@ -368,7 +390,7 @@ Future<Pubspec> _parsePubspec(String package) async {
 }
 
 const _authors = [
-  {'name': 'Simon Binder', 'email': 'oss@simonbinder.eu'}
+  {'name': 'Simon Binder', 'email': 'oss@simonbinder.eu'},
 ];
 
 Map<String, Object?> _commonFields() {

@@ -17,7 +17,10 @@ void main(List<String> args) {
     [] => null,
     [final arg] => arg,
     _ => throw ArgumentError.value(
-        args.join(' '), 'args', 'Must be empty or the tag'),
+      args.join(' '),
+      'args',
+      'Must be empty or the tag',
+    ),
   };
 
   final buffer = StringBuffer('''
@@ -34,8 +37,10 @@ const String? releaseTag = ${releaseTag == null ? 'null' : "'$releaseTag'"};
 const Map<String, String> assetNameToSha256Hash = {
 ''');
 
-  final files =
-      Directory('sqlite-compiled').listSync().whereType<File>().toList();
+  final files = Directory('sqlite-compiled')
+      .listSync()
+      .whereType<File>()
+      .toList();
   files.sortBy((f) => f.path);
 
   for (final file in files) {
@@ -49,8 +54,9 @@ const Map<String, String> assetNameToSha256Hash = {
 
   print(buffer);
 
-  final targetFile =
-      File(p.join('sqlite3', 'lib', 'src', 'hook', 'asset_hashes.dart'));
+  final targetFile = File(
+    p.join('sqlite3', 'lib', 'src', 'hook', 'asset_hashes.dart'),
+  );
   if (releaseTag == null) {
     targetFile.writeAsStringSync(buffer.toString());
   } else {

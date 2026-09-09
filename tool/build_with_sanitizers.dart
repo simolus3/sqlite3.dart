@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:pool/pool.dart';
 
 import 'package:sqlite3/src/hook/compile/description.dart';
+
 import '../sqlite3/hook/build.dart' as hook;
 
 final _limitConcurrency = Pool(Platform.numberOfProcessors);
@@ -24,8 +25,9 @@ void main() async {
       .childFile('sqlite3.c')
       .path;
 
-  final outputDirectory =
-      fs.currentDirectory.parent.childDirectory('sqlite-sanitized');
+  final outputDirectory = fs.currentDirectory.parent.childDirectory(
+    'sqlite-sanitized',
+  );
   if (await outputDirectory.exists()) {
     await outputDirectory.delete(recursive: true);
   }
@@ -43,13 +45,15 @@ void main() async {
             compiler: _which('clang'),
             linker: _which('lld'),
           ),
-        )
+        ),
       ],
       linkingEnabled: true,
       mainMethod: (args) {
         return build(args, (input, output) async {
-          final sourceFile =
-              p.relative(sourcePath, from: fs.currentDirectory.path);
+          final sourceFile = p.relative(
+            sourcePath,
+            from: fs.currentDirectory.path,
+          );
           final library = CBuilder.library(
             name: 'sqlite3',
             packageName: 'sqlite3',
@@ -68,7 +72,7 @@ void main() async {
               // But we can already assume it to be correct, we mainly want to
               // test Dart parts.
               if (sanitizer == 'memory')
-                '-fsanitize-ignorelist=../native_tests/ignorelist.txt'
+                '-fsanitize-ignorelist=../native_tests/ignorelist.txt',
             ],
           );
 
