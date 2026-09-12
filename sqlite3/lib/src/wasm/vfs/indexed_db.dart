@@ -438,7 +438,7 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
   final AsynchronousIndexedDbFileSystem _asynchronous;
 
   var _isClosing = false;
-  var _isWorking = false;
+  Future<void>? _currentWork;
 
   bool _writeAutomatically = true;
 
@@ -536,21 +536,22 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
   Future<void> _startWorkingIfNeeded({required bool isImplicit}) async {
     if (isImplicit && !_writeAutomatically) return;
 
-    if (!_isWorking && _pendingWork.isNotEmpty) {
-      _isWorking = true;
+    if (_currentWork == null && _pendingWork.isNotEmpty) {
       final items = _pendingWork.toList();
       _pendingWork.clear();
 
-      await _asynchronous._performWrites(items).whenComplete(() {
-        _isWorking = false;
+      await (_currentWork = _asynchronous._performWrites(items).whenComplete(
+        () {
+          _currentWork = null;
 
-        for (final item in items) {
-          item.completer.complete();
-        }
+          for (final item in items) {
+            item.completer.complete();
+          }
 
-        // In case there's another item in the waiting list
-        _startWorkingIfNeeded(isImplicit: isImplicit);
-      });
+          // In case there's another item in the waiting list
+          _startWorkingIfNeeded(isImplicit: isImplicit);
+        },
+      ));
     }
   }
 
@@ -607,7 +608,7 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
   /// Operations started after this [flush] call will not be awaited by the
   /// returned future.
   Future<void> flush() {
-    return _startWorkingIfNeeded(isImplicit: false);
+    return _currentWork ?? _startWorkingIfNeeded(isImplicit: false);
   }
 
   @override
