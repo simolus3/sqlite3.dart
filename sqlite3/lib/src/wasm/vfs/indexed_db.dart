@@ -607,7 +607,16 @@ final class IndexedDbFileSystem extends BaseVirtualFileSystem {
   /// Operations started after this [flush] call will not be awaited by the
   /// returned future.
   Future<void> flush() {
-    return _startWorkingIfNeeded(isImplicit: false);
+    if (!_isWorking) {
+      return _startWorkingIfNeeded(isImplicit: false);
+    }
+
+    // A batch is already being written, so `_startWorkingIfNeeded` would take
+    // no branch and complete immediately — before that batch, or anything
+    // queued behind it, reaches IndexedDB. Queue a no-op item instead: it lands
+    // at the tail of `_pendingWork` and completes only once the work ahead of
+    // it has been written, which is the guarantee documented above.
+    return _submitWorkFunction((_) async {}, 'flush');
   }
 
   @override
