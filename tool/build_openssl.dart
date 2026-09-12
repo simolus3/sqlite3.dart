@@ -33,10 +33,9 @@ void main(List<String> args) async {
   }
 
   final target = Directory('openssl-compiled');
-  if (await target.exists()) {
-    await target.delete(recursive: true);
+  if (!await target.exists()) {
+    await target.create(recursive: true);
   }
-  await target.create(recursive: true);
 
   var hadFailure = false;
 

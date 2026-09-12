@@ -98,7 +98,7 @@ jobs:
           dart run tool/build_openssl.dart linux
 
       - name: Compile OpenSSL for Android
-        if: false && steps.cache_build.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-latest'
+        if: steps.cache_build.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-latest'
         run: dart run tool/build_openssl.dart android
 
       - name: Compile OpenSSL for Windows
