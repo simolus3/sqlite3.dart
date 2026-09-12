@@ -54,8 +54,7 @@ jobs:
     # Build a static OpenSSL build, used to build SQLCipher later.
     strategy:
       matrix:
-        #os: [ubuntu-latest, windows-latest]
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     name: Compile OpenSSL
     steps:
@@ -99,7 +98,7 @@ jobs:
           dart run tool/build_openssl.dart linux
 
       - name: Compile OpenSSL for Android
-        if: steps.cache_build.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-latest'
+        if: false && steps.cache_build.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-latest'
         run: dart run tool/build_openssl.dart android
 
       - name: Compile OpenSSL for Windows

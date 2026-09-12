@@ -218,7 +218,10 @@ Future<void> _buildOpenSSL({
   }
 
   if (container != null) {
+    print('Copying results from ${container.name}:$outputDirectory');
+
     await _run(container.tool, [
+      'container',
       'cp',
       '${container.name}:$outputDirectory',
       hostOutputDirectory.path,
@@ -252,6 +255,8 @@ Future<void> _run(
   bool inShell = false,
   BuildContainer? container,
 }) async {
+  print('Running $executable $args');
+
   final proc = switch (container) {
     null => await Process.start(
       executable,
