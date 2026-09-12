@@ -54,7 +54,8 @@ jobs:
     # Build a static OpenSSL build, used to build SQLCipher later.
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        #os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     name: Compile OpenSSL
     steps:
@@ -76,18 +77,30 @@ jobs:
           curl -L https://github.com/openssl/openssl/releases/download/openssl-3.6.4/openssl-3.6.4.tar.gz | tar --extract --gzip
           mv openssl-3.6.4 openssl-src
 
-      - name: Install cross-compiling GCC
+      - name: Start container with old glibc
         shell: bash
         if: runner.os == 'Linux' && steps.cache_build.outputs.cache-hit != 'true'
         run: |
-          sudo apt update
-          sudo apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-arm-linux-gnueabihf gcc-i686-linux-gnu
+          docker run -d \
+            --name openssl-build \
+            -v "$GITHUB_WORKSPACE/openssl-src:/src:ro" \
+            debian:12 sleep infinity
+          docker exec openssl-build apt update
+          docker exec openssl-build apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-arm-linux-gnueabihf gcc-x86-64-linux-gnu gcc-i686-linux-gnu libfindbin-libs-perl perl make
 
-      - name: Compile OpenSSL for Linux and Android
+      - name: Compile OpenSSL for Linux
         if: steps.cache_build.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-latest'
+        env:
+          CONTAINER_TOOL: docker
+          CONTAINER_NAME: openssl-build
+          CONTAINER_SRC: /src/
         run: |
           dart pub get
-          dart run tool/build_openssl.dart linux android
+          dart run tool/build_openssl.dart linux
+
+      - name: Compile OpenSSL for Android
+        if: steps.cache_build.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-latest'
+        run: dart run tool/build_openssl.dart android
 
       - name: Compile OpenSSL for Windows
         if: steps.cache_build.outputs.cache-hit != 'true' && matrix.os == 'windows-latest'

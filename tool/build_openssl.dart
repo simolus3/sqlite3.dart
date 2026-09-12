@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:code_assets/code_assets.dart';
@@ -12,6 +13,19 @@ import 'package:native_toolchain_c/src/tool/tool_resolver.dart';
 ///   1. Download an OpenSSL 3.x release to `openssl-src/`.
 ///   2. `dart tool/build_openssl.dart <linux | android | windows>`.
 void main(List<String> args) async {
+  final container = switch (Platform.environment) {
+    {
+      'CONTAINER_TOOL': final tool,
+      'CONTAINER_NAME': final name,
+      'CONTAINER_SRC': final src,
+    } =>
+      BuildContainer(tool: tool, name: name, srcRoot: .parse(src)),
+    _ => null,
+  };
+  if (container != null) {
+    print('Running build in ${container.name}');
+  }
+
   final src = Directory('openssl-src');
   if (!await src.exists()) {
     print('Expected openssl-src to exist');
@@ -56,6 +70,7 @@ void main(List<String> args) async {
           targetArchitecture: arch,
           sharedOutputDirectory: target,
           openSslSrcDir: src,
+          container: container,
         );
       } catch (e, s) {
         hadFailure = true;
@@ -73,23 +88,38 @@ Future<void> _buildOpenSSL({
   required Architecture targetArchitecture,
   required Directory sharedOutputDirectory,
   required Directory openSslSrcDir,
+  BuildContainer? container,
 }) async {
-  final tmp = await Directory.systemTemp.createTemp('compile-openssl');
-
-  final outputDirectory = Directory.fromUri(
+  final tmp = container != null
+      ? null
+      : await Directory.systemTemp.createTemp('compile-openssl');
+  final String tmpPath;
+  final String outputDirectory;
+  final hostOutputDirectory = Directory.fromUri(
     sharedOutputDirectory.uri.resolve(
       '${targetOS.name}-${targetArchitecture.name}',
     ),
-  ).absolute;
+  );
+
+  if (tmp == null) {
+    final mktemp = await container!.start('mktemp', ['-d']);
+    tmpPath = (await utf8.decodeStream(mktemp.stdout)).trim();
+
+    outputDirectory = '/opt/openssl-${targetArchitecture.name}';
+  } else {
+    tmpPath = tmp.path;
+    outputDirectory = hostOutputDirectory.absolute.path;
+  }
 
   // We configure the project from a separate folder per ABI, to support parallel builds
 
-  final openSslBuildDirPath = tmp.path;
+  final openSslBuildDirPath = tmpPath;
 
   // Absolute path of the Configure program in the src folder
-  final String configureProgramPath = openSslSrcDir.absolute.uri
-      .resolve('Configure')
-      .toFilePath();
+  final String configureProgramPath =
+      (container != null ? container.srcRoot : openSslSrcDir.absolute.uri)
+          .resolve('Configure')
+          .toFilePath();
 
   final configName = _resolveConfigName(targetOS, targetArchitecture);
 
@@ -104,14 +134,11 @@ Future<void> _buildOpenSSL({
     final existingPath = Platform.environment['PATH'] ?? '';
     extraEnv['PATH'] =
         '$ndkRoot/toolchains/llvm/prebuilt/linux-x86_64/bin:$existingPath';
-  } else if (targetOS == OS.linux) {
-    final avoidC23 = Platform.script.resolve('avoid_c23.h').toFilePath();
-    extraEnv['CFLAGS'] = '-include $avoidC23';
   }
 
   final extraConfigureArgs = <String>[
-    '--prefix=${outputDirectory.path}',
-    '--openssldir=${outputDirectory.path}',
+    '--prefix=${outputDirectory}',
+    '--openssldir=${outputDirectory}',
     if (targetOS == OS.linux) ...[
       '-fPIC',
       '-ffunction-sections',
@@ -166,6 +193,7 @@ Future<void> _buildOpenSSL({
         ],
         workingDirectory: openSslBuildDirPath,
         environment: extraEnv,
+        container: container,
       );
 
       // Build static libraries
@@ -174,6 +202,7 @@ Future<void> _buildOpenSSL({
         ['-j', '${Platform.numberOfProcessors}'],
         workingDirectory: openSslBuildDirPath,
         environment: extraEnv,
+        container: container,
       );
 
       // Copy compiled libraries into output directory
@@ -182,12 +211,21 @@ Future<void> _buildOpenSSL({
         ['install'],
         workingDirectory: openSslBuildDirPath,
         environment: extraEnv,
+        container: container,
       );
 
       break;
   }
 
-  await tmp.delete(recursive: true);
+  if (container != null) {
+    await _run(container.tool, [
+      'cp',
+      '${container.name}:$outputDirectory',
+      hostOutputDirectory.path,
+    ]);
+  }
+
+  await tmp?.delete(recursive: true);
 }
 
 Future<Map<String, String>> _resolveWindowsBuildConfig(
@@ -212,15 +250,26 @@ Future<void> _run(
   String? workingDirectory,
   Map<String, String>? environment,
   bool inShell = false,
+  BuildContainer? container,
 }) async {
-  final proc = await Process.start(
-    executable,
-    args,
-    runInShell: inShell,
-    mode: ProcessStartMode.inheritStdio,
-    workingDirectory: workingDirectory,
-    environment: environment,
-  );
+  final proc = switch (container) {
+    null => await Process.start(
+      executable,
+      args,
+      runInShell: inShell,
+      mode: .inheritStdio,
+      workingDirectory: workingDirectory,
+      environment: environment,
+    ),
+    final container => await container.start(
+      executable,
+      args,
+      mode: .inheritStdio,
+      workingDirectory: workingDirectory,
+      environment: environment,
+    ),
+  };
+
   final exitCode = await proc.exitCode;
 
   if (exitCode != 0) {
@@ -252,6 +301,42 @@ String _resolveConfigName(OS os, Architecture architecture) {
       'Unsupported target combination: ${os.name}-${architecture.name}',
     ),
   };
+}
+
+/// A container running the build.
+///
+/// The container must already have relevant build tools installed, this script
+/// then runs its commands in the container.
+final class BuildContainer({
+  /// The CLI tool to interact with containers, e.g. `podman`.
+  required final String tool,
+
+  /// The name of the container.
+  required final String name,
+
+  /// The location in the container where `openssl-src` is mounted.
+  required final Uri srcRoot,
+}) {
+  Future<Process> start(
+    String executable,
+    List<String> args, {
+    ProcessStartMode mode = .normal,
+    String? workingDirectory,
+    Map<String, String>? environment,
+  }) {
+    return Process.start(tool, [
+      'exec',
+      if (environment != null)
+        for (final entry in environment.entries) ...[
+          '-e',
+          '${entry.key}=${entry.value}',
+        ],
+      if (workingDirectory != null) '--workdir=$workingDirectory',
+      name,
+      executable,
+      ...args,
+    ], mode: mode);
+  }
 }
 
 // Disable features we don't need for SQLCipher.
