@@ -76,7 +76,7 @@ jobs:
         id: cache_build
         with:
           path: openssl-compiled
-          key: openssl-prebuilt-${{ runner.target }}-3.6.4-${{ hashFiles('tool/build_openssl.dart') }}
+          key: openssl-prebuilt-${{ matrix.target }}-3.6.4-${{ hashFiles('tool/build_openssl.dart') }}
       - uses: dart-lang/setup-dart@v1
         id: setup_dart
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -116,7 +116,7 @@ jobs:
       - name: Upload openssl binaries
         uses: actions/upload-artifact@v7
         with:
-          name: openssl-libs-${{ runner.target }}
+          name: openssl-libs-${{ matrix.target }}
           path: openssl-compiled
           if-no-files-found: error
           retention-days: 1
@@ -126,7 +126,19 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: windows-latest
+            target: windows
+            container: false
+          - os: macos-latest
+            target: macos
+            container: false
+          - os: ubuntu-latest
+            target: android
+            container: false
+          - os: ubuntu-latest
+            target: linux
+            container: true
 
     runs-on: ${{ matrix.os }}
     name: Compile sqlite3
@@ -138,7 +150,7 @@ jobs:
         id: cache_build
         with:
           path: sqlite-compiled
-          key: sqlite-prebuilt-${{ runner.os }}-${{ hashFiles('tool/**', 'sqlite3/lib/src/hook/compile/**') }}
+          key: sqlite-prebuilt-${{ matrix.target }}-${{ hashFiles('tool/**', 'sqlite3/lib/src/hook/compile/**') }}
 
       - name: Download sqlite3 sources
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -148,32 +160,52 @@ jobs:
           path: sqlite-src
 
       - name: Download compiled OpenSSL
-        if: (runner.os == 'Linux' || runner.os == 'Windows') && steps.cache_build.outputs.cache-hit != 'true'
+        if: matrix.target != 'macos' && steps.cache_build.outputs.cache-hit != 'true'
         uses: actions/download-artifact@v8
         with:
-          name: openssl-libs-${{ runner.os }}
+          name: openssl-libs-${{ matrix.target }}
           path: openssl-compiled
 
       - uses: dart-lang/setup-dart@v1
+        id: setup_dart
         if: steps.cache_build.outputs.cache-hit != 'true'
 
-      - name: Install cross-compiling GCC
-        shell: bash
-        if: runner.os == 'Linux' && steps.cache_build.outputs.cache-hit != 'true'
-        run: |
-          sudo apt update
-          sudo apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-arm-linux-gnueabihf gcc-i686-linux-gnu
+      # - name: Install cross-compiling GCC
+      #   shell: bash
+      #   if: runner.os == 'Linux' && steps.cache_build.outputs.cache-hit != 'true'
+      #   run: |
+      #     sudo apt update
+      #     sudo apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-arm-linux-gnueabihf gcc-i686-linux-gnu
 
-      - name: Compile sqlite3
-        if: steps.cache_build.outputs.cache-hit != 'true'
+      - name: Compile sqlite3 (host)
+        if: steps.cache_build.outputs.cache-hit != 'true' && !matrix.container
         run: |
           dart pub get
-          dart run tool/build_sqlite.dart
+          dart run tool/build_sqlite.dart ${{ matrix.target }}
+
+      - name: Compile sqlite3 (container)
+        if: steps.cache_build.outputs.cache-hit != 'true' && matrix.container
+        env:
+          TARGET: ${{ matrix.target }}
+          DART_VERSION: ${{ steps.setup_dart.outputs.dart-version }}
+        run: |
+          docker run -d \
+            --name sqlite-build \
+            -v "$GITHUB_WORKSPACE:/src" \
+            debian:12 sleep infinity
+          docker exec sqlite-build apt update
+          docker exec sqlite-build apt install -y curl clang gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-arm-linux-gnueabihf gcc-x86-64-linux-gnu gcc-i686-linux-gnu
+
+          docker exec sqlite-build curl -LO https://storage.googleapis.com/dart-archive/channels/stable/release/$DART_VERSION/linux_packages/dart_$DART_VERSION-1_amd64.deb
+          docker exec sqlite-build dpkg -i dart_$DART_VERSION-1_amd64.deb
+
+          docker exec -w /src/ sqlite-build dart pub get
+          docker exec -w /src/ sqlite-build dart run tool/build_sqlite.dart $TARGET
 
       - name: Upload sqlite3 binaries
         uses: actions/upload-artifact@v7
         with:
-          name: sqlite3-libs-${{ runner.os }}
+          name: sqlite3-libs-${{ matrix.target }}
           path: sqlite-compiled
           if-no-files-found: error
           retention-days: 1

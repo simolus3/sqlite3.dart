@@ -17,16 +17,14 @@ final _limitConcurrency = Pool(Platform.numberOfProcessors);
 void main(List<String> args) async {
   Directory.current = Directory('sqlite3');
 
-  var operatingSystems = args.map(OS.fromString).toList();
-  if (operatingSystems.isEmpty) {
-    if (Platform.isLinux) {
-      operatingSystems = [OS.linux, OS.android];
-    } else if (Platform.isMacOS) {
-      operatingSystems = [OS.macOS, OS.iOS];
-    } else if (Platform.isWindows) {
-      operatingSystems = [OS.windows];
+  var operatingSystems = args.expand((arg) {
+    final os = OS.fromString(arg);
+    if (os == .macOS) {
+      return [OS.macOS, OS.iOS];
+    } else {
+      return [os];
     }
-  }
+  }).toList();
 
   if (operatingSystems.isEmpty) {
     print('Usage: dart run tool/build_sqlite3.dart <operating systems...>');
