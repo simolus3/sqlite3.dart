@@ -31,7 +31,7 @@ To use this library on the web, additional setup is necessary:
 > [`sqlite_async`](https://pub.dev/packages/sqlite_async) and sqflite (through [sqflite_common_ffi](https://pub.dev/packages/sqflite_common_ffi) and [sqflite_common_ffi_web](https://pub.dev/packages/sqflite_common_ffi_web))
 > provide common interfaces and platform-specific asynchronous implementations.
 >
-> Additionally, projects like [drift](https://drift.simonbinder.eu) and [typed_sql](https://pub.dev/packages/typed_sql)
+> Additionally, projects like [drift](https://drift.simonbinder.eu), [raindrop](https://pub.dev/packages/raindrop) and [typed_sql](https://pub.dev/packages/typed_sql)
 > provide type-safety for SQL queries.
 
 ## Opening databases
