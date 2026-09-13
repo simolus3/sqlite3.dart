@@ -104,9 +104,6 @@ Future<void> _buildOpenSSL({
     final existingPath = Platform.environment['PATH'] ?? '';
     extraEnv['PATH'] =
         '$ndkRoot/toolchains/llvm/prebuilt/linux-x86_64/bin:$existingPath';
-  } else if (targetOS == OS.linux) {
-    final avoidC23 = Platform.script.resolve('avoid_c23.h').toFilePath();
-    extraEnv['CFLAGS'] = '-include $avoidC23';
   }
 
   final extraConfigureArgs = <String>[
