@@ -3,7 +3,9 @@
 - Hooks: Support relative paths in `additional_includes` and `additional_lib_directories`.
 - Hooks: Support multiple source files to compile with `source: source`.
 - Hooks: `source` and `name` accept a map with per-OS entries and a `default` (e.g. `source: {android: system, default: sqlite3}`). Names containing a path (like `foo.framework/foo`) are passed to the loader as-is with `source: system`.
-- Update SQLCipher to version 4.19.0
+- Update SQLCipher to version 4.19.0.
+- Linux: Pre-compiled libraries now support glibc 2.24.x as a minimum version (was 2.38.x before).
+- Fix `IndexedDbFileSystem.flush()` not awaiting an ongoing write transaction.
 
 ## 3.5.2
 
