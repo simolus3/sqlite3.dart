@@ -78,6 +78,7 @@ jobs:
           path: openssl-compiled
           key: openssl-prebuilt-${{ runner.target }}-3.6.4-${{ hashFiles('tool/build_openssl.dart') }}
       - uses: dart-lang/setup-dart@v1
+        id: setup_dart
         if: steps.cache_build.outputs.cache-hit != 'true'
 
       - name: Download OpenSSL
@@ -91,10 +92,13 @@ jobs:
         if: steps.cache_build.outputs.cache-hit != 'true' && !matrix.container
         run: |
           dart pub get
-          dart run tool/build_openssl.dart ${matrix.target}
+          dart run tool/build_openssl.dart ${{ matrix.target }}
 
       - name: Compile OpenSSL (container)
         if: steps.cache_build.outputs.cache-hit != 'true' && matrix.container
+        env:
+          TARGET: ${{ matrix.target }}
+          DART_VERSION: ${{ steps.setup_dart.outputs.dart-version }}
         run: |
           docker run -d \
             --name openssl-build \
@@ -103,11 +107,11 @@ jobs:
           docker exec openssl-build apt update
           docker exec openssl-build apt install -y curl gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-arm-linux-gnueabihf gcc-x86-64-linux-gnu gcc-i686-linux-gnu libfindbin-libs-perl perl make
 
-          docker exec openssl-build curl -LO https://storage.googleapis.com/dart-archive/channels/stable/release/3.13.3/linux_packages/dart_3.13.3-1_amd64.deb
-          docker exec openssl-build dpkg -i dart_3.13.3-1_amd64.deb
+          docker exec openssl-build curl -LO https://storage.googleapis.com/dart-archive/channels/stable/release/$DART_VERSION/linux_packages/dart_$DART_VERSION-1_amd64.deb
+          docker exec openssl-build dpkg -i dart_$DART_VERSION-1_amd64.deb
 
           docker exec -w /src/ openssl-build dart pub get
-          docker exec -w /src/ openssl-build dart run tool/build_openssl.dart ${matrix.target}
+          docker exec -w /src/ openssl-build dart run tool/build_openssl.dart $TARGET
 
       - name: Upload openssl binaries
         uses: actions/upload-artifact@v7
