@@ -54,7 +54,18 @@ jobs:
     # Build a static OpenSSL build, used to build SQLCipher later.
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: windows-latest
+            target: windows
+            container: false
+          - os: ubuntu-latest
+            target: android
+            container: false
+          - os: ubuntu-latest
+            target: linux
+            # We run Linux builds in a debian 12 container to avoid referencing
+            # new glibc symbols.
+            container: true
     runs-on: ${{ matrix.os }}
     name: Compile OpenSSL
     steps:
@@ -65,7 +76,7 @@ jobs:
         id: cache_build
         with:
           path: openssl-compiled
-          key: openssl-prebuilt-${{ runner.os }}-3.6.4-${{ hashFiles('tool/build_openssl.dart') }}
+          key: openssl-prebuilt-${{ runner.target }}-3.6.4-${{ hashFiles('tool/build_openssl.dart') }}
       - uses: dart-lang/setup-dart@v1
         if: steps.cache_build.outputs.cache-hit != 'true'
 
@@ -76,41 +87,32 @@ jobs:
           curl -L https://github.com/openssl/openssl/releases/download/openssl-3.6.4/openssl-3.6.4.tar.gz | tar --extract --gzip
           mv openssl-3.6.4 openssl-src
 
-      - name: Start container with old glibc
-        shell: bash
-        if: runner.os == 'Linux' && steps.cache_build.outputs.cache-hit != 'true'
+      - name: Compile OpenSSL (host)
+        if: steps.cache_build.outputs.cache-hit != 'true' && !matrix.container
+        run: |
+          dart pub get
+          dart run tool/build_openssl.dart ${matrix.target}
+
+      - name: Compile OpenSSL (container)
+        if: steps.cache_build.outputs.cache-hit != 'true' && matrix.container
         run: |
           docker run -d \
             --name openssl-build \
-            -v "$GITHUB_WORKSPACE/openssl-src:/src:ro" \
+            -v "$GITHUB_WORKSPACE:/src" \
             debian:12 sleep infinity
           docker exec openssl-build apt update
-          docker exec openssl-build apt install -y gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-arm-linux-gnueabihf gcc-x86-64-linux-gnu gcc-i686-linux-gnu libfindbin-libs-perl perl make
+          docker exec openssl-build apt install -y curl gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-arm-linux-gnueabihf gcc-x86-64-linux-gnu gcc-i686-linux-gnu libfindbin-libs-perl perl make
 
-      - name: Compile OpenSSL for Linux
-        if: steps.cache_build.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-latest'
-        env:
-          CONTAINER_TOOL: docker
-          CONTAINER_NAME: openssl-build
-          CONTAINER_SRC: /src/
-        run: |
-          dart pub get
-          dart run tool/build_openssl.dart linux
+          docker exec openssl-build curl -LO https://storage.googleapis.com/dart-archive/channels/stable/release/3.13.3/linux_packages/dart_3.13.3-1_amd64.deb
+          docker exec openssl-build dpkg -i dart_3.13.3-1_amd64.deb
 
-      - name: Compile OpenSSL for Android
-        if: steps.cache_build.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-latest'
-        run: dart run tool/build_openssl.dart android
-
-      - name: Compile OpenSSL for Windows
-        if: steps.cache_build.outputs.cache-hit != 'true' && matrix.os == 'windows-latest'
-        run: |
-          dart pub get
-          dart run tool/build_openssl.dart windows
+          docker exec -w /src/ openssl-build dart pub get
+          docker exec -w /src/ openssl-build dart run tool/build_openssl.dart ${matrix.target}
 
       - name: Upload openssl binaries
         uses: actions/upload-artifact@v7
         with:
-          name: openssl-libs-${{ runner.os }}
+          name: openssl-libs-${{ runner.target }}
           path: openssl-compiled
           if-no-files-found: error
           retention-days: 1

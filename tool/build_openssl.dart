@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:code_assets/code_assets.dart';
@@ -13,19 +12,6 @@ import 'package:native_toolchain_c/src/tool/tool_resolver.dart';
 ///   1. Download an OpenSSL 3.x release to `openssl-src/`.
 ///   2. `dart tool/build_openssl.dart <linux | android | windows>`.
 void main(List<String> args) async {
-  final container = switch (Platform.environment) {
-    {
-      'CONTAINER_TOOL': final tool,
-      'CONTAINER_NAME': final name,
-      'CONTAINER_SRC': final src,
-    } =>
-      BuildContainer(tool: tool, name: name, srcRoot: .parse(src)),
-    _ => null,
-  };
-  if (container != null) {
-    print('Running build in ${container.name}');
-  }
-
   final src = Directory('openssl-src');
   if (!await src.exists()) {
     print('Expected openssl-src to exist');
@@ -33,9 +19,10 @@ void main(List<String> args) async {
   }
 
   final target = Directory('openssl-compiled');
-  if (!await target.exists()) {
-    await target.create(recursive: true);
+  if (await target.exists()) {
+    await target.delete(recursive: true);
   }
+  await target.create(recursive: true);
 
   var hadFailure = false;
 
@@ -69,7 +56,6 @@ void main(List<String> args) async {
           targetArchitecture: arch,
           sharedOutputDirectory: target,
           openSslSrcDir: src,
-          container: container,
         );
       } catch (e, s) {
         hadFailure = true;
@@ -87,42 +73,29 @@ Future<void> _buildOpenSSL({
   required Architecture targetArchitecture,
   required Directory sharedOutputDirectory,
   required Directory openSslSrcDir,
-  BuildContainer? container,
 }) async {
-  final tmp = container != null
-      ? null
-      : await Directory.systemTemp.createTemp('compile-openssl');
-  final String tmpPath;
-  final String outputDirectory;
-  final hostOutputDirectory = Directory.fromUri(
+  final tmp = await Directory.systemTemp.createTemp('compile-openssl');
+
+  final outputDirectory = Directory.fromUri(
     sharedOutputDirectory.uri.resolve(
       '${targetOS.name}-${targetArchitecture.name}',
     ),
-  );
-
-  if (tmp == null) {
-    final mktemp = await container!.start('mktemp', ['-d']);
-    tmpPath = (await utf8.decodeStream(mktemp.stdout)).trim();
-
-    outputDirectory = '/opt/openssl-${targetArchitecture.name}';
-  } else {
-    tmpPath = tmp.path;
-    outputDirectory = hostOutputDirectory.absolute.path;
-  }
+  ).absolute;
 
   // We configure the project from a separate folder per ABI, to support parallel builds
 
-  final openSslBuildDirPath = tmpPath;
+  final openSslBuildDirPath = tmp.path;
 
   // Absolute path of the Configure program in the src folder
-  final String configureProgramPath =
-      (container != null ? container.srcRoot : openSslSrcDir.absolute.uri)
-          .resolve('Configure')
-          .toFilePath();
+  final String configureProgramPath = openSslSrcDir.absolute.uri
+      .resolve('Configure')
+      .toFilePath();
 
   final configName = _resolveConfigName(targetOS, targetArchitecture);
 
   final Map<String, String> extraEnv = {};
+  String? crossCompilePrefix;
+
   if (targetOS == OS.android) {
     final String? ndkRoot = Platform.environment['ANDROID_NDK_ROOT'];
 
@@ -133,17 +106,27 @@ Future<void> _buildOpenSSL({
     final existingPath = Platform.environment['PATH'] ?? '';
     extraEnv['PATH'] =
         '$ndkRoot/toolchains/llvm/prebuilt/linux-x86_64/bin:$existingPath';
+  } else if (targetOS == OS.linux) {
+    final prefix = _linuxCrossCompilePrefix(targetArchitecture);
+    crossCompilePrefix = '$prefix-';
+
+    if (Platform.environment['BUILD_ROOT'] case final buildRoot?) {
+      final sysroot = Uri.parse(buildRoot).resolve('usr/$prefix');
+
+      print('Using sysroot $sysroot');
+      extraEnv['CFLAGS'] = '--sysroot ${sysroot.toFilePath()}';
+    }
   }
 
   final extraConfigureArgs = <String>[
-    '--prefix=${outputDirectory}',
-    '--openssldir=${outputDirectory}',
+    '--prefix=${outputDirectory.path}',
+    '--openssldir=${outputDirectory.path}',
     if (targetOS == OS.linux) ...[
       '-fPIC',
       '-ffunction-sections',
       '-fdata-sections',
       '-fvisibility=hidden',
-      '--cross-compile-prefix=${_linuxCrossCompilePrefix(targetArchitecture)}',
+      '--cross-compile-prefix=$crossCompilePrefix',
     ],
   ];
 
@@ -192,7 +175,6 @@ Future<void> _buildOpenSSL({
         ],
         workingDirectory: openSslBuildDirPath,
         environment: extraEnv,
-        container: container,
       );
 
       // Build static libraries
@@ -201,7 +183,6 @@ Future<void> _buildOpenSSL({
         ['-j', '${Platform.numberOfProcessors}'],
         workingDirectory: openSslBuildDirPath,
         environment: extraEnv,
-        container: container,
       );
 
       // Copy compiled libraries into output directory
@@ -210,24 +191,12 @@ Future<void> _buildOpenSSL({
         ['install'],
         workingDirectory: openSslBuildDirPath,
         environment: extraEnv,
-        container: container,
       );
 
       break;
   }
 
-  if (container != null) {
-    print('Copying results from ${container.name}:$outputDirectory');
-
-    await _run(container.tool, [
-      'container',
-      'cp',
-      '${container.name}:$outputDirectory',
-      hostOutputDirectory.path,
-    ]);
-  }
-
-  await tmp?.delete(recursive: true);
+  await tmp.delete(recursive: true);
 }
 
 Future<Map<String, String>> _resolveWindowsBuildConfig(
@@ -252,28 +221,15 @@ Future<void> _run(
   String? workingDirectory,
   Map<String, String>? environment,
   bool inShell = false,
-  BuildContainer? container,
 }) async {
-  print('Running $executable $args');
-
-  final proc = switch (container) {
-    null => await Process.start(
-      executable,
-      args,
-      runInShell: inShell,
-      mode: .inheritStdio,
-      workingDirectory: workingDirectory,
-      environment: environment,
-    ),
-    final container => await container.start(
-      executable,
-      args,
-      mode: .inheritStdio,
-      workingDirectory: workingDirectory,
-      environment: environment,
-    ),
-  };
-
+  final proc = await Process.start(
+    executable,
+    args,
+    runInShell: inShell,
+    mode: ProcessStartMode.inheritStdio,
+    workingDirectory: workingDirectory,
+    environment: environment,
+  );
   final exitCode = await proc.exitCode;
 
   if (exitCode != 0) {
@@ -305,42 +261,6 @@ String _resolveConfigName(OS os, Architecture architecture) {
       'Unsupported target combination: ${os.name}-${architecture.name}',
     ),
   };
-}
-
-/// A container running the build.
-///
-/// The container must already have relevant build tools installed, this script
-/// then runs its commands in the container.
-final class BuildContainer({
-  /// The CLI tool to interact with containers, e.g. `podman`.
-  required final String tool,
-
-  /// The name of the container.
-  required final String name,
-
-  /// The location in the container where `openssl-src` is mounted.
-  required final Uri srcRoot,
-}) {
-  Future<Process> start(
-    String executable,
-    List<String> args, {
-    ProcessStartMode mode = .normal,
-    String? workingDirectory,
-    Map<String, String>? environment,
-  }) {
-    return Process.start(tool, [
-      'exec',
-      if (environment != null)
-        for (final entry in environment.entries) ...[
-          '-e',
-          '${entry.key}=${entry.value}',
-        ],
-      if (workingDirectory != null) '--workdir=$workingDirectory',
-      name,
-      executable,
-      ...args,
-    ], mode: mode);
-  }
 }
 
 // Disable features we don't need for SQLCipher.
@@ -391,11 +311,11 @@ const _configArgs = [
 
 String _linuxCrossCompilePrefix(Architecture architecture) {
   return switch (architecture) {
-    Architecture.arm => 'arm-linux-gnueabihf-',
-    Architecture.arm64 => 'aarch64-linux-gnu-',
-    Architecture.x64 => 'x86_64-linux-gnu-',
-    Architecture.ia32 => 'i686-linux-gnu-',
-    Architecture.riscv64 => 'riscv64-linux-gnu-',
+    Architecture.arm => 'arm-linux-gnueabihf',
+    Architecture.arm64 => 'aarch64-linux-gnu',
+    Architecture.x64 => 'x86_64-linux-gnu',
+    Architecture.ia32 => 'i686-linux-gnu',
+    Architecture.riscv64 => 'riscv64-linux-gnu',
     _ => throw ArgumentError('Unhandled architecture'),
   };
 }
