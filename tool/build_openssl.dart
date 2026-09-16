@@ -9,7 +9,7 @@ import 'package:native_toolchain_c/src/tool/tool_resolver.dart';
 ///
 /// To use this script:
 ///
-///   1. Download an OpenSSL 3.x release to `openssl-src/`.
+///   1. Download an OpenSSL 4.x release to `openssl-src/`.
 ///   2. `dart tool/build_openssl.dart <linux | android | windows>`.
 void main(List<String> args) async {
   final src = Directory('openssl-src');
@@ -87,9 +87,8 @@ Future<void> _buildOpenSSL({
   final openSslBuildDirPath = tmp.path;
 
   // Absolute path of the Configure program in the src folder
-  final String configureProgramPath = openSslSrcDir.absolute.uri
-      .resolve('Configure')
-      .toFilePath();
+  final String configureProgramPath =
+      openSslSrcDir.absolute.uri.resolve('Configure').toFilePath();
 
   final configName = _resolveConfigName(targetOS, targetArchitecture);
 
@@ -246,8 +245,8 @@ String _resolveConfigName(OS os, Architecture architecture) {
     (OS.windows, Architecture.ia32) => 'VC-WIN32',
     (OS.windows, Architecture.x64) => 'VC-WIN64A',
     _ => throw UnsupportedError(
-      'Unsupported target combination: ${os.name}-${architecture.name}',
-    ),
+        'Unsupported target combination: ${os.name}-${architecture.name}',
+      ),
   };
 }
 

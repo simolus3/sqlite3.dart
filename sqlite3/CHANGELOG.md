@@ -1,3 +1,7 @@
+## 3.6.1-wip
+
+- Update bundled OpenSSL for SQLCipher to 4.0.2.
+
 ## 3.6.0
 
 - Hooks: Support relative paths in `additional_includes` and `additional_lib_directories`.
