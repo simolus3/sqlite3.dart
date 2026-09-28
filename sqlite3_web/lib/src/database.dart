@@ -234,7 +234,7 @@ abstract class ClientConnection {
 }
 
 /// A [CommonDatabase] wrapped with functionality to handle custom requests.
-abstract class WorkerDatabase {
+abstract base class WorkerDatabase {
   /// The database made available to the worker.
   CommonDatabase get database;
 
@@ -247,6 +247,12 @@ abstract class WorkerDatabase {
     ClientConnection connection,
     CustomClientDatabaseRequest request,
   );
+
+  /// Closes the database and associated resources.
+  @mustCallSuper
+  void close() {
+    database.close();
+  }
 }
 
 /// The result of [WebSqlite.connectToRecommended], containing the opened

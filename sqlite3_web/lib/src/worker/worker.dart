@@ -710,7 +710,7 @@ final class DatabaseState {
     if (_database case final dbFuture?) {
       final database = await dbFuture;
       statementCache?.disposeAll();
-      database.database.close();
+      database.close();
 
       if (_resolvedVfs case final vfs?) {
         sqlite3.unregisterVirtualFileSystem(vfs);

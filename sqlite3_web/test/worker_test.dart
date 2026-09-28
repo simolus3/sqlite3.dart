@@ -17,6 +17,7 @@ import 'protocol_test.dart';
 void main() {
   late String sqlite3WasmUri;
   late FakeWorkerEnvironment fakeWorkers;
+  late _TestController controller;
 
   setUpAll(() async {
     final channel = spawnHybridUri('/test/asset_server.dart');
@@ -27,7 +28,7 @@ void main() {
   setUp(() {
     fakeWorkers = FakeWorkerEnvironment();
     WebSqlite.workerEntrypoint(
-      controller: _TestController(),
+      controller: controller = _TestController(),
       environment: fakeWorkers,
     );
   });
@@ -68,10 +69,17 @@ void main() {
       'foo',
       DatabaseImplementation.inMemoryShared,
     );
+    expect(controller._activeDatabases, 1);
+
     await a.execute('CREATE TABLE foo (bar TEXT);');
     await b.execute('INSERT INTO foo DEFAULT VALUES');
     final results = await a.select('SELECT * FROM foo');
     expect(results.result, hasLength(1));
+
+    await a.dispose();
+    expect(controller._activeDatabases, 1);
+    await b.dispose();
+    expect(controller._activeDatabases, 0);
   });
 
   test('releases resources for closed databases', () async {
@@ -468,6 +476,8 @@ final class _FakeWorkerConnector implements WorkerConnector {
 }
 
 final class _TestController extends DatabaseController {
+  var _activeDatabases = 0;
+
   @override
   Future<JSAny?> handleCustomRequest(
     ClientConnection connection,
@@ -483,15 +493,17 @@ final class _TestController extends DatabaseController {
     String vfs,
     JSAny? additionalData,
   ) async {
-    return _TestDatabase(sqlite3.open(path, vfs: vfs));
+    _activeDatabases++;
+    return _TestDatabase(sqlite3.open(path, vfs: vfs), this);
   }
 }
 
 final class _TestDatabase extends WorkerDatabase {
   @override
   final CommonDatabase database;
+  final _TestController controller;
 
-  _TestDatabase(this.database);
+  _TestDatabase(this.database, this.controller);
 
   @override
   Future<JSAny?> handleCustomRequest(
@@ -501,5 +513,11 @@ final class _TestDatabase extends WorkerDatabase {
     return request.useLock(() {
       return 'response'.toJS;
     });
+  }
+
+  @override
+  void close() {
+    super.close();
+    controller._activeDatabases--;
   }
 }

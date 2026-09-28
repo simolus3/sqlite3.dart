@@ -1,3 +1,8 @@
+## 0.9.5
+
+- Add `WorkerDatabase.close`, which can be used to customize how databases are
+  closed in workers.
+
 ## 0.9.4
 
 - For apps compiled with dart2wasm, preserve types of doubles that are exact
