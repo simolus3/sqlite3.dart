@@ -525,14 +525,6 @@ final class WasmStatement implements RawSqliteStatement {
   }
 
   @override
-  Uint8List sqlite3_column_bytes(int index) {
-    final length = bindings.sqlite3_column_bytes(stmt, index);
-    final ptr = bindings.sqlite3_column_blob(stmt, index);
-
-    return bindings.memory.copyRange(ptr, length);
-  }
-
-  @override
   int sqlite3_column_byte_length(int index) {
     return bindings.sqlite3_column_bytes(stmt, index);
   }

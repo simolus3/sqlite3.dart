@@ -301,7 +301,6 @@ abstract interface class RawSqliteStatement {
   Object sqlite3_column_int64OrBigInt(int index);
   double sqlite3_column_double(int index);
   String sqlite3_column_text(int index);
-  Uint8List sqlite3_column_bytes(int index);
 
   /// Returns the result of the native `sqlite3_column_bytes` function.
   int sqlite3_column_byte_length(int index);
