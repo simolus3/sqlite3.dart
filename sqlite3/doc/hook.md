@@ -147,9 +147,9 @@ hooks:
         # Names like `@rpath/libsqlite3.dylib` are supported as well.
 ```
 
-The same map syntax is available for `source`, for instance to only use the app's own library on
-mobile platforms. Without a `default` entry, the package falls back to downloading its own binaries
-for the other operating systems:
+The same map syntax is available for `source` and `defines`, for instance to only use the app's own
+library on mobile platforms. Without a `default` entry, the package falls back to downloading its own
+binaries for the other operating systems:
 
 ```yaml
 hooks:
@@ -192,25 +192,6 @@ The build can be configured further with these additional options:
 - `additional_lib_directories` and `additional_libraries`: Additional libraries to link.
 
 If multiple C source files need to be compiled, `path` can also be set to a list of strings.
-
-Like `source` and `name`, `defines` can also be given per operating system, with an optional
-`default` entry. Each entry accepts the same formats as `defines` itself. Operating systems without
-an entry use the default compile-time options:
-
-```yaml
-hooks:
-  user_defines:
-    sqlite3:
-      source: source
-      path: path/to/sqlite3.c
-      defines:
-        windows:
-          - SQLITE_WIN32_MALLOC
-        default:
-          default_options: false
-          defines:
-            - SQLITE_THREADSAFE=1
-```
 
 ### Alternatives
 
