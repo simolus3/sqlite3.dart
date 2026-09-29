@@ -1,4 +1,4 @@
-## 3.6.1-wip
+## 3.7.0-wip
 
 - Update bundled OpenSSL for SQLCipher to 4.0.2.
 - Add `RawPreparedStatement.columnBytes` and `RawPreparedStatement.columnBlobInto`, which copies a
