@@ -607,6 +607,39 @@ void testPreparedStatements(
       stmt.close();
     });
 
+    test('reading blobs into a buffer', () {
+      final stmt = database.prepare(
+        "values (x'010203'), (x''), ('äb'), (x'0405')",
+      );
+      addTearDown(stmt.close);
+      final raw = stmt.raw;
+      final buffer = Uint8List(5)..fillRange(0, 5, 0xff);
+
+      expect(raw.step(), isTrue);
+      expect(raw.columnBytes(0), 3);
+      expect(raw.columnBlobInto(0, buffer), 3);
+      expect(buffer, [1, 2, 3, 0xff, 0xff]);
+
+      expect(raw.step(), isTrue);
+      expect(raw.columnBytes(0), 0);
+      expect(raw.columnBlobInto(0, buffer, 5), 0);
+      expect(buffer, [1, 2, 3, 0xff, 0xff]);
+
+      // Text values are copied as UTF-8.
+      expect(raw.step(), isTrue);
+      expect(raw.columnBytes(0), 3);
+      expect(raw.columnBlobInto(0, buffer, 2), 3);
+      expect(buffer, [1, 2, 0xc3, 0xa4, 0x62]);
+
+      expect(raw.step(), isTrue);
+      expect(() => raw.columnBlobInto(0, buffer, 4), throwsRangeError);
+      expect(() => raw.columnBlobInto(0, buffer, 6), throwsRangeError);
+      expect(() => raw.columnBlobInto(0, buffer, -1), throwsRangeError);
+      expect(buffer, [1, 2, 0xc3, 0xa4, 0x62]);
+      expect(raw.columnBlobInto(0, buffer, 3), 2);
+      expect(buffer, [1, 2, 0xc3, 4, 5]);
+    });
+
     test('throws exception from step()', () {
       database.createFunction(
         functionName: 'fail',

@@ -289,6 +289,46 @@ extension type RawPreparedStatement._(StatementImplementation _stmt) {
   Uint8List columnBlob(int index) {
     return rawStatement.sqlite3_column_bytes(index);
   }
+
+  /// Calls `sqlite3_column_bytes` with the given index, returning the length
+  /// of the value in bytes.
+  ///
+  /// For text values, this is the length of their UTF-8 encoding. Note that
+  /// calling this on an integer or a float column converts the value to text
+  /// (see https://sqlite.org/c3ref/column_blob.html). Use [columnType] to check
+  /// the type first.
+  ///
+  /// Note that this performs no bounds check against [columnCount] in Dart.
+  int columnBytes(int index) {
+    return rawStatement.sqlite3_column_byte_length(index);
+  }
+
+  /// Copies the value of column [index], as returned by `sqlite3_column_blob`,
+  /// into [target] starting at [offset].
+  ///
+  /// Unlike [columnBlob], this doesn't allocate a new list for each value,
+  /// which makes it more efficient to read many blobs into a reused buffer.
+  /// Returns the amount of bytes written, which is the value that
+  /// [columnBytes] would return.
+  ///
+  /// If the value doesn't fit into [target] after [offset], a [RangeError] is
+  /// thrown and [target] is left unchanged.
+  ///
+  /// Note that this performs no bounds check against [columnCount] in Dart.
+  int columnBlobInto(int index, Uint8List target, [int offset = 0]) {
+    RangeError.checkValueInInterval(offset, 0, target.length, 'offset');
+
+    final length = rawStatement.sqlite3_column_byte_length(index);
+    if (length > target.length - offset) {
+      throw RangeError(
+        'The value has $length bytes, which does not fit into a list of '
+        'length ${target.length} starting at offset $offset.',
+      );
+    }
+
+    rawStatement.sqlite3_column_blob_into(index, target, offset, length);
+    return length;
+  }
 }
 
 @internal
