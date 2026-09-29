@@ -640,6 +640,46 @@ void testPreparedStatements(
       expect(buffer, [1, 2, 0xc3, 4, 5]);
     });
 
+    test('reading null and numeric values into a buffer', () {
+      final stmt = database.prepare('values (NULL), (42), (1.5)');
+      addTearDown(stmt.close);
+      final raw = stmt.raw;
+      final buffer = Uint8List(4);
+
+      expect(raw.step(), isTrue);
+      expect(raw.columnBytes(0), 0);
+      expect(raw.columnBlobInto(0, buffer, 4), 0);
+      expect(raw.columnType(0), SqlType.SQLITE_NULL);
+
+      // Numbers are converted to their text representation.
+      expect(raw.step(), isTrue);
+      expect(raw.columnBlobInto(0, buffer), 2);
+      expect(buffer.sublist(0, 2), '42'.codeUnits);
+      expect(raw.columnInt64(0), 42);
+
+      expect(raw.step(), isTrue);
+      expect(raw.columnBlobInto(0, buffer), 3);
+      expect(buffer.sublist(0, 3), '1.5'.codeUnits);
+    });
+
+    test('reading text into a buffer in a UTF-16 database', () {
+      final db = sqlite3.openInMemory()
+        ..execute("PRAGMA encoding = 'UTF-16le';")
+        ..execute('CREATE TABLE t (v TEXT);')
+        ..execute("INSERT INTO t VALUES ('äb');");
+      addTearDown(db.close);
+      final stmt = db.prepare('SELECT v FROM t');
+      addTearDown(stmt.close);
+      final raw = stmt.raw;
+      final buffer = Uint8List(3);
+
+      expect(raw.step(), isTrue);
+      expect(raw.columnBytes(0), 3);
+      expect(raw.columnBlobInto(0, buffer), 3);
+      expect(buffer, [0xc3, 0xa4, 0x62]);
+      expect(raw.columnText(0), 'äb');
+    });
+
     test('throws exception from step()', () {
       database.createFunction(
         functionName: 'fail',

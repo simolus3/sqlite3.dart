@@ -308,8 +308,10 @@ extension type RawPreparedStatement._(StatementImplementation _stmt) {
   ///
   /// Unlike [columnBlob], this doesn't allocate a new list for each value,
   /// which makes it more efficient to read many blobs into a reused buffer.
-  /// Returns the amount of bytes written, which is the value that
-  /// [columnBytes] would return.
+  /// Returns the number of bytes written, which is the value that
+  /// [columnBytes] would return. Text is copied as UTF-8, and like with
+  /// [columnBytes], integers and floats are converted to text first. `NULL`
+  /// values and empty blobs write nothing and return `0`.
   ///
   /// If the value doesn't fit into [target] after [offset], a [RangeError] is
   /// thrown and [target] is left unchanged.
