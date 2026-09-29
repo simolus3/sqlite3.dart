@@ -147,9 +147,9 @@ hooks:
         # Names like `@rpath/libsqlite3.dylib` are supported as well.
 ```
 
-The same map syntax is available for `source`, for instance to only use the app's own library on
-mobile platforms. Without a `default` entry, the package falls back to downloading its own binaries
-for the other operating systems:
+The same map syntax is available for `source` and `defines`, for instance to only use the app's own
+library on mobile platforms. Without a `default` entry, the package falls back to downloading its own
+binaries for the other operating systems:
 
 ```yaml
 hooks:
