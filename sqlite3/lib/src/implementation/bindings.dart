@@ -301,7 +301,18 @@ abstract interface class RawSqliteStatement {
   Object sqlite3_column_int64OrBigInt(int index);
   double sqlite3_column_double(int index);
   String sqlite3_column_text(int index);
-  Uint8List sqlite3_column_bytes(int index);
+
+  /// Returns the result of the native `sqlite3_column_bytes` function.
+  int sqlite3_column_byte_length(int index);
+
+  /// Copies [length] bytes of `sqlite3_column_blob` into [target] at [offset].
+  /// [length] must be the result of [sqlite3_column_byte_length].
+  void sqlite3_column_blob_into(
+    int index,
+    Uint8List target,
+    int offset,
+    int length,
+  );
 
   int sqlite3_bind_parameter_count();
   int sqlite3_stmt_readonly();
