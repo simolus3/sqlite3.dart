@@ -207,9 +207,7 @@ void main() {
       expect(windows, containsPair('SQLITE_ENABLE_FTS5', null));
       expect(windows, isNot(contains('SQLITE_OTHER_OPTION')));
 
-      expect(await definesFor(OS.iOS, perOS), {
-        'SQLITE_IOS_OPTION': '1',
-      });
+      expect(await definesFor(OS.iOS, perOS), {'SQLITE_IOS_OPTION': '1'});
     });
 
     test('falls back to default entry', () async {
@@ -224,6 +222,16 @@ void main() {
           'windows': ['SQLITE_WINDOWS_OPTION'],
         }),
         CompilerDefines.defaults(false),
+      );
+    });
+
+    test('keeps treating a map without OS keys as options', () async {
+      expect(
+        await definesFor(OS.linux, {
+          'default_options': false,
+          'defines': ['SQLITE_CUSTOM_OPTION=2'],
+        }),
+        {'SQLITE_CUSTOM_OPTION': '2'},
       );
     });
 
