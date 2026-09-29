@@ -290,6 +290,23 @@ abstract class CommonDatabase {
   /// For details, see https://www.sqlite.org/c3ref/get_autocommit.html
   bool get autocommit;
 
+  /// Returns runtime status information about this connection, such as the
+  /// amount of memory used by its page cache ([StatusParameter.cacheUsed]).
+  ///
+  /// Not every [option] reports a meaningful `highwater` value, see the
+  /// documentation of the options for details. When [reset] is set, the
+  /// highest value is reset after reading it.
+  ///
+  /// This requires SQLite 3.51.0 or newer, as it uses `sqlite3_db_status64`.
+  /// With older SQLite libraries or incompatible `sqlite3.wasm` bundles, this
+  /// throws.
+  ///
+  /// See https://sqlite.org/c3ref/db_status.html
+  ({int current, int highwater}) status(
+    StatusParameter option, {
+    bool reset = false,
+  });
+
   /// Closes this database and releases associated resources.
   @Deprecated('Call close() instead')
   void dispose();

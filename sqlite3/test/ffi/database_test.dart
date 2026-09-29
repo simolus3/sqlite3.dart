@@ -166,6 +166,40 @@ void main() {
     });
   });
 
+  group('memory', () {
+    late Database fileDb;
+
+    setUp(() {
+      fileDb = sqlite3.open(d.path('memory.db'))
+        ..execute('CREATE TABLE t (v BLOB);')
+        ..execute(
+          'WITH RECURSIVE c(i) AS (VALUES(1) UNION ALL SELECT i + 1 FROM c '
+          'WHERE i < 200) INSERT INTO t SELECT randomblob(2000) FROM c;',
+        );
+      // Registered after the sandbox, so this runs before it's deleted.
+      addTearDown(fileDb.close);
+    });
+
+    test(
+      'releaseMemory frees the page cache',
+      () {
+        fileDb.select('SELECT sum(length(v)) FROM t');
+        final before = fileDb.status(.cacheUsed).current;
+
+        fileDb.releaseMemory();
+        final after = fileDb.status(.cacheUsed).current;
+        expect(after, lessThan(before ~/ 10));
+
+        // The connection keeps working afterwards.
+        expect(fileDb.select('SELECT count(*) AS c FROM t'), [
+          {'c': 200},
+        ]);
+      },
+      // status() requires SQLite 3.51.0, which older system libraries lack.
+      tags: 'require_built',
+    );
+  });
+
   group('backup', () {
     late String path;
 

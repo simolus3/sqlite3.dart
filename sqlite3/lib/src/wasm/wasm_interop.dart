@@ -329,6 +329,34 @@ class WasmBindings {
 
   int sqlite3_get_autocommit(Pointer db) => sqlite3.sqlite3_get_autocommit(db);
 
+  int sqlite3_db_status64(
+    Pointer db,
+    int op,
+    Pointer pCur,
+    Pointer pHiwtr,
+    int resetFlg,
+  ) {
+    final function = sqlite3.sqlite3_db_status64;
+    if (function == null) {
+      throw UnsupportedError(
+        'sqlite3_db_status64 is not supported by this sqlite3.wasm, try '
+        'upgrading to a more recent version.',
+      );
+    }
+
+    final result =
+        function.callAsFunction5(
+              null,
+              db.toJS,
+              op.toJS,
+              pCur.toJS,
+              pHiwtr.toJS,
+              resetFlg.toJS,
+            )
+            as JSNumber;
+    return result.toDartInt;
+  }
+
   int sqlite3_db_config(Pointer db, int op, int value) {
     return sqlite3.dart_sqlite3_db_config_int(db, op, value);
   }
@@ -464,6 +492,11 @@ extension WrappedMemory on Memory {
     dartBuffer.asInt32List()[pointer >> 2] = value;
   }
 
+  JsBigInt int64ValueOfPointer(Pointer pointer) {
+    assert(pointer != 0, 'Null pointer dereference');
+    return dartBuffer.asByteData().getBigInt64(pointer, true);
+  }
+
   void setInt64Value(Pointer pointer, JsBigInt value) {
     assert(pointer != 0, 'Null pointer dereference');
     dartBuffer.asByteData().setBigInt64(pointer, value, true);
@@ -493,4 +526,16 @@ extension WrappedMemory on Memory {
 
 Memory _exportedMemory(Instance instance) {
   return instance.exports['memory'] as Memory;
+}
+
+extension on JSFunction {
+  @JS('call')
+  external JSAny? callAsFunction5([
+    JSAny? thisArg,
+    JSAny? arg1,
+    JSAny? arg2,
+    JSAny? arg3,
+    JSAny? arg4,
+    JSAny? arg5,
+  ]);
 }

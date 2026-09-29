@@ -185,6 +185,12 @@ abstract class Database extends CommonDatabase {
   ///
   /// See https://www.sqlite.org/c3ref/backup_finish.html
   Stream<double> backup(Database toDatabase, {int nPage = 5});
+
+  /// Frees as much heap memory as possible from this connection, mostly by
+  /// releasing unused pages from its page cache.
+  ///
+  /// See https://sqlite.org/c3ref/db_release_memory.html
+  void releaseMemory();
 }
 
 /// A prepared statement.

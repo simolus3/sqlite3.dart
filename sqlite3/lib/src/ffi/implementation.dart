@@ -141,6 +141,14 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
   }
 
   @override
+  void releaseMemory() {
+    final rc = libsqlite3.sqlite3_db_release_memory(ffiDatabase.db);
+    if (rc != SqlError.SQLITE_OK) {
+      throwException(this, rc, operation: 'releasing memory');
+    }
+  }
+
+  @override
   Pointer<void> get handle => ffiDatabase.db;
 
   @override

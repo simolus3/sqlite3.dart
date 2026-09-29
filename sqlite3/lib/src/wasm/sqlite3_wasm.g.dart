@@ -137,6 +137,7 @@ extension type SqliteExports(JSObject raw) implements JSObject {
     int iCol,
   );
   external int sqlite3_db_config(Pointer /*<struct sqlite3 *>*/ db, int op);
+  external JSFunction? get sqlite3_db_status64;
   external Pointer /*<struct sqlite3_char *>*/ sqlite3_errmsg(
     Pointer /*<struct sqlite3 *>*/ db,
   );

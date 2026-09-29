@@ -407,6 +407,26 @@ external ffi.Pointer<sqlite3_char> sqlite3_db_filename(
   ffi.Pointer<sqlite3_char> zDbName,
 );
 
+@ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3>)>()
+external int sqlite3_db_release_memory(ffi.Pointer<sqlite3> db);
+
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Int,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Int,
+  )
+>()
+external int sqlite3_db_status64(
+  ffi.Pointer<sqlite3> db,
+  int op,
+  ffi.Pointer<ffi.Int64> pCur,
+  ffi.Pointer<ffi.Int64> pHiwtr,
+  int resetFlg,
+);
+
 @ffi.Native<ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3>)>()
 external ffi.Pointer<sqlite3_char> sqlite3_errmsg(ffi.Pointer<sqlite3> db);
 
@@ -1171,6 +1191,21 @@ class _SymbolAddresses {
     >
   >
   get sqlite3_db_filename => ffi.Native.addressOf(self.sqlite3_db_filename);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3>)>>
+  get sqlite3_db_release_memory =>
+      ffi.Native.addressOf(self.sqlite3_db_release_memory);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Int,
+        ffi.Pointer<ffi.Int64>,
+        ffi.Pointer<ffi.Int64>,
+        ffi.Int,
+      )
+    >
+  >
+  get sqlite3_db_status64 => ffi.Native.addressOf(self.sqlite3_db_status64);
   ffi.Pointer<
     ffi.NativeFunction<ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3>)>
   >

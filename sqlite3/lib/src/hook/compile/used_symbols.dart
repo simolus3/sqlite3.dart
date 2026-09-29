@@ -37,6 +37,8 @@ const usedSqliteSymbols = {
   'sqlite3_create_window_function',
   'sqlite3_db_config',
   'sqlite3_db_filename',
+  'sqlite3_db_release_memory',
+  'sqlite3_db_status64',
   'sqlite3_errmsg',
   'sqlite3_error_offset',
   'sqlite3_errstr',

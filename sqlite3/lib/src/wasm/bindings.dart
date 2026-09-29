@@ -381,6 +381,25 @@ final class WasmDatabase implements RawSqliteDatabase {
   }
 
   @override
+  DatabaseStatusResult sqlite3_db_status64(int op, int resetFlg) {
+    final values = bindings.malloc(16);
+    final rc = bindings.sqlite3_db_status64(
+      db,
+      op,
+      values,
+      values + 8,
+      resetFlg,
+    );
+    final result = DatabaseStatusResult(
+      resultCode: rc,
+      current: bindings.memory.int64ValueOfPointer(values).asDartInt,
+      highwater: bindings.memory.int64ValueOfPointer(values + 8).asDartInt,
+    );
+    bindings.free(values);
+    return result;
+  }
+
+  @override
   int sqlite3_db_config(int op, int value) {
     return bindings.sqlite3_db_config(db, op, value);
   }

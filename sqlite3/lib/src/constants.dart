@@ -1,5 +1,8 @@
 // ignore_for_file: constant_identifier_names
 
+/// @docImport 'database.dart';
+library;
+
 /// Common result codes, https://www.sqlite.org/rescode.html
 /// Result Codes
 ///
@@ -555,4 +558,60 @@ extension type const SqliteFileControl(int code) implements int {
   static const beginAtomicWrite = 31;
   static const commitAtomicWrite = 32;
   static const rollbackAtomicWrite = 33;
+}
+
+/// Status parameters that can be queried with [CommonDatabase.status].
+///
+/// See https://sqlite.org/c3ref/c_dbstatus_options.html for a description of
+/// each option.
+///
+/// {@category common}
+extension type const StatusParameter(int flag) implements int {
+  /// `SQLITE_DBSTATUS_LOOKASIDE_USED`
+  static const lookasideUsed = StatusParameter(0);
+
+  /// `SQLITE_DBSTATUS_CACHE_USED`
+  static const cacheUsed = StatusParameter(1);
+
+  /// `SQLITE_DBSTATUS_SCHEMA_USED`
+  static const schemaUsed = StatusParameter(2);
+
+  /// `SQLITE_DBSTATUS_STMT_USED`
+  static const statementUsed = StatusParameter(3);
+
+  /// `SQLITE_DBSTATUS_LOOKASIDE_HIT`
+  static const lookasideHit = StatusParameter(4);
+
+  /// `SQLITE_DBSTATUS_LOOKASIDE_MISS_SIZE`
+  static const lookasideMissSize = StatusParameter(5);
+
+  /// `SQLITE_DBSTATUS_LOOKASIDE_MISS_FULL`
+  static const lookasideMissFull = StatusParameter(6);
+
+  /// `SQLITE_DBSTATUS_CACHE_HIT`
+  static const cacheHit = StatusParameter(7);
+
+  /// `SQLITE_DBSTATUS_CACHE_MISS`
+  static const cacheMiss = StatusParameter(8);
+
+  /// `SQLITE_DBSTATUS_CACHE_WRITE`
+  static const cacheWrite = StatusParameter(9);
+
+  /// `SQLITE_DBSTATUS_DEFERRED_FKS`
+  static const deferredForeignKeys = StatusParameter(10);
+
+  /// `SQLITE_DBSTATUS_CACHE_USED_SHARED`
+  static const cacheUsedShared = StatusParameter(11);
+
+  /// `SQLITE_DBSTATUS_CACHE_SPILL`
+  static const cacheSpill = StatusParameter(12);
+
+  /// `SQLITE_DBSTATUS_TEMPBUF_SPILL`
+  static const tempBufferSpill = StatusParameter(13);
+
+  static const _max = 13;
+
+  static final List<StatusParameter> values = [
+    for (var i = 0; i < _max; i++) StatusParameter(i),
+  ];
 }

@@ -4,6 +4,8 @@
 - Add `RawPreparedStatement.columnBytes` and `RawPreparedStatement.columnBlobInto`, which copies a
   column into an existing buffer instead of allocating a new list for each value.
 - Hooks: `defines` accepts a map with per-OS entries and a `default`, like `source` and `name`.
+- Add `CommonDatabase.status()` reporting status counters.
+- Add `Database.releaseMemory()` on native platforms.
 
 ## 3.6.0
 

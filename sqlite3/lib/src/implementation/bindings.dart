@@ -243,6 +243,20 @@ abstract interface class RawSqliteDatabase {
 
   int sqlite3_db_config(int op, int value);
   int sqlite3_get_autocommit();
+
+  DatabaseStatusResult sqlite3_db_status64(int op, int resetFlg);
+}
+
+final class DatabaseStatusResult {
+  final int resultCode;
+  final int current;
+  final int highwater;
+
+  const DatabaseStatusResult({
+    required this.resultCode,
+    required this.current,
+    required this.highwater,
+  });
 }
 
 /// A stateful wrapper around multiple `sqlite3_prepare` invocations.
