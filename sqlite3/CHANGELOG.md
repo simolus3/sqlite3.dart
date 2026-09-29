@@ -1,6 +1,6 @@
 ## 3.7.0-wip
 
-- Update bundled OpenSSL for SQLCipher to 4.0.2.
+- Update bundled OpenSSL for SQLCipher to 4.0.3.
 - Add `RawPreparedStatement.columnBytes` and `RawPreparedStatement.columnBlobInto`, which copies a
   column into an existing buffer instead of allocating a new list for each value.
 - Hooks: `defines` accepts a map with per-OS entries and a `default`, like `source` and `name`.

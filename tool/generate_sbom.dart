@@ -9,7 +9,7 @@ import 'package:crypto/crypto.dart' show sha256;
 
 import 'download_sqlite.dart' as download_sqlite;
 
-const openSslVersion = '4.0.2';
+const openSslVersion = '4.0.3';
 
 /// Generates a CycloneDX SBOM for precompiled artifacts we attach to GitHub
 /// releases.
@@ -20,9 +20,9 @@ void main(List<String> args) async {
   final (sqliteDirectory, poolDirectory) = switch (args) {
     [final sqlite, final pool] => (Directory(sqlite), Directory(pool)),
     _ => throw ArgumentError(
-        'Usage: dart tool/generate_sbom.dart <path to pool libraries> '
-        '<path to sqlite libraries>',
-      ),
+      'Usage: dart tool/generate_sbom.dart <path to pool libraries> '
+      '<path to sqlite libraries>',
+    ),
   };
 
   final output = Directory('sbom');
@@ -315,20 +315,17 @@ Future<Object?> _generateForSqlite3ConnectionPool(
 ) async {
   // Currently, all Rust dependencies end up in the library (we have no build or
   // proc-macro dependencies).
-  final processOutput = await Process.run(
-      'cargo',
-      [
-        'metadata',
-        '--format-version=1',
-      ],
-      workingDirectory: 'sqlite3_connection_pool');
+  final processOutput = await Process.run('cargo', [
+    'metadata',
+    '--format-version=1',
+  ], workingDirectory: 'sqlite3_connection_pool');
   if (processOutput.exitCode != 0) {
     throw 'Could not run cargo metadata: ${processOutput.stderr}';
   }
 
   final cargoMetadata = jsonDecode(processOutput.stdout);
-  final packages =
-      (cargoMetadata['packages'] as List).cast<Map<String, Object?>>();
+  final packages = (cargoMetadata['packages'] as List)
+      .cast<Map<String, Object?>>();
   final pubspec = await _parsePubspec('sqlite3_connection_pool');
 
   final binaries = await _scanBinaries(poolLibraries);
