@@ -255,7 +255,10 @@ enum DatabaseStatus {
   /// `SQLITE_DBSTATUS_CACHE_SPILL`
   cacheSpill(12),
 
-  /// `SQLITE_DBSTATUS_TEMPBUF_SPILL`, not available in older SQLite versions.
+  /// `SQLITE_DBSTATUS_TEMPBUF_SPILL`, added in SQLite 3.51.0.
+  ///
+  /// [Database.status] throws a [SqliteException] for this option on older
+  /// SQLite versions.
   tempBufferSpill(13);
 
   /// The numeric `SQLITE_DBSTATUS_*` value passed to SQLite.

@@ -210,6 +210,21 @@ void main() {
         {'c': 200},
       ]);
     });
+
+    test(
+      'status supports all options',
+      () {
+        for (final option in DatabaseStatus.values) {
+          expect(
+            () => fileDb.status(option),
+            returnsNormally,
+            reason: '$option',
+          );
+        }
+      },
+      // Older system libraries don't know about tempBufferSpill.
+      tags: 'require_built',
+    );
   });
 
   group('backup', () {
