@@ -149,33 +149,6 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
   }
 
   @override
-  ({int current, int highwater}) status(
-    DatabaseStatus option, {
-    bool reset = false,
-  }) {
-    final values = allocate<Int>(2);
-    final rc = libsqlite3.sqlite3_db_status(
-      ffiDatabase.db,
-      option.code,
-      values,
-      values + 1,
-      reset ? 1 : 0,
-    );
-    final result = (current: values[0], highwater: values[1]);
-    values.free();
-
-    if (rc != SqlError.SQLITE_OK) {
-      // sqlite3_db_status doesn't set an error message on the connection.
-      throw createExceptionOutsideOfDatabase(
-        bindings,
-        rc,
-        operation: 'sqlite3_db_status',
-      );
-    }
-    return result;
-  }
-
-  @override
   Pointer<void> get handle => ffiDatabase.db;
 
   @override

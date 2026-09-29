@@ -1093,6 +1093,24 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
   }
 
   @override
+  ({int resultCode, int current, int highwater}) sqlite3_db_status64(
+    int op,
+    int resetFlg,
+  ) {
+    final values = allocate<Int64>(2);
+    final rc = libsqlite3.sqlite3_db_status64(
+      db,
+      op,
+      values,
+      values + 1,
+      resetFlg,
+    );
+    final result = (resultCode: rc, current: values[0], highwater: values[1]);
+    values.free();
+    return result;
+  }
+
+  @override
   int sqlite3_busy_handler(int Function(int)? callback) {
     if (callback == null) {
       return libsqlite3.sqlite3_busy_handler(db, nullPtr(), nullPtr());

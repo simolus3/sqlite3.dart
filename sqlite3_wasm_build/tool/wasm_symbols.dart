@@ -102,4 +102,4 @@ const stableFunctions = {
 };
 
 /// Newer functions that aren't available in older WASM bundles.
-const unstable = <String>{};
+const unstable = <String>{'sqlite3_db_status64'};

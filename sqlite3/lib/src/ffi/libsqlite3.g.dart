@@ -414,16 +414,16 @@ external int sqlite3_db_release_memory(ffi.Pointer<sqlite3> db);
   ffi.Int Function(
     ffi.Pointer<sqlite3>,
     ffi.Int,
-    ffi.Pointer<ffi.Int>,
-    ffi.Pointer<ffi.Int>,
+    ffi.Pointer<ffi.Int64>,
+    ffi.Pointer<ffi.Int64>,
     ffi.Int,
   )
 >()
-external int sqlite3_db_status(
+external int sqlite3_db_status64(
   ffi.Pointer<sqlite3> db,
   int op,
-  ffi.Pointer<ffi.Int> pCur,
-  ffi.Pointer<ffi.Int> pHiwtr,
+  ffi.Pointer<ffi.Int64> pCur,
+  ffi.Pointer<ffi.Int64> pHiwtr,
   int resetFlg,
 );
 
@@ -1199,13 +1199,13 @@ class _SymbolAddresses {
       ffi.Int Function(
         ffi.Pointer<sqlite3>,
         ffi.Int,
-        ffi.Pointer<ffi.Int>,
-        ffi.Pointer<ffi.Int>,
+        ffi.Pointer<ffi.Int64>,
+        ffi.Pointer<ffi.Int64>,
         ffi.Int,
       )
     >
   >
-  get sqlite3_db_status => ffi.Native.addressOf(self.sqlite3_db_status);
+  get sqlite3_db_status64 => ffi.Native.addressOf(self.sqlite3_db_status64);
   ffi.Pointer<
     ffi.NativeFunction<ffi.Pointer<sqlite3_char> Function(ffi.Pointer<sqlite3>)>
   >

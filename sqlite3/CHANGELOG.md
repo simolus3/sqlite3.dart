@@ -4,8 +4,8 @@
 - Add `RawPreparedStatement.columnBytes` and `RawPreparedStatement.columnBlobInto`, which copies a
   column into an existing buffer instead of allocating a new list for each value.
 - Hooks: `defines` accepts a map with per-OS entries and a `default`, like `source` and `name`.
-- Add `Database.releaseMemory()` (`sqlite3_db_release_memory`) and `Database.status()`
-  (`sqlite3_db_status`) to the native `Database` interface.
+- Add `CommonDatabase.status()` (`sqlite3_db_status64`, requires SQLite 3.51.0 or newer) on all
+  platforms, and `Database.releaseMemory()` (`sqlite3_db_release_memory`) on native platforms.
 
 ## 3.6.0
 

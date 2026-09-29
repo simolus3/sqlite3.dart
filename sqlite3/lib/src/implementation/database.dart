@@ -325,6 +325,23 @@ base class DatabaseImplementation implements CommonDatabase {
   }
 
   @override
+  ({int current, int highwater}) status(
+    DatabaseStatus option, {
+    bool reset = false,
+  }) {
+    final result = database.sqlite3_db_status64(option.code, reset ? 1 : 0);
+    if (result.resultCode != SqlError.SQLITE_OK) {
+      // sqlite3_db_status64 doesn't set an error message on the connection.
+      throw createExceptionOutsideOfDatabase(
+        bindings,
+        result.resultCode,
+        operation: 'sqlite3_db_status64',
+      );
+    }
+    return (current: result.current, highwater: result.highwater);
+  }
+
+  @override
   set busyHandler(bool Function(int count)? handler) {
     final result = database.sqlite3_busy_handler(switch (handler) {
       null => null,

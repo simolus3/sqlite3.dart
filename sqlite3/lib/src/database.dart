@@ -290,6 +290,22 @@ abstract class CommonDatabase {
   /// For details, see https://www.sqlite.org/c3ref/get_autocommit.html
   bool get autocommit;
 
+  /// Returns runtime status information about this connection, such as the
+  /// amount of memory used by its page cache ([DatabaseStatus.cacheUsed]).
+  ///
+  /// Not every [option] reports a meaningful `highwater` value, see the
+  /// documentation of the options for details. When [reset] is set, the
+  /// highest value is reset after reading it.
+  ///
+  /// This requires SQLite 3.51.0 or newer, as it uses `sqlite3_db_status64`.
+  /// With older SQLite libraries or `sqlite3.wasm` bundles, this throws.
+  ///
+  /// See https://sqlite.org/c3ref/db_status.html
+  ({int current, int highwater}) status(
+    DatabaseStatus option, {
+    bool reset = false,
+  });
+
   /// Closes this database and releases associated resources.
   @Deprecated('Call close() instead')
   void dispose();
@@ -300,6 +316,61 @@ abstract class CommonDatabase {
   /// automatically. On the web, finalizers are less reliable. For this reason,
   /// closing databases explicitly is still recommended.
   void close();
+}
+
+/// Status parameters that can be queried with [CommonDatabase.status].
+///
+/// See https://sqlite.org/c3ref/c_dbstatus_options.html for a description of
+/// each option.
+///
+/// {@category common}
+enum DatabaseStatus {
+  /// `SQLITE_DBSTATUS_LOOKASIDE_USED`
+  lookasideUsed(0),
+
+  /// `SQLITE_DBSTATUS_CACHE_USED`
+  cacheUsed(1),
+
+  /// `SQLITE_DBSTATUS_SCHEMA_USED`
+  schemaUsed(2),
+
+  /// `SQLITE_DBSTATUS_STMT_USED`
+  statementUsed(3),
+
+  /// `SQLITE_DBSTATUS_LOOKASIDE_HIT`
+  lookasideHit(4),
+
+  /// `SQLITE_DBSTATUS_LOOKASIDE_MISS_SIZE`
+  lookasideMissSize(5),
+
+  /// `SQLITE_DBSTATUS_LOOKASIDE_MISS_FULL`
+  lookasideMissFull(6),
+
+  /// `SQLITE_DBSTATUS_CACHE_HIT`
+  cacheHit(7),
+
+  /// `SQLITE_DBSTATUS_CACHE_MISS`
+  cacheMiss(8),
+
+  /// `SQLITE_DBSTATUS_CACHE_WRITE`
+  cacheWrite(9),
+
+  /// `SQLITE_DBSTATUS_DEFERRED_FKS`
+  deferredForeignKeys(10),
+
+  /// `SQLITE_DBSTATUS_CACHE_USED_SHARED`
+  cacheUsedShared(11),
+
+  /// `SQLITE_DBSTATUS_CACHE_SPILL`
+  cacheSpill(12),
+
+  /// `SQLITE_DBSTATUS_TEMPBUF_SPILL`
+  tempBufferSpill(13);
+
+  /// The numeric `SQLITE_DBSTATUS_*` value passed to SQLite.
+  final int code;
+
+  const DatabaseStatus(this.code);
 }
 
 /// The kind of an [SqliteUpdate] received through a [CommonDatabase.updates]

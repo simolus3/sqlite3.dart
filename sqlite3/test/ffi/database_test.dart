@@ -180,49 +180,22 @@ void main() {
       addTearDown(fileDb.close);
     });
 
-    test('status reports cache usage', () {
-      fileDb.select('SELECT sum(length(v)) FROM t');
-      final used = fileDb.status(DatabaseStatus.cacheUsed);
-      expect(used.current, greaterThan(200 * 2000));
-      expect(used.highwater, 0);
-
-      expect(fileDb.status(DatabaseStatus.schemaUsed).current, greaterThan(0));
-    });
-
-    test('status can reset counters', () {
-      fileDb.select('SELECT sum(length(v)) FROM t');
-      expect(fileDb.status(DatabaseStatus.cacheHit).current, greaterThan(0));
-
-      fileDb.status(DatabaseStatus.cacheHit, reset: true);
-      expect(fileDb.status(DatabaseStatus.cacheHit).current, 0);
-    });
-
-    test('releaseMemory frees the page cache', () {
-      fileDb.select('SELECT sum(length(v)) FROM t');
-      final before = fileDb.status(DatabaseStatus.cacheUsed).current;
-
-      fileDb.releaseMemory();
-      final after = fileDb.status(DatabaseStatus.cacheUsed).current;
-      expect(after, lessThan(before ~/ 10));
-
-      // The connection keeps working afterwards.
-      expect(fileDb.select('SELECT count(*) AS c FROM t'), [
-        {'c': 200},
-      ]);
-    });
-
     test(
-      'status supports all options',
+      'releaseMemory frees the page cache',
       () {
-        for (final option in DatabaseStatus.values) {
-          expect(
-            () => fileDb.status(option),
-            returnsNormally,
-            reason: '$option',
-          );
-        }
+        fileDb.select('SELECT sum(length(v)) FROM t');
+        final before = fileDb.status(DatabaseStatus.cacheUsed).current;
+
+        fileDb.releaseMemory();
+        final after = fileDb.status(DatabaseStatus.cacheUsed).current;
+        expect(after, lessThan(before ~/ 10));
+
+        // The connection keeps working afterwards.
+        expect(fileDb.select('SELECT count(*) AS c FROM t'), [
+          {'c': 200},
+        ]);
       },
-      // Older system libraries don't know about tempBufferSpill.
+      // status() requires SQLite 3.51.0, which older system libraries lack.
       tags: 'require_built',
     );
   });

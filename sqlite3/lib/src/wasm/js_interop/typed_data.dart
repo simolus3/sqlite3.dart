@@ -14,6 +14,16 @@ extension NativeUint8List on Uint8List {
 }
 
 extension NativeDataView on ByteData {
+  JsBigInt getBigInt64(int offset, bool littleEndian) {
+    return JsBigInt(
+      toJS.callMethod<JSBigInt>(
+        'getBigInt64'.toJS,
+        offset.toJS,
+        littleEndian.toJS,
+      ),
+    );
+  }
+
   void setBigInt64(int offset, JsBigInt value, bool littleEndian) {
     toJS.callMethod(
       'setBigInt64'.toJS,

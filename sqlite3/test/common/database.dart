@@ -46,6 +46,55 @@ void testDatabase(
     expect(database.getUpdatedRows(), 2);
   });
 
+  group(
+    'status',
+    () {
+      setUp(() {
+        database
+          ..execute('CREATE TABLE t (v BLOB);')
+          ..execute(
+            'WITH RECURSIVE c(i) AS (VALUES(1) UNION ALL SELECT i + 1 FROM c '
+            'WHERE i < 200) INSERT INTO t SELECT randomblob(2000) FROM c;',
+          );
+      });
+
+      test('reports cache usage', () {
+        final used = database.status(DatabaseStatus.cacheUsed);
+        expect(used.current, greaterThan(200 * 2000));
+        expect(used.highwater, 0);
+
+        expect(
+          database.status(DatabaseStatus.schemaUsed).current,
+          greaterThan(0),
+        );
+      });
+
+      test('can reset counters', () {
+        database.select('SELECT sum(length(v)) FROM t');
+        database.status(DatabaseStatus.cacheHit, reset: true);
+        expect(database.status(DatabaseStatus.cacheHit).current, 0);
+
+        database.select('SELECT sum(length(v)) FROM t');
+        expect(
+          database.status(DatabaseStatus.cacheHit).current,
+          greaterThan(0),
+        );
+      });
+
+      test('supports all options', () {
+        for (final option in DatabaseStatus.values) {
+          expect(
+            () => database.status(option),
+            returnsNormally,
+            reason: '$option',
+          );
+        }
+      });
+    },
+    // status() requires SQLite 3.51.0, which older system libraries lack.
+    tags: 'require_built',
+  );
+
   test('last insert id', () {
     database.execute('CREATE TABLE tbl(a INTEGER PRIMARY KEY AUTOINCREMENT)');
 
