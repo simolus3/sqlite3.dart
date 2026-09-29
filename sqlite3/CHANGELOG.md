@@ -1,6 +1,7 @@
 ## 3.6.1-wip
 
 - Update bundled OpenSSL for SQLCipher to 4.0.2.
+- Hooks: `defines` accepts a map with per-OS entries and a `default`, like `source` and `name`.
 
 ## 3.6.0
 

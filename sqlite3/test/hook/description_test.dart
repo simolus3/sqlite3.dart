@@ -183,6 +183,61 @@ void main() {
     );
   });
 
+  group('per-OS defines', () {
+    Future<CompilerDefines> definesFor(OS os, Object defines) {
+      return resolveForOS(os, {
+        'source': 'source',
+        'path': 'sqlite3.c',
+        'defines': defines,
+      }, (_, binary) => (binary as CompileSqlite).defines);
+    }
+
+    const perOS = {
+      'windows': ['SQLITE_WINDOWS_OPTION'],
+      'ios': {
+        'default_options': false,
+        'defines': ['SQLITE_IOS_OPTION=1'],
+      },
+      'default': ['SQLITE_OTHER_OPTION'],
+    };
+
+    test('uses entry for target OS', () async {
+      final windows = await definesFor(OS.windows, perOS);
+      expect(windows, containsPair('SQLITE_WINDOWS_OPTION', null));
+      expect(windows, containsPair('SQLITE_ENABLE_FTS5', null));
+      expect(windows, isNot(contains('SQLITE_OTHER_OPTION')));
+
+      expect(await definesFor(OS.iOS, perOS), {
+        'SQLITE_IOS_OPTION': '1',
+      });
+    });
+
+    test('falls back to default entry', () async {
+      final macOS = await definesFor(OS.macOS, perOS);
+      expect(macOS, containsPair('SQLITE_OTHER_OPTION', null));
+      expect(macOS, isNot(contains('SQLITE_WINDOWS_OPTION')));
+    });
+
+    test('uses default options without matching entry', () async {
+      expect(
+        await definesFor(OS.linux, {
+          'windows': ['SQLITE_WINDOWS_OPTION'],
+        }),
+        CompilerDefines.defaults(false),
+      );
+    });
+
+    test('rejects mixing OS keys with options', () async {
+      await expectLater(
+        definesFor(OS.linux, {
+          'default_options': false,
+          'windows': ['SQLITE_WINDOWS_OPTION'],
+        }),
+        throwsArgumentError,
+      );
+    });
+  });
+
   test('can use custom download url', () async {
     await testBuildHook(
       mainMethod: (args) {

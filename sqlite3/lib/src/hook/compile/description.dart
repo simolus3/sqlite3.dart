@@ -442,7 +442,22 @@ extension type const CompilerDefines(Map<String, String?> flags)
   }
 
   static CompilerDefines parse(HookInputUserDefines defines, OS targetOS) {
-    final obj = defines['defines'];
+    var obj = defines['defines'];
+
+    // Like `source` and `name`, `defines` can be a map from target OS names
+    // (or `default`) to the actual definition.
+    if (obj is Map && obj.keys.any(_isTargetOSKey)) {
+      if (!obj.keys.every(_isTargetOSKey)) {
+        throw ArgumentError.value(
+          obj,
+          'defines',
+          'Cannot mix operating system keys with other options, move them '
+              'into the entry for each operating system instead',
+        );
+      }
+
+      obj = obj[targetOS.name] ?? obj['default'];
+    }
 
     // Include default options when not explicitly disabled.
     final includeDefaults = switch (obj) {
@@ -466,6 +481,10 @@ extension type const CompilerDefines(Map<String, String?> flags)
       final added? => start.overrideWith(added),
       null => start,
     };
+  }
+
+  static bool _isTargetOSKey(Object? key) {
+    return key == 'default' || OS.values.any((os) => os.name == key);
   }
 
   static CompilerDefines _parseOption(Object? option) {

@@ -193,6 +193,25 @@ The build can be configured further with these additional options:
 
 If multiple C source files need to be compiled, `path` can also be set to a list of strings.
 
+Like `source` and `name`, `defines` can also be given per operating system, with an optional
+`default` entry. Each entry accepts the same formats as `defines` itself. Operating systems without
+an entry use the default compile-time options:
+
+```yaml
+hooks:
+  user_defines:
+    sqlite3:
+      source: source
+      path: path/to/sqlite3.c
+      defines:
+        windows:
+          - SQLITE_WIN32_MALLOC
+        default:
+          default_options: false
+          defines:
+            - SQLITE_THREADSAFE=1
+```
+
 ### Alternatives
 
 Using the `source` mode to compile SQLite from sources in build hook can't
