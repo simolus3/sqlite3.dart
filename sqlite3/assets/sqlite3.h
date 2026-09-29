@@ -49,6 +49,9 @@ void* sqlite3_update_hook(sqlite3*,
 void* sqlite3_commit_hook(sqlite3*, int (*)(void*), void*);
 void* sqlite3_rollback_hook(sqlite3*, void (*)(void*), void*);
 int sqlite3_get_autocommit(sqlite3* db);
+int sqlite3_db_release_memory(sqlite3* db);
+int sqlite3_db_status(sqlite3* db, int op, int* pCur, int* pHiwtr,
+                      int resetFlg);
 
 // Statements
 int sqlite3_prepare_v2(sqlite3* db, const sqlite3_char* zSql, int nByte,

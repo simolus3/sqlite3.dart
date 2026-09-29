@@ -185,6 +185,83 @@ abstract class Database extends CommonDatabase {
   ///
   /// See https://www.sqlite.org/c3ref/backup_finish.html
   Stream<double> backup(Database toDatabase, {int nPage = 5});
+
+  /// Frees as much heap memory as possible from this connection, mostly by
+  /// releasing unused pages from its page cache.
+  ///
+  /// Unlike `sqlite3_release_memory`, this works without SQLite being compiled
+  /// with `SQLITE_ENABLE_MEMORY_MANAGEMENT`.
+  ///
+  /// See https://sqlite.org/c3ref/db_release_memory.html
+  void releaseMemory();
+
+  /// Returns runtime status information about this connection, such as the
+  /// amount of memory used by its page cache ([DatabaseStatus.cacheUsed]).
+  ///
+  /// Not every [option] reports a meaningful `highwater` value, see the
+  /// documentation of the options for details. When [reset] is set, the
+  /// highest value is reset after reading it.
+  ///
+  /// See https://sqlite.org/c3ref/db_status.html
+  ({int current, int highwater}) status(
+    DatabaseStatus option, {
+    bool reset = false,
+  });
+}
+
+/// Status parameters that can be queried with [Database.status].
+///
+/// See https://sqlite.org/c3ref/c_dbstatus_options.html for a description of
+/// each option.
+///
+/// {@category native}
+enum DatabaseStatus {
+  /// `SQLITE_DBSTATUS_LOOKASIDE_USED`
+  lookasideUsed(0),
+
+  /// `SQLITE_DBSTATUS_CACHE_USED`
+  cacheUsed(1),
+
+  /// `SQLITE_DBSTATUS_SCHEMA_USED`
+  schemaUsed(2),
+
+  /// `SQLITE_DBSTATUS_STMT_USED`
+  statementUsed(3),
+
+  /// `SQLITE_DBSTATUS_LOOKASIDE_HIT`
+  lookasideHit(4),
+
+  /// `SQLITE_DBSTATUS_LOOKASIDE_MISS_SIZE`
+  lookasideMissSize(5),
+
+  /// `SQLITE_DBSTATUS_LOOKASIDE_MISS_FULL`
+  lookasideMissFull(6),
+
+  /// `SQLITE_DBSTATUS_CACHE_HIT`
+  cacheHit(7),
+
+  /// `SQLITE_DBSTATUS_CACHE_MISS`
+  cacheMiss(8),
+
+  /// `SQLITE_DBSTATUS_CACHE_WRITE`
+  cacheWrite(9),
+
+  /// `SQLITE_DBSTATUS_DEFERRED_FKS`
+  deferredForeignKeys(10),
+
+  /// `SQLITE_DBSTATUS_CACHE_USED_SHARED`
+  cacheUsedShared(11),
+
+  /// `SQLITE_DBSTATUS_CACHE_SPILL`
+  cacheSpill(12),
+
+  /// `SQLITE_DBSTATUS_TEMPBUF_SPILL`, not available in older SQLite versions.
+  tempBufferSpill(13);
+
+  /// The numeric `SQLITE_DBSTATUS_*` value passed to SQLite.
+  final int code;
+
+  const DatabaseStatus(this.code);
 }
 
 /// A prepared statement.

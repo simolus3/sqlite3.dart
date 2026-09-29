@@ -166,6 +166,52 @@ void main() {
     });
   });
 
+  group('memory', () {
+    late Database fileDb;
+
+    setUp(() {
+      fileDb = sqlite3.open(d.path('memory.db'))
+        ..execute('CREATE TABLE t (v BLOB);')
+        ..execute(
+          'WITH RECURSIVE c(i) AS (VALUES(1) UNION ALL SELECT i + 1 FROM c '
+          'WHERE i < 200) INSERT INTO t SELECT randomblob(2000) FROM c;',
+        );
+      // Registered after the sandbox, so this runs before it's deleted.
+      addTearDown(fileDb.close);
+    });
+
+    test('status reports cache usage', () {
+      fileDb.select('SELECT sum(length(v)) FROM t');
+      final used = fileDb.status(DatabaseStatus.cacheUsed);
+      expect(used.current, greaterThan(200 * 2000));
+      expect(used.highwater, 0);
+
+      expect(fileDb.status(DatabaseStatus.schemaUsed).current, greaterThan(0));
+    });
+
+    test('status can reset counters', () {
+      fileDb.select('SELECT sum(length(v)) FROM t');
+      expect(fileDb.status(DatabaseStatus.cacheHit).current, greaterThan(0));
+
+      fileDb.status(DatabaseStatus.cacheHit, reset: true);
+      expect(fileDb.status(DatabaseStatus.cacheHit).current, 0);
+    });
+
+    test('releaseMemory frees the page cache', () {
+      fileDb.select('SELECT sum(length(v)) FROM t');
+      final before = fileDb.status(DatabaseStatus.cacheUsed).current;
+
+      fileDb.releaseMemory();
+      final after = fileDb.status(DatabaseStatus.cacheUsed).current;
+      expect(after, lessThan(before ~/ 10));
+
+      // The connection keeps working afterwards.
+      expect(fileDb.select('SELECT count(*) AS c FROM t'), [
+        {'c': 200},
+      ]);
+    });
+  });
+
   group('backup', () {
     late String path;
 
