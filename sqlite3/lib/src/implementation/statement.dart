@@ -150,7 +150,7 @@ base class StatementImplementation extends CommonPreparedStatement {
       case SqlType.SQLITE_TEXT:
         return statement.sqlite3_column_text(index);
       case SqlType.SQLITE_BLOB:
-        return statement.sqlite3_column_bytes(index);
+        return raw.columnBlob(index);
       case SqlType.SQLITE_NULL:
       default:
         return null;

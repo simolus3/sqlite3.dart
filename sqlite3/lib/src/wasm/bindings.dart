@@ -525,11 +525,25 @@ final class WasmStatement implements RawSqliteStatement {
   }
 
   @override
-  Uint8List sqlite3_column_bytes(int index) {
-    final length = bindings.sqlite3_column_bytes(stmt, index);
-    final ptr = bindings.sqlite3_column_blob(stmt, index);
+  int sqlite3_column_byte_length(int index) {
+    return bindings.sqlite3_column_bytes(stmt, index);
+  }
 
-    return bindings.memory.copyRange(ptr, length);
+  @override
+  void sqlite3_column_blob_into(
+    int index,
+    Uint8List target,
+    int offset,
+    int length,
+  ) {
+    if (length == 0) return;
+
+    final ptr = bindings.sqlite3_column_blob(stmt, index);
+    target.setRange(
+      offset,
+      offset + length,
+      bindings.memory.dartBuffer.asUint8List(ptr, length),
+    );
   }
 
   @override

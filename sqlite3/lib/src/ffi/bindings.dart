@@ -1270,15 +1270,26 @@ final class FfiStatement implements RawSqliteStatement, Finalizable {
   }
 
   @override
-  Uint8List sqlite3_column_bytes(int index) {
-    final length = libsqlite3.sqlite3_column_bytes(stmt, index);
-    if (length == 0) {
-      // sqlite3_column_blob returns a null pointer for non-null blobs with
-      // a length of 0. Note that we can distinguish this from a proper null
-      // by checking the type (which isn't SQLITE_NULL)
-      return Uint8List(0);
-    }
-    return libsqlite3.sqlite3_column_blob(stmt, index).copyRange(length);
+  int sqlite3_column_byte_length(int index) {
+    return libsqlite3.sqlite3_column_bytes(stmt, index);
+  }
+
+  @override
+  void sqlite3_column_blob_into(
+    int index,
+    Uint8List target,
+    int offset,
+    int length,
+  ) {
+    // sqlite3_column_blob returns a null pointer for empty blobs.
+    if (length == 0) return;
+
+    final source = libsqlite3.sqlite3_column_blob(stmt, index);
+    target.setRange(
+      offset,
+      offset + length,
+      source.cast<Uint8>().asTypedList(length),
+    );
   }
 
   @override
