@@ -74,16 +74,6 @@ void testDatabase(
         database.select('SELECT sum(length(v)) FROM t');
         expect(database.status(.cacheHit).current, greaterThan(0));
       });
-
-      test('supports all options', () {
-        for (final option in StatusParameter.values) {
-          expect(
-            () => database.status(option),
-            returnsNormally,
-            reason: '$option',
-          );
-        }
-      });
     },
     // status() requires SQLite 3.51.0, which older system libraries lack.
     tags: 'require_built',

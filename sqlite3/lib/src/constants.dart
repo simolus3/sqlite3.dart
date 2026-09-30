@@ -608,10 +608,4 @@ extension type const StatusParameter(int flag) implements int {
 
   /// `SQLITE_DBSTATUS_TEMPBUF_SPILL`
   static const tempBufferSpill = StatusParameter(13);
-
-  static const _max = 13;
-
-  static final List<StatusParameter> values = [
-    for (var i = 0; i < _max; i++) StatusParameter(i),
-  ];
 }
