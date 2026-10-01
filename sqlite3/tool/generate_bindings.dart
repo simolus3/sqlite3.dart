@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:dart_style/dart_style.dart';
 import 'package:ffigen/ffigen.dart' hide Func, Global;
-import 'package:ffigen/src/code_generator.dart';
+import 'package:ffigen/src/code_generator.dart' hide ImportedType;
 import 'package:ffigen/src/context.dart';
 import 'package:ffigen/src/header_parser.dart' as ffigen;
 import 'package:logging/logging.dart';
@@ -104,8 +104,8 @@ extension type SqliteExports(JSObject raw) implements JSObject {
           buffer.write('JSBigInt');
           return;
         }
-      case ImportedType():
-        if (bigIntInJs.contains(type.cType)) {
+      case ImportedType(:final cType):
+        if (bigIntInJs.contains(cType)) {
           buffer.write('JSBigInt');
           return;
         }
