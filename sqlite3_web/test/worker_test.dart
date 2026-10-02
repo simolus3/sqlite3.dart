@@ -16,8 +16,8 @@ import 'protocol_test.dart';
 
 void main() {
   late String sqlite3WasmUri;
-  late FakeWorkerEnvironment fakeWorkers;
   late _TestController controller;
+  FakeWorkerEnvironment? fakeWorkers;
 
   setUpAll(() async {
     final channel = spawnHybridUri('/test/asset_server.dart');
@@ -25,24 +25,30 @@ void main() {
     sqlite3WasmUri = 'http://localhost:$port/web/sqlite3.wasm';
   });
 
-  setUp(() {
-    fakeWorkers = FakeWorkerEnvironment();
+  FakeWorkerEnvironment openFakeWorkers() {
+    final fakeWorkers = FakeWorkerEnvironment();
     WebSqlite.workerEntrypoint(
       controller: controller = _TestController(),
       environment: fakeWorkers,
     );
-  });
-
-  tearDown(() {
-    fakeWorkers.close();
-  });
+    addTearDown(fakeWorkers.close);
+    return fakeWorkers;
+  }
 
   Future<RemoteDatabase> requestDatabase(
     String name,
     DatabaseImplementation implementation,
   ) async {
+    final FakeWorkerEnvironment workers;
+    if (fakeWorkers case final existingWorkers?) {
+      workers = existingWorkers;
+    } else {
+      workers = fakeWorkers = openFakeWorkers();
+      addTearDown(() => fakeWorkers = null);
+    }
+
     final client = WebSqlite.open(
-      workers: _FakeWorkerConnector(fakeWorkers),
+      workers: _FakeWorkerConnector(() => workers),
       wasmModule: sqlite3WasmUri,
     );
     return (await client.connect(name, implementation)) as RemoteDatabase;
@@ -351,8 +357,9 @@ void main() {
   });
 
   test('can close clients', () async {
+    final fakeWorkers = openFakeWorkers();
     final client = WebSqlite.open(
-      workers: _FakeWorkerConnector(fakeWorkers),
+      workers: _FakeWorkerConnector(() => fakeWorkers),
       wasmModule: sqlite3WasmUri,
     );
     final database = await client.connect(
@@ -424,7 +431,7 @@ void main() {
 
     test('does not cache explain statements', () async {
       final client = WebSqlite.open(
-        workers: _FakeWorkerConnector(fakeWorkers),
+        workers: _FakeWorkerConnector(openFakeWorkers),
         wasmModule: sqlite3WasmUri,
       );
       final database = await client.connect(
@@ -457,21 +464,40 @@ void main() {
       );
     });
   });
+
+  test('can reopen after closing', () async {
+    final client = WebSqlite.open(
+      workers: _FakeWorkerConnector(openFakeWorkers),
+      wasmModule: sqlite3WasmUri,
+    );
+    final database = await client.connect(
+      'foo',
+      DatabaseImplementation.inMemoryShared,
+    );
+    client.close();
+    await database.closed;
+
+    final second = await client.connect(
+      'foo',
+      DatabaseImplementation.inMemoryShared,
+    );
+    await second.execute('SELECT 1');
+  });
 }
 
 final class _FakeWorkerConnector implements WorkerConnector {
-  final FakeWorkerEnvironment _env;
+  final FakeWorkerEnvironment Function() _env;
 
   _FakeWorkerConnector(this._env);
 
   @override
   WorkerHandle? spawnDedicatedWorker() {
-    return _env;
+    return _env();
   }
 
   @override
   WorkerHandle? spawnSharedWorker() {
-    return _env;
+    return _env();
   }
 }
 

@@ -350,6 +350,10 @@ abstract class WebSqlite {
   });
 
   /// Closes this instance and associated dedicated workers.
+  ///
+  /// All currently opened databases will be closed as well. It is allowed to
+  /// open new databases with this instace after calling `close()`, those
+  /// databases will use fresh workers.
   void close();
 
   /// Entrypoints for workers hosting databases.

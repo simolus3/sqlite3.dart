@@ -32,12 +32,7 @@ final class RemoteDatabase implements Database {
 
   RemoteDatabase({required this.connection, required this.databaseId}) {
     connection.closed.then((_) {
-      if (!isClosed) {
-        _isClosed.complete();
-        _updates.close();
-        _rollbacks.controller.close();
-        _commits.controller.close();
-      }
+      _triggerClose(closeOnServer: false);
     });
 
     _updates
@@ -138,18 +133,21 @@ final class RemoteDatabase implements Database {
   Future<void> get closed => _isClosed.future;
 
   @override
-  Future<void> dispose() {
+  Future<void> dispose() => _triggerClose();
+
+  Future<void> _triggerClose({bool closeOnServer = true}) {
     if (!isClosed) {
       _isClosed.complete(
-        (
+        [
           _updates.close(),
           _rollbacks.controller.close(),
           _commits.controller.close(),
-          connection.sendRequest(
-            newCloseDatabase(requestId: 0, databaseId: databaseId),
-            MessageType.simpleSuccessResponse,
-          ),
-        ).wait,
+          if (closeOnServer)
+            connection.sendRequest(
+              newCloseDatabase(requestId: 0, databaseId: databaseId),
+              MessageType.simpleSuccessResponse,
+            ),
+        ].wait,
       );
     }
 
@@ -765,10 +763,17 @@ final class DatabaseClient implements WebSqlite {
 
   @override
   void close() {
+    _startedWorkers = false;
+
     _connectionToShared?.close();
     _connectionToDedicatedInShared?.close();
     _connectionToDedicated?.close();
     _connectionToLocal?.close();
+
+    _connectionToShared = null;
+    _connectionToDedicatedInShared = null;
+    _connectionToDedicated = null;
+    _connectionToLocal = null;
   }
 
   /// Compares available ways to access databases by the performance and
