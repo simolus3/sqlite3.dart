@@ -20,10 +20,25 @@ final _requestFinalizer = NativeFinalizer(
   addresses.pkg_sqlite3_connection_pool_request_close.cast(),
 );
 
+final class _OutstandingRequest {
+  final int tag;
+  final Completer<_PoolLease> completer = Completer();
+  RawPoolRequest? request;
+
+  _OutstandingRequest(this.tag);
+
+  RawPoolRequest associateWithRequest(
+    RawSqliteConnectionPool pool,
+    Pointer<PoolRequest> request,
+  ) {
+    return this.request = RawPoolRequest._(tag, pool, request);
+  }
+}
+
 @internal
 final class RawSqliteConnectionPool implements Finalizable {
   var _requestCounter = 0;
-  final Map<int, Completer<_PoolLease>> _outstandingRequests = {};
+  final Map<int, _OutstandingRequest> _outstandingRequests = {};
 
   final Pointer<ConnectionPool> _pool;
   final RawReceivePort _receivePort = RawReceivePort();
@@ -37,8 +52,8 @@ final class RawSqliteConnectionPool implements Finalizable {
     _receivePort.handler = (List<Object?> message) {
       final tag = message[0] as int;
       final isExclusive = message[1] as bool;
-      final completer = _outstandingRequests.remove(tag);
-      if (completer == null) {
+      final outstanding = _outstandingRequests.remove(tag);
+      if (outstanding == null) {
         return;
       }
 
@@ -52,7 +67,7 @@ final class RawSqliteConnectionPool implements Finalizable {
         parsed = _SingleConnectionLease(PoolConnectionRef(poolConnection));
       }
 
-      completer.complete(parsed);
+      outstanding.completer.complete(parsed);
     };
   }
 
@@ -64,10 +79,16 @@ final class RawSqliteConnectionPool implements Finalizable {
       if (entry == null) return;
 
       try {
-        await entry.future;
+        await entry.completer.future;
       } on Object {
         // Ignore, request might have been cancelled.
       }
+    }
+  }
+
+  void abortAllRequests() {
+    for (final outstanding in [..._outstandingRequests.values]) {
+      outstanding.request?.abort();
     }
   }
 
@@ -103,21 +124,20 @@ final class RawSqliteConnectionPool implements Finalizable {
     });
   }
 
-  (int, Completer<_PoolLease>) _createRequest() {
+  _OutstandingRequest _createRequest() {
     final id = _requestCounter++;
-    return (id, _outstandingRequests[id] = Completer());
+    return _outstandingRequests[id] = _OutstandingRequest(id);
   }
 
   (RawPoolRequest, Future<PoolConnectionRef>) requestSingleConnection(
     bool read,
   ) {
-    final (tag, completer) = _createRequest();
-    final request = RawPoolRequest._(
-      tag,
+    final pending = _createRequest();
+    final request = pending.associateWithRequest(
       this,
       pkg_sqlite3_connection_pool_obtain_single(
         _pool,
-        tag,
+        pending.tag,
         _nativePort,
         read ? 1 : 0,
       ),
@@ -125,19 +145,24 @@ final class RawSqliteConnectionPool implements Finalizable {
 
     return (
       request,
-      completer.future.then((f) => (f as _SingleConnectionLease)._connection),
+      pending.completer.future.then(
+        (f) => (f as _SingleConnectionLease)._connection,
+      ),
     );
   }
 
   (RawPoolRequest, Future<void>) requestExclusive() {
-    final (tag, completer) = _createRequest();
-    final request = RawPoolRequest._(
-      tag,
+    final pending = _createRequest();
+    final request = pending.associateWithRequest(
       this,
-      pkg_sqlite3_connection_pool_obtain_exclusive(_pool, tag, _nativePort),
+      pkg_sqlite3_connection_pool_obtain_exclusive(
+        _pool,
+        pending.tag,
+        _nativePort,
+      ),
     );
 
-    return (request, completer.future);
+    return (request, pending.completer.future);
   }
 
   /// May only be called if the caller has an active exclusive request on this
@@ -344,7 +369,14 @@ final class RawPoolRequest implements Finalizable {
 
     _pool._outstandingRequests
         .remove(_dartTag)
-        ?.completeError(PoolAbortException());
+        ?.completer
+        .completeError(PoolAbortException());
+  }
+
+  void abort() {
+    if (!isCompleted) {
+      close();
+    }
   }
 
   void notifyUpdates() {

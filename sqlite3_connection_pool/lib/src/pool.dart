@@ -78,11 +78,7 @@ final class SqliteConnectionPool {
 
   void _installAbortSignal(RawPoolRequest request, Future<void>? abortSignal) {
     if (abortSignal != null) {
-      abortSignal.whenComplete(() {
-        if (!request.isCompleted) {
-          request.close();
-        }
-      });
+      abortSignal.whenComplete(request.abort);
     }
   }
 
@@ -248,7 +244,9 @@ final class SqliteConnectionPool {
   ///
   /// Requests to the pool that have already been requested continue to be
   /// valid. This method returns a future not completing before all outstanding
-  /// requests on this pool have been granted.
+  /// requests on this pool have been granted or aborted.
+  /// When the [abortOutstandingRequests] parameter is enabled, outstanding
+  /// requests are aborted if they have not already been granted.
   ///
   /// Even after the returned future completes, already granted [reader] and
   /// [writer] requests continue to be valid until [ConnectionLease.returnLease]
@@ -256,7 +254,11 @@ final class SqliteConnectionPool {
   ///
   /// Once all pool instances (across isolates) are closed, the underlying
   /// SQLite connections will be closed as well.
-  Future<void> close() {
+  Future<void> close({bool abortOutstandingRequests = false}) {
+    if (abortOutstandingRequests) {
+      _raw.abortAllRequests();
+    }
+
     return _closing ??= Future.sync(() async {
       // For backwards compatibility, avoid a microtask delay here if there are
       // no requests to await.

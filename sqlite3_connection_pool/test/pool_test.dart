@@ -164,6 +164,45 @@ void main() {
       await expectLater(pending, completes);
     });
 
+    test('can abort outstanding requests', () async {
+      final pool = testPool(readConnections: 1);
+      final reader = await pool.reader();
+
+      // Queued behind the only read connection, which we're holding.
+      final pending = expectLater(
+        pool.readQuery('SELECT 1'),
+        throwsA(isA<PoolAbortException>()),
+      );
+
+      await pool.close(abortOutstandingRequests: true);
+      await pending;
+
+      reader.returnLease();
+    });
+
+    test('can abort outstanding requests on second close call', () async {
+      final pool = testPool();
+      await pool.execute('CREATE TABLE t (x INTEGER)');
+
+      final reader = await pool.reader();
+      final close = pool.exclusiveAccess().then((access) {
+        access.close();
+        return pool.close(abortOutstandingRequests: true);
+      });
+
+      // Requested while close() waits for exclusive access.
+      final pending = expectLater(
+        pool.readQuery('SELECT 1'),
+        throwsA(isA<PoolAbortException>()),
+      );
+
+      pool.close();
+
+      reader.returnLease();
+      await close;
+      await pending;
+    });
+
     test('cannot use afterwards', () async {
       final pool = testPool();
       pool.close();
