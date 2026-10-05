@@ -56,6 +56,21 @@ final class RawSqliteConnectionPool implements Finalizable {
     };
   }
 
+  bool get hasOutstandingRequest => _outstandingRequests.isNotEmpty;
+
+  Future<void> waitForIdle() async {
+    while (true) {
+      final entry = _outstandingRequests.values.firstOrNull;
+      if (entry == null) return;
+
+      try {
+        await entry.future;
+      } on Object {
+        // Ignore, request might have been cancelled.
+      }
+    }
+  }
+
   void sendCustomUpdateNotification(List<String> updatedTables) {
     using((alloc) {
       final rawUpdates = alloc<Pointer<Char>>(updatedTables.length);
@@ -165,6 +180,8 @@ final class RawSqliteConnectionPool implements Finalizable {
   }
 
   void close() {
+    assert(_outstandingRequests.isEmpty);
+
     _poolFinalizer.detach(_detachToken);
     pkg_sqlite3_connection_pool_close(_pool);
     _receivePort.close();

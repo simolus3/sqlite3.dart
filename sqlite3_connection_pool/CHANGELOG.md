@@ -1,3 +1,8 @@
+## 0.2.12
+
+- Make `SqliteConnectionPool.close()` return a future completing once outstanding
+  requests were resolved.
+
 ## 0.2.11
 
 - Support `code_assets` versions 2.x.

@@ -145,12 +145,34 @@ void main() {
     }
   });
 
-  test('cannot use after closing', () async {
-    final pool = testPool();
-    pool.close();
+  group('close', () {
+    test('waits for outstanding requests', () async {
+      final pool = testPool();
+      await pool.execute('CREATE TABLE t (x INTEGER)');
 
-    expect(() => pool.writer(), throwsStateError);
-    expect(() => pool.reader(), throwsStateError);
+      final reader = await pool.reader();
+      final close = pool.exclusiveAccess().then((access) {
+        access.close();
+        return pool.close();
+      });
+
+      // Requested while close() waits for exclusive access.
+      final pending = pool.readQuery('SELECT 1');
+
+      reader.returnLease();
+      await close;
+      await expectLater(pending, completes);
+    });
+
+    test('cannot use afterwards', () async {
+      final pool = testPool();
+      pool.close();
+
+      expect(() => pool.writer(), throwsStateError);
+      expect(() => pool.reader(), throwsStateError);
+      expect(() => pool.exclusiveAccess(), throwsStateError);
+      expect(() => pool.dispatchUpdateNotification([]), throwsStateError);
+    });
   });
 
   test('autocommit', () async {

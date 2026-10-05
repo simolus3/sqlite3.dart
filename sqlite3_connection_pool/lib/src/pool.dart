@@ -49,7 +49,7 @@ final class SqliteConnectionPool {
       StreamController.broadcast();
   RawReceivePort? _receiveTableUpdates;
 
-  bool _isClosed = false;
+  Future<void>? _closing;
 
   SqliteConnectionPool._(this.name, this._raw) {
     _updatedTables.onListen = () {
@@ -71,7 +71,7 @@ final class SqliteConnectionPool {
   }
 
   void _checkNotClosed() {
-    if (_isClosed) {
+    if (_closing != null) {
       throw StateError('This connection pool is closed');
     }
   }
@@ -243,20 +243,32 @@ final class SqliteConnectionPool {
 
   /// Closes this connection pool.
   ///
-  /// This will prevent subsequent [reader] and [writer] requests, but existing
-  /// in-flight requests will continue be valid until they're aborted or until
-  /// [ConnectionLease.returnLease] is called.
+  /// It is not allowed to call [reader], [writer], [exclusiveAccess] or
+  /// [dispatchUpdateNotification] after calling close.
+  ///
+  /// Requests to the pool that have already been requested continue to be
+  /// valid. This method returns a future not completing before all outstanding
+  /// requests on this pool have been granted.
+  ///
+  /// Even after the returned future completes, already granted [reader] and
+  /// [writer] requests continue to be valid until [ConnectionLease.returnLease]
+  /// is called.
   ///
   /// Once all pool instances (across isolates) are closed, the underlying
   /// SQLite connections will be closed as well.
-  void close() {
-    if (!_isClosed) {
+  Future<void> close() {
+    return _closing ??= Future.sync(() async {
+      // For backwards compatibility, avoid a microtask delay here if there are
+      // no requests to await.
+      if (_raw.hasOutstandingRequest) {
+        await _raw.waitForIdle();
+      }
+
       _raw.close();
       _receiveTableUpdates?.close();
       _receiveTableUpdates = null;
       _updatedTables.close();
-      _isClosed = true;
-    }
+    });
   }
 
   /// Opens a connection pool, initializing it with connections if this is the
