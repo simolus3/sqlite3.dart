@@ -87,6 +87,17 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               '-ffunction-sections',
               '-fdata-sections',
               '-Wl,--gc-sections',
+              '-fstack-protector-strong',
+              '-fstack-clash-protection',
+              '-D_FORTIFY_SOURCE=2',
+              '-Wl,-z,relro,-z,now',
+              '-Wl,-z,noexecstack',
+              ...switch (input.config.code.targetArchitecture) {
+                Architecture.x64 ||
+                Architecture.ia32 => ['-fcf-protection=full'],
+                Architecture.arm64 => ['-mbranch-protection=standard'],
+                _ => const <String>[],
+              },
             ],
             if (input.config.code.targetOS case OS.iOS || OS.macOS) ...[
               '-headerpad_max_install_names',

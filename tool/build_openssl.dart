@@ -113,6 +113,14 @@ Future<void> _buildOpenSSL({
       '-ffunction-sections',
       '-fdata-sections',
       '-fvisibility=hidden',
+      '-fstack-protector-strong',
+      '-fstack-clash-protection',
+      '-D_FORTIFY_SOURCE=2',
+      ...switch (targetArchitecture) {
+        Architecture.x64 || Architecture.ia32 => ['-fcf-protection=full'],
+        Architecture.arm64 => ['-mbranch-protection=standard'],
+        _ => const <String>[],
+      },
       '--cross-compile-prefix=${_linuxCrossCompilePrefix(targetArchitecture)}',
     ],
   ];
