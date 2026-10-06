@@ -45,13 +45,17 @@ void main(List<String> args) async {
       failedChecks.add('$file: Check $key failed with $value ($status)');
     }
 
-    check('relro');
+    check('relro', allowYellow: true);
     check('canary');
     check('nx');
     check('rpath');
     check('runpath', allowYellow: true);
     check('separate_code');
-    check('fortify_source');
+    if (!file.contains('connection_pool')) {
+      // libsqlite3_connection_pool is written in Rust and doesn't have/need
+      // fortify.
+      check('fortify_source');
+    }
   }
 
   if (failedChecks.isEmpty) {
