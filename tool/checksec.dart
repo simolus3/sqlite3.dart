@@ -45,16 +45,18 @@ void main(List<String> args) async {
       failedChecks.add('$file: Check $key failed with $value ($status)');
     }
 
+    final isRustOnly = file.contains('connection_pool');
+
     check('relro', allowYellow: true);
-    check('canary');
     check('nx');
     check('rpath');
     check('runpath', allowYellow: true);
     check('separate_code');
-    if (!file.contains('connection_pool')) {
+    if (!isRustOnly) {
       // libsqlite3_connection_pool is written in Rust and doesn't have/need
-      // fortify.
+      // these C-specific hardening steps.
       check('fortify_source');
+      check('canary');
     }
   }
 
