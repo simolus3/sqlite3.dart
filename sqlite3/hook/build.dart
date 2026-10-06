@@ -90,8 +90,7 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               '-fstack-protector-strong',
               '-fstack-clash-protection',
               '-D_FORTIFY_SOURCE=2',
-              '-Wl,-z,relro,-z,now',
-              '-Wl,-z,noexecstack',
+              '-Wl,-z,relro,-z,noexecstack',
               ...switch (input.config.code.targetArchitecture) {
                 Architecture.x64 ||
                 Architecture.ia32 => ['-fcf-protection=full'],
