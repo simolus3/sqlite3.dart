@@ -1,0 +1,72 @@
+import 'dart:convert';
+import 'dart:io';
+
+/// Runs [checksec](https://github.com/slimm609/checksec/) on binaries we
+/// attach to `sqlite3` and `sqlite3_connection_pool` releases.
+void main(List<String> args) async {
+  if (args.isEmpty) {
+    print('Usage: dart tool/checksec.dart <files>');
+    exit(1);
+  }
+
+  final tmp = await Directory.systemTemp.createTemp('dart-sqlite-checksec');
+  final file = File.fromUri(tmp.uri.resolve('list.txt'));
+  await file.writeAsString(
+    args.map((path) => File(path).absolute.path).join(Platform.lineTerminator),
+  );
+
+  final output = await Process.run('checksec', [
+    'listfile',
+    file.path,
+    '--output=json',
+  ], stdoutEncoding: null);
+  await tmp.delete(recursive: true);
+  final decoded =
+      json.fuse(systemEncoding).decode(output.stdout as List<int>)
+          as List<Object?>;
+  final failedChecks = <String>[];
+
+  for (final entry in decoded) {
+    entry as Map<String, Object?>;
+
+    final file = entry['name'] as String;
+    final checks = entry['checks'] as Map<String, Object?>;
+
+    void check(String key, {bool allowYellow = false}) {
+      final {'value': value, 'status': status} =
+          checks[key] as Map<String, Object?>;
+
+      if (status == 'unset' ||
+          status == 'green' ||
+          (allowYellow && status == 'yellow')) {
+        return;
+      }
+
+      failedChecks.add('$file: Check $key failed with $value ($status)');
+    }
+
+    final isRustOnly = file.contains('connection_pool');
+
+    check('relro', allowYellow: true);
+    check('nx');
+    check('rpath');
+    check('runpath', allowYellow: true);
+    check('separate_code');
+    if (!isRustOnly) {
+      // libsqlite3_connection_pool is written in Rust and doesn't have/need
+      // these C-specific hardening steps.
+      check('fortify_source');
+      check('canary');
+    }
+  }
+
+  if (failedChecks.isEmpty) {
+    print('No issues found in ${args.join(' ')}');
+  } else {
+    for (final failed in failedChecks) {
+      print(failed);
+    }
+
+    exit(1);
+  }
+}

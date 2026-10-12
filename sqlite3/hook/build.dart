@@ -87,6 +87,18 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               '-ffunction-sections',
               '-fdata-sections',
               '-Wl,--gc-sections',
+              '-fstack-protector-strong',
+              '-fstack-clash-protection',
+              '-D_FORTIFY_SOURCE=2',
+              // TODO: Check if we should also use -z,now, given that we already
+              // have -Bsymbolic
+              '-Wl,-z,relro,-z,noexecstack',
+              ...switch (input.config.code.targetArchitecture) {
+                Architecture.x64 ||
+                Architecture.ia32 => ['-fcf-protection=full'],
+                Architecture.arm64 => ['-mbranch-protection=standard'],
+                _ => const <String>[],
+              },
             ],
             if (input.config.code.targetOS case OS.iOS || OS.macOS) ...[
               '-headerpad_max_install_names',
