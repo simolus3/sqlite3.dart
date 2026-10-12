@@ -1,3 +1,8 @@
+## 3.8.0 (unreleased)
+
+- Update SQLite to 3.54.0.
+- Update SQLite3 Multiple Cipher to 2.6.0.
+
 ## 3.7.0
 
 - Update bundled OpenSSL for SQLCipher to 4.0.3.
