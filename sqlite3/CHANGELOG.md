@@ -1,4 +1,4 @@
-## 3.7.1 (unreleased)
+## 3.7.1
 
 - Update SQLite to 3.54.0.
 - Update SQLite3 Multiple Cipher to 2.6.1.
