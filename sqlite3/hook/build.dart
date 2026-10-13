@@ -84,6 +84,7 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
               // export, we might as well strip the rest.
               // TODO: Port this to other targets too.
               '-Wl,--version-script=$linkerScript',
+              '-Wl,--no-undefined',
               '-ffunction-sections',
               '-fdata-sections',
               '-Wl,--gc-sections',
@@ -112,8 +113,7 @@ ${usedSqliteSymbols.map((symbol) => '    $symbol;').join('\n')}
           ],
           libraryDirectories: [...additionalLibraryDirectories],
           libraries: [
-            if (input.config.code.targetOS == OS.android) ...[
-              // We need to link the math library on Android.
+            if (input.config.code.targetOS case OS.android || OS.linux) ...[
               'm',
             ],
             ...additionalLibraries,
