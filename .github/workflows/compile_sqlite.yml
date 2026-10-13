@@ -150,7 +150,7 @@ jobs:
         id: cache_build
         with:
           path: sqlite-compiled
-          key: sqlite-prebuilt-${{ matrix.target }}-${{ hashFiles('tool/**', 'sqlite3/lib/src/hook/compile/**') }}
+          key: sqlite-prebuilt-${{ matrix.target }}-${{ hashFiles('tool/**', 'sqlite3/hook/**', 'sqlite3/lib/src/hook/compile/**') }}
 
       - name: Download sqlite3 sources
         if: steps.cache_build.outputs.cache-hit != 'true'

@@ -4,7 +4,7 @@ import 'dart:io';
 ///
 /// 1. Avoid `memset_explicit` call which is not available in wasi-libc.
 /// 2. Avoid `__wasi_random_get` call by patching out `defined(__wasi__)`
-///    blocks.
+///    blocks. That makes it use `getentropy`, which we patch in `getentropy.c`.
 void main(List<String> args) {
   final file = File(args.single);
   final output = StringBuffer();
