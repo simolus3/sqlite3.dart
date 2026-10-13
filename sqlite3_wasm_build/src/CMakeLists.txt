@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.24)
 set(PROJECT_NAME "sqlite3_web")
 project(${PROJECT_NAME} LANGUAGES C)
 
-set(triple wasm32-unknown-wasi)
+set(triple wasm32-wasip1)
 set(wasi_sysroot "/usr/share/wasi-sysroot" CACHE PATH "Path to wasi sysroot")
 set(clang "clang" CACHE FILEPATH "Path to wasm-capable clang executable")
 
@@ -14,14 +14,15 @@ include(FetchContent)
 FetchContent_Declare(
     sqlite3
     # NOTE: When changing this, also update `test/wasm/sqlite3_test.dart`
-    URL https://sqlite.org/2026/sqlite-amalgamation-3530400.zip
+    URL https://sqlite.org/2026/sqlite-amalgamation-3540000.zip
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
 )
 
 FetchContent_Declare(
     sqlite3mc
-    URL https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.5.0/sqlite3mc-2.5.0-sqlite-3.53.4-amalgamation.zip
+    URL https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.6.1/sqlite3mc-2.6.1-sqlite-3.54.0-amalgamation.zip
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
+    PATCH_COMMAND dart run ${CMAKE_CURRENT_SOURCE_DIR}/../tool/patch_sqlite3mc.dart <SOURCE_DIR>/sqlite3mc_amalgamation.c
 )
 
 FetchContent_MakeAvailable(sqlite3)
