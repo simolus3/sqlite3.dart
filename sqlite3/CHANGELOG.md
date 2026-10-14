@@ -1,3 +1,9 @@
+## 3.7.2 (unreleased)
+
+- Fix `InMemoryFileSystem` (and `IndexedDbFileSystem`, which reads through it)
+  copying the rest of the file on every read when compiled with dart2wasm,
+  which made opening a database quadratic in its size.
+
 ## 3.7.1
 
 - Update SQLite to 3.54.0.

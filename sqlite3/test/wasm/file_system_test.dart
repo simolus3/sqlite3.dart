@@ -228,11 +228,6 @@ Future<void> _testWith(FutureOr<VirtualFileSystem> Function() open) async {
         .file;
 
     fs.createFile('$_fsRoot/foo.txt');
-    addTearDown(() {
-      file.xClose();
-      fs.xDelete('$_fsRoot/foo.txt', 0);
-    });
-
     expect(file.xFileSize(), isZero);
 
     file.xTruncate(1024);
@@ -250,6 +245,59 @@ Future<void> _testWith(FutureOr<VirtualFileSystem> Function() open) async {
     final target = Uint8List(3);
     file.xRead(target, 0);
     expect(target, [1, 2, 3]);
+  });
+
+  // SQLite reads into a view of the WASM memory, which is JS-backed.
+  Uint8List jsBackedBuffer(int length) =>
+      JSUint8Array.withLength(length).toDart;
+
+  test('reads at an offset into a JS-backed buffer', () {
+    final file = fs
+        .xOpen(Sqlite3Filename('$_fsRoot/foo.txt'), SqlFlag.SQLITE_OPEN_CREATE)
+        .file;
+
+    file.xWrite(Uint8List.fromList(List.generate(10, (i) => i + 1)), 0);
+
+    final target = jsBackedBuffer(4);
+    file.xRead(target, 3);
+    expect(target, [4, 5, 6, 7]);
+
+    // A short read fills the rest of the buffer with zeroes.
+    final tail = jsBackedBuffer(4);
+    expect(() => file.xRead(tail, 8), throwsA(isA<VfsException>()));
+    expect(tail, [9, 10, 0, 0]);
+  });
+
+  test('reading every page of a large file is linear in its size', () {
+    // Regression test for https://github.com/simolus3/sqlite3.dart/pull/419
+    const pageSize = 4096;
+    const pages = 2048; // 8 MiB
+
+    final file = fs
+        .xOpen(Sqlite3Filename('$_fsRoot/foo.txt'), SqlFlag.SQLITE_OPEN_CREATE)
+        .file;
+    addTearDown(() {
+      file.xClose();
+      fs.xDelete('$_fsRoot/foo.txt', 0);
+    });
+
+    final contents = Uint8List(pageSize * pages);
+    for (var i = 0; i < pages; i++) {
+      contents[i * pageSize] = i % 256;
+    }
+    file.xWrite(contents, 0);
+
+    final target = jsBackedBuffer(pageSize);
+    final stopwatch = Stopwatch()..start();
+    for (var i = 0; i < pages; i++) {
+      file.xRead(target, i * pageSize);
+      expect(target[0], i % 256);
+    }
+    stopwatch.stop();
+
+    // Copying the rest of the file on every read made this take minutes
+    // with dart2wasm; a linear read takes well under a second.
+    expect(stopwatch.elapsed, lessThan(const Duration(seconds: 10)));
   });
 }
 

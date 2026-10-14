@@ -77,8 +77,13 @@ class _InMemoryFile extends BaseVfsFile {
     if (file == null || file.length <= offset) return 0;
 
     final available = min(buffer.length, file.length - offset);
-    final list = file.buffer.asUint8List(0, file.length);
-    buffer.setRange(0, available, list, offset);
+
+    // Note: Keep this list small to avoid a slow copy on dart2wasm, where
+    // buffer is a JSUint8Array and file.buffer is a U8List. In particular, we
+    // want to avoid passing the entire file buffer to this:
+    // https://github.com/dart-lang/sdk/blob/a83d9a7ee2ea9bf458cc8e0dfc47deadf354961b/sdk/lib/_internal/wasm/js_common/js_typed_array.dart#L782
+    final list = file.buffer.asUint8List(offset, available);
+    buffer.setRange(0, available, list);
     return available;
   }
 
