@@ -77,8 +77,12 @@ class _InMemoryFile extends BaseVfsFile {
     if (file == null || file.length <= offset) return 0;
 
     final available = min(buffer.length, file.length - offset);
-    final list = file.buffer.asUint8List(0, file.length);
-    buffer.setRange(0, available, list, offset);
+    // Pass only the requested window: with a skipCount, dart2wasm copies the
+    // whole rest of the file element by element when [buffer] is JS-backed
+    // (as the WASM memory view handed to xRead is), making every read
+    // O(file size).
+    final list = file.buffer.asUint8List(offset, available);
+    buffer.setRange(0, available, list);
     return available;
   }
 
