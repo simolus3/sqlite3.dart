@@ -59,13 +59,11 @@ final class PoolConnection {
       final stmt = database.prepare(sql, checkNoTail: true);
       try {
         resultSet = stmt.select(parameters);
+      } finally {
         stmt.reset();
-      } on Object {
-        stmt.close();
-        rethrow;
-      }
-      if (!_storeCached(encoded, stmt)) {
-        stmt.close();
+        if (!_storeCached(encoded, stmt)) {
+          stmt.close();
+        }
       }
     }
 
@@ -87,15 +85,12 @@ final class PoolConnection {
     } else if (parameters.isNotEmpty) {
       final stmt = database.prepare(sql, checkNoTail: true);
       try {
-        stmt
-          ..execute(parameters)
-          ..reset();
-      } on Object {
-        stmt.close();
-        rethrow;
-      }
-      if (!_storeCached(encoded, stmt)) {
-        stmt.close();
+        stmt.execute(parameters);
+      } finally {
+        stmt.reset();
+        if (!_storeCached(encoded, stmt)) {
+          stmt.close();
+        }
       }
     } else {
       // The sql text is allowed to contain multiple statements, so we can't

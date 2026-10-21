@@ -1,7 +1,7 @@
 ## 0.2.13-wip
 
-- Close prepared statements that fail while running in `PoolConnection.select`
-  and `PoolConnection.execute`.
+- Reset and cache (or close) prepared statements that fail while running in
+  `PoolConnection.select` and `PoolConnection.execute` instead of leaking them.
 
 ## 0.2.12
 
