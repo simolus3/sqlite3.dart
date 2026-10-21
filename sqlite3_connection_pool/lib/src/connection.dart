@@ -57,8 +57,13 @@ final class PoolConnection {
       cached.reset();
     } else {
       final stmt = database.prepare(sql, checkNoTail: true);
-      resultSet = stmt.select(parameters);
-      stmt.reset();
+      try {
+        resultSet = stmt.select(parameters);
+        stmt.reset();
+      } on Object {
+        stmt.close();
+        rethrow;
+      }
       if (!_storeCached(encoded, stmt)) {
         stmt.close();
       }
@@ -81,9 +86,14 @@ final class PoolConnection {
         ..reset();
     } else if (parameters.isNotEmpty) {
       final stmt = database.prepare(sql, checkNoTail: true);
-      stmt
-        ..execute(parameters)
-        ..reset();
+      try {
+        stmt
+          ..execute(parameters)
+          ..reset();
+      } on Object {
+        stmt.close();
+        rethrow;
+      }
       if (!_storeCached(encoded, stmt)) {
         stmt.close();
       }

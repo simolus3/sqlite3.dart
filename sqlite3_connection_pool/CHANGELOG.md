@@ -1,3 +1,8 @@
+## 0.2.13-wip
+
+- Close prepared statements that fail while running in `PoolConnection.select`
+  and `PoolConnection.execute`.
+
 ## 0.2.12
 
 - Make `SqliteConnectionPool.close()` return a future completing once outstanding
