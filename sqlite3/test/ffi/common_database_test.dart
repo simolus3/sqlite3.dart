@@ -11,11 +11,13 @@ void main() {
   final hasColumnMeta = sqlite3.usedCompileOption('ENABLE_COLUMN_METADATA');
   final hasSession = sqlite3.usedCompileOption('ENABLE_SESSION');
   final hasSharedCache = !sqlite3.usedCompileOption('OMIT_SHARED_CACHE');
+  final hasStatus = sqlite3.version.versionNumber >= 3051000;
 
   testDatabase(
     () => sqlite3,
     hasColumnMetadata: hasColumnMeta,
     hasSharedCache: hasSharedCache,
+    hasStatus: hasStatus,
   );
 
   group('session', () {

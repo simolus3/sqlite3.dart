@@ -8,7 +8,7 @@ import '../common/session.dart';
 import 'utils.dart';
 
 void main() {
-  testDatabase(loadSqlite3);
+  testDatabase(loadSqlite3, hasStatus: true);
   group('session', () {
     testSession(loadSqlite3);
   });

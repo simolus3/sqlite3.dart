@@ -11,6 +11,7 @@ void testDatabase(
   FutureOr<CommonSqlite3> Function() loadSqlite, {
   bool hasColumnMetadata = false,
   bool hasSharedCache = false,
+  bool hasStatus = false,
 }) {
   late CommonSqlite3 sqlite3;
   late CommonDatabase database;
@@ -46,38 +47,33 @@ void testDatabase(
     expect(database.getUpdatedRows(), 2);
   });
 
-  group(
-    'status',
-    () {
-      setUp(() {
-        database
-          ..execute('CREATE TABLE t (v BLOB);')
-          ..execute(
-            'WITH RECURSIVE c(i) AS (VALUES(1) UNION ALL SELECT i + 1 FROM c '
-            'WHERE i < 200) INSERT INTO t SELECT randomblob(2000) FROM c;',
-          );
-      });
+  group('status', () {
+    setUp(() {
+      database
+        ..execute('CREATE TABLE t (v BLOB);')
+        ..execute(
+          'WITH RECURSIVE c(i) AS (VALUES(1) UNION ALL SELECT i + 1 FROM c '
+          'WHERE i < 200) INSERT INTO t SELECT randomblob(2000) FROM c;',
+        );
+    });
 
-      test('reports cache usage', () {
-        final used = database.status(.cacheUsed);
-        expect(used.current, greaterThan(200 * 2000));
-        expect(used.highwater, 0);
+    test('reports cache usage', () {
+      final used = database.status(.cacheUsed);
+      expect(used.current, greaterThan(200 * 2000));
+      expect(used.highwater, 0);
 
-        expect(database.status(.schemaUsed).current, greaterThan(0));
-      });
+      expect(database.status(.schemaUsed).current, greaterThan(0));
+    });
 
-      test('can reset counters', () {
-        database.select('SELECT sum(length(v)) FROM t');
-        database.status(.cacheHit, reset: true);
-        expect(database.status(.cacheHit).current, 0);
+    test('can reset counters', () {
+      database.select('SELECT sum(length(v)) FROM t');
+      database.status(.cacheHit, reset: true);
+      expect(database.status(.cacheHit).current, 0);
 
-        database.select('SELECT sum(length(v)) FROM t');
-        expect(database.status(.cacheHit).current, greaterThan(0));
-      });
-    },
-    // status() requires SQLite 3.51.0, which older system libraries lack.
-    tags: 'require_built',
-  );
+      database.select('SELECT sum(length(v)) FROM t');
+      expect(database.status(.cacheHit).current, greaterThan(0));
+    });
+  }, skip: !hasStatus ? 'Requires sqlite3_db_status64' : null);
 
   test('last insert id', () {
     database.execute('CREATE TABLE tbl(a INTEGER PRIMARY KEY AUTOINCREMENT)');
