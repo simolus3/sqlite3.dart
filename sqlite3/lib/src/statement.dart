@@ -186,6 +186,11 @@ extension type RawPreparedStatement._(StatementImplementation _stmt) {
     _stmt.latestArguments = parameters;
   }
 
+  /// Whether this statement is currently busy (has an active cursor).
+  ///
+  /// See also: https://sqlite.org/c3ref/stmt_busy.html
+  bool get busy => rawStatement.sqlite3_stmt_busy();
+
   /// Calls `sqlite3_bind_null` with the 1-based index.
   void bindNull(int index) {
     handleBindRc(rawStatement.sqlite3_bind_null(index));

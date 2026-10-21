@@ -619,6 +619,15 @@ final class WasmStatement implements RawSqliteStatement {
   }
 
   @override
+  bool sqlite3_stmt_busy() {
+    return bindings.sqlite3.sqlite3_stmt_busy!.callAsFunction(
+          null,
+          stmt.toJS,
+        ) !=
+        0;
+  }
+
+  @override
   void sqlite3_reset() {
     bindings.sqlite3_reset(stmt);
   }

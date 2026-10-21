@@ -481,6 +481,17 @@ external ffi.Pointer<sqlite3_char> sqlite3_libversion();
 external int sqlite3_libversion_number();
 
 @ffi.Native<
+  ffi.Pointer<sqlite3_stmt> Function(
+    ffi.Pointer<sqlite3>,
+    ffi.Pointer<sqlite3_stmt>,
+  )
+>()
+external ffi.Pointer<sqlite3_stmt> sqlite3_next_stmt(
+  ffi.Pointer<sqlite3> pDb,
+  ffi.Pointer<sqlite3_stmt> pStmt,
+);
+
+@ffi.Native<
   ffi.Int Function(
     ffi.Pointer<sqlite3_char>,
     ffi.Pointer<ffi.Pointer<sqlite3>>,
@@ -617,6 +628,9 @@ external ffi.Pointer<sqlite3_char> sqlite3_sourceid();
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>()
 external int sqlite3_step(ffi.Pointer<sqlite3_stmt> pStmt);
+
+@ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>()
+external int sqlite3_stmt_busy(ffi.Pointer<sqlite3_stmt> arg0);
 
 @ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>(isLeaf: true)
 external int sqlite3_stmt_isexplain(ffi.Pointer<sqlite3_stmt> pStmt);
@@ -1253,6 +1267,15 @@ class _SymbolAddresses {
       ffi.Native.addressOf(self.sqlite3_libversion_number);
   ffi.Pointer<
     ffi.NativeFunction<
+      ffi.Pointer<sqlite3_stmt> Function(
+        ffi.Pointer<sqlite3>,
+        ffi.Pointer<sqlite3_stmt>,
+      )
+    >
+  >
+  get sqlite3_next_stmt => ffi.Native.addressOf(self.sqlite3_next_stmt);
+  ffi.Pointer<
+    ffi.NativeFunction<
       ffi.Int Function(
         ffi.Pointer<sqlite3_char>,
         ffi.Pointer<ffi.Pointer<sqlite3>>,
@@ -1360,6 +1383,8 @@ class _SymbolAddresses {
   get sqlite3_sourceid => ffi.Native.addressOf(self.sqlite3_sourceid);
   ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>>
   get sqlite3_step => ffi.Native.addressOf(self.sqlite3_step);
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>>
+  get sqlite3_stmt_busy => ffi.Native.addressOf(self.sqlite3_stmt_busy);
   ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>>
   get sqlite3_stmt_isexplain =>
       ffi.Native.addressOf(self.sqlite3_stmt_isexplain);

@@ -1,8 +1,9 @@
-## 3.7.2 (unreleased)
+## 3.8.0 (unreleased)
 
 - Fix `InMemoryFileSystem` (and `IndexedDbFileSystem`, which reads through it)
   copying the rest of the file on every read when compiled with dart2wasm,
   which made opening a database quadratic in its size.
+- Add `RawPreparedStatement.busy`.
 
 ## 3.7.1
 

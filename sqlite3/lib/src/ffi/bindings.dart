@@ -1361,6 +1361,11 @@ final class FfiStatement implements RawSqliteStatement, Finalizable {
   }
 
   @override
+  bool sqlite3_stmt_busy() {
+    return libsqlite3.sqlite3_stmt_busy(stmt) != 0;
+  }
+
+  @override
   void sqlite3_reset() {
     libsqlite3.sqlite3_reset(stmt);
   }

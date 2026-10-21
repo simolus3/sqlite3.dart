@@ -291,6 +291,7 @@ abstract interface class RawSqliteStatement {
   void sqlite3_reset();
   int sqlite3_step();
   void sqlite3_finalize();
+  bool sqlite3_stmt_busy();
 
   int sqlite3_bind_parameter_index(String name);
 
