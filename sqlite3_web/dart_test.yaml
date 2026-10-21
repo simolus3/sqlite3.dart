@@ -1,4 +1,3 @@
-platforms: [vm, chrome, firefox]
 compilers: [dart2wasm, dart2js]
 
 tags:
@@ -10,6 +9,14 @@ override_platforms:
   firefox:
     settings:
       arguments: "-headless"
+
+on_os:
+  linux:
+    platforms: [vm, chrome, firefox]
+  windows:
+    platforms: [vm, chrome, firefox]
+  mac-os:
+    platforms: [vm, chrome, firefox, safari]
 
 presets:
   gh_actions:

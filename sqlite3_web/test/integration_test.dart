@@ -27,6 +27,21 @@ enum Browser {
     missingFeatures: {
       MissingBrowserFeature.createSyncAccessHandleReadWriteUnsafe,
     },
+  ),
+  safari(
+    driverUriString: 'http://localhost:4444/',
+    defaultImplementation:
+        DatabaseImplementation.opfsWithExternalLocksWorkaround,
+    unsupportedImplementations: {
+      DatabaseImplementation.opfsShared,
+      DatabaseImplementation.opfsWithExternalLocks,
+    },
+    missingFeatures: {
+      MissingBrowserFeature.dedicatedWorkersInSharedWorkers,
+      MissingBrowserFeature.createSyncAccessHandleReadWriteUnsafe,
+    },
+    // safaridriver is only available on macOS.
+    testOn: 'mac-os',
   );
 
   final bool isChromium;
@@ -34,6 +49,7 @@ enum Browser {
   final Set<DatabaseImplementation> unsupportedImplementations;
   final Set<MissingBrowserFeature> missingFeatures;
   final DatabaseImplementation defaultImplementation;
+  final String? testOn;
 
   const Browser({
     required this.driverUriString,
@@ -41,6 +57,7 @@ enum Browser {
     this.isChromium = false,
     this.unsupportedImplementations = const {},
     this.missingFeatures = const {},
+    this.testOn,
   });
 
   Uri get driverUri => Uri.parse(driverUriString);
@@ -63,6 +80,7 @@ enum Browser {
         '--port=4444',
         '--url-base=/wd/hub',
       ]),
+      safari => Process.start('safaridriver', ['--port=4444']),
     };
   }
 }
@@ -76,7 +94,7 @@ void main() {
   tearDownAll(() => server.close());
 
   for (final browser in Browser.values) {
-    group(browser.name, () {
+    group(testOn: browser.testOn, browser.name, () {
       late Process driverProcess;
       var isStoppingProcess = false;
       final processStopped = Completer<void>();
@@ -160,8 +178,8 @@ final class _TestConfiguration {
       }
     }
 
-    // logs.get() isn't supported on Firefox
-    if (browser != Browser.firefox) {
+    // logs.get() isn't supported on Firefox and Safari
+    if (browser == Browser.chrome) {
       rawDriver.logs.get(LogType.browser).listen((entry) {
         print('[console]: ${entry.message}');
       });
