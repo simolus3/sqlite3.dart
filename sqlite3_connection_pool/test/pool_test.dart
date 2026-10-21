@@ -236,6 +236,26 @@ void main() {
     db.returnLease();
   });
 
+  // status() requires SQLite 3.51.0, which older system libraries lack.
+  test('closes statements failing while running', () async {
+    final pool = testPool();
+    final writer = await pool.writer();
+    addTearDown(writer.returnLease);
+    await writer.execute('CREATE TABLE foo (bar TEXT NOT NULL);');
+
+    await writer.unsafeAccess((conn) {
+      expect(
+        () => conn.select('SELECT json(?)', ['{']),
+        throwsA(isA<SqliteException>()),
+      );
+      expect(
+        () => conn.execute('INSERT INTO foo VALUES (?)', [null]),
+        throwsA(isA<SqliteException>()),
+      );
+      expect(conn.database.status(StatusParameter.statementUsed).current, 0);
+    });
+  }, tags: 'require_built');
+
   test('notifying on read connection does not interact with pool', () async {
     final pool = testPool();
     List<String>? update;
