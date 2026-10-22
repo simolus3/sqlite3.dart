@@ -34,10 +34,13 @@ final class WasmSqliteBindings implements RawSqliteBindings {
 
   @override
   set sqlite3_temp_directory(String? value) {
-    if (value == null) {
-      bindings.sqlite3_temp_directory = 0;
-    } else {
-      bindings.sqlite3_temp_directory = bindings.allocateZeroTerminated(value);
+    final previous = bindings.sqlite3_temp_directory;
+    bindings.sqlite3_temp_directory = value == null
+        ? 0
+        : bindings.allocateZeroTerminated(value);
+
+    if (previous != 0) {
+      bindings.free(previous);
     }
   }
 
@@ -71,10 +74,10 @@ final class WasmSqliteBindings implements RawSqliteBindings {
     final result = bindings.sqlite3_open_v2(namePtr, outDb, flags, vfsPtr);
     final dbPtr = bindings.memory.int32ValueOfPointer(outDb);
 
-    // Free pointers we allocateed
+    // Free pointers we allocated
     bindings
       ..free(namePtr)
-      ..free(vfsPtr);
+      ..free(outDb);
     if (zVfs != null) bindings.free(vfsPtr);
 
     return (resultCode: result, result: WasmDatabase(bindings, dbPtr));
@@ -92,6 +95,10 @@ final class WasmSqliteBindings implements RawSqliteBindings {
 
   @override
   void registerVirtualFileSystem(VirtualFileSystem vfs, int makeDefault) {
+    if (_sqliteVfsPointer[vfs] != null) {
+      throw StateError('vfs has already been registered');
+    }
+
     final name = bindings.allocateZeroTerminated(vfs.name);
 
     final ptr = bindings.sqlite3.dart_sqlite3_register_vfs(
@@ -112,6 +119,7 @@ final class WasmSqliteBindings implements RawSqliteBindings {
       throw StateError('vfs has not been registered');
     }
 
+    _sqliteVfsPointer[vfs] = null;
     bindings.sqlite3_vfs_unregister(ptr);
   }
 
@@ -215,12 +223,13 @@ final class WasmSqliteBindings implements RawSqliteBindings {
     bindings.free(outPtr);
 
     if (result != 0) {
+      bindings.free(changesetPtr);
       throw createExceptionOutsideOfDatabase(this, result);
     }
     return WasmChangesetIterator(this, iterator, dataPointer: changesetPtr);
   }
 
-  static final _sqliteVfsPointer = Expando<int>();
+  final _sqliteVfsPointer = Expando<int>();
 }
 
 final class WasmDatabase implements RawSqliteDatabase {
@@ -604,7 +613,9 @@ final class WasmStatement implements RawSqliteStatement {
   @override
   String sqlite3_column_text(int index) {
     final ptr = bindings.sqlite3_column_text(stmt, index);
-    return bindings.memory.readString(ptr);
+    // Must be called after sqlite3_column_text, which may convert the value.
+    final length = bindings.sqlite3_column_bytes(stmt, index);
+    return bindings.memory.readString(ptr, length);
   }
 
   @override
@@ -620,11 +631,10 @@ final class WasmStatement implements RawSqliteStatement {
 
   @override
   bool sqlite3_stmt_busy() {
-    return bindings.sqlite3.sqlite3_stmt_busy!.callAsFunction(
-          null,
-          stmt.toJS,
-        ) !=
-        0;
+    final result =
+        bindings.sqlite3.sqlite3_stmt_busy!.callAsFunction(null, stmt.toJS)
+            as JSNumber;
+    return result.toDartInt != 0;
   }
 
   @override
@@ -831,7 +841,7 @@ final class WasmSession implements RawSqliteSession {
 
   @override
   int sqlite3session_attach([String? name]) {
-    final zTab = name == null ? 0 : _bindings.malloc(WasmBindings.pointerSize);
+    final zTab = name == null ? 0 : _bindings.allocateZeroTerminated(name);
     final resultCode = _bindings.sqlite3session_attach(pointer, zTab);
     if (name != null) {
       _bindings.free(zTab);
@@ -845,15 +855,15 @@ final class WasmSession implements RawSqliteSession {
     final patchsetPtr = _bindings.malloc(WasmBindings.pointerSize);
 
     final rc = raw(pointer, sizePtr, patchsetPtr);
-    if (rc != 0) {
-      throw createExceptionOutsideOfDatabase(bindings, rc);
-    }
 
     final length = _bindings.memory.int32ValueOfPointer(sizePtr);
     final patchset = _bindings.memory.int32ValueOfPointer(patchsetPtr);
     _bindings
       ..free(sizePtr)
       ..free(patchsetPtr);
+    if (rc != 0) {
+      throw createExceptionOutsideOfDatabase(bindings, rc);
+    }
 
     final bytes = _bindings.memory.copyRange(patchset, length);
     _bindings.sqlite3_free(patchset);

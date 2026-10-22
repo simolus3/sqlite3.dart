@@ -46,9 +46,9 @@ static int dartvfs_trace_log1(const char* msg, void* unused) {
 
 int dartvfs_close(sqlite3_file* file) {
   auto rc = xClose(DART_FILE(file));
-  if (rc == 0) {
-    host_object_free(((dart_vfs_file*)file)->dart_object);
-  }
+  // SQLite won't call xClose again if it fails, so we have to release the file
+  // either way.
+  host_object_free(((dart_vfs_file*)file)->dart_object);
   return rc;
 }
 
@@ -70,10 +70,7 @@ int dartvfs_sync(sqlite3_file* file, int flags) {
 }
 
 int dartvfs_fileSize(sqlite3_file* file, sqlite3_int64* pSize) {
-  int size32;
-  int rc = xFileSize(DART_FILE(file), &size32);
-  *pSize = (sqlite3_int64)size32;
-  return rc;
+  return xFileSize64(DART_FILE(file), pSize);
 }
 
 int dartvfs_lock(sqlite3_file* file, int i) {
@@ -93,7 +90,7 @@ int dartvfs_fileControl(sqlite3_file* file, int op, void* pArg) {
 }
 
 int dartvfs_sectorSize(sqlite3_file* file) {
-  return xDeviceCharacteristics(DART_FILE(file));
+  return xSectorSize(DART_FILE(file));
 }
 
 int dartvfs_deviceCharacteristics(sqlite3_file* file) {
@@ -196,7 +193,7 @@ SQLITE_API sqlite3_vfs* dart_sqlite3_register_vfs(const char* name,
 
   static const char* prefix = "trace_";
   static const int prefixLength = 6;
-  char* traceName = malloc(strlen(name) + prefixLength);
+  char* traceName = malloc(strlen(name) + prefixLength + 1);
   strcpy(traceName, prefix);
   strcpy(&traceName[prefixLength], name);
 
@@ -206,6 +203,7 @@ SQLITE_API sqlite3_vfs* dart_sqlite3_register_vfs(const char* name,
   int rc = sqlite3_vfs_register(vfs, makeDefault);
   if (rc) {
     host_object_free(vfs->pAppData);
+    free((void*)name);
     free(vfs);
     return NULL;
   }
@@ -343,8 +341,14 @@ SQLITE_API int dart_sqlite3_create_collation(sqlite3* db, const char* zName,
                                              int eTextRep,
                                              __externref_t function) {
   auto context = host_object_insert(function);
-  return sqlite3_create_collation_v2(db, zName, eTextRep, context,
-                                     &dartXCompare, &host_object_free);
+  auto rc = sqlite3_create_collation_v2(db, zName, eTextRep, context,
+                                        &dartXCompare, &host_object_free);
+  if (rc != SQLITE_OK) {
+    // Unlike sqlite3_create_function_v2, xDestroy is not invoked if creating
+    // the collation fails.
+    host_object_free(context);
+  }
+  return rc;
 }
 
 SQLITE_API int dart_sqlite3_db_config_int(sqlite3* db, int op, int arg) {
@@ -380,6 +384,7 @@ SQLITE_API int dart_sqlite3_busy_handler(sqlite3* db, __externref_t callback) {
   if (__builtin_wasm_ref_is_null_extern(callback)) {
     return sqlite3_busy_handler(db, nullptr, nullptr);
   }
+  // TODO: Use sqlite3_set_clientdata to free the callback when the connection is closed.
   return sqlite3_busy_handler(db, &dartBusyHandler,
                               host_object_insert(callback));
 }

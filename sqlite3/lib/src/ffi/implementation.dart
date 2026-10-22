@@ -87,6 +87,7 @@ final class FfiSqlite3 extends Sqlite3Implementation implements Sqlite3 {
       }
 
       yield option;
+      i++;
     }
   }
 }
@@ -251,34 +252,40 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
 
     int returnCode;
     if (!pBackup.isNullPointer) {
-      do {
-        returnCode = libsqlite3.sqlite3_backup_step(pBackup, nPage);
+      try {
+        do {
+          returnCode = libsqlite3.sqlite3_backup_step(pBackup, nPage);
 
-        final remaining = libsqlite3.sqlite3_backup_remaining(pBackup);
-        final count = libsqlite3.sqlite3_backup_pagecount(pBackup);
+          final remaining = libsqlite3.sqlite3_backup_remaining(pBackup);
+          final count = libsqlite3.sqlite3_backup_pagecount(pBackup);
 
-        yield (count - remaining) / count;
+          yield count == 0 ? 1 : (count - remaining) / count;
 
-        if (returnCode == SqlError.SQLITE_OK ||
+          if (returnCode == SqlError.SQLITE_OK ||
+              returnCode == SqlError.SQLITE_BUSY ||
+              returnCode == SqlError.SQLITE_LOCKED) {
+            //Give other threads the chance to work with the database
+            await Future<void>.delayed(const Duration(milliseconds: 250));
+          }
+        } while (returnCode == SqlError.SQLITE_OK ||
             returnCode == SqlError.SQLITE_BUSY ||
-            returnCode == SqlError.SQLITE_LOCKED) {
-          //Give other threads the chance to work with the database
-          await Future<void>.delayed(const Duration(milliseconds: 250));
-        }
-      } while (returnCode == SqlError.SQLITE_OK ||
-          returnCode == SqlError.SQLITE_BUSY ||
-          returnCode == SqlError.SQLITE_LOCKED);
-
-      libsqlite3.sqlite3_backup_finish(pBackup);
+            returnCode == SqlError.SQLITE_LOCKED);
+      } finally {
+        // Also runs when the stream subscription is cancelled. An unfinished
+        // backup would keep both connections busy.
+        libsqlite3.sqlite3_backup_finish(pBackup);
+        zDestDb.free();
+        zSrcDb.free();
+      }
+    } else {
+      zDestDb.free();
+      zSrcDb.free();
     }
 
     final extendedErrorCode = libsqlite3.sqlite3_extended_errcode(
       toDatabase.handle.cast(),
     );
     final errorCode = extendedErrorCode & 0xFF;
-
-    zDestDb.free();
-    zSrcDb.free();
 
     if (errorCode != SqlError.SQLITE_OK) {
       throw createExceptionFromExtendedCode(

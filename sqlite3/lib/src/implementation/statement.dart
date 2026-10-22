@@ -316,13 +316,22 @@ base class StatementImplementation extends CommonPreparedStatement {
   }
 
   @override
-  int get parameterCount => statement.sqlite3_bind_parameter_count();
+  int get parameterCount {
+    _ensureNotFinalized();
+    return statement.sqlite3_bind_parameter_count();
+  }
 
   @override
-  bool get isReadOnly => statement.sqlite3_stmt_readonly() != 0;
+  bool get isReadOnly {
+    _ensureNotFinalized();
+    return statement.sqlite3_stmt_readonly() != 0;
+  }
 
   @override
-  bool get isExplain => statement.sqlite3_stmt_isexplain() != 0;
+  bool get isExplain {
+    _ensureNotFinalized();
+    return statement.sqlite3_stmt_isexplain() != 0;
+  }
 
   @override
   ResultSet selectMap(Map<String, Object?> parameters) {
@@ -358,7 +367,11 @@ class _ActiveCursorIterator extends IteratingCursor {
 
   @override
   bool moveNext() {
-    if (statement._closed || statement._currentCursor != this) {
+    if (statement._closed ||
+        statement._currentCursor != this ||
+        // Closing a database removes functions, so we can't safely step through
+        // statements afterwards.
+        statement.database.isClosed) {
       return false;
     }
 

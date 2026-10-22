@@ -36,7 +36,10 @@ class WasmBindings {
       sqlite3 = SqliteExports(instance.exports) {
     callbacks.bindings = this;
 
-    changesetFinalizer = Finalizer((p) => sqlite3.sqlite3changeset_finalize(p));
+    changesetFinalizer = Finalizer((p) {
+      // TODO: This also needs to deallocate dataPointer
+      sqlite3.sqlite3changeset_finalize(p);
+    });
     sessionFinalizer = Finalizer((p) => sqlite3.sqlite3session_delete(p));
     databaseFinalizer = Finalizer((p) => sqlite3.sqlite3_close_v2(p));
     statementFinalizer = Finalizer((p) => sqlite3.sqlite3_finalize(p));
@@ -55,8 +58,15 @@ class WasmBindings {
     return allocateBytes(utf8.encode(string), additionalLength: 1);
   }
 
+  // TODO: We don't set a maximum memory size when compiling the module, so it
+  // can grow beyond 2 GiB. Pointers above that are returned as negative i32
+  // values, which breaks typed-array views and pointer arithmetic in Dart. We
+  // should either cap memory at 2 GiB (-Wl,--max-memory) or consistently treat
+  // pointers as unsigned (`>>> 0`).
   Pointer malloc(int size) {
-    return sqlite3.dart_sqlite3_malloc(size);
+    final ptr = sqlite3.dart_sqlite3_malloc(size);
+    if (ptr == 0) throw StateError('out of wasm memory');
+    return ptr;
   }
 
   void free(Pointer pointer) {

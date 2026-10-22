@@ -108,6 +108,16 @@ void main() {
     await Future.wait(futures);
   });
 
+  test('returning a lease twice is a no-op', () async {
+    final pool = testPool();
+    final writer = await pool.writer();
+    writer.returnLease();
+    writer.returnLease();
+
+    // The pool must still be usable.
+    await pool.execute('CREATE TABLE foo (bar TEXT);');
+  });
+
   test('allows concurrent readers', () async {
     final pool = testPool();
     {
