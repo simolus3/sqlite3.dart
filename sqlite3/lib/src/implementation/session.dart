@@ -21,6 +21,7 @@ final class SessionImplementation implements Session {
     DatabaseImplementation db,
     String name,
   ) {
+    db.ensureOpen();
     final bindings = db.bindings;
     final result = bindings.sqlite3session_create(db.database, name);
     return SessionImplementation(bindings, result);
@@ -56,6 +57,7 @@ final class SessionImplementation implements Session {
 
   @override
   void diff(String fromDb, String table) {
+    _checkNotDeleted();
     final result = session.sqlite3session_diff(fromDb, table);
     if (result != SqlError.SQLITE_OK) {
       throw createExceptionOutsideOfDatabase(bindings, result);
@@ -71,10 +73,7 @@ final class SessionImplementation implements Session {
   @override
   set enabled(bool enabled) {
     _checkNotDeleted();
-    final result = session.sqlite3session_enable(enabled ? 1 : 0);
-    if (result != SqlError.SQLITE_OK) {
-      throw createExceptionOutsideOfDatabase(bindings, result);
-    }
+    session.sqlite3session_enable(enabled ? 1 : 0);
   }
 
   @override
@@ -86,10 +85,7 @@ final class SessionImplementation implements Session {
   @override
   set isIndirect(bool isIndirect) {
     _checkNotDeleted();
-    final result = session.sqlite3session_enable(isIndirect ? 1 : 0);
-    if (result != SqlError.SQLITE_OK) {
-      throw createExceptionOutsideOfDatabase(bindings, result);
-    }
+    session.sqlite3session_indirect(isIndirect ? 1 : 0);
   }
 
   @override
@@ -126,6 +122,7 @@ final class PatchsetImplementation
     ApplyChangesetOptions options = const ApplyChangesetOptions(),
   ]) {
     final db = database as DatabaseImplementation;
+    db.ensureOpen();
 
     final filter = switch (options.filter) {
       null => null,

@@ -41,7 +41,8 @@ import_dart("xWrite") extern int xWrite(__externref_t, const void*, int iAmt,
 import_dart("xTruncate") extern int xTruncate(__externref_t,
                                               sqlite3_int64 size);
 import_dart("xSync") extern int xSync(__externref_t, int flags);
-import_dart("xFileSize") extern int xFileSize(__externref_t, int* pSize);
+import_dart("xFileSize64") extern int xFileSize64(__externref_t,
+                                                  sqlite3_int64* pSize);
 import_dart("xLock") extern int xLock(__externref_t, int);
 import_dart("xUnlock") extern int xUnlock(__externref_t, int);
 import_dart("xCheckReservedLock") extern int xCheckReservedLock(__externref_t,

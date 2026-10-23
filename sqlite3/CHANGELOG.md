@@ -4,6 +4,7 @@
   copying the rest of the file on every read when compiled with dart2wasm,
   which made opening a database quadratic in its size.
 - Add `RawPreparedStatement.busy`.
+- Fix a number of memory safety violations, mostly on the web.
 
 ## 3.7.1
 

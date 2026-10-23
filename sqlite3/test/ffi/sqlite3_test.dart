@@ -15,6 +15,13 @@ void main() {
     expect(version, isNotNull);
   });
 
+  test('compileOptions', () {
+    final options = sqlite3.compileOptions.take(1000).toList();
+    expect(options, isNotEmpty);
+    expect(options, hasLength(lessThan(1000)));
+    expect(options.toSet(), hasLength(options.length));
+  });
+
   test('sqlite3_temp_directory', () {
     final dir = Directory(d.path('sqlite3/tmp'));
     dir.createSync(recursive: true);

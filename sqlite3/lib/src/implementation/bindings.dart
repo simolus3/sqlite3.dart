@@ -335,7 +335,12 @@ abstract interface class RawSqliteStatement {
 }
 
 abstract interface class RawSqliteContext {
-  AggregateContext<Object?>? dartAggregateContext;
+  /// Obtains the context for an aggregate function call.
+  ///
+  /// Passing [finalize] frees resources, and should only be called in an
+  /// `xFinal` callback.
+  AggregateContext<Object?>? obtainAggregateContext(bool finalize);
+  void installAggregateContext(AggregateContext<Object?> value);
 
   void sqlite3_result_null();
   void sqlite3_result_int64(int value);

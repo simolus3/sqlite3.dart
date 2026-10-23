@@ -564,6 +564,57 @@ void testDatabase(
       });
     });
 
+    test('reports errors with non-ASCII messages', () {
+      database.createFunction(
+        functionName: 'throws',
+        function: (_) => throw 'Fehler: ungültiger Wert',
+      );
+
+      expect(
+        () => database.select('SELECT throws()'),
+        throwsA(
+          isA<SqliteException>().having(
+            (e) => e.message,
+            'message',
+            contains('Fehler: ungültiger Wert'),
+          ),
+        ),
+      );
+    });
+
+    test('reports errors creating aggregate contexts', () {
+      database.createAggregateFunction(
+        functionName: 'throwing_aggregate',
+        function: const _ThrowingContextAggregate(),
+      );
+
+      expect(
+        () => database.select('SELECT throwing_aggregate(1)'),
+        throwsA(isA<SqliteException>()),
+      );
+      // The database must still be usable afterwards.
+      expect(database.select('SELECT 1 AS r'), [
+        {'r': 1},
+      ]);
+    });
+
+    test('cursor stops after database is closed', () {
+      database.createFunction(
+        functionName: 'identity',
+        argumentCount: const AllowedArgumentCount(1),
+        function: (args) => args[0],
+      );
+      final stmt = database.prepare(
+        'WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c '
+        'WHERE x < 10) SELECT identity(x) FROM c',
+      );
+      final cursor = stmt.selectCursor();
+      expect(cursor.moveNext(), isTrue);
+
+      database.close();
+      expect(cursor.moveNext(), isFalse);
+    });
+
     test('aggregate functions', () {
       database
         ..execute('CREATE TABLE test (a INT, b TEXT);')
@@ -924,6 +975,21 @@ void testDatabase(
       database.execute('CREATE TABLE tbl (a TEXT, b INT);');
     });
 
+    test('throwing filter rolls back transaction', () {
+      final errors = <Object>[];
+      runZonedGuarded(() {
+        database.commitFilter = () => throw 'filter error';
+
+        database.execute('BEGIN');
+        database.execute("INSERT INTO tbl VALUES ('', 1);");
+        expect(() => database.execute('COMMIT'), throwsSqlError(19, 531));
+      }, (e, _) => errors.add(e));
+
+      database.commitFilter = null;
+      expect(database.autocommit, isTrue);
+      expect(database.select('SELECT * FROM tbl'), isEmpty);
+    });
+
     test('explicit commits with always fails filter raises exception', () {
       database.commitFilter = () => false;
       expect(
@@ -1103,6 +1169,21 @@ void testDatabase(
 
 /// Aggregate function that counts the length of all string parameters it
 /// receives.
+class _ThrowingContextAggregate implements AggregateFunction<int> {
+  const _ThrowingContextAggregate();
+
+  @override
+  AggregateContext<int> createContext() {
+    throw StateError('createContext');
+  }
+
+  @override
+  void step(List<Object?> arguments, AggregateContext<int> context) {}
+
+  @override
+  Object finalize(AggregateContext<int> context) => context.value;
+}
+
 class _SummedStringLength implements AggregateFunction<int> {
   const _SummedStringLength();
 

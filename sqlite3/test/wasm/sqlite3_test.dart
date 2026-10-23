@@ -174,6 +174,17 @@ void main() {
           sqlite.version;
         });
       }
+
+      test('can set busy handler', () {
+        sqlite3.registerVirtualFileSystem(
+          InMemoryFileSystem(),
+          makeDefault: true,
+        );
+
+        final a = sqlite3.open('/db');
+        a.busyHandler = (int amount) => true;
+        a.close();
+      });
     });
   }
 
