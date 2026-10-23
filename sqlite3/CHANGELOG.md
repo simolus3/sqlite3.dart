@@ -1,4 +1,4 @@
-## 3.8.0 (unreleased)
+## 3.8.0
 
 - Fix `InMemoryFileSystem` (and `IndexedDbFileSystem`, which reads through it)
   copying the rest of the file on every read when compiled with dart2wasm,
