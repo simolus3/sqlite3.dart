@@ -693,6 +693,22 @@ void testPreparedStatements(
       final raw = stmt.raw;
       expect(() => raw.step(), throwsSqlError(1, 1));
     });
+
+    test('busy', () {
+      final stmt = database.prepare('VALUES (1), (2), (3)');
+      addTearDown(stmt.close);
+
+      final raw = stmt.raw;
+      expect(raw.busy, isFalse);
+      for (var i = 1; i <= 3; i++) {
+        expect(raw.step(), isTrue);
+        expect(raw.busy, isTrue);
+
+        expect(raw.columnInt64(0), i);
+      }
+      expect(raw.step(), isFalse);
+      expect(raw.busy, isFalse);
+    });
   });
 
   group('errors', () {

@@ -1,0 +1,8 @@
+tags:
+  require_built:
+
+presets:
+  system:
+    tags:
+      require_built:
+        skip: "Requires SQLite build from this package"

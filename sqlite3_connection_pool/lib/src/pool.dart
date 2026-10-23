@@ -514,8 +514,10 @@ final class ConnectionLease extends AsyncConnection {
   ///
   /// This connection may not be used after calling this method.
   void returnLease() {
-    _close();
-    _request.close();
+    if (!_closed) {
+      _close();
+      _request.close();
+    }
   }
 
   /// Manual signal to add tables to [SqliteConnectionPool.updatedTables].

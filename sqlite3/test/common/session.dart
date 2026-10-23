@@ -62,6 +62,26 @@ void testSession(FutureOr<CommonSqlite3> Function() loadSqlite) {
     ]);
 
     expect(session.isEmpty, isTrue);
+
+    database.execute('INSERT INTO entries (content) VALUES (?);', [
+      'tracked table',
+    ]);
+    expect(session.isNotEmpty, isTrue);
+  });
+
+  test('can change enabled and indirect flags', () {
+    final session = createSession();
+
+    session.enabled = false;
+    expect(session.enabled, isFalse);
+    session.enabled = true;
+    expect(session.enabled, isTrue);
+
+    expect(session.isIndirect, isFalse);
+    session.isIndirect = true;
+    expect(session.isIndirect, isTrue);
+    // Changing the indirect flag must not disable the session.
+    expect(session.enabled, isTrue);
   });
 
   test('iterator', () {

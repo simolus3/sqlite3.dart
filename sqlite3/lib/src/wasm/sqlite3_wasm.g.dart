@@ -219,6 +219,7 @@ extension type SqliteExports(JSObject raw) implements JSObject {
   );
   external Pointer /*<struct sqlite3_char *>*/ sqlite3_sourceid();
   external int sqlite3_step(Pointer /*<struct sqlite3_stmt *>*/ pStmt);
+  external JSFunction? get sqlite3_stmt_busy;
   external int sqlite3_stmt_isexplain(
     Pointer /*<struct sqlite3_stmt *>*/ pStmt,
   );

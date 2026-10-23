@@ -9,7 +9,7 @@ import 'package:crypto/crypto.dart' show sha256;
 
 import 'download_sqlite.dart' as download_sqlite;
 
-const openSslVersion = '4.0.3';
+const openSslVersion = '4.1.0';
 
 /// Generates a CycloneDX SBOM for precompiled artifacts we attach to GitHub
 /// releases.

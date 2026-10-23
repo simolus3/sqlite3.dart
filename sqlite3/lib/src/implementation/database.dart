@@ -70,7 +70,7 @@ base class DatabaseImplementation implements CommonDatabase {
     return StatementImplementation(sql, this, stmt);
   }
 
-  void _ensureOpen() {
+  void ensureOpen() {
     if (isClosed) {
       throw StateError('This database has already been closed');
     }
@@ -149,20 +149,26 @@ base class DatabaseImplementation implements CommonDatabase {
     bool directOnly = true,
     bool subtype = false,
   }) {
+    ensureOpen();
+
     final name = _validateAndEncodeFunctionName(functionName);
     final textRep = eTextRep(deterministic, directOnly, subtype);
     int result;
 
     AggregateContext<V> readOrCreateContext(RawSqliteContext raw) {
-      var dartContext = raw.dartAggregateContext as AggregateContext<V>?;
-      return dartContext ??= raw.dartAggregateContext = function
-          .createContext();
+      var dartContext =
+          raw.obtainAggregateContext(false) as AggregateContext<V>?;
+      if (dartContext == null) {
+        dartContext = function.createContext();
+        raw.installAggregateContext(dartContext);
+      }
+
+      return dartContext;
     }
 
     void step(RawSqliteContext context, List<RawSqliteValue> args) {
-      final dartContext = readOrCreateContext(context);
       context.runWithArgsAndSetResult(
-        (args) => function.step(args, dartContext),
+        (args) => function.step(args, readOrCreateContext(context)),
         args,
       );
     }
@@ -170,7 +176,7 @@ base class DatabaseImplementation implements CommonDatabase {
     void finalize(RawSqliteContext context) {
       context.runAndSetResult(() {
         final existingContext =
-            context.dartAggregateContext as AggregateContext<V>?;
+            context.obtainAggregateContext(true) as AggregateContext<V>?;
 
         return function.finalize(existingContext ?? function.createContext());
       });
@@ -189,9 +195,8 @@ base class DatabaseImplementation implements CommonDatabase {
           });
         },
         xInverse: (context, args) {
-          final dartContext = readOrCreateContext(context);
           context.runWithArgsAndSetResult(
-            (args) => function.inverse(args, dartContext),
+            (args) => function.inverse(args, readOrCreateContext(context)),
             args,
           );
         },
@@ -220,6 +225,8 @@ base class DatabaseImplementation implements CommonDatabase {
     bool directOnly = true,
     bool subtype = false,
   }) {
+    ensureOpen();
+
     final returnCode = database.sqlite3_create_function_v2(
       functionName: _validateAndEncodeFunctionName(functionName),
       nArg: argumentCount.allowedArgs,
@@ -239,6 +246,8 @@ base class DatabaseImplementation implements CommonDatabase {
     required String name,
     required CollatingFunction function,
   }) {
+    ensureOpen();
+
     final result = database.sqlite3_create_collation_v2(
       collationName: _validateAndEncodeFunctionName(name),
       eTextRep: eTextRep(false, false, false),
@@ -293,10 +302,12 @@ base class DatabaseImplementation implements CommonDatabase {
 
   @override
   void execute(String sql, [List<Object?> parameters = const []]) {
+    ensureOpen();
+
     if (parameters.isEmpty) {
       // No parameters? Use sqlite3_exec since that can run multiple statements
       // at once.
-      _ensureOpen();
+      ensureOpen();
 
       final result = database.sqlite3_exec(sql);
       if (result != SqlError.SQLITE_OK) {
@@ -319,16 +330,26 @@ base class DatabaseImplementation implements CommonDatabase {
   }
 
   @override
-  int get updatedRows => database.sqlite3_changes();
+  int get updatedRows {
+    ensureOpen();
+    return database.sqlite3_changes();
+  }
 
   @override
-  int getUpdatedRows() => updatedRows;
+  int getUpdatedRows() {
+    ensureOpen();
+    return updatedRows;
+  }
 
   @override
-  int get lastInsertRowId => database.sqlite3_last_insert_rowid();
+  int get lastInsertRowId {
+    ensureOpen();
+    return database.sqlite3_last_insert_rowid();
+  }
 
   @override
   bool get autocommit {
+    ensureOpen();
     return database.sqlite3_get_autocommit() != 0;
   }
 
@@ -337,6 +358,7 @@ base class DatabaseImplementation implements CommonDatabase {
     StatusParameter option, {
     bool reset = false,
   }) {
+    ensureOpen();
     final result = database.sqlite3_db_status64(option.flag, reset ? 1 : 0);
     if (result.resultCode != SqlError.SQLITE_OK) {
       // sqlite3_db_status64 doesn't set an error message on the connection.
@@ -351,6 +373,7 @@ base class DatabaseImplementation implements CommonDatabase {
 
   @override
   set busyHandler(bool Function(int count)? handler) {
+    ensureOpen();
     final result = database.sqlite3_busy_handler(switch (handler) {
       null => null,
       final handler => (count) => handler(count) ? 1 : 0,
@@ -367,7 +390,7 @@ base class DatabaseImplementation implements CommonDatabase {
     int? maxStatements,
     bool checkNoTail = false,
   }) {
-    _ensureOpen();
+    ensureOpen();
 
     final bytes = utf8.encode(sql);
     final compiler = database.newCompiler(bytes);
@@ -747,6 +770,8 @@ final class _StreamHandlers<T, SyncCallback> {
 
   void _install() {
     assert(!_isInstalled);
+    _database.ensureOpen();
+
     _registerNatively();
     _isInstalled = true;
   }

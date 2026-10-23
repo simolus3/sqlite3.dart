@@ -38,6 +38,15 @@ void testVfs(FutureOr<CommonSqlite3> Function() loadSqlite) {
     expect(() => sqlite3.open('/database', vfs: 'dart'), throwsSqlError(1, 1));
   });
 
+  test('rejects registering or unregistering twice', () {
+    final vfs = InMemoryFileSystem(name: 'dart');
+    sqlite3.registerVirtualFileSystem(vfs);
+    expect(() => sqlite3.registerVirtualFileSystem(vfs), throwsStateError);
+
+    sqlite3.unregisterVirtualFileSystem(vfs);
+    expect(() => sqlite3.unregisterVirtualFileSystem(vfs), throwsStateError);
+  });
+
   test('reports current time', () {
     final memory = InMemoryFileSystem();
     final vfs = TestVfs('dart')

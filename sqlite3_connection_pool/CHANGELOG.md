@@ -1,3 +1,12 @@
+## 0.2.14
+
+- Fix a double-free when `returnLease()` is called twice.
+
+## 0.2.13
+
+- Reset and cache (or close) prepared statements that fail while running in
+  `PoolConnection.select` and `PoolConnection.execute` instead of leaking them.
+
 ## 0.2.12
 
 - Make `SqliteConnectionPool.close()` return a future completing once outstanding

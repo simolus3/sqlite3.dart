@@ -135,6 +135,9 @@ abstract class Database extends CommonDatabase {
   ///
   /// This is an advanced and low-level API that can be used to transfer
   /// ownership of connections originally opened in Dart to native code.
+  ///
+  /// It is not safe to call this if a user-defined Dart function or hook is
+  /// active on the instance.
   Pointer<void> leak();
 
   // override for more specific subtype

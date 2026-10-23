@@ -1,6 +1,7 @@
 // Dart functions that are injected into the SQLite WebAssembly module. For
 // details, see sqlite3_wasm_build/bridge.h
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 
@@ -10,6 +11,7 @@ import '../constants.dart';
 import '../database.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
+import '../session.dart';
 import '../vfs.dart';
 import 'bindings.dart';
 import 'js_interop.dart';
@@ -71,9 +73,9 @@ final class DartBridgeCallbacks {
     int flags,
     Pointer pOutFlags,
   ) {
-    final path = Sqlite3Filename(memory.readNullableString(zName));
-
     try {
+      final path = Sqlite3Filename(memory.readNullableString(zName));
+
       final result = vfs.toDartObject.xOpen(path, flags);
       if (pOutFlags != 0) {
         memory.setInt32Value(pOutFlags, result.outFlags);
@@ -96,8 +98,10 @@ final class DartBridgeCallbacks {
     Pointer zName,
     int syncDir,
   ) {
-    final path = memory.readString(zName);
-    return _runVfs(() => vfs.toDartObject.xDelete(path, syncDir));
+    return _runVfs(() {
+      final path = memory.readString(zName);
+      vfs.toDartObject.xDelete(path, syncDir);
+    });
   }
 
   @JSExport()
@@ -107,9 +111,8 @@ final class DartBridgeCallbacks {
     int flags,
     Pointer pResOut,
   ) {
-    final path = memory.readString(zName);
-
     return _runVfs(() {
+      final path = memory.readString(zName);
       final res = vfs.toDartObject.xAccess(path, flags);
       memory.setInt32Value(pResOut, res);
     });
@@ -122,13 +125,12 @@ final class DartBridgeCallbacks {
     int nOut,
     Pointer zOut,
   ) {
-    final path = memory.readString(zName);
-
     return _runVfs(() {
+      final path = memory.readString(zName);
       final fullPath = vfs.toDartObject.xFullPathName(path);
       final encoded = utf8.encode(fullPath);
 
-      if (encoded.length > nOut) {
+      if (encoded.length >= nOut) {
         throw VfsException(SqlError.SQLITE_CANTOPEN);
       }
 
@@ -169,12 +171,16 @@ final class DartBridgeCallbacks {
     ExternalDartReference<VirtualFileSystem> vfs,
     Pointer target,
   ) {
-    final time = vfs.toDartObject.xCurrentTime();
+    return _runVfs(() {
+      final time = vfs.toDartObject.xCurrentTime();
 
-    // dartvfs_currentTimeInt64 will turn this into the right value, it's
-    // annoying to do in JS due to the lack of proper ints.
-    memory.setInt64Value(target, JsBigInt.fromInt(time.millisecondsSinceEpoch));
-    return 0;
+      // dartvfs_currentTimeInt64 will turn this into the right value, it's
+      // annoying to do in JS due to the lack of proper ints.
+      memory.setInt64Value(
+        target,
+        JsBigInt.fromInt(time.millisecondsSinceEpoch),
+      );
+    });
   }
 
   @JSExport()
@@ -225,6 +231,8 @@ final class DartBridgeCallbacks {
     return _runVfs(() => file.toDartObject.xSync(flags));
   }
 
+  /// Legacy variant of [xFileSize64] writing a 32-bit int, only used by older
+  /// WebAssembly modules.
   @JSExport()
   int xFileSize(
     ExternalDartReference<VirtualFileSystemFile> file,
@@ -232,7 +240,24 @@ final class DartBridgeCallbacks {
   ) {
     return _runVfs(() {
       final size = file.toDartObject.xFileSize();
+      if (size > 0x7FFFFFFF) {
+        // Old modules can't represent this, so report an error instead of
+        // truncating the size.
+        throw VfsException(SqlExtendedError.SQLITE_IOERR_FSTAT);
+      }
+
       memory.setInt32Value(sizePtr, size);
+    });
+  }
+
+  @JSExport()
+  int xFileSize64(
+    ExternalDartReference<VirtualFileSystemFile> file,
+    Pointer sizePtr,
+  ) {
+    return _runVfs(() {
+      final size = file.toDartObject.xFileSize();
+      memory.setInt64Value(sizePtr, JsBigInt.fromInt(size));
     });
   }
 
@@ -261,7 +286,7 @@ final class DartBridgeCallbacks {
   int xDeviceCharacteristics(
     ExternalDartReference<VirtualFileSystemFile> file,
   ) {
-    return file.toDartObject.xDeviceCharacteristics;
+    return _catchAll(() => file.toDartObject.xDeviceCharacteristics, 0);
   }
 
   @JSExport()
@@ -270,32 +295,38 @@ final class DartBridgeCallbacks {
     int op,
     int pArg,
   ) {
-    final asDart = file.toDartObject;
-    if (asDart is VirtualFileSystemFileV1) {
-      return asDart.xFileControl(SqliteFileControl(op), pArg);
-    }
+    return _catchAll(() {
+      final asDart = file.toDartObject;
+      if (asDart is VirtualFileSystemFileV1) {
+        return asDart.xFileControl(SqliteFileControl(op), pArg);
+      }
 
-    return SqlError.SQLITE_NOTFOUND;
+      return SqlError.SQLITE_NOTFOUND;
+    }, SqlError.SQLITE_IOERR);
   }
 
   @JSExport()
   int xSectorSize(ExternalDartReference<VirtualFileSystemFile> file) {
-    final asDart = file.toDartObject;
-    if (asDart is VirtualFileSystemFileV1) {
-      return asDart.xSectorSize;
-    }
+    return _catchAll(() {
+      final asDart = file.toDartObject;
+      if (asDart is VirtualFileSystemFileV1) {
+        return asDart.xSectorSize;
+      }
 
-    return 4096;
+      return 4096;
+    }, 4096);
   }
 
   @JSExport('dispatch_()v')
   void dispatchVoid(ExternalDartReference<void Function()> fn) {
-    fn.toDartObject();
+    _catchAll(fn.toDartObject, null);
   }
 
   @JSExport('dispatch_()i')
   int dispatchInt(ExternalDartReference<int Function()> fn) {
-    return fn.toDartObject();
+    // This is used for commit hooks, where a non-zero return value turns the
+    // commit into a rollback.
+    return _catchAll(fn.toDartObject, 1);
   }
 
   @JSExport('dispatch_update')
@@ -306,8 +337,10 @@ final class DartBridgeCallbacks {
     Pointer table,
     JSBigInt rowId,
   ) {
-    final tableName = memory.readString(table);
-    fn.toDartObject(kind, tableName, JsBigInt(rowId).asDartInt);
+    _catchAll(() {
+      final tableName = memory.readString(table);
+      fn.toDartObject(kind, tableName, JsBigInt(rowId).asDartInt);
+    }, null);
   }
 
   @JSExport('dispatch_trace')
@@ -415,10 +448,12 @@ final class DartBridgeCallbacks {
     int lengthB,
     int b,
   ) {
-    final aStr = memory.readNullableString(a, lengthA);
-    final bStr = memory.readNullableString(b, lengthB);
+    return _catchAll(() {
+      final aStr = memory.readNullableString(a, lengthA);
+      final bStr = memory.readNullableString(b, lengthB);
 
-    return functions.toDartObject.collation!(aStr, bStr);
+      return functions.toDartObject.collation!(aStr, bStr);
+    }, 0);
   }
 
   @JSExport('dispatch_busy')
@@ -426,7 +461,7 @@ final class DartBridgeCallbacks {
     ExternalDartReference<int Function(int)> function,
     int amount,
   ) {
-    return function.toDartObject(amount);
+    return _catchAll(() => function.toDartObject(amount), 0);
   }
 
   @JSExport('changeset_apply_filter')
@@ -434,7 +469,7 @@ final class DartBridgeCallbacks {
     ExternalDartReference<SessionApplyCallbacks> callbacks,
     Pointer zTab,
   ) {
-    return callbacks.toDartObject.filter!(zTab);
+    return _catchAll(() => callbacks.toDartObject.filter!(zTab), 1);
   }
 
   @JSExport('changeset_apply_conflict')
@@ -443,19 +478,45 @@ final class DartBridgeCallbacks {
     int eConflict,
     Pointer iterator,
   ) {
-    return callbacks.toDartObject.conflict!(eConflict, iterator);
+    return _catchAll(
+      () => callbacks.toDartObject.conflict!(eConflict, iterator),
+      ApplyChangesetConflict.abort.flag,
+    );
   }
 }
 
+/// Runs [body], returning [onError] if it throws.
+T _catchAll<T>(T Function() body, T onError) {
+  T result;
+
+  try {
+    result = body();
+  } on Object catch (e, s) {
+    Zone.current.handleUncaughtError(e, s);
+    result = onError;
+  }
+
+  return result;
+}
+
 int _runVfs(void Function() body) {
+  var code = SqlError.SQLITE_OK;
+
   try {
     body();
-    return SqlError.SQLITE_OK;
   } on VfsException catch (e) {
-    return e.returnCode;
-  } on Object {
-    return SqlError.SQLITE_ERROR;
+    code = e.returnCode;
+  } on Object catch (e, s) {
+    assert(() {
+      // In debug builds, surface these errors.
+      Zone.current.handleUncaughtError(e, s);
+      return true;
+    }());
+
+    code = SqlError.SQLITE_ERROR;
   }
+
+  return code;
 }
 
 final class RegisteredFunctionSet {

@@ -34,10 +34,13 @@ final class WasmSqliteBindings implements RawSqliteBindings {
 
   @override
   set sqlite3_temp_directory(String? value) {
-    if (value == null) {
-      bindings.sqlite3_temp_directory = 0;
-    } else {
-      bindings.sqlite3_temp_directory = bindings.allocateZeroTerminated(value);
+    final previous = bindings.sqlite3_temp_directory;
+    bindings.sqlite3_temp_directory = value == null
+        ? 0
+        : bindings.allocateZeroTerminated(value);
+
+    if (previous != 0) {
+      bindings.free(previous);
     }
   }
 
@@ -71,10 +74,10 @@ final class WasmSqliteBindings implements RawSqliteBindings {
     final result = bindings.sqlite3_open_v2(namePtr, outDb, flags, vfsPtr);
     final dbPtr = bindings.memory.int32ValueOfPointer(outDb);
 
-    // Free pointers we allocateed
+    // Free pointers we allocated
     bindings
       ..free(namePtr)
-      ..free(vfsPtr);
+      ..free(outDb);
     if (zVfs != null) bindings.free(vfsPtr);
 
     return (resultCode: result, result: WasmDatabase(bindings, dbPtr));
@@ -92,6 +95,10 @@ final class WasmSqliteBindings implements RawSqliteBindings {
 
   @override
   void registerVirtualFileSystem(VirtualFileSystem vfs, int makeDefault) {
+    if (_sqliteVfsPointer[vfs] != null) {
+      throw StateError('vfs has already been registered');
+    }
+
     final name = bindings.allocateZeroTerminated(vfs.name);
 
     final ptr = bindings.sqlite3.dart_sqlite3_register_vfs(
@@ -112,6 +119,7 @@ final class WasmSqliteBindings implements RawSqliteBindings {
       throw StateError('vfs has not been registered');
     }
 
+    _sqliteVfsPointer[vfs] = null;
     bindings.sqlite3_vfs_unregister(ptr);
   }
 
@@ -215,12 +223,13 @@ final class WasmSqliteBindings implements RawSqliteBindings {
     bindings.free(outPtr);
 
     if (result != 0) {
+      bindings.free(changesetPtr);
       throw createExceptionOutsideOfDatabase(this, result);
     }
     return WasmChangesetIterator(this, iterator, dataPointer: changesetPtr);
   }
 
-  static final _sqliteVfsPointer = Expando<int>();
+  final _sqliteVfsPointer = Expando<int>();
 }
 
 final class WasmDatabase implements RawSqliteDatabase {
@@ -621,7 +630,9 @@ final class WasmStatement implements RawSqliteStatement {
   @override
   String sqlite3_column_text(int index) {
     final ptr = bindings.sqlite3_column_text(stmt, index);
-    return bindings.memory.readString(ptr);
+    // Must be called after sqlite3_column_text, which may convert the value.
+    final length = bindings.sqlite3_column_bytes(stmt, index);
+    return bindings.memory.readString(ptr, length);
   }
 
   @override
@@ -633,6 +644,14 @@ final class WasmStatement implements RawSqliteStatement {
   void sqlite3_finalize() {
     bindings.sqlite3_finalize(stmt);
     bindings.statementFinalizer?.detach(detach);
+  }
+
+  @override
+  bool sqlite3_stmt_busy() {
+    final result =
+        bindings.sqlite3.sqlite3_stmt_busy!.callAsFunction(null, stmt.toJS)
+            as JSNumber;
+    return result.toDartInt != 0;
   }
 
   @override
@@ -670,7 +689,7 @@ final class WasmContext implements RawSqliteContext {
   }
 
   @override
-  AggregateContext<Object?>? get dartAggregateContext {
+  AggregateContext<Object?>? obtainAggregateContext(bool finalize) {
     final agCtxPtr = _rawAggregateContext;
     final value = bindings.memory.int32ValueOfPointer(agCtxPtr);
 
@@ -679,12 +698,14 @@ final class WasmContext implements RawSqliteContext {
     if (value == 0) {
       return null;
     } else {
-      return callbacks.aggregateContexts[value];
+      return finalize
+          ? callbacks.aggregateContexts.remove(value)
+          : callbacks.aggregateContexts[value];
     }
   }
 
   @override
-  set dartAggregateContext(AggregateContext<Object?>? value) {
+  void installAggregateContext(AggregateContext<Object?> value) {
     final ptr = _rawAggregateContext;
     final id = callbacks.aggregateContextId++;
     callbacks.aggregateContexts[id] = ArgumentError.checkNotNull(value);
@@ -839,7 +860,7 @@ final class WasmSession implements RawSqliteSession {
 
   @override
   int sqlite3session_attach([String? name]) {
-    final zTab = name == null ? 0 : _bindings.malloc(WasmBindings.pointerSize);
+    final zTab = name == null ? 0 : _bindings.allocateZeroTerminated(name);
     final resultCode = _bindings.sqlite3session_attach(pointer, zTab);
     if (name != null) {
       _bindings.free(zTab);
@@ -853,15 +874,15 @@ final class WasmSession implements RawSqliteSession {
     final patchsetPtr = _bindings.malloc(WasmBindings.pointerSize);
 
     final rc = raw(pointer, sizePtr, patchsetPtr);
-    if (rc != 0) {
-      throw createExceptionOutsideOfDatabase(bindings, rc);
-    }
 
     final length = _bindings.memory.int32ValueOfPointer(sizePtr);
     final patchset = _bindings.memory.int32ValueOfPointer(patchsetPtr);
     _bindings
       ..free(sizePtr)
       ..free(patchsetPtr);
+    if (rc != 0) {
+      throw createExceptionOutsideOfDatabase(bindings, rc);
+    }
 
     final bytes = _bindings.memory.copyRange(patchset, length);
     _bindings.sqlite3_free(patchset);
@@ -911,27 +932,42 @@ final class WasmSession implements RawSqliteSession {
   int sqlite3session_isempty() => _bindings.sqlite3session_isempty(pointer);
 }
 
-final class WasmChangesetIterator implements RawChangesetIterator {
-  final WasmSqliteBindings bindings;
-
+final class ChangesetIteratorPointers {
   /// If this iterator was created from an uint8list allocated when creating it,
   /// the pointer towards that.
   final int? dataPointer;
-  final int pointer; // the sqlite3_changeset_iter ptr
+  // the sqlite3_changeset_iter ptr
+  final int pointer;
+
+  ChangesetIteratorPointers(this.dataPointer, this.pointer);
+
+  int finalize(WasmBindings module) {
+    final rc = module.sqlite3changeset_finalize(pointer);
+    if (dataPointer case final data?) {
+      module.free(data);
+    }
+    return rc;
+  }
+}
+
+final class WasmChangesetIterator implements RawChangesetIterator {
+  final WasmSqliteBindings bindings;
+  final ChangesetIteratorPointers pointers;
   final Object detach = Object();
 
   final WasmBindings _bindings;
 
   WasmChangesetIterator(
     this.bindings,
-    this.pointer, {
-    this.dataPointer,
+    int pointer, {
+    int? dataPointer,
     bool owned = true,
-  }) : _bindings = bindings.bindings {
+  }) : pointers = ChangesetIteratorPointers(dataPointer, pointer),
+       _bindings = bindings.bindings {
     if (owned) {
       bindings.bindings.changesetFinalizer?.attach(
         this,
-        pointer,
+        pointers,
         detach: detach,
       );
     }
@@ -939,24 +975,22 @@ final class WasmChangesetIterator implements RawChangesetIterator {
 
   @override
   int sqlite3changeset_finalize() {
-    final rc = _bindings.sqlite3changeset_finalize(pointer);
+    final rc = pointers.finalize(_bindings);
     bindings.bindings.changesetFinalizer?.detach(detach);
-    if (dataPointer case final data?) {
-      _bindings.free(data);
-    }
 
     return rc;
   }
 
   @override
-  int sqlite3changeset_next() => _bindings.sqlite3changeset_next(pointer);
+  int sqlite3changeset_next() =>
+      _bindings.sqlite3changeset_next(pointers.pointer);
 
   SqliteResult<RawSqliteValue?> _extractValue(
     int Function(Pointer, int, Pointer) extract,
     int index,
   ) {
     final outValue = _bindings.malloc(WasmBindings.pointerSize);
-    final resultCode = extract(pointer, index, outValue);
+    final resultCode = extract(pointers.pointer, index, outValue);
     final value = _bindings.memory.int32ValueOfPointer(outValue);
     _bindings.free(outValue);
 
@@ -984,7 +1018,7 @@ final class WasmChangesetIterator implements RawChangesetIterator {
     final outIndirect = _bindings.malloc(WasmBindings.pointerSize);
 
     final value = _bindings.sqlite3changeset_op(
-      pointer,
+      pointers.pointer,
       outTable,
       outColCount,
       outOp,

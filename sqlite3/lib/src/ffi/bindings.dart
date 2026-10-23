@@ -96,14 +96,13 @@ final class FfiBindings implements RawSqliteBindings {
     final NativeCallable<
       Int Function(Pointer<Void>, Int, Pointer<sqlite3_changeset_iter>)
     >
-    conflictImpl = (NativeCallable.isolateLocal((
-      Pointer<Void> ctx,
-      int eConflict,
-      Pointer<sqlite3_changeset_iter> p,
-    ) {
-      final iter = FfiChangesetIterator(p, ownsIterator: false);
-      return conflict(eConflict, iter);
-    }, exceptionalReturn: 1)..keepIsolateAlive = true);
+    conflictImpl = (NativeCallable.isolateLocal(
+      (Pointer<Void> ctx, int eConflict, Pointer<sqlite3_changeset_iter> p) {
+        final iter = FfiChangesetIterator(p, ownsIterator: false);
+        return conflict(eConflict, iter);
+      },
+      exceptionalReturn: 2, // SQLITE_CHANGESET_ABORT
+    )..keepIsolateAlive = true);
 
     final result = libsqlite3.sqlite3changeset_apply(
       dbImpl.db,
@@ -134,7 +133,6 @@ final class FfiBindings implements RawSqliteBindings {
     iteratorOut.free();
 
     if (result != SqlError.SQLITE_OK) {
-      asPtr.free();
       throw createExceptionOutsideOfDatabase(this, result);
     }
 
@@ -187,15 +185,16 @@ final class FfiBindings implements RawSqliteBindings {
         ? Utf8Utils.allocateZeroTerminated(value)
         : nullPtr<sqlite3_char>();
 
-    if (!_globalTempDirectory.isNullPointer && _globalTempDirectory != newPtr) {
+    final previous = _globalTempDirectory;
+    _globalTempDirectory = newPtr;
+    libsqlite3.sqlite3_temp_directory = newPtr;
+
+    if (!previous.isNullPointer && previous != newPtr) {
       // The previous value was set in Dart too, free that now to avoid leaking
       // memory. There's still a possibility for leaks if sqlite3_temp_directory
       // is called in different isolates, but we can't safely avoid that.
-      allocate.free(_globalTempDirectory);
+      allocate.free(previous);
     }
-
-    _globalTempDirectory = newPtr;
-    libsqlite3.sqlite3_temp_directory = newPtr;
   }
 
   @override
@@ -257,6 +256,10 @@ final class FfiBindings implements RawSqliteBindings {
 
   @override
   void registerVirtualFileSystem(VirtualFileSystem vfs, int makeDefault) {
+    if (_vfsPointers[vfs] != null) {
+      throw StateError('vfs has already been registered');
+    }
+
     final ptr = _RegisteredVfs.allocate(vfs);
     final result = libsqlite3.sqlite3_vfs_register(ptr._vfsPtr, makeDefault);
     if (result != SqlError.SQLITE_OK) {
@@ -285,6 +288,7 @@ final class FfiBindings implements RawSqliteBindings {
       );
     }
 
+    _vfsPointers[vfs] = null;
     ptr.deallocate();
   }
 
@@ -516,11 +520,15 @@ final class _RegisteredVfs {
 
   static int _xClose(Pointer<sqlite3_file> ptr) {
     return _runFile(ptr, (file) {
-      file.xClose();
-
-      final dartFile = ptr.cast<_DartFile>().ref;
-      _files.remove(dartFile.dartFileId);
-      ffi.calloc.free(dartFile.pMethods);
+      try {
+        file.xClose();
+      } finally {
+        // SQLite won't call xClose again if it fails, so release the file
+        // either way.
+        final dartFile = ptr.cast<_DartFile>().ref;
+        _files.remove(dartFile.dartFileId);
+        ffi.calloc.free(dartFile.pMethods);
+      }
     });
   }
 
@@ -878,6 +886,7 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
   NativeCallable<_CommitHook>? _installedCommitHook;
   NativeCallable<_RollbackHook>? _installedRollbackHook;
   NativeCallable<_TraceHook>? _installedTraceHook;
+  NativeCallable<Int Function(Pointer<Void>, Int)>? _installedBusyHandler;
 
   FfiDatabase(this.db, {required bool borrowed}) {
     if (!borrowed) {
@@ -896,6 +905,8 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
   int sqlite3_close_v2() {
     final rc = libsqlite3.sqlite3_close_v2(db);
 
+    // TODO: Functions and their finalizers might still be called here, since
+    // finalizing a statement might invoke an xFinal for an aggregate.
     _functions.closeAll();
     _FunctionFinalizers.finalizer.detach(_detachToken);
 
@@ -989,8 +1000,8 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
     final functionNamePtr = allocateBytes(functionName, additionalLength: 1);
 
     final step = xStep.toNative(_functions);
-    final $final = xFinal.toNative(clean: true, finalizers: _functions);
-    final value = xValue.toNative(clean: false, finalizers: _functions);
+    final $final = xFinal.toNative(finalizers: _functions);
+    final value = xValue.toNative(finalizers: _functions);
     final inverse = xInverse.toNative(_functions);
 
     final result = libsqlite3.sqlite3_create_window_function(
@@ -1022,7 +1033,7 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
 
     final func = xFunc?.toNative(_functions);
     final step = xStep?.toNative(_functions);
-    final $final = xFinal?.toNative(clean: true, finalizers: _functions);
+    final $final = xFinal?.toNative(finalizers: _functions);
 
     final result = libsqlite3.sqlite3_create_function_v2(
       db,
@@ -1074,6 +1085,7 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
     final previous = _installedRollbackHook;
 
     if (hook == null) {
+      _installedRollbackHook = null;
       libsqlite3.sqlite3_rollback_hook(db, nullPtr(), nullPtr());
     } else {
       final native = _installedRollbackHook = hook.toNative(_functions);
@@ -1149,10 +1161,14 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
 
   @override
   int sqlite3_busy_handler(int Function(int)? callback) {
+    final previous = _installedBusyHandler;
+    int result;
+
     if (callback == null) {
-      return libsqlite3.sqlite3_busy_handler(db, nullPtr(), nullPtr());
+      _installedBusyHandler = null;
+      result = libsqlite3.sqlite3_busy_handler(db, nullPtr(), nullPtr());
     } else {
-      final callable =
+      final callable = _installedBusyHandler =
           NativeCallable<Int Function(Pointer<Void>, Int)>.isolateLocal((
               Pointer<void> _,
               int amount,
@@ -1162,12 +1178,17 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
             ..keepIsolateAlive = false
             ..closeIn(_functions);
 
-      return libsqlite3.sqlite3_busy_handler(
+      result = libsqlite3.sqlite3_busy_handler(
         db,
         callable.nativeFunction,
         nullPtr(),
       );
     }
+
+    // sqlite3_busy_handler only fails for invalid connections, in which case
+    // the previous handler won't be called again either.
+    previous?.close();
+    return result;
   }
 
   @override
@@ -1397,6 +1418,11 @@ final class FfiStatement implements RawSqliteStatement, Finalizable {
   }
 
   @override
+  bool sqlite3_stmt_busy() {
+    return libsqlite3.sqlite3_stmt_busy(stmt) != 0;
+  }
+
+  @override
   void sqlite3_reset() {
     libsqlite3.sqlite3_reset(stmt);
   }
@@ -1474,7 +1500,7 @@ final class FfiContext implements RawSqliteContext {
   }
 
   @override
-  AggregateContext<Object?>? get dartAggregateContext {
+  AggregateContext<Object?>? obtainAggregateContext(bool finalize) {
     final agCtxPtr = _rawAggregateContext;
     final value = agCtxPtr.value;
 
@@ -1483,12 +1509,12 @@ final class FfiContext implements RawSqliteContext {
     if (value == 0) {
       return null;
     } else {
-      return _contexts[value];
+      return finalize ? _contexts.remove(value) : _contexts[value];
     }
   }
 
   @override
-  set dartAggregateContext(AggregateContext<Object?>? value) {
+  void installAggregateContext(AggregateContext<Object?> value) {
     final ptr = _rawAggregateContext;
 
     final id = _aggregateContextId++;
@@ -1516,9 +1542,10 @@ final class FfiContext implements RawSqliteContext {
 
   @override
   void sqlite3_result_error(String message) {
-    final ptr = allocateBytes(utf8.encode(message));
+    final encoded = utf8.encode(message);
+    final ptr = allocateBytes(encoded);
 
-    libsqlite3.sqlite3_result_error(context, ptr.cast(), message.length);
+    libsqlite3.sqlite3_result_error(context, ptr.cast(), encoded.length);
     ptr.free();
   }
 
@@ -1554,11 +1581,6 @@ final class FfiContext implements RawSqliteContext {
   @override
   void sqlite3_result_subtype(int value) {
     libsqlite3.sqlite3_result_subtype(context, value);
-  }
-
-  void freeContext() {
-    final ctxId = _rawAggregateContext.value;
-    _contexts.remove(ctxId);
   }
 }
 
@@ -1621,14 +1643,10 @@ extension on RawXFunc {
 }
 
 extension on RawXFinal {
-  NativeCallable<_XFinal> toNative({
-    required bool clean,
-    required _FunctionFinalizers finalizers,
-  }) {
+  NativeCallable<_XFinal> toNative({required _FunctionFinalizers finalizers}) {
     return NativeCallable.isolateLocal((Pointer<sqlite3_context> ctx) {
         final context = FfiContext(ctx);
         this(context);
-        if (clean) context.freeContext();
       })
       ..closeIn(finalizers)
       ..keepIsolateAlive = false;

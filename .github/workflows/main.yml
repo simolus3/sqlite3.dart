@@ -199,7 +199,7 @@ jobs:
       working-directory: sqlite3/
     - name: Test sqlite3_connection_pool package
       run: |
-        dart test
+        dart test -P system
       working-directory: sqlite3_connection_pool/
     - name: Test sqlite3_test package
       run: dart test

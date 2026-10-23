@@ -14,7 +14,7 @@ include(FetchContent)
 FetchContent_Declare(
     sqlite3
     # NOTE: When changing this, also update `test/wasm/sqlite3_test.dart`
-    URL https://sqlite.org/2026/sqlite-amalgamation-3540000.zip
+    URL https://sqlite.org/2026/sqlite-amalgamation-3540100.zip
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
 )
 
