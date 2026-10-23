@@ -1,3 +1,8 @@
+## 0.9.6
+
+- Document how to observe statement trace events for worker-hosted databases
+  through a custom `DatabaseController` running in the worker.
+
 ## 0.9.5
 
 - Add `WorkerDatabase.close`, which can be used to customize how databases are
