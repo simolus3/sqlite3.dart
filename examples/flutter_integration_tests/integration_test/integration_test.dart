@@ -114,6 +114,100 @@ void main() {
     );
   });
 
+  final supportsTraces = _supportsTraces();
+
+  group('traces', () {
+    void traceInto(
+      Database db,
+      List<SqliteTrace> events, {
+      bool statement = true,
+      bool row = true,
+      bool profile = true,
+    }) {
+      db.trace = SqliteTraceCallback(
+        (trace) {
+          events.add(trace);
+          return 0;
+        },
+        statement: statement,
+        row: row,
+        profile: profile,
+      );
+    }
+
+    test(
+      'reports statement, row and profile events in order',
+      () {
+        final db = sqlite3.openInMemory()
+          ..closeWhenDone()
+          ..execute('CREATE TABLE tbl (a)')
+          ..execute('INSERT INTO tbl DEFAULT VALUES')
+          ..execute('INSERT INTO tbl DEFAULT VALUES');
+
+        final events = <SqliteTrace>[];
+        traceInto(db, events);
+
+        db.execute('SELECT * FROM tbl');
+
+        expect(events.map((event) => event.runtimeType), [
+          SqliteTraceStatement,
+          SqliteTraceRow,
+          SqliteTraceRow,
+          SqliteTraceProfile,
+        ]);
+
+        final statement = events.first as SqliteTraceStatement;
+        expect(statement.sql, 'SELECT * FROM tbl');
+
+        for (final event in events.whereType<SqliteTraceWithStatement>()) {
+          expect(event.statementAddress, statement.statementAddress);
+          expect(event.statementAddress, greaterThan(0));
+        }
+      },
+      skip: supportsTraces ? false : 'sqlite3 library does not support tracing',
+    );
+
+    test(
+      'filters events by category',
+      () {
+        final db = sqlite3.openInMemory()
+          ..closeWhenDone()
+          ..execute('CREATE TABLE tbl (a)');
+
+        final events = <SqliteTrace>[];
+        traceInto(db, events, statement: false, row: false);
+
+        db.execute('INSERT INTO tbl DEFAULT VALUES');
+
+        expect(events, hasLength(1));
+        final profile = events.single as SqliteTraceProfile;
+        expect(profile.duration, greaterThanOrEqualTo(Duration.zero));
+      },
+      skip: supportsTraces ? false : 'sqlite3 library does not support tracing',
+    );
+
+    test(
+      'stops reporting events after clearing the callback',
+      () {
+        final db = sqlite3.openInMemory()
+          ..closeWhenDone()
+          ..execute('CREATE TABLE tbl (a)');
+
+        final events = <SqliteTrace>[];
+        traceInto(db, events);
+        db.execute('INSERT INTO tbl DEFAULT VALUES');
+        expect(events, isNotEmpty);
+
+        db.trace = null;
+        events.clear();
+
+        db.execute('INSERT INTO tbl DEFAULT VALUES');
+        expect(events, isEmpty);
+      },
+      skip: supportsTraces ? false : 'sqlite3 library does not support tracing',
+    );
+  });
+
   const ciphers = bool.fromEnvironment('sqlite3.multipleciphers');
   if (ciphers) {
     test('contains sqlite3multipleciphers', () {
@@ -170,6 +264,19 @@ Matcher throwsSqlError(int resultCode, int extendedResultCode) {
         )
         .having((e) => e.resultCode, 'resultCode', resultCode),
   );
+}
+
+bool _supportsTraces() {
+  final database = sqlite3.openInMemory();
+  try {
+    database.trace = SqliteTraceCallback((_) => 0);
+    database.trace = null;
+    return true;
+  } on UnsupportedError {
+    return false;
+  } finally {
+    database.close();
+  }
 }
 
 extension on Database {

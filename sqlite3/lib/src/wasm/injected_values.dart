@@ -7,6 +7,7 @@ import 'dart:js_interop';
 import 'package:web/web.dart';
 
 import '../constants.dart';
+import '../database.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
 import '../vfs.dart';
@@ -307,6 +308,48 @@ final class DartBridgeCallbacks {
   ) {
     final tableName = memory.readString(table);
     fn.toDartObject(kind, tableName, JsBigInt(rowId).asDartInt);
+  }
+
+  @JSExport('dispatch_trace')
+  int dispatchTraceHook(
+    ExternalDartReference<RawTraceHook> fn,
+    int event,
+    int statementAddress,
+    Pointer payload,
+  ) {
+    final SqliteTrace? trace = switch (event) {
+      // X is the unexpanded SQL text (const char*), or a null pointer for
+      // some internal statements.
+      SQLITE_TRACE_STMT => SqliteTraceStatement(
+        memory.readNullableString(payload),
+        statementAddress,
+      ),
+      // X points to a 64-bit nanosecond count. Reading it as two 32-bit
+      // integers avoids allocating a JS BigInt for every profile event.
+      SQLITE_TRACE_PROFILE => () {
+        final lo = memory.int32ValueOfPointer(payload);
+        final hi = memory.int32ValueOfPointer(payload + 4);
+        final nanoseconds = (lo & 0xFFFFFFFF) | (hi & 0xFFFFFFFF) << 32;
+        return SqliteTraceProfile(
+          Duration(microseconds: nanoseconds ~/ 1000),
+          statementAddress,
+        );
+      }(),
+      SQLITE_TRACE_ROW => SqliteTraceRow(statementAddress),
+      _ => null, // unreachable: we only subscribe to the union mask
+    };
+
+    if (trace == null) {
+      return 0;
+    }
+
+    try {
+      return fn.toDartObject(trace);
+    } on Object {
+      // Exceptions thrown by the callback can't propagate through sqlite's
+      // native frames - ignore them, like the ffi backend does.
+      return 0;
+    }
   }
 
   @JSExport('dispatch_xFunc')

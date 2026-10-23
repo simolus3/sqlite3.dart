@@ -376,6 +376,23 @@ final class WasmDatabase implements RawSqliteDatabase {
   }
 
   @override
+  int sqlite3_trace_v2(int mask, RawTraceHook? hook) {
+    if (!bindings.supportsDartSqliteTrace) {
+      // Old wasm bundles don't export the (unstable) dart_sqlite3_trace
+      // symbol. Registering fails loudly, unregistering is a harmless no-op.
+      if (hook != null) {
+        throw UnsupportedError(
+          'Tracing is not supported by the current sqlite3.wasm bundle, try '
+          'upgrading to a more recent version.',
+        );
+      }
+      return 0;
+    }
+
+    return bindings.dart_sqlite3_trace(db, mask, hook);
+  }
+
+  @override
   int sqlite3_get_autocommit() {
     return bindings.sqlite3_get_autocommit(db);
   }

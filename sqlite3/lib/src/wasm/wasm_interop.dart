@@ -120,6 +120,14 @@ class WasmBindings {
     return sqlite3.dart_sqlite3_updates(db, hook?.toExternalReference);
   }
 
+  bool get supportsDartSqliteTrace => sqlite3.dart_sqlite3_trace != null;
+
+  int dart_sqlite3_trace(Pointer db, int mask, RawTraceHook? hook) {
+    return _DartSqlite3TraceExports(
+      sqlite3.raw,
+    ).dart_sqlite3_trace(db, mask, hook?.toExternalReference);
+  }
+
   void dart_sqlite3_commits(Pointer db, RawCommitHook? hook) {
     return sqlite3.dart_sqlite3_commits(db, hook?.toExternalReference);
   }
@@ -526,6 +534,18 @@ extension WrappedMemory on Memory {
 
 Memory _exportedMemory(Instance instance) {
   return instance.exports['memory'] as Memory;
+}
+
+/// Hand-written equivalent of the binding `tool/generate_bindings.dart` would
+/// emit for `dart_sqlite3_trace` if it were a stable symbol: unstable symbols
+/// are only generated as `JSFunction?` getters, but `ExternalDartReference`
+/// parameters can't be passed through the untyped `callAsFunction` path.
+extension type _DartSqlite3TraceExports(JSObject _) implements JSObject {
+  external int dart_sqlite3_trace(
+    Pointer db,
+    int mask,
+    ExternalDartReference<Object>? callback,
+  );
 }
 
 extension on JSFunction {

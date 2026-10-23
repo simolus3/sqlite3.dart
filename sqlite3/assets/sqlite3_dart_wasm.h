@@ -29,6 +29,8 @@ int dart_sqlite3_create_window_function(sqlite3* db, const char* zFunctionName,
 
 void dart_sqlite3_updates(sqlite3* db, externref* callback);
 
+void dart_sqlite3_trace(sqlite3* db, unsigned int mask, externref* callback);
+
 void dart_sqlite3_commits(sqlite3* db, externref* callback);
 
 void dart_sqlite3_rollbacks(sqlite3* db, externref* callback);

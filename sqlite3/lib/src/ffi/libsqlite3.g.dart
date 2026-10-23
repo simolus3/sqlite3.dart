@@ -628,6 +628,40 @@ external int sqlite3_stmt_readonly(ffi.Pointer<sqlite3_stmt> pStmt);
 external ffi.Pointer<sqlite3_char> sqlite3_temp_directory;
 
 @ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<sqlite3>,
+    ffi.UnsignedInt,
+    ffi.Pointer<
+      ffi.NativeFunction<
+        ffi.Int Function(
+          ffi.UnsignedInt,
+          ffi.Pointer<ffi.Void>,
+          ffi.Pointer<ffi.Void>,
+          ffi.Pointer<ffi.Void>,
+        )
+      >
+    >,
+    ffi.Pointer<ffi.Void>,
+  )
+>()
+external int sqlite3_trace_v2(
+  ffi.Pointer<sqlite3> db,
+  int mask,
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.UnsignedInt,
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  xCallback,
+  ffi.Pointer<ffi.Void> ctx,
+);
+
+@ffi.Native<
   ffi.Pointer<ffi.Void> Function(
     ffi.Pointer<sqlite3>,
     ffi.Pointer<
@@ -1365,6 +1399,26 @@ class _SymbolAddresses {
       ffi.Native.addressOf(self.sqlite3_stmt_isexplain);
   ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<sqlite3_stmt>)>>
   get sqlite3_stmt_readonly => ffi.Native.addressOf(self.sqlite3_stmt_readonly);
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Int Function(
+        ffi.Pointer<sqlite3>,
+        ffi.UnsignedInt,
+        ffi.Pointer<
+          ffi.NativeFunction<
+            ffi.Int Function(
+              ffi.UnsignedInt,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Void>,
+            )
+          >
+        >,
+        ffi.Pointer<ffi.Void>,
+      )
+    >
+  >
+  get sqlite3_trace_v2 => ffi.Native.addressOf(self.sqlite3_trace_v2);
   ffi.Pointer<
     ffi.NativeFunction<
       ffi.Pointer<ffi.Void> Function(
