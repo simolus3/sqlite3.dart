@@ -51,7 +51,6 @@ final class SessionImplementation implements Session {
   void delete() {
     if (!_deleted) {
       _deleted = true;
-      // TODO: Must be deleted before the database handle to which they're attached is closed.
       session.sqlite3session_delete();
     }
   }

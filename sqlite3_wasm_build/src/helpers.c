@@ -381,10 +381,15 @@ static int dartBusyHandler(void* context, int amount) {
 }
 
 SQLITE_API int dart_sqlite3_busy_handler(sqlite3* db, __externref_t callback) {
+  auto name = "busy_handler";
+
   if (__builtin_wasm_ref_is_null_extern(callback)) {
+    sqlite3_set_clientdata(db, name, nullptr, nullptr);
     return sqlite3_busy_handler(db, nullptr, nullptr);
   }
-  // TODO: Use sqlite3_set_clientdata to free the callback when the connection is closed.
+
+  auto obj = host_object_insert(callback);
+  sqlite3_set_clientdata(db, name, obj, &host_object_free);
   return sqlite3_busy_handler(db, &dartBusyHandler,
                               host_object_insert(callback));
 }

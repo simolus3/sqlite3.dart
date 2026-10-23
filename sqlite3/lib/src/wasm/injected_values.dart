@@ -459,30 +459,37 @@ final class DartBridgeCallbacks {
 }
 
 /// Runs [body], returning [onError] if it throws.
-///
-/// Dart exceptions must not unwind through WebAssembly frames of the SQLite
-/// module, since that would skip cleanup in C (including restoring the stack
-/// pointer). So all callbacks invoked by SQLite need to catch exceptions. Since
-/// we can't report them to SQLite directly, they are forwarded to the current
-/// zone as uncaught errors.
 T _catchAll<T>(T Function() body, T onError) {
+  T result;
+
   try {
-    return body();
+    result = body();
   } on Object catch (e, s) {
     Zone.current.handleUncaughtError(e, s);
-    return onError;
+    result = onError;
   }
+
+  return result;
 }
 
 int _runVfs(void Function() body) {
+  var code = SqlError.SQLITE_OK;
+
   try {
     body();
-    return SqlError.SQLITE_OK;
   } on VfsException catch (e) {
-    return e.returnCode;
-  } on Object {
-    return SqlError.SQLITE_ERROR;
+    code = e.returnCode;
+  } on Object catch (e, s) {
+    assert(() {
+      // In debug builds, surface these errors.
+      Zone.current.handleUncaughtError(e, s);
+      return true;
+    }());
+
+    code = SqlError.SQLITE_ERROR;
   }
+
+  return code;
 }
 
 final class RegisteredFunctionSet {

@@ -1,3 +1,7 @@
+## 0.2.14
+
+- Fix a double-free when `returnLease()` is called twice.
+
 ## 0.2.13
 
 - Reset and cache (or close) prepared statements that fail while running in

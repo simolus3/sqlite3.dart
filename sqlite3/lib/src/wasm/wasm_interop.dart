@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:web/web.dart';
 
 import '../implementation/bindings.dart';
+import 'bindings.dart';
 import 'injected_values.dart';
 import 'js_interop.dart';
 
@@ -26,10 +27,8 @@ class WasmBindings {
   // Finalizers are deliberately referenced from this instance only - if the
   // entire instance and module is GCed, we don't need to manually invoke
   // finalizers anymore.
-  Finalizer<Pointer>? changesetFinalizer,
-      sessionFinalizer,
-      databaseFinalizer,
-      statementFinalizer;
+  Finalizer<ChangesetIteratorPointers>? changesetFinalizer;
+  Finalizer<Pointer>? sessionFinalizer, databaseFinalizer, statementFinalizer;
 
   WasmBindings(this.instance, this.callbacks)
     : memory = callbacks.memory = _exportedMemory(instance),
@@ -37,8 +36,7 @@ class WasmBindings {
     callbacks.bindings = this;
 
     changesetFinalizer = Finalizer((p) {
-      // TODO: This also needs to deallocate dataPointer
-      sqlite3.sqlite3changeset_finalize(p);
+      p.finalize(this);
     });
     sessionFinalizer = Finalizer((p) => sqlite3.sqlite3session_delete(p));
     databaseFinalizer = Finalizer((p) => sqlite3.sqlite3_close_v2(p));
