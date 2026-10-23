@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import 'package:meta/meta.dart';
 
 import '../constants.dart';
+import '../database.dart';
 import '../functions.dart';
 import '../vfs.dart';
 
@@ -185,6 +186,7 @@ typedef RawXFinal = void Function(RawSqliteContext);
 typedef RawUpdateHook = void Function(int kind, String tableName, int rowId);
 typedef RawCommitHook = int Function();
 typedef RawRollbackHook = void Function();
+typedef RawTraceHook = int Function(SqliteTrace trace);
 typedef RawCollation = int Function(String? a, String? b);
 
 /// A `sqlite3` instance.
@@ -209,6 +211,8 @@ abstract interface class RawSqliteDatabase {
   void sqlite3_commit_hook(RawCommitHook? hook);
 
   void sqlite3_rollback_hook(RawRollbackHook? hook);
+
+  int sqlite3_trace_v2(int mask, RawTraceHook? hook);
 
   /// Returns a compiler able to create prepared statements from the utf8-
   /// encoded SQL string passed as its argument.

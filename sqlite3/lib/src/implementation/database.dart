@@ -32,6 +32,9 @@ base class DatabaseImplementation implements CommonDatabase {
   _StreamHandlers<void, void Function()>? _rollbacks;
   _StreamHandlers<void, VoidPredicate>? _commits;
 
+  /// The trace callback registered through [trace], if any.
+  SqliteTraceCallback? _trace;
+
   @internal
   var isClosed = false;
 
@@ -270,6 +273,11 @@ base class DatabaseImplementation implements CommonDatabase {
     _updates?.close();
     _commits?.close();
     _rollbacks?.close();
+
+    if (_trace != null) {
+      _trace = null;
+      database.sqlite3_trace_v2(0, null);
+    }
 
     if (isBorrowed) {
       // Keep the connection open for the actual owner of it to use.
@@ -527,6 +535,53 @@ base class DatabaseImplementation implements CommonDatabase {
 
   @override
   Stream<SqliteUpdate> get updatesSync => _updatesHandler().syncStream;
+
+  @override
+  SqliteTraceCallback? get trace => _trace;
+
+  @override
+  set trace(SqliteTraceCallback? callback) {
+    if (callback == null) {
+      if (_trace == null) return;
+
+      _trace = null;
+      database.sqlite3_trace_v2(0, null);
+      return;
+    }
+
+    var mask = 0;
+    if (callback.statement) mask |= SQLITE_TRACE_STMT;
+    if (callback.profile) mask |= SQLITE_TRACE_PROFILE;
+    if (callback.row) mask |= SQLITE_TRACE_ROW;
+
+    if (mask == 0) {
+      throw ArgumentError(
+        'At least one event category must be enabled when tracing.',
+      );
+    }
+
+    final result = database.sqlite3_trace_v2(mask, _handleTrace);
+    if (result != SqlError.SQLITE_OK) {
+      throwException(this, result, operation: 'register trace callback');
+    }
+
+    _trace = callback;
+  }
+
+  /// A stable callback dispatching to the callback registered through
+  /// [trace].
+  ///
+  /// Backends keep a single native callback per database, so this method is
+  /// always passed to `sqlite3_trace_v2` and dispatches through [_trace] -
+  /// which the [trace] setter may replace at any time.
+  int _handleTrace(SqliteTrace trace) {
+    final callback = _trace;
+    if (callback != null) {
+      return callback.onTrace(trace);
+    }
+
+    return 0;
+  }
 
   @override
   Stream<void> get rollbacks => _rollbackHandler().stream;

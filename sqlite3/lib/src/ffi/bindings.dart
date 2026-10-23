@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import 'package:ffi/ffi.dart' as ffi;
 
 import '../constants.dart';
+import '../database.dart';
 import '../exception.dart';
 import '../functions.dart';
 import '../implementation/bindings.dart';
@@ -884,6 +885,7 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
   NativeCallable<_UpdateHook>? _installedUpdateHook;
   NativeCallable<_CommitHook>? _installedCommitHook;
   NativeCallable<_RollbackHook>? _installedRollbackHook;
+  NativeCallable<_TraceHook>? _installedTraceHook;
   NativeCallable<Int Function(Pointer<Void>, Int)>? _installedBusyHandler;
 
   FfiDatabase(this.db, {required bool borrowed}) {
@@ -1091,6 +1093,40 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
     }
 
     previous?.close();
+  }
+
+  @override
+  int sqlite3_trace_v2(int mask, RawTraceHook? hook) {
+    if (hook == null) {
+      final previous = _installedTraceHook;
+      if (previous != null) {
+        _installedTraceHook = null;
+        libsqlite3.sqlite3_trace_v2(db, 0, nullPtr(), nullPtr());
+        previous.close();
+      }
+      return SqlError.SQLITE_OK;
+    }
+
+    // The callback function does not depend on the mask, so a single callable
+    // is kept alive across mask changes.
+    final callable = _installedTraceHook ??= hook.toNative(_functions);
+    try {
+      return libsqlite3.sqlite3_trace_v2(
+        db,
+        mask,
+        callable.nativeFunction,
+        nullPtr(),
+      );
+    } on ArgumentError {
+      _installedTraceHook = null;
+      callable.close();
+      throw UnsupportedError(
+        'sqlite3_trace_v2 is not available in the sqlite3 library in use. '
+        'Tracing requires a sqlite3 library built without SQLITE_OMIT_TRACE, '
+        'or one of the prebuilt libraries shipped with a recent release of '
+        'package:sqlite3.',
+      );
+    }
   }
 
   @override
@@ -1583,6 +1619,8 @@ typedef _UpdateHook =
     );
 typedef _CommitHook = Int Function(Pointer<Void>);
 typedef _RollbackHook = Void Function(Pointer<Void>);
+typedef _TraceHook =
+    Int Function(UnsignedInt, Pointer<Void>, Pointer<Void>, Pointer<Void>);
 
 extension on NativeCallable {
   void closeIn(_FunctionFinalizers finalizers) {
@@ -1668,5 +1706,49 @@ extension on RawRollbackHook {
       })
       ..closeIn(finalizers)
       ..keepIsolateAlive = false;
+  }
+}
+
+extension on RawTraceHook {
+  NativeCallable<_TraceHook> toNative(_FunctionFinalizers finalizers) {
+    return NativeCallable.isolateLocal((
+        int event,
+        Pointer<Void> _, // the context pointer, always null here
+        Pointer<Void> statement,
+        Pointer<Void> payload,
+      ) {
+        // The callback signature is xCallback(T, C, P, X): the event code,
+        // the registered context, the statement and the event payload.
+        final trace = _decodeTraceEvent(event, statement, payload);
+        if (trace != null) {
+          return this(trace);
+        }
+
+        return 0;
+      }, exceptionalReturn: 0)
+      ..closeIn(finalizers)
+      ..keepIsolateAlive = false;
+  }
+}
+
+SqliteTrace? _decodeTraceEvent(
+  int event,
+  Pointer<Void> statement,
+  Pointer<Void> payload,
+) {
+  switch (event) {
+    case SQLITE_TRACE_STMT:
+      final sql = payload.cast<sqlite3_char>().readNullableString();
+      return SqliteTraceStatement(sql, statement.address);
+    case SQLITE_TRACE_PROFILE:
+      final nanoseconds = payload.cast<Int64>().value;
+      return SqliteTraceProfile(
+        Duration(microseconds: nanoseconds ~/ 1000),
+        statement.address,
+      );
+    case SQLITE_TRACE_ROW:
+      return SqliteTraceRow(statement.address);
+    default:
+      return null;
   }
 }

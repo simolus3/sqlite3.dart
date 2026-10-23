@@ -71,6 +71,7 @@ const usedSqliteSymbols = {
   'sqlite3_stmt_isexplain',
   'sqlite3_stmt_readonly',
   'sqlite3_temp_directory',
+  'sqlite3_trace_v2',
   'sqlite3_update_hook',
   'sqlite3_user_data',
   'sqlite3_value_blob',

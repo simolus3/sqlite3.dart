@@ -61,6 +61,10 @@ import_dart("dispatch_()i") extern int dartDispatchReturnInt(
 import_dart("dispatch_update") extern void dartDispatchUpdateHook(
     __externref_t handle, int kind, const char* schema, const char* table,
     sqlite3_int64 rowid);
+// Note: the payload pointers for statements and profiles are read by Dart
+// from wasm memory (see dispatchTraceHook in injected_values.dart).
+import_dart("dispatch_trace") extern int dartDispatchTraceHook(
+    __externref_t handle, int event, int statementAddress, const void* payload);
 
 // Handles injected as externrefs, are
 // DartExternalReference<RegisteredFunctionSet> in Dart.

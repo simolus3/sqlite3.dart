@@ -75,6 +75,64 @@ Future<void> connectToDatabase() async {
 }
 ```
 
+## Tracing
+
+Databases hosted in a worker don't expose the statement tracing API from
+`package:sqlite3` through this package.
+Since your worker opens databases through a custom `DatabaseController`
+anyway, you can observe trace events directly in the worker instead, where
+the database (and its `sqlite3.wasm` bundle) is local:
+
+```dart
+import 'dart:js_interop';
+
+import 'package:sqlite3/common.dart';
+import 'package:sqlite3/src/wasm/sqlite3.dart';
+import 'package:sqlite3_web/sqlite3_web.dart';
+
+final class TracingController extends DatabaseController {
+  @override
+  Future<JSAny?> handleCustomRequest(
+    ClientConnection connection,
+    CustomClientRequest request,
+  ) async => null;
+
+  @override
+  Future<WorkerDatabase> openDatabase(
+    WasmSqlite3 sqlite3,
+    String path,
+    String vfs,
+    JSAny? additionalData,
+  ) async {
+    final database = sqlite3.open(path, vfs: vfs);
+
+    // Runs synchronously in the worker for every traced event.
+    database.trace = SqliteTraceCallback(
+      (event) {
+        // e.g. log it, upload it, or forward it to the UI over your own
+        // message channel.
+      },
+      row: false, // row events fire once per row - usually too noisy.
+    );
+
+    return _TracingDatabase(database);
+  }
+}
+
+final class _TracingDatabase extends WorkerDatabase {
+  @override
+  final CommonDatabase database;
+
+  _TracingDatabase(this.database);
+
+  @override
+  Future<JSAny?> handleCustomRequest(
+    ClientConnection connection,
+    CustomClientDatabaseRequest request,
+  ) async => null;
+}
+```
+
 ## Lock and transaction management
 
 This package provides the `select` and `execute` method returning:
