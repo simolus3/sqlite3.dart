@@ -262,7 +262,8 @@ String _resolveConfigName(OS os, Architecture architecture) {
 // Disable features we don't need for SQLCipher.
 const _configArgs = [
   'no-shared',
-  'no-apps',
+  // TODO: Re-enable after https://github.com/openssl/openssl/issues/33386
+  //'no-apps',
   'no-docs',
   'no-tests',
   'no-engine',
