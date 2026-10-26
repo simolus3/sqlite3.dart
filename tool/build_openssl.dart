@@ -87,8 +87,9 @@ Future<void> _buildOpenSSL({
   final openSslBuildDirPath = tmp.path;
 
   // Absolute path of the Configure program in the src folder
-  final String configureProgramPath =
-      openSslSrcDir.absolute.uri.resolve('Configure').toFilePath();
+  final String configureProgramPath = openSslSrcDir.absolute.uri
+      .resolve('Configure')
+      .toFilePath();
 
   final configName = _resolveConfigName(targetOS, targetArchitecture);
 
@@ -253,8 +254,8 @@ String _resolveConfigName(OS os, Architecture architecture) {
     (OS.windows, Architecture.ia32) => 'VC-WIN32',
     (OS.windows, Architecture.x64) => 'VC-WIN64A',
     _ => throw UnsupportedError(
-        'Unsupported target combination: ${os.name}-${architecture.name}',
-      ),
+      'Unsupported target combination: ${os.name}-${architecture.name}',
+    ),
   };
 }
 
@@ -284,8 +285,6 @@ const _configArgs = [
   'no-dh',
   'no-dsa',
   'no-ec',
-  'no-ecdh',
-  'no-ecdsa',
   'no-md4',
   'no-mdc2',
   'no-ocsp',
