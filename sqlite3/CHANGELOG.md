@@ -1,3 +1,7 @@
+## 3.8.1-wip
+
+- IndexedDB file system: Treat unexpected abort events as errors.
+
 ## 3.8.0
 
 - Fix `InMemoryFileSystem` (and `IndexedDbFileSystem`, which reads through it)
