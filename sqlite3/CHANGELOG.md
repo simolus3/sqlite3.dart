@@ -1,6 +1,7 @@
 ## 3.8.1-wip
 
 - IndexedDB file system: Treat unexpected abort events as errors.
+- Update SQLCipher to version 4.20.0.
 
 ## 3.8.0
 
