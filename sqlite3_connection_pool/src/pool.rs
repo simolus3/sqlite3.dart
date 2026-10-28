@@ -179,11 +179,11 @@ impl PoolState {
                     self.return_write_connection();
                 }
             }
-            Waiter::Exclusive(ref mut exclusive) => {
+            Waiter::Exclusive(exclusive) => {
                 if exclusive.has_writer {
                     self.return_write_connection()
                 }
-                for conn in std::mem::take(&mut exclusive.obtained_read_connections) {
+                for conn in exclusive.obtained_read_connections {
                     self.return_read_connection(conn)
                 }
             }
