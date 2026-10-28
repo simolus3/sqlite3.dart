@@ -573,6 +573,35 @@ void main() {
       await pumpEventQueue();
       expect(secondReadGranted, true);
     });
+
+    test('exclusive', () async {
+      final pool = testPool(readConnections: 2);
+
+      final firstReadDone = Completer();
+      pool.reader().then((reader) async {
+        await firstReadDone.future;
+        reader.returnLease();
+      });
+      await pumpEventQueue();
+
+      final exclusive = pool.exclusiveAccess(abortSignal: Future(() {}));
+      await expectLater(exclusive, throwsA(isA<PoolAbortException>()));
+
+      // The exclusive request should have obtained (and released) the writer
+      // and one reader.
+      final writer = await pool.writer();
+      final secondReader = await pool.reader();
+
+      // The second reader should still be locked.
+      await expectLater(
+        pool.reader(abortSignal: Future(() {})),
+        throwsA(isA<PoolAbortException>()),
+      );
+
+      writer.returnLease();
+      secondReader.returnLease();
+      firstReadDone.complete();
+    });
   });
 
   group('rolls back transactions', () {

@@ -1,6 +1,7 @@
 {
     "rust-analyzer.linkedProjects": [
-        "sqlite3/example/custom_wasm_build/Cargo.toml"
+        "sqlite3/example/custom_wasm_build/Cargo.toml",
+        "sqlite3_connection_pool/Cargo.toml"
     ],
     "cSpell.words": [
         "Patchset"

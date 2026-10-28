@@ -109,10 +109,9 @@ struct WritePoolRequest {
     has_writer: bool,
 }
 
-#[derive(Default)]
 struct ExclusivePoolRequest {
     has_writer: bool,
-    obtained_read_connections: usize,
+    obtained_read_connections: Vec<usize>,
 }
 
 impl PoolState {
@@ -180,12 +179,12 @@ impl PoolState {
                     self.return_write_connection();
                 }
             }
-            Waiter::Exclusive(ref exclusive) => {
+            Waiter::Exclusive(ref mut exclusive) => {
                 if exclusive.has_writer {
                     self.return_write_connection()
                 }
-                for i in 0..self.reads.connections.len() {
-                    self.return_read_connection(i)
+                for conn in std::mem::take(&mut exclusive.obtained_read_connections) {
+                    self.return_read_connection(conn)
                 }
             }
         }
@@ -262,7 +261,14 @@ impl PoolState {
         pool: ConnectionPool,
         msg: PendingMessage,
     ) -> PoolRequestHandle {
-        self.register_waiter(pool, msg, Waiter::Exclusive(Default::default()))
+        self.register_waiter(
+            pool,
+            msg,
+            Waiter::Exclusive(ExclusivePoolRequest {
+                has_writer: false,
+                obtained_read_connections: Vec::with_capacity(self.reads.connections.len()),
+            }),
+        )
     }
 
     pub fn add_readers(&mut self, connections: &[Connection]) {
@@ -385,11 +391,11 @@ impl PoolState {
                     return false;
                 }
 
-                while exclusive.obtained_read_connections < self.reads.connections.len() {
-                    let Some(_) = self.reads.idle_connections.pop_front() else {
+                while exclusive.obtained_read_connections.len() < self.reads.connections.len() {
+                    let Some(idx) = self.reads.idle_connections.pop_front() else {
                         return false;
                     };
-                    exclusive.obtained_read_connections += 1;
+                    exclusive.obtained_read_connections.push(idx);
                 }
 
                 waiter.port.send_did_obtain_exclusive(&self.functions);
