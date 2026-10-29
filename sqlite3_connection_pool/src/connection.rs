@@ -48,6 +48,21 @@ impl StatementCache {
         }
     }
 
+    /// Drops the statement cached for `sql`, finalizing it and reporting whether one was cached.
+    pub fn remove(
+        &mut self,
+        sql: &str,
+        finalize: extern "C" fn(PreparedStatement) -> c_int,
+    ) -> bool {
+        match self.cache.pop(sql) {
+            Some(stmt) => {
+                finalize(stmt);
+                true
+            }
+            None => false,
+        }
+    }
+
     pub fn close_statements(&mut self, functions: &ExternalFunctions) {
         for (_, stmt) in self.cache.iter() {
             (functions.sqlite3_finalize)(*stmt);

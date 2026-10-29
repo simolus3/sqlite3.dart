@@ -214,6 +214,25 @@ extern "C" fn pkg_sqlite3_connection_pool_notify_updates_custom(
     send_update_notification(updates, &pool.update_listeners, &pool.functions);
 }
 
+/// Drops the statement cached for `sql` on `connection`, finalizing it.
+///
+/// ## Safety
+///
+/// Dart must only call this while holding the lease on `connection`.
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_stmt_cache_remove(
+    connection: &PoolConnection,
+    sql: *const u8,
+    sql_len: usize,
+    finalize: extern "C" fn(PreparedStatement) -> c_int,
+) -> c_int {
+    let sql = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(sql, sql_len)) };
+    // Safety: Guaranteed by the caller.
+    let did_remove = unsafe { connection.remove_cached_statement(sql, finalize) };
+
+    did_remove as c_int
+}
+
 /// Marks the current lease on `connection` as interrupted.
 ///
 /// Dart calls `sqlite3_interrupt` afterwards. Unlike the other functions here this one is called

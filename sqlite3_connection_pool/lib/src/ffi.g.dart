@@ -173,6 +173,22 @@ external int pkg_sqlite3_connection_pool_stmt_cache_put(
 );
 
 @ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<PoolConnection>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.UintPtr,
+    ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>>,
+  )
+>(isLeaf: true)
+external int pkg_sqlite3_connection_pool_stmt_cache_remove(
+  ffi.Pointer<PoolConnection> connection,
+  ffi.Pointer<ffi.Uint8> sql,
+  int sql_len,
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>>
+  sqlite3_finalize,
+);
+
+@ffi.Native<
   ffi.Void Function(ffi.Pointer<ConnectionPool>, ffi.Int, ffi.Int64)
 >()
 external void pkg_sqlite3_connection_pool_update_listener(

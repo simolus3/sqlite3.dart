@@ -69,6 +69,20 @@ final class PoolConnection {
     }
   }
 
+  /// Resets [cached] for the next caller, or drops it from the cache when this
+  /// lease was interrupted.
+  ///
+  /// A reset statement is reusable, but it keeps what the partial run recorded,
+  /// which a build with `SQLITE_ENABLE_STMT_SCANSTATUS` would keep counting.
+  void _resetOrDropCached(Uint8List encoded, PreparedStatement cached) {
+    if (_ref.isInterrupted) {
+      // Finalizes the statement, so it must not be touched afterwards.
+      _ref.removeCachedStatement(encoded);
+    } else {
+      cached.reset();
+    }
+  }
+
   /// Runs [body], reporting a statement that [interrupt] stopped as a
   /// [PoolAbortException].
   ///
@@ -94,8 +108,11 @@ final class PoolConnection {
 
     final ResultSet resultSet;
     if (cached != null) {
-      resultSet = _reportInterruptAsAbort(() => cached.select(parameters));
-      cached.reset();
+      try {
+        resultSet = _reportInterruptAsAbort(() => cached.select(parameters));
+      } finally {
+        _resetOrDropCached(encoded, cached);
+      }
     } else {
       final stmt = database.prepare(sql, checkNoTail: true);
       try {
@@ -105,7 +122,9 @@ final class PoolConnection {
         resultSet = _reportInterruptAsAbort(() => stmt.select(parameters));
       } finally {
         stmt.reset();
-        if (!_storeCached(encoded, stmt)) {
+        // An interrupted statement is the tail of a cancelled query, so it is
+        // closed instead of being kept for the next caller.
+        if (_ref.isInterrupted || !_storeCached(encoded, stmt)) {
           stmt.close();
         }
       }
@@ -124,8 +143,11 @@ final class PoolConnection {
     final encoded = utf8.encode(sql);
 
     if (_lookupCached(sql, encoded) case final cached?) {
-      _reportInterruptAsAbort(() => cached.execute(parameters));
-      cached.reset();
+      try {
+        _reportInterruptAsAbort(() => cached.execute(parameters));
+      } finally {
+        _resetOrDropCached(encoded, cached);
+      }
     } else if (parameters.isNotEmpty) {
       final stmt = database.prepare(sql, checkNoTail: true);
       try {
@@ -134,7 +156,8 @@ final class PoolConnection {
         _reportInterruptAsAbort(() => stmt.execute(parameters));
       } finally {
         stmt.reset();
-        if (!_storeCached(encoded, stmt)) {
+        // See the note in select.
+        if (_ref.isInterrupted || !_storeCached(encoded, stmt)) {
           stmt.close();
         }
       }

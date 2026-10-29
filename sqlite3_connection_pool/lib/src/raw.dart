@@ -354,6 +354,17 @@ extension type PoolConnectionRef(
     );
   }
 
+  /// Drops the statement cached for [sql], finalizing it.
+  bool removeCachedStatement(Uint8List sql) {
+    return pkg_sqlite3_connection_pool_stmt_cache_remove(
+          connection,
+          sql.address,
+          sql.length,
+          libsqlite3.addresses.sqlite3_finalize.cast(),
+        ) !=
+        0;
+  }
+
   bool putCachedStatement(Uint8List sql, Pointer<Void> statement) {
     return pkg_sqlite3_connection_pool_stmt_cache_put(
           connection,

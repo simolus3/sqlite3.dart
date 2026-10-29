@@ -696,6 +696,49 @@ void main() {
       reader.returnLease();
     });
 
+    test('an interrupted statement does not stay in the cache', () async {
+      // Same SQL text both times, so the cached statement is reused. The bound
+      // decides whether it finishes instantly or runs long enough to interrupt.
+      const sql =
+          'WITH RECURSIVE c(x) AS ('
+          '  VALUES(1) UNION ALL SELECT x + 1 FROM c WHERE x < ?'
+          ') SELECT count(*) FROM c';
+      final pool = testPool(readConnections: 1, preparedStatementCacheSize: 16);
+
+      final first = await pool.reader();
+      await first.unsafeAccess((conn) {
+        conn.select(sql, [10]);
+        expect(conn.lookupCachedStatement(sql), isNotNull, reason: 'cached');
+      });
+      first.returnLease();
+
+      final abort = Completer<void>();
+      final second = await pool.reader(abortSignal: abort.future);
+      final running = second.unsafeAccessOnIsolate(
+        (conn) => conn.select(sql, [1000000000]).length,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      abort.complete();
+      await expectLater(running, throwsA(isA<PoolAbortException>()));
+
+      // Read through the raw connection: the lease stays interrupted until it
+      // is returned, so anything going through `unsafeAccess` would throw.
+      expect(
+        second.unsafeRawConnection.lookupCachedStatement(sql),
+        isNull,
+        reason: 'the interrupted statement must have been dropped',
+      );
+      second.returnLease();
+
+      // The pool is still usable and caches the statement again.
+      final third = await pool.reader();
+      await third.unsafeAccess((conn) {
+        expect(conn.select(sql, [10]).single.values.single, 10);
+        expect(conn.lookupCachedStatement(sql), isNotNull);
+      });
+      third.returnLease();
+    });
+
     test('interrupting a lease does not affect the next one', () async {
       final pool = testPool(readConnections: 1);
       final abort = Completer<void>();

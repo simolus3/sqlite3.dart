@@ -91,6 +91,25 @@ impl PoolConnection {
         true
     }
 
+    /// Drops the statement cached for `sql`, if the cache is enabled and holds one.
+    ///
+    /// ## Safety
+    ///
+    /// Same as [Self::lookup_cached_statement].
+    pub unsafe fn remove_cached_statement(
+        &self,
+        sql: &str,
+        finalize: extern "C" fn(PreparedStatement) -> c_int,
+    ) -> bool {
+        let Some(cache) = self.cached_statements.as_ref() else {
+            return false;
+        };
+        // Safety: Guaranteed by the caller.
+        let cache = unsafe { &mut *cache.get() };
+
+        cache.remove(sql, finalize)
+    }
+
     /// Marks the current lease on this connection as interrupted.
     ///
     /// Dart calls `sqlite3_interrupt` after this, so that a statement starting in between is still

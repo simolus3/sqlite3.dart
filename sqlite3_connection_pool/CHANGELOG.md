@@ -9,6 +9,7 @@
 - A statement stopped by an interrupt on its lease now fails with a `PoolAbortException` instead of
   a `SqliteException`, so an abort reports the same way whenever it lands. An interrupt from outside
   the pool still fails with a `SqliteException`.
+- Statements interrupted while running are no longer kept in the prepared statement cache.
 
 ## 0.2.15
 

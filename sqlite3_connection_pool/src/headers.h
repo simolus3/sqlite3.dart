@@ -75,6 +75,9 @@ int pkg_sqlite3_connection_pool_is_interrupted(
 void* pkg_sqlite3_connection_pool_stmt_cache_get(
     const struct PoolConnection* connection, const uint8_t* sql,
     uintptr_t sql_len);
+int pkg_sqlite3_connection_pool_stmt_cache_remove(
+    const struct PoolConnection* connection, const uint8_t* sql,
+    uintptr_t sql_len, int (*sqlite3_finalize)(void*));
 int pkg_sqlite3_connection_pool_stmt_cache_put(
     const struct PoolConnection* connection, const uint8_t* sql,
     uintptr_t sql_len, void* stmt, int (*sqlite3_finalize)(void*));
