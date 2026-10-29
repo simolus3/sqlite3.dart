@@ -471,10 +471,10 @@ external int sqlite3_get_autocommit(ffi.Pointer<sqlite3> db);
 @ffi.Native<ffi.Int Function()>()
 external int sqlite3_initialize();
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<sqlite3>)>()
+@ffi.Native<ffi.Void Function(ffi.Pointer<sqlite3>)>(isLeaf: true)
 external void sqlite3_interrupt(ffi.Pointer<sqlite3> db);
 
-@ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3>)>()
+@ffi.Native<ffi.Int Function(ffi.Pointer<sqlite3>)>(isLeaf: true)
 external int sqlite3_is_interrupted(ffi.Pointer<sqlite3> db);
 
 @ffi.Native<ffi.Int64 Function(ffi.Pointer<sqlite3>)>(isLeaf: true)

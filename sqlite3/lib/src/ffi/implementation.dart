@@ -150,6 +150,16 @@ final class FfiDatabaseImplementation extends DatabaseImplementation
   }
 
   @override
+  void interrupt() {
+    libsqlite3.sqlite3_interrupt(ffiDatabase.db);
+  }
+
+  @override
+  bool get isInterrupted {
+    return libsqlite3.sqlite3_is_interrupted(ffiDatabase.db) != 0;
+  }
+
+  @override
   Pointer<void> get handle => ffiDatabase.db;
 
   @override

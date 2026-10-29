@@ -1,5 +1,6 @@
 ## 3.8.1-wip
 
+- Add `Database.interrupt()` and `Database.isInterrupted` on native platforms.
 - IndexedDB file system: Treat unexpected abort events as errors.
 - Update SQLCipher to version 4.20.0.
 
