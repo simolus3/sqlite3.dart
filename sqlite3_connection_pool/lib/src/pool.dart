@@ -1,4 +1,3 @@
-/// @docImport 'abort_exception.dart';
 library;
 
 import 'dart:async';
@@ -7,6 +6,7 @@ import 'dart:isolate';
 
 import 'package:sqlite3/sqlite3.dart';
 
+import 'abort_exception.dart';
 import 'connection.dart';
 import 'mutex.dart';
 import 'raw.dart';
@@ -401,7 +401,13 @@ base class AsyncConnection {
   /// pool.
   Future<void> _rollbackPendingTransaction() async {
     if (!_connection.database.autocommit) {
-      await unsafeAccessOnIsolate((db) => db.database.execute('ROLLBACK'));
+      // This runs while the lease is handed out, so an abort that has already
+      // arrived must not make reader() or writer() throw with the connection
+      // granted but never returned.
+      await _unsafeAccessOnIsolate(
+        honorInterrupt: false,
+        (db) => db.database.execute('ROLLBACK'),
+      );
     }
   }
 
@@ -422,11 +428,25 @@ base class AsyncConnection {
   Future<T> unsafeAccess<T>(
     FutureOr<T> Function(PoolConnection) computation,
   ) async {
+    return _unsafeAccess(computation, honorInterrupt: true);
+  }
+
+  Future<T> _unsafeAccess<T>(
+    FutureOr<T> Function(PoolConnection) computation, {
+    required bool honorInterrupt,
+  }) async {
     if (_closed) {
       throw StateError('LeasedDatabase used after callback returned');
     }
 
-    return _mutex.withCriticalSection(() => computation(_connection));
+    return _mutex.withCriticalSection(() {
+      // Checked in the critical section so that an interrupt arriving while we
+      // were waiting for the mutex is seen.
+      if (honorInterrupt && _connection.isInterrupted) {
+        throw const PoolAbortException();
+      }
+      return computation(_connection);
+    });
   }
 
   /// On a short-lived isolate, calls [computation] as a critical section with
@@ -437,7 +457,14 @@ base class AsyncConnection {
   Future<T> unsafeAccessOnIsolate<T>(
     FutureOr<T> Function(PoolConnection) computation,
   ) {
-    return unsafeAccess((conn) {
+    return _unsafeAccessOnIsolate(computation, honorInterrupt: true);
+  }
+
+  Future<T> _unsafeAccessOnIsolate<T>(
+    FutureOr<T> Function(PoolConnection) computation, {
+    required bool honorInterrupt,
+  }) {
+    return _unsafeAccess(honorInterrupt: honorInterrupt, (conn) {
       final address = conn.unsafePointer.address;
       return Isolate.run(() {
         final conn = PoolConnection.unsafeFromPointer(
@@ -449,9 +476,15 @@ base class AsyncConnection {
   }
 
   /// Returns the [Database.autocommit] status for the wrapped database.
+  ///
+  /// This keeps working on a lease that has been interrupted, so that a
+  /// leaseholder can find out whether it needs to roll a transaction back.
   Future<bool> get autocommit {
     // the autocommit call is too cheap to justify a background isolate.
-    return unsafeAccess((conn) => conn.database.autocommit);
+    return _unsafeAccess(
+      honorInterrupt: false,
+      (conn) => conn.database.autocommit,
+    );
   }
 
   /// Runs [sql] with [parameters] and returns results (both the [ResultSet] and
@@ -520,6 +553,17 @@ final class ConnectionLease extends AsyncConnection {
     }
   }
 
+  /// Interrupts a statement running on this lease, making further statements
+  /// fail with a [PoolAbortException] until the lease is returned.
+  ///
+  /// Unlike the other methods here, this may be called while another isolate is
+  /// using the connection, which is how a statement running in
+  /// [unsafeAccessOnIsolate] gets stopped.
+  ///
+  /// Interrupting a statement in a transaction may roll it back, so a writer
+  /// usually returns the lease afterwards. Does nothing after [returnLease].
+  void interrupt() => _request.abort();
+
   /// Manual signal to add tables to [SqliteConnectionPool.updatedTables].
   ///
   /// By default, local writes made while a connection was leased from the pool
@@ -535,7 +579,9 @@ final class ConnectionLease extends AsyncConnection {
   ///   3. There are pending writes from an earlier completed transaction that
   ///      haven't made it to [SqliteConnectionPool.updatedTables] yet.
   Future<void> notifyUpdates() {
-    return unsafeAccess((_) {
+    // Flushing pending updates is cleanup, so it keeps working on a lease that
+    // has been interrupted.
+    return _unsafeAccess(honorInterrupt: false, (_) {
       if (_isWriter && !_closed) {
         _request.notifyUpdates();
       }

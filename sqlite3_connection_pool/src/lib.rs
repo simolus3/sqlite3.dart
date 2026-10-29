@@ -214,6 +214,21 @@ extern "C" fn pkg_sqlite3_connection_pool_notify_updates_custom(
     send_update_notification(updates, &pool.update_listeners, &pool.functions);
 }
 
+/// Marks the current lease on `connection` as interrupted.
+///
+/// Dart calls `sqlite3_interrupt` afterwards. Unlike the other functions here this one is called
+/// from a different isolate than the one holding the lease, while that lease is in use.
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_set_interrupted(connection: &PoolConnection) {
+    connection.set_interrupted();
+}
+
+/// Whether the current lease on `connection` has been interrupted.
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_is_interrupted(connection: &PoolConnection) -> c_int {
+    connection.is_interrupted() as c_int
+}
+
 /// ## Safety
 ///
 /// Dart must only call this while holding the lease on `connection`.

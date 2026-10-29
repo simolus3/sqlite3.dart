@@ -7,6 +7,7 @@ import 'dart:typed_data';
 
 import 'package:sqlite3/sqlite3.dart';
 
+import 'abort_exception.dart';
 import 'raw.dart';
 
 /// A connection that is part of a connection pool.
@@ -17,8 +18,9 @@ import 'raw.dart';
 /// Pool connections are owned by the pool. All instances of this class
 /// represent _temporary references_ to a pool connection. Further, while pool
 /// connections can be sent across isolates, they must never be used
-/// concurrently. This makes [PoolConnection] an unsafe class to use directly,
-/// users should use prefer to use the [AsyncConnection] wrapper instead.
+/// concurrently, with the sole exception of [interrupt]. This makes
+/// [PoolConnection] an unsafe class to use directly, users should use prefer to
+/// use the [AsyncConnection] wrapper instead.
 final class PoolConnection {
   /// The leased database connection.
   final Database database;
@@ -39,15 +41,38 @@ final class PoolConnection {
   ///
   /// The address of this pointer can safely be sent across isolates, but:
   ///
-  ///  1. The connection must never be used concurrently.
+  ///  1. The connection must never be used concurrently. [interrupt] is the
+  ///     only exception to this.
   ///  2. The pointer is only valid until this connection is closed.
   Pointer<void> get unsafePointer {
     return _ref.connection.cast();
   }
 
+  /// Interrupts a statement running on this connection, making later calls to
+  /// [select] and [execute] on this lease throw a [PoolAbortException].
+  ///
+  /// Unlike everything else here, this may be called while another isolate is
+  /// using the connection, which is the only way to stop a running statement.
+  ///
+  /// Don't call this once the lease has been returned, the connection may
+  /// belong to someone else by then. Prefer the abortSignal of
+  /// [SqliteConnectionPool.reader] and [SqliteConnectionPool.writer].
+  void interrupt() => _ref.interrupt();
+
+  /// Whether [interrupt] has been called for the current lease on this
+  /// connection.
+  bool get isInterrupted => _ref.isInterrupted;
+
+  void _checkNotInterrupted() {
+    if (_ref.isInterrupted) {
+      throw const PoolAbortException();
+    }
+  }
+
   /// Run a query on this connection, using the prepared statement cache if it
   /// has been enabled.
   ResultSet select(String sql, [List<Object?> parameters = const []]) {
+    _checkNotInterrupted();
     final encoded = utf8.encode(sql);
     final cached = _lookupCached(sql, encoded);
 
@@ -58,10 +83,15 @@ final class PoolConnection {
     } else {
       final stmt = database.prepare(sql, checkNoTail: true);
       try {
+        // Checked again after compiling, since SQLite discards an interrupt
+        // arriving before a statement's first sqlite3_step.
+        _checkNotInterrupted();
         resultSet = stmt.select(parameters);
       } finally {
         stmt.reset();
-        if (!_storeCached(encoded, stmt)) {
+        // An interrupted statement is the tail of a cancelled query, so it is
+        // closed instead of being kept for the next caller.
+        if (_ref.isInterrupted || !_storeCached(encoded, stmt)) {
           stmt.close();
         }
       }
@@ -76,6 +106,7 @@ final class PoolConnection {
   /// statement. Otherwise, this relies on prepared statements which might be
   /// cached depending on how the pool is configured.
   void execute(String sql, [List<Object?> parameters = const []]) {
+    _checkNotInterrupted();
     final encoded = utf8.encode(sql);
 
     if (_lookupCached(sql, encoded) case final cached?) {
@@ -85,10 +116,13 @@ final class PoolConnection {
     } else if (parameters.isNotEmpty) {
       final stmt = database.prepare(sql, checkNoTail: true);
       try {
+        // See the note in select.
+        _checkNotInterrupted();
         stmt.execute(parameters);
       } finally {
         stmt.reset();
-        if (!_storeCached(encoded, stmt)) {
+        // See the note in select.
+        if (_ref.isInterrupted || !_storeCached(encoded, stmt)) {
           stmt.close();
         }
       }

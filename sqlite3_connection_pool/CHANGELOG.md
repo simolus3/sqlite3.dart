@@ -1,3 +1,12 @@
+## 0.2.16
+
+- Add `ConnectionLease.interrupt()` and `PoolConnection.interrupt()`, stopping a statement that is
+  already running on a leased connection. Unlike every other operation on a pool connection, these
+  may be called while another isolate is using it.
+- The `abortSignal` of `SqliteConnectionPool.reader()` and `SqliteConnectionPool.writer()` now also
+  interrupts requests that have already been granted. Previously it only cancelled requests that
+  were still waiting for a connection.
+
 ## 0.2.15
 
 - Fix pool corruption when an exclusive lease holding some read connections is aborted.

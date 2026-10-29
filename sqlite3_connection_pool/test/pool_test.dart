@@ -602,6 +602,109 @@ void main() {
       secondReader.returnLease();
       firstReadDone.complete();
     });
+
+    test('interrupts a lease that has already been granted', () async {
+      // `sqlite3_interrupt` alone does nothing here: the abort arrives while no
+      // statement is running, and SQLite explicitly does not apply it to
+      // statements started afterwards.
+      final pool = testPool(readConnections: 1);
+      final abort = Completer<void>();
+      final reader = await pool.reader(abortSignal: abort.future);
+
+      abort.complete();
+      await pumpEventQueue();
+
+      await expectLater(
+        reader.unsafeAccess((conn) => conn.select('SELECT 1')),
+        throwsA(isA<PoolAbortException>()),
+      );
+      reader.returnLease();
+    });
+
+    test('interrupts a statement that is already running', () async {
+      final pool = testPool(readConnections: 1);
+      final abort = Completer<void>();
+      final reader = await pool.reader(abortSignal: abort.future);
+
+      // Runs on a separate isolate, so this one stays free to abort while the
+      // statement sits in `sqlite3_step`.
+      final running = reader.unsafeAccessOnIsolate(
+        (conn) => conn.select(
+          'WITH RECURSIVE c(x) AS ('
+          '  VALUES(1) UNION ALL SELECT x + 1 FROM c WHERE x < 1000000000'
+          ') SELECT count(*) FROM c',
+        ),
+      );
+
+      // Give the isolate time to start stepping. Aborting before it does is
+      // covered by the previous test.
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      abort.complete();
+
+      await expectLater(running, throwsA(isA<SqliteException>()));
+      reader.returnLease();
+    });
+
+    test('interrupt is noticed by a statement that still needs compiling', () async {
+      // The flag is checked before compiling and again before stepping, since
+      // SQLite discards an interrupt that arrives before a statement's first
+      // step.
+      final pool = testPool(readConnections: 1);
+      final reader = await pool.reader();
+      reader.unsafeRawConnection.interrupt();
+
+      await expectLater(
+        reader.unsafeAccess((conn) => conn.select('SELECT ?', [1])),
+        throwsA(isA<PoolAbortException>()),
+      );
+      await expectLater(
+        reader.unsafeAccess((conn) => conn.execute('SELECT ?', [1])),
+        throwsA(isA<PoolAbortException>()),
+      );
+      reader.returnLease();
+    });
+
+    test('interrupting a lease does not affect the next one', () async {
+      final pool = testPool(readConnections: 1);
+      final abort = Completer<void>();
+      final first = await pool.reader(abortSignal: abort.future);
+
+      abort.complete();
+      await pumpEventQueue();
+      await expectLater(
+        first.unsafeAccess((conn) => conn.select('SELECT 1')),
+        throwsA(isA<PoolAbortException>()),
+      );
+      first.returnLease();
+
+      final second = await pool.reader();
+      expect(await second.unsafeAccess((conn) => conn.select('SELECT 1')), [
+        {'1': 1},
+      ]);
+      second.returnLease();
+    });
+
+    test('abort signal completing after the lease was returned is a no-op', () {
+      // The abort signal is an arbitrary future, so it can complete at any
+      // point. If it did interrupt the connection after the lease was returned,
+      // it would interrupt whoever holds that connection next.
+      return expectLater(() async {
+        final pool = testPool(readConnections: 1);
+        final abort = Completer<void>();
+
+        final first = await pool.reader(abortSignal: abort.future);
+        first.returnLease();
+
+        final second = await pool.reader();
+        abort.complete();
+        await pumpEventQueue();
+
+        expect(await second.unsafeAccess((conn) => conn.select('SELECT 1')), [
+          {'1': 1},
+        ]);
+        second.returnLease();
+      }(), completes);
+    });
   });
 
   group('rolls back transactions', () {

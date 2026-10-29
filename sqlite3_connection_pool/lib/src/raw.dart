@@ -64,7 +64,11 @@ final class RawSqliteConnectionPool implements Finalizable {
         final poolConnection = Pointer<PoolConnection>.fromAddress(
           message[2] as int,
         );
-        parsed = _SingleConnectionLease(PoolConnectionRef(poolConnection));
+        final ref = PoolConnectionRef(poolConnection);
+        // Remember the connection so that aborting this request after it has
+        // been granted can interrupt the lease.
+        outstanding.request?._leasedConnection = ref;
+        parsed = _SingleConnectionLease(ref);
       }
 
       outstanding.completer.complete(parsed);
@@ -329,6 +333,19 @@ extension type PoolConnectionRef(
   /// The `sqlite3*` connection pointer.
   Pointer<Void> get rawDatabase => connection.ref.raw;
 
+  /// Interrupts a statement running on this connection and marks the current
+  /// lease as interrupted.
+  void interrupt() {
+    // Set first, since a statement starting between these two calls would not
+    // be stopped by sqlite3_interrupt but does see the flag.
+    pkg_sqlite3_connection_pool_set_interrupted(connection);
+    libsqlite3.sqlite3_interrupt(rawDatabase.cast());
+  }
+
+  /// Whether the current lease on this connection has been interrupted.
+  bool get isInterrupted =>
+      pkg_sqlite3_connection_pool_is_interrupted(connection) != 0;
+
   Pointer<Void> lookupCachedStatement(Uint8List sql) {
     return pkg_sqlite3_connection_pool_stmt_cache_get(
       connection,
@@ -357,6 +374,12 @@ final class RawPoolRequest implements Finalizable {
   final Pointer<PoolRequest> _handle;
   final Object _detachToken = Object();
 
+  /// The connection granted to this request, while the lease is still held.
+  ///
+  /// Null before the request completes and after the lease was returned, so
+  /// that [abort] can tell the two apart.
+  PoolConnectionRef? _leasedConnection;
+
   RawPoolRequest._(this._dartTag, this._pool, this._handle) {
     _requestFinalizer.attach(this, _handle.cast(), detach: _detachToken);
   }
@@ -364,6 +387,7 @@ final class RawPoolRequest implements Finalizable {
   bool get isCompleted => !_pool._outstandingRequests.containsKey(_dartTag);
 
   void close() {
+    _leasedConnection = null;
     _requestFinalizer.detach(_detachToken);
     pkg_sqlite3_connection_pool_request_close(_handle);
 
@@ -376,6 +400,11 @@ final class RawPoolRequest implements Finalizable {
   void abort() {
     if (!isCompleted) {
       close();
+    } else {
+      // Already granted, so there's no pending request to cancel. This is null
+      // for exclusive access, which we don't interrupt, and once the lease has
+      // been returned.
+      _leasedConnection?.interrupt();
     }
   }
 

@@ -45,6 +45,11 @@ external ffi.Pointer<ConnectionPool> pkg_sqlite3_connection_pool_initialize(
   ffi.Pointer<InitializedPool> pool,
 );
 
+@ffi.Native<ffi.Int Function(ffi.Pointer<PoolConnection>)>(isLeaf: true)
+external int pkg_sqlite3_connection_pool_is_interrupted(
+  ffi.Pointer<PoolConnection> connection,
+);
+
 @ffi.Native<ffi.Void Function(ffi.Pointer<PoolRequest>)>()
 external void pkg_sqlite3_connection_pool_notify_updates(
   ffi.Pointer<PoolRequest> request,
@@ -129,6 +134,11 @@ external int pkg_sqlite3_connection_pool_query_read_connection_count(
 @ffi.Native<ffi.Void Function(ffi.Pointer<PoolRequest>)>()
 external void pkg_sqlite3_connection_pool_request_close(
   ffi.Pointer<PoolRequest> request,
+);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<PoolConnection>)>(isLeaf: true)
+external void pkg_sqlite3_connection_pool_set_interrupted(
+  ffi.Pointer<PoolConnection> connection,
 );
 
 @ffi.Native<
