@@ -1,5 +1,8 @@
 ## 3.8.1-wip
 
+- Add `Database.interrupt()` and `Database.isInterrupted` on native platforms. Unlike other methods
+  on a database, `interrupt()` may be called while another isolate is using the connection, which
+  is the only way to stop a statement that is already running.
 - IndexedDB file system: Treat unexpected abort events as errors.
 - Update SQLCipher to version 4.20.0.
 
