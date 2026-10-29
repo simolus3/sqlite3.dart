@@ -40,7 +40,13 @@ pub struct PoolConnection {
 }
 
 struct ReadState {
-    connections: Vec<PoolConnection>,
+    /// The read connections of this pool.
+    ///
+    /// Boxed because their addresses are handed to Dart for the duration of a lease, and
+    /// [PoolState::add_readers] can grow this vector while leases are active. Without the
+    /// indirection that would move the connections, leaving those leases dangling.
+    #[allow(clippy::vec_box, reason = "Dart holds these addresses across a lease")]
+    connections: Vec<Box<PoolConnection>>,
     idle_connections: VecDeque<usize>,
     waiters: LinkedList<Self>,
 }
@@ -122,11 +128,11 @@ impl PoolState {
         cache_size: usize,
         enable_update_hooks: bool,
     ) -> Self {
-        let wrap_connection = |conn: Connection| -> PoolConnection {
-            PoolConnection {
+        let wrap_connection = |conn: Connection| -> Box<PoolConnection> {
+            Box::new(PoolConnection {
                 raw: conn,
                 cached_statements: StatementCache::new(cache_size),
-            }
+            })
         };
 
         Self {
@@ -136,7 +142,8 @@ impl PoolState {
                 waiters: Default::default(),
             },
             writes: WriteState {
-                connection: wrap_connection(writer),
+                // Not boxed, `PoolState` lives in an `Arc` so this address is already stable.
+                connection: *wrap_connection(writer),
                 acquired: false,
                 waiters: Default::default(),
             },
@@ -277,10 +284,10 @@ impl PoolState {
 
         let start_index = self.reads.connections.len();
         for connection in connections {
-            self.reads.connections.push(PoolConnection {
+            self.reads.connections.push(Box::new(PoolConnection {
                 raw: *connection,
                 cached_statements: StatementCache::new(self.cache_size),
-            });
+            }));
         }
 
         let end_index = start_index + connections.len();
@@ -290,7 +297,7 @@ impl PoolState {
     }
 
     /// Returns the write and all read connections of this pool.
-    pub fn view_connections(&self) -> (&PoolConnection, &[PoolConnection]) {
+    pub fn view_connections(&self) -> (&PoolConnection, &[Box<PoolConnection>]) {
         let writer = &self.writes.connection;
         let readers = self.reads.connections.as_slice();
 
@@ -349,7 +356,7 @@ impl PoolState {
 
                 let connection = if let Some(conn_idx) = self.reads.idle_connections.pop_front() {
                     reads.assigned_connection = Some(conn_idx);
-                    Some(&self.reads.connections[conn_idx])
+                    Some(&*self.reads.connections[conn_idx])
                 } else if self.reads.connections.is_empty()
                     && self.try_assign_write(&mut reads.has_writer)
                 {

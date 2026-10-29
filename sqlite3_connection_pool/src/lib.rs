@@ -166,7 +166,7 @@ extern "C" fn pkg_sqlite3_connection_pool_query_connections(
             break;
         }
 
-        unsafe { readers.add(i).write(conn) };
+        unsafe { readers.add(i).write(&**conn) };
     }
 }
 
