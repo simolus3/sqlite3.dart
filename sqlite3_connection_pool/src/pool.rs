@@ -5,6 +5,7 @@ use std::cell::UnsafeCell;
 use std::collections::VecDeque;
 use std::ffi::{c_char, c_int, c_void};
 use std::marker::PhantomData;
+use std::pin::Pin;
 use std::ptr::NonNull;
 use std::sync::{Arc, Mutex};
 
@@ -40,7 +41,10 @@ pub struct PoolConnection {
 }
 
 struct ReadState {
-    connections: Vec<PoolConnection>,
+    /// The read connections of this pool.
+    ///
+    /// Boxed because they are shared with Dart by address.
+    connections: Vec<Pin<Box<PoolConnection>>>,
     idle_connections: VecDeque<usize>,
     waiters: LinkedList<Self>,
 }
@@ -132,7 +136,11 @@ impl PoolState {
         Self {
             reads: ReadState {
                 idle_connections: (0usize..reads.len()).collect(),
-                connections: reads.iter().copied().map(wrap_connection).collect(),
+                connections: reads
+                    .iter()
+                    .copied()
+                    .map(|c| Box::pin(wrap_connection(c)))
+                    .collect(),
                 waiters: Default::default(),
             },
             writes: WriteState {
@@ -277,10 +285,10 @@ impl PoolState {
 
         let start_index = self.reads.connections.len();
         for connection in connections {
-            self.reads.connections.push(PoolConnection {
+            self.reads.connections.push(Box::pin(PoolConnection {
                 raw: *connection,
                 cached_statements: StatementCache::new(self.cache_size),
-            });
+            }));
         }
 
         let end_index = start_index + connections.len();
@@ -290,7 +298,7 @@ impl PoolState {
     }
 
     /// Returns the write and all read connections of this pool.
-    pub fn view_connections(&self) -> (&PoolConnection, &[PoolConnection]) {
+    pub fn view_connections(&self) -> (&PoolConnection, &[Pin<Box<PoolConnection>>]) {
         let writer = &self.writes.connection;
         let readers = self.reads.connections.as_slice();
 
@@ -349,7 +357,7 @@ impl PoolState {
 
                 let connection = if let Some(conn_idx) = self.reads.idle_connections.pop_front() {
                     reads.assigned_connection = Some(conn_idx);
-                    Some(&self.reads.connections[conn_idx])
+                    Some(&*self.reads.connections[conn_idx])
                 } else if self.reads.connections.is_empty()
                     && self.try_assign_write(&mut reads.has_writer)
                 {
