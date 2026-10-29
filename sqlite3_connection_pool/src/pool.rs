@@ -37,7 +37,48 @@ pub struct PoolConnection {
     /// The raw `sqlite3*` connection pointer.
     pub raw: Connection,
     /// If statement caches are enabled, an LRU cache storing prepared statements by their SQL text.
-    pub cached_statements: Option<StatementCache>,
+    ///
+    /// Safety: The (Dart) context holding the lease on this connection is assumed to have a mutable
+    /// reference to the cache. We can't safely give Dart a `&mut Self` because the connection is
+    /// still reachable through the shared pool state.
+    pub cached_statements: Option<UnsafeCell<StatementCache>>,
+}
+
+impl PoolConnection {
+    /// Looks up a cached prepared statement for `sql`, if the cache is enabled and holds one.
+    ///
+    /// ## Safety
+    ///
+    /// The caller must hold the lease on this connection, and must not call this or
+    /// [Self::store_cached_statement] concurrently.
+    pub unsafe fn lookup_cached_statement(&self, sql: &str) -> Option<NonNull<c_void>> {
+        let cache = self.cached_statements.as_ref()?;
+        // Safety: Guaranteed by the caller.
+        let cache = unsafe { &mut *cache.get() };
+
+        cache.lookup(sql)
+    }
+
+    /// Stores `stmt` in the statement cache, reporting whether it was inserted.
+    ///
+    /// ## Safety
+    ///
+    /// Same as [Self::lookup_cached_statement].
+    pub unsafe fn store_cached_statement(
+        &self,
+        sql: String,
+        stmt: PreparedStatement,
+        finalize: extern "C" fn(PreparedStatement) -> c_int,
+    ) -> bool {
+        let Some(cache) = self.cached_statements.as_ref() else {
+            return false;
+        };
+        // Safety: Guaranteed by the caller.
+        let cache = unsafe { &mut *cache.get() };
+
+        cache.put(sql, stmt, finalize);
+        true
+    }
 }
 
 struct ReadState {
@@ -129,7 +170,7 @@ impl PoolState {
         let wrap_connection = |conn: Connection| -> PoolConnection {
             PoolConnection {
                 raw: conn,
-                cached_statements: StatementCache::new(cache_size),
+                cached_statements: StatementCache::new(cache_size).map(UnsafeCell::new),
             }
         };
 
@@ -287,7 +328,7 @@ impl PoolState {
         for connection in connections {
             self.reads.connections.push(Box::pin(PoolConnection {
                 raw: *connection,
-                cached_statements: StatementCache::new(self.cache_size),
+                cached_statements: StatementCache::new(self.cache_size).map(UnsafeCell::new),
             }));
         }
 
@@ -426,7 +467,7 @@ impl PoolState {
 
     fn drop_connection(conn: &mut PoolConnection, functions: &ExternalFunctions) {
         if let Some(cache) = &mut conn.cached_statements {
-            cache.close_statements(&functions);
+            cache.get_mut().close_statements(&functions);
         }
 
         (functions.sqlite3_close_v2)(conn.raw);
