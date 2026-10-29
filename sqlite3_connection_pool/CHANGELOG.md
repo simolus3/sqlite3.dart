@@ -6,6 +6,9 @@
 - The `abortSignal` of `SqliteConnectionPool.reader()` and `SqliteConnectionPool.writer()` now also
   interrupts requests that have already been granted. Previously it only cancelled requests that
   were still waiting for a connection.
+- A statement stopped by an interrupt on its lease now fails with a `PoolAbortException` instead of
+  a `SqliteException`, so an abort reports the same way whenever it lands. An interrupt from outside
+  the pool still fails with a `SqliteException`.
 
 ## 0.2.15
 

@@ -641,7 +641,39 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 500));
       abort.complete();
 
-      await expectLater(running, throwsA(isA<SqliteException>()));
+      // SQLite fails the running statement with `SQLITE_INTERRUPT`, but callers
+      // see the same exception as an abort that arrived between statements.
+      await expectLater(running, throwsA(isA<PoolAbortException>()));
+      reader.returnLease();
+    });
+
+    test('an interrupt from outside the pool stays a SqliteException', () async {
+      // Only an abort on the lease is reported as a `PoolAbortException`. An
+      // interrupt someone issues on the raw handle is a regular failure.
+      final pool = testPool(readConnections: 1);
+      final reader = await pool.reader();
+
+      final running = reader.unsafeAccessOnIsolate(
+        (conn) => conn.select(
+          'WITH RECURSIVE c(x) AS ('
+          '  VALUES(1) UNION ALL SELECT x + 1 FROM c WHERE x < 1000000000'
+          ') SELECT count(*) FROM c',
+        ),
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      reader.unsafeRawConnection.database.interrupt();
+
+      await expectLater(
+        running,
+        throwsA(
+          isA<SqliteException>().having(
+            (e) => e.resultCode,
+            'resultCode',
+            SqlError.SQLITE_INTERRUPT,
+          ),
+        ),
+      );
       reader.returnLease();
     });
 

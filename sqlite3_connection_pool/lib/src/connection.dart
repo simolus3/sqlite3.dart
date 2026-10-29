@@ -69,6 +69,22 @@ final class PoolConnection {
     }
   }
 
+  /// Runs [body], reporting a statement that [interrupt] stopped as a
+  /// [PoolAbortException].
+  ///
+  /// We check the flag as well as the result code, so an interrupt coming from
+  /// elsewhere stays a [SqliteException].
+  T _reportInterruptAsAbort<T>(T Function() body) {
+    try {
+      return body();
+    } on SqliteException catch (e) {
+      if (e.resultCode == SqlError.SQLITE_INTERRUPT && _ref.isInterrupted) {
+        throw const PoolAbortException();
+      }
+      rethrow;
+    }
+  }
+
   /// Run a query on this connection, using the prepared statement cache if it
   /// has been enabled.
   ResultSet select(String sql, [List<Object?> parameters = const []]) {
@@ -78,7 +94,7 @@ final class PoolConnection {
 
     final ResultSet resultSet;
     if (cached != null) {
-      resultSet = cached.select(parameters);
+      resultSet = _reportInterruptAsAbort(() => cached.select(parameters));
       cached.reset();
     } else {
       final stmt = database.prepare(sql, checkNoTail: true);
@@ -86,12 +102,10 @@ final class PoolConnection {
         // Checked again after compiling, since SQLite discards an interrupt
         // arriving before a statement's first sqlite3_step.
         _checkNotInterrupted();
-        resultSet = stmt.select(parameters);
+        resultSet = _reportInterruptAsAbort(() => stmt.select(parameters));
       } finally {
         stmt.reset();
-        // An interrupted statement is the tail of a cancelled query, so it is
-        // closed instead of being kept for the next caller.
-        if (_ref.isInterrupted || !_storeCached(encoded, stmt)) {
+        if (!_storeCached(encoded, stmt)) {
           stmt.close();
         }
       }
@@ -110,26 +124,24 @@ final class PoolConnection {
     final encoded = utf8.encode(sql);
 
     if (_lookupCached(sql, encoded) case final cached?) {
-      cached
-        ..execute(parameters)
-        ..reset();
+      _reportInterruptAsAbort(() => cached.execute(parameters));
+      cached.reset();
     } else if (parameters.isNotEmpty) {
       final stmt = database.prepare(sql, checkNoTail: true);
       try {
         // See the note in select.
         _checkNotInterrupted();
-        stmt.execute(parameters);
+        _reportInterruptAsAbort(() => stmt.execute(parameters));
       } finally {
         stmt.reset();
-        // See the note in select.
-        if (_ref.isInterrupted || !_storeCached(encoded, stmt)) {
+        if (!_storeCached(encoded, stmt)) {
           stmt.close();
         }
       }
     } else {
       // The sql text is allowed to contain multiple statements, so we can't
       // cache them.
-      database.execute(sql);
+      _reportInterruptAsAbort(() => database.execute(sql));
     }
   }
 
