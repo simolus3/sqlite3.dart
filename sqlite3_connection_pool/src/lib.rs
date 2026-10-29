@@ -214,32 +214,36 @@ extern "C" fn pkg_sqlite3_connection_pool_notify_updates_custom(
     send_update_notification(updates, &pool.update_listeners, &pool.functions);
 }
 
+/// ## Safety
+///
+/// Dart must only call this while holding the lease on `connection`.
 #[unsafe(no_mangle)]
 extern "C" fn pkg_sqlite3_connection_pool_stmt_cache_get(
-    connection: &mut PoolConnection,
+    connection: &PoolConnection,
     sql: *const u8,
     sql_len: usize,
 ) -> Option<NonNull<c_void>> {
     let sql = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(sql, sql_len)) };
-    connection
-        .cached_statements
-        .as_mut()
-        .and_then(|cache| cache.lookup(sql))
+    // Safety: Guaranteed by the caller.
+    unsafe { connection.lookup_cached_statement(sql) }
 }
 
+/// ## Safety
+///
+/// Dart must only call this while holding the lease on `connection`.
 #[unsafe(no_mangle)]
 extern "C" fn pkg_sqlite3_connection_pool_stmt_cache_put(
-    connection: &mut PoolConnection,
+    connection: &PoolConnection,
     sql: *const u8,
     sql_len: usize,
     stmt: NonNull<c_void>,
     finalize: extern "C" fn(PreparedStatement) -> c_int,
 ) -> c_int {
     let sql = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(sql, sql_len)) };
-    if let Some(cache) = connection.cached_statements.as_mut() {
-        cache.put(sql.to_owned(), PreparedStatement(stmt), finalize);
-        1
-    } else {
-        0
-    }
+    // Safety: Guaranteed by the caller.
+    let did_store = unsafe {
+        connection.store_cached_statement(sql.to_owned(), PreparedStatement(stmt), finalize)
+    };
+
+    did_store as c_int
 }
