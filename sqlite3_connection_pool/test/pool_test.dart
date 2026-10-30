@@ -290,6 +290,17 @@ void main() {
     expect(update, isNotNull);
   });
 
+  test('can use single-connection pool', () async {
+    final pool = testPool(readConnections: 0);
+
+    final writer = await pool.writer();
+    final readerFuture = pool.reader();
+
+    writer.returnLease();
+    final reader = await readerFuture;
+    reader.returnLease();
+  });
+
   group('can add additional readers', () {
     test('completes previous requests', () async {
       final pool = testPool(readConnections: 1);
@@ -305,6 +316,41 @@ void main() {
       final exclusive = await pool.exclusiveAccess();
       expect(exclusive.readers, hasLength(11));
       exclusive.close();
+    });
+
+    test('while readers wait on a writer', () async {
+      // Note: This essentially tests an implementation detail, we just want it
+      // to not deadlock. Allowing readers to obtain the write connection in any
+      // state (when all readers are busy) would be valid too.
+
+      final pool = testPool(readConnections: 0);
+      final w1 = await pool.writer();
+      final r1f = pool.reader();
+      final r2f = pool.reader();
+      final w2f = pool.writer();
+
+      pool.addReaders([openDatabase(sandbox)]);
+      var hasr3 = false;
+      final r3f = pool.reader().whenComplete(() => hasr3 = true);
+      final r1 = await r1f;
+      w1.returnLease();
+      // r2f was added to the write queue since there was no read connection, so
+      // it must be able to return in this state.
+      final r2 = await r2f;
+
+      r2.returnLease(); // unblocks w2f
+      final w2 = await w2f;
+      w2.returnLease();
+
+      // The third read request is added with a read connection in the pool, so
+      // it doesn't acquire the (idle) write connection.
+      await pumpEventQueue();
+      expect(hasr3, isFalse);
+
+      r1.returnLease();
+      final r3 = await r3f;
+
+      r3.returnLease();
     });
 
     test('can use write connection for reads', () async {

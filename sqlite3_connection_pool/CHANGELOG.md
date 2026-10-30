@@ -1,6 +1,7 @@
-## 0.2.16 (unreleased)
+## 0.2.16
 
 - Fix dangling references to existing pool connections when pool grows.
+- Fix deadlock when a read is requested on a pool without any read connections.
 
 ## 0.2.15
 

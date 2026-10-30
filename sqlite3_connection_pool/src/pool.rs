@@ -200,17 +200,21 @@ impl PoolState {
         }
     }
 
+    fn unlink(&mut self, waiter: &mut WaitNode) {
+        if waiter.read_entry.is_some() {
+            self.reads.waiters.unlink(waiter);
+        }
+        if waiter.write_entry.is_some() {
+            self.writes.waiters.unlink(waiter);
+        }
+    }
+
     unsafe fn drop_waiter(&mut self, waiter: NonNull<WaitNode>) {
         let mut waiter = unsafe { Box::from_raw(waiter.as_ptr()) };
         let as_mut = waiter.as_mut();
 
         // Remove waiter from queue
-        if as_mut.read_entry.is_some() {
-            self.reads.waiters.unlink(as_mut);
-        }
-        if as_mut.write_entry.is_some() {
-            self.writes.waiters.unlink(as_mut);
-        }
+        self.unlink(as_mut);
 
         // Return resources owned by waiter
         match waiter.waiter {
@@ -246,7 +250,7 @@ impl PoolState {
             let waiter = unsafe { waiting.as_mut() };
             let did_complete = self.try_complete(waiter, &mut false, &mut false);
             if did_complete {
-                self.reads.waiters.unlink(waiter);
+                self.unlink(waiter);
             }
         }
     }
@@ -283,7 +287,7 @@ impl PoolState {
             let waiter = unsafe { waiting.as_mut() };
             let did_complete = self.try_complete(waiter, &mut false, &mut false);
             if did_complete {
-                self.writes.waiters.unlink(waiter);
+                self.unlink(waiter);
             }
         }
     }
@@ -399,13 +403,15 @@ impl PoolState {
                 let connection = if let Some(conn_idx) = self.reads.idle_connections.pop_front() {
                     reads.assigned_connection = Some(conn_idx);
                     Some(&*self.reads.connections[conn_idx])
-                } else if self.reads.connections.is_empty()
-                    && self.try_assign_write(&mut reads.has_writer)
-                {
+                } else if self.reads.connections.is_empty() || waiter.write_entry.is_some() {
                     // Special case: When the pool has no read connections (i.e., consists of a
                     // single write connection), also allow reads to use that connection.
-                    *waiting_for_writes = true;
-                    Some(&self.writes.connection)
+                    if self.try_assign_write(&mut reads.has_writer) {
+                        Some(&self.writes.connection)
+                    } else {
+                        *waiting_for_writes = true;
+                        None
+                    }
                 } else {
                     None
                 };
