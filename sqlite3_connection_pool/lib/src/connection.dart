@@ -72,8 +72,8 @@ final class PoolConnection {
   /// Resets [cached] for the next caller, or drops it from the cache when this
   /// lease was interrupted.
   ///
-  /// A reset statement is reusable, but it keeps what the partial run recorded,
-  /// which a build with `SQLITE_ENABLE_STMT_SCANSTATUS` would keep counting.
+  /// `sqlite3_reset` keeps the statement's `sqlite3_stmt_scanstatus` counters,
+  /// so a reused statement would carry what the cancelled run recorded.
   void _resetOrDropCached(Uint8List encoded, PreparedStatement cached) {
     if (_ref.isInterrupted) {
       // Finalizes the statement, so it must not be touched afterwards.
