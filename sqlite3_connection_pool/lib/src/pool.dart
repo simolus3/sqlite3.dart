@@ -561,8 +561,13 @@ final class ConnectionLease extends AsyncConnection {
   /// [unsafeAccessOnIsolate] gets stopped.
   ///
   /// Interrupting a statement in a transaction may roll it back, so a writer
-  /// usually returns the lease afterwards. Does nothing after [returnLease].
-  void interrupt() => _request.abort();
+  /// usually returns the lease afterwards. Does nothing after [returnLease],
+  /// since the connection may have been granted to someone else by then.
+  void interrupt() {
+    if (!_closed) {
+      _connection.interrupt();
+    }
+  }
 
   /// Manual signal to add tables to [SqliteConnectionPool.updatedTables].
   ///
