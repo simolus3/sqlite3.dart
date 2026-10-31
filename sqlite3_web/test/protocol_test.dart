@@ -51,6 +51,8 @@ void main() {
         isA<Uint8List>().having((e) => e.length, 'length', 10),
         isDart2Wasm ? 100 : BigInt.from(100),
         null,
+        beyondSafeInteger,
+        beyondSafeIntegerNegated,
       ]);
       if (isDart2Wasm) {
         // Make sure we don't loose type information in the js conversion across
@@ -74,6 +76,10 @@ void main() {
       Uint8List(10),
       BigInt.from(100),
       null,
+      // Beyond the safe integer range of a JavaScript number: must not be
+      // rounded on the way (a 64-bit int on dart2wasm, a BigInt on dart2js).
+      beyondSafeInteger,
+      beyondSafeIntegerNegated,
     ]);
     await client.sendRequest(
       newRunQuery(
@@ -102,6 +108,7 @@ void main() {
             [Uint8List(10)],
             [null],
             ['string value'],
+            [beyondSafeInteger],
           ],
         ),
         autoCommit: false,
@@ -124,13 +131,15 @@ void main() {
     );
     final resultSet = response.readResultSet()!;
 
-    expect(resultSet.length, 4);
+    expect(resultSet.length, 5);
     expect(resultSet.map((e) => e['a']), [
       1,
       Uint8List(10),
       null,
       'string value',
+      beyondSafeInteger,
     ]);
+    expect(resultSet.last['a'].toString(), '9007199254740993');
   });
 
   test('can serialize SqliteExceptions', () async {
@@ -231,6 +240,15 @@ void main() {
 }
 
 const isDart2Wasm = bool.fromEnvironment('dart.tool.dart2wasm');
+
+/// 2^53 + 1, the first integer a JavaScript number cannot represent: a 64-bit
+/// `int` on dart2wasm, a `BigInt` on dart2js (where it is not a valid `int`).
+final Object beyondSafeInteger = isDart2Wasm
+    ? int.parse('9007199254740993')
+    : BigInt.parse('9007199254740993');
+final Object beyondSafeIntegerNegated = isDart2Wasm
+    ? int.parse('-9007199254740993')
+    : BigInt.parse('-9007199254740993');
 
 final class TestServer extends ProtocolChannel {
   final StreamController<Notification> _notifications = StreamController();

@@ -1,3 +1,9 @@
+## 0.9.6-wip
+
+- Fix integers outside the safe range of a JavaScript number (beyond 2^53) being
+  rounded when sent to or read from a worker, or an in-context database, with
+  dart2wasm: such values are now transferred as `BigInt`s and read back exactly.
+
 ## 0.9.5
 
 - Add `WorkerDatabase.close`, which can be used to customize how databases are
