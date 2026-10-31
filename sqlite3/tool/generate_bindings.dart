@@ -202,4 +202,7 @@ const _leafFunctions = <String>{
   'sqlite3_stmt_readonly',
   'sqlite3_column_count',
   'sqlite3_bind_parameter_count',
+  // These are just an atomic load/store
+  'sqlite3_interrupt',
+  'sqlite3_is_interrupted',
 };

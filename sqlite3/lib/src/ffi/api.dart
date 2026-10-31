@@ -1,3 +1,6 @@
+/// @docImport '../constants.dart';
+library;
+
 import 'dart:ffi';
 
 import '../database.dart';
@@ -196,12 +199,7 @@ abstract class Database extends CommonDatabase {
   void releaseMemory();
 
   /// Interrupts a query currently running on this connection, making it fail
-  /// with `SQLITE_INTERRUPT`.
-  ///
-  /// Unlike other methods on this class, this one may be called while another
-  /// isolate is using the connection. That is the only way to stop a statement
-  /// that has already started, since the isolate running it is blocked in
-  /// `sqlite3_step`.
+  /// with [SqlError.SQLITE_INTERRUPT].
   ///
   /// Note that this does nothing when no statement is running, and that it does
   /// not affect statements started afterwards. Interrupting a statement in an

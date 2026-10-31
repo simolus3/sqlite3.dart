@@ -5,6 +5,7 @@ use std::cell::UnsafeCell;
 use std::collections::VecDeque;
 use std::ffi::{c_char, c_int, c_void};
 use std::marker::PhantomData;
+use std::pin::Pin;
 use std::ptr::NonNull;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -38,18 +39,16 @@ pub struct PoolConnection {
     pub raw: Connection,
     /// If statement caches are enabled, an LRU cache storing prepared statements by their SQL text.
     ///
-    /// Safety: The context holding the lease on this connection is assumed to have a mutable
-    /// reference to the cache.
-    ///
-    /// This is an [UnsafeCell] because [Self::interrupted] is written while the lease is in use, so
-    /// the cache can't be reached through a `&mut PoolConnection` without aliasing it.
+    /// Safety: The (Dart) context holding the lease on this connection is assumed to have a mutable
+    /// reference to the cache. We can't safely give Dart a `&mut Self` because the connection is
+    /// still reachable through the shared pool state.
     pub cached_statements: Option<UnsafeCell<StatementCache>>,
     /// Whether the current lease on this connection has been interrupted.
     ///
     /// `sqlite3_interrupt` is a no-op when no statement is running and doesn't affect statements
-    /// started afterwards, so an abort arriving before a statement's first `sqlite3_step` would be
-    /// lost. Leaseholders check this flag before running a statement instead. It's cleared when the
-    /// connection is returned, so it only applies to the lease that was interrupted.
+    /// started afterwards, so an interrupt arriving before a statement's first `sqlite3_step` would
+    /// be lost. Leaseholders check this flag before running a statement instead. It's cleared when
+    /// the connection is returned, so it only applies to the lease that was interrupted.
     ///
     /// This is an atomic because it's written by a different isolate than the one holding the lease.
     pub interrupted: AtomicBool,
@@ -68,27 +67,6 @@ impl PoolConnection {
         let cache = unsafe { &mut *cache.get() };
 
         cache.lookup(sql)
-    }
-
-    /// Stores `stmt` in the statement cache, reporting whether it was inserted.
-    ///
-    /// ## Safety
-    ///
-    /// Same as [Self::lookup_cached_statement].
-    pub unsafe fn store_cached_statement(
-        &self,
-        sql: String,
-        stmt: PreparedStatement,
-        finalize: extern "C" fn(PreparedStatement) -> c_int,
-    ) -> bool {
-        let Some(cache) = self.cached_statements.as_ref() else {
-            return false;
-        };
-        // Safety: Guaranteed by the caller.
-        let cache = unsafe { &mut *cache.get() };
-
-        cache.put(sql, stmt, finalize);
-        true
     }
 
     /// Drops the statement cached for `sql`, if the cache is enabled and holds one.
@@ -112,7 +90,7 @@ impl PoolConnection {
 
     /// Marks the current lease on this connection as interrupted.
     ///
-    /// Dart calls `sqlite3_interrupt` after this, so that a statement starting in between is still
+    /// Dart calls `sqlite3_interrupt` afterwards, so that a statement starting in between is still
     /// stopped by the flag even though the interrupt would have missed it.
     pub fn set_interrupted(&self) {
         self.interrupted.store(true, Ordering::SeqCst);
@@ -126,16 +104,34 @@ impl PoolConnection {
     fn clear_interrupted(&self) {
         self.interrupted.store(false, Ordering::SeqCst);
     }
+
+    /// Stores `stmt` in the statement cache, reporting whether it was inserted.
+    ///
+    /// ## Safety
+    ///
+    /// Same as [Self::lookup_cached_statement].
+    pub unsafe fn store_cached_statement(
+        &self,
+        sql: String,
+        stmt: PreparedStatement,
+        finalize: extern "C" fn(PreparedStatement) -> c_int,
+    ) -> bool {
+        let Some(cache) = self.cached_statements.as_ref() else {
+            return false;
+        };
+        // Safety: Guaranteed by the caller.
+        let cache = unsafe { &mut *cache.get() };
+
+        cache.put(sql, stmt, finalize);
+        true
+    }
 }
 
 struct ReadState {
     /// The read connections of this pool.
     ///
-    /// Boxed because their addresses are handed to Dart for the duration of a lease, and
-    /// [PoolState::add_readers] can grow this vector while leases are active. Without the
-    /// indirection that would move the connections, leaving those leases dangling.
-    #[allow(clippy::vec_box, reason = "Dart holds these addresses across a lease")]
-    connections: Vec<Box<PoolConnection>>,
+    /// Boxed because they are shared with Dart by address.
+    connections: Vec<Pin<Box<PoolConnection>>>,
     idle_connections: VecDeque<usize>,
     waiters: LinkedList<Self>,
 }
@@ -217,23 +213,26 @@ impl PoolState {
         cache_size: usize,
         enable_update_hooks: bool,
     ) -> Self {
-        let wrap_connection = |conn: Connection| -> Box<PoolConnection> {
-            Box::new(PoolConnection {
+        let wrap_connection = |conn: Connection| -> PoolConnection {
+            PoolConnection {
                 raw: conn,
                 cached_statements: StatementCache::new(cache_size).map(UnsafeCell::new),
                 interrupted: AtomicBool::new(false),
-            })
+            }
         };
 
         Self {
             reads: ReadState {
                 idle_connections: (0usize..reads.len()).collect(),
-                connections: reads.iter().copied().map(wrap_connection).collect(),
+                connections: reads
+                    .iter()
+                    .copied()
+                    .map(|c| Box::pin(wrap_connection(c)))
+                    .collect(),
                 waiters: Default::default(),
             },
             writes: WriteState {
-                // Not boxed, `PoolState` lives in an `Arc` so this address is already stable.
-                connection: *wrap_connection(writer),
+                connection: wrap_connection(writer),
                 acquired: false,
                 waiters: Default::default(),
             },
@@ -248,17 +247,21 @@ impl PoolState {
         }
     }
 
+    fn unlink(&mut self, waiter: &mut WaitNode) {
+        if waiter.read_entry.is_some() {
+            self.reads.waiters.unlink(waiter);
+        }
+        if waiter.write_entry.is_some() {
+            self.writes.waiters.unlink(waiter);
+        }
+    }
+
     unsafe fn drop_waiter(&mut self, waiter: NonNull<WaitNode>) {
         let mut waiter = unsafe { Box::from_raw(waiter.as_ptr()) };
         let as_mut = waiter.as_mut();
 
         // Remove waiter from queue
-        if as_mut.read_entry.is_some() {
-            self.reads.waiters.unlink(as_mut);
-        }
-        if as_mut.write_entry.is_some() {
-            self.writes.waiters.unlink(as_mut);
-        }
+        self.unlink(as_mut);
 
         // Return resources owned by waiter
         match waiter.waiter {
@@ -296,7 +299,7 @@ impl PoolState {
             let waiter = unsafe { waiting.as_mut() };
             let did_complete = self.try_complete(waiter, &mut false, &mut false);
             if did_complete {
-                self.reads.waiters.unlink(waiter);
+                self.unlink(waiter);
             }
         }
     }
@@ -335,7 +338,7 @@ impl PoolState {
             let waiter = unsafe { waiting.as_mut() };
             let did_complete = self.try_complete(waiter, &mut false, &mut false);
             if did_complete {
-                self.writes.waiters.unlink(waiter);
+                self.unlink(waiter);
             }
         }
     }
@@ -378,7 +381,7 @@ impl PoolState {
 
         let start_index = self.reads.connections.len();
         for connection in connections {
-            self.reads.connections.push(Box::new(PoolConnection {
+            self.reads.connections.push(Box::pin(PoolConnection {
                 raw: *connection,
                 cached_statements: StatementCache::new(self.cache_size).map(UnsafeCell::new),
                 interrupted: AtomicBool::new(false),
@@ -392,7 +395,7 @@ impl PoolState {
     }
 
     /// Returns the write and all read connections of this pool.
-    pub fn view_connections(&self) -> (&PoolConnection, &[Box<PoolConnection>]) {
+    pub fn view_connections(&self) -> (&PoolConnection, &[Pin<Box<PoolConnection>>]) {
         let writer = &self.writes.connection;
         let readers = self.reads.connections.as_slice();
 
@@ -452,13 +455,15 @@ impl PoolState {
                 let connection = if let Some(conn_idx) = self.reads.idle_connections.pop_front() {
                     reads.assigned_connection = Some(conn_idx);
                     Some(&*self.reads.connections[conn_idx])
-                } else if self.reads.connections.is_empty()
-                    && self.try_assign_write(&mut reads.has_writer)
-                {
+                } else if self.reads.connections.is_empty() || waiter.write_entry.is_some() {
                     // Special case: When the pool has no read connections (i.e., consists of a
                     // single write connection), also allow reads to use that connection.
-                    *waiting_for_writes = true;
-                    Some(&self.writes.connection)
+                    if self.try_assign_write(&mut reads.has_writer) {
+                        Some(&self.writes.connection)
+                    } else {
+                        *waiting_for_writes = true;
+                        None
+                    }
                 } else {
                     None
                 };
