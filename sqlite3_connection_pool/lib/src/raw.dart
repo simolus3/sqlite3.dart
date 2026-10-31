@@ -334,12 +334,36 @@ extension type PoolConnectionRef(
   /// The `sqlite3*` connection pointer.
   Pointer<Void> get rawDatabase => connection.ref.raw;
 
+  /// Interrupts a statement running on this connection and marks the current
+  /// lease as interrupted.
+  void interrupt() {
+    // Set first, since a statement starting between these two calls would not
+    // be stopped by sqlite3_interrupt but does see the flag.
+    pkg_sqlite3_connection_pool_set_interrupted(connection);
+    libsqlite3.sqlite3_interrupt(rawDatabase.cast());
+  }
+
+  /// Whether the current lease on this connection has been interrupted.
+  bool get isInterrupted =>
+      pkg_sqlite3_connection_pool_is_interrupted(connection) != 0;
+
   Pointer<Void> lookupCachedStatement(Uint8List sql) {
     return pkg_sqlite3_connection_pool_stmt_cache_get(
       connection,
       sql.address,
       sql.length,
     );
+  }
+
+  /// Drops the statement cached for [sql], finalizing it.
+  bool removeCachedStatement(Uint8List sql) {
+    return pkg_sqlite3_connection_pool_stmt_cache_remove(
+          connection,
+          sql.address,
+          sql.length,
+          libsqlite3.addresses.sqlite3_finalize.cast(),
+        ) !=
+        0;
   }
 
   bool putCachedStatement(Uint8List sql, Pointer<Void> statement) {

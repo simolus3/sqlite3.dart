@@ -648,6 +648,156 @@ void main() {
       secondReader.returnLease();
       firstReadDone.complete();
     });
+
+    test('interrupts a statement that is already running', () async {
+      final pool = testPool(readConnections: 1);
+      final reader = await pool.reader();
+
+      // Runs on a separate isolate, so this one stays free to interrupt while
+      // the statement sits in sqlite3_step.
+      final running = reader.unsafeAccessOnIsolate(
+        (conn) => conn.select(
+          'WITH RECURSIVE c(x) AS ('
+          '  VALUES(1) UNION ALL SELECT x + 1 FROM c WHERE x < 1000000000'
+          ') SELECT count(*) FROM c',
+        ),
+      );
+
+      // Give the isolate time to start stepping.
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      reader.interrupt();
+
+      // SQLite fails the running statement with SQLITE_INTERRUPT, but callers
+      // see the same exception as an interrupt between statements.
+      await expectLater(running, throwsA(isA<PoolAbortException>()));
+      reader.returnLease();
+    });
+
+    test('an interrupt from outside the pool stays a SqliteException', () async {
+      // Only an abort on the lease is reported as a `PoolAbortException`. An
+      // interrupt someone issues on the raw handle is a regular failure.
+      final pool = testPool(readConnections: 1);
+      final reader = await pool.reader();
+
+      final running = reader.unsafeAccessOnIsolate(
+        (conn) => conn.select(
+          'WITH RECURSIVE c(x) AS ('
+          '  VALUES(1) UNION ALL SELECT x + 1 FROM c WHERE x < 1000000000'
+          ') SELECT count(*) FROM c',
+        ),
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      reader.unsafeRawConnection.database.interrupt();
+
+      await expectLater(
+        running,
+        throwsA(
+          isA<SqliteException>().having(
+            (e) => e.resultCode,
+            'resultCode',
+            SqlError.SQLITE_INTERRUPT,
+          ),
+        ),
+      );
+      reader.returnLease();
+    });
+
+    test('interrupt is noticed by a statement that still needs compiling', () async {
+      // The flag is checked before compiling and again before stepping, since
+      // SQLite discards an interrupt that arrives before a statement's first
+      // step.
+      final pool = testPool(readConnections: 1);
+      final reader = await pool.reader();
+      reader.unsafeRawConnection.interrupt();
+
+      await expectLater(
+        reader.unsafeAccess((conn) => conn.select('SELECT ?', [1])),
+        throwsA(isA<PoolAbortException>()),
+      );
+      await expectLater(
+        reader.unsafeAccess((conn) => conn.execute('SELECT ?', [1])),
+        throwsA(isA<PoolAbortException>()),
+      );
+      reader.returnLease();
+    });
+
+    test('an interrupted statement does not stay in the cache', () async {
+      // Same SQL text both times, so the cached statement is reused. The bound
+      // decides whether it finishes instantly or runs long enough to interrupt.
+      const sql =
+          'WITH RECURSIVE c(x) AS ('
+          '  VALUES(1) UNION ALL SELECT x + 1 FROM c WHERE x < ?'
+          ') SELECT count(*) FROM c';
+      final pool = testPool(readConnections: 1, preparedStatementCacheSize: 16);
+
+      final first = await pool.reader();
+      await first.unsafeAccess((conn) {
+        conn.select(sql, [10]);
+        expect(conn.lookupCachedStatement(sql), isNotNull, reason: 'cached');
+      });
+      first.returnLease();
+
+      final second = await pool.reader();
+      final running = second.unsafeAccessOnIsolate(
+        (conn) => conn.select(sql, [1000000000]).length,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      second.interrupt();
+      await expectLater(running, throwsA(isA<PoolAbortException>()));
+
+      // Read through the raw connection: the lease stays interrupted until it
+      // is returned, so anything going through `unsafeAccess` would throw.
+      expect(
+        second.unsafeRawConnection.lookupCachedStatement(sql),
+        isNull,
+        reason: 'the interrupted statement must have been dropped',
+      );
+      second.returnLease();
+
+      // The pool is still usable and caches the statement again.
+      final third = await pool.reader();
+      await third.unsafeAccess((conn) {
+        expect(conn.select(sql, [10]).single.values.single, 10);
+        expect(conn.lookupCachedStatement(sql), isNotNull);
+      });
+      third.returnLease();
+    });
+
+    test('interrupting a returned lease is a no-op', () async {
+      final pool = testPool(readConnections: 1);
+      final first = await pool.reader();
+      first.returnLease();
+
+      final second = await pool.reader();
+      // The connection belongs to the second lease now, so this must not
+      // interrupt it.
+      first.interrupt();
+
+      expect(await second.unsafeAccess((conn) => conn.select('SELECT 1')), [
+        {'1': 1},
+      ]);
+      second.returnLease();
+    });
+
+    test('interrupting a lease does not affect the next one', () async {
+      final pool = testPool(readConnections: 1);
+      final first = await pool.reader();
+
+      first.interrupt();
+      await expectLater(
+        first.unsafeAccess((conn) => conn.select('SELECT 1')),
+        throwsA(isA<PoolAbortException>()),
+      );
+      first.returnLease();
+
+      final second = await pool.reader();
+      expect(await second.unsafeAccess((conn) => conn.select('SELECT 1')), [
+        {'1': 1},
+      ]);
+      second.returnLease();
+    });
+
   });
 
   group('rolls back transactions', () {

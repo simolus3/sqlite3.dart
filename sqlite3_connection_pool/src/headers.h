@@ -67,9 +67,17 @@ void pkg_sqlite3_connection_pool_update_listener(const ConnectionPool* pool,
 void pkg_sqlite3_connection_pool_notify_updates(const PoolRequest* request);
 void pkg_sqlite3_connection_pool_notify_updates_custom(
     const ConnectionPool* request, const char** updates, size_t updates_count);
+void pkg_sqlite3_connection_pool_set_interrupted(
+    const struct PoolConnection* connection);
+int pkg_sqlite3_connection_pool_is_interrupted(
+    const struct PoolConnection* connection);
+
 void* pkg_sqlite3_connection_pool_stmt_cache_get(
     const struct PoolConnection* connection, const uint8_t* sql,
     uintptr_t sql_len);
+int pkg_sqlite3_connection_pool_stmt_cache_remove(
+    const struct PoolConnection* connection, const uint8_t* sql,
+    uintptr_t sql_len, int (*sqlite3_finalize)(void*));
 int pkg_sqlite3_connection_pool_stmt_cache_put(
     const struct PoolConnection* connection, const uint8_t* sql,
     uintptr_t sql_len, void* stmt, int (*sqlite3_finalize)(void*));

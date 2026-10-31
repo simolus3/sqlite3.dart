@@ -7,6 +7,7 @@ use std::ffi::{c_char, c_int, c_void};
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::ptr::NonNull;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// A connection pool can be locked, in which case some Dart actor has exclusive access to all
@@ -42,6 +43,15 @@ pub struct PoolConnection {
     /// reference to the cache. We can't safely give Dart a `&mut Self` because the connection is
     /// still reachable through the shared pool state.
     pub cached_statements: Option<UnsafeCell<StatementCache>>,
+    /// Whether the current lease on this connection has been interrupted.
+    ///
+    /// `sqlite3_interrupt` is a no-op when no statement is running and doesn't affect statements
+    /// started afterwards, so an interrupt arriving before a statement's first `sqlite3_step` would
+    /// be lost. Leaseholders check this flag before running a statement instead. It's cleared when
+    /// the connection is returned, so it only applies to the lease that was interrupted.
+    ///
+    /// This is an atomic because it's written by a different isolate than the one holding the lease.
+    pub interrupted: AtomicBool,
 }
 
 impl PoolConnection {
@@ -57,6 +67,42 @@ impl PoolConnection {
         let cache = unsafe { &mut *cache.get() };
 
         cache.lookup(sql)
+    }
+
+    /// Drops the statement cached for `sql`, if the cache is enabled and holds one.
+    ///
+    /// ## Safety
+    ///
+    /// Same as [Self::lookup_cached_statement].
+    pub unsafe fn remove_cached_statement(
+        &self,
+        sql: &str,
+        finalize: extern "C" fn(PreparedStatement) -> c_int,
+    ) -> bool {
+        let Some(cache) = self.cached_statements.as_ref() else {
+            return false;
+        };
+        // Safety: Guaranteed by the caller.
+        let cache = unsafe { &mut *cache.get() };
+
+        cache.remove(sql, finalize)
+    }
+
+    /// Marks the current lease on this connection as interrupted.
+    ///
+    /// Dart calls `sqlite3_interrupt` afterwards, so that a statement starting in between is still
+    /// stopped by the flag even though the interrupt would have missed it.
+    pub fn set_interrupted(&self) {
+        self.interrupted.store(true, Ordering::SeqCst);
+    }
+
+    pub fn is_interrupted(&self) -> bool {
+        self.interrupted.load(Ordering::SeqCst)
+    }
+
+    /// Clears the interrupted state, so that a subsequent lease starts unaffected.
+    fn clear_interrupted(&self) {
+        self.interrupted.store(false, Ordering::SeqCst);
     }
 
     /// Stores `stmt` in the statement cache, reporting whether it was inserted.
@@ -171,6 +217,7 @@ impl PoolState {
             PoolConnection {
                 raw: conn,
                 cached_statements: StatementCache::new(cache_size).map(UnsafeCell::new),
+                interrupted: AtomicBool::new(false),
             }
         };
 
@@ -244,6 +291,8 @@ impl PoolState {
     }
 
     fn return_read_connection(&mut self, conn: usize) {
+        // Cleared before `try_complete`, which may hand the connection to the next waiter.
+        self.reads.connections[conn].clear_interrupted();
         self.reads.idle_connections.push_back(conn);
 
         if let Some(mut waiting) = self.reads.waiters.first {
@@ -280,6 +329,8 @@ impl PoolState {
             self.send_update_notifications()
         };
 
+        // Cleared before `try_complete`, which may hand the connection to the next waiter.
+        self.writes.connection.clear_interrupted();
         self.writes.acquired = false;
 
         // See if we can complete the next writer.
@@ -333,6 +384,7 @@ impl PoolState {
             self.reads.connections.push(Box::pin(PoolConnection {
                 raw: *connection,
                 cached_statements: StatementCache::new(self.cache_size).map(UnsafeCell::new),
+                interrupted: AtomicBool::new(false),
             }));
         }
 

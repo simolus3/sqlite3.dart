@@ -1,3 +1,9 @@
+## 0.2.17
+
+- Add `ConnectionLease.interrupt()` and `PoolConnection.interrupt()` to stop a statement already running on a leased connection. Unlike other operations on a pool connection, these may be called while another isolate is using it.
+- A statement stopped by an interrupt on its lease now fails with a `PoolAbortException` instead of a `SqliteException`. An interrupt from outside the pool still fails with a `SqliteException`.
+- Statements interrupted while running are no longer kept in the prepared statement cache.
+
 ## 0.2.16
 
 - Fix dangling references to existing pool connections when pool grows.

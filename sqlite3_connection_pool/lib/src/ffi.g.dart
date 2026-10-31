@@ -45,6 +45,11 @@ external ffi.Pointer<ConnectionPool> pkg_sqlite3_connection_pool_initialize(
   ffi.Pointer<InitializedPool> pool,
 );
 
+@ffi.Native<ffi.Int Function(ffi.Pointer<PoolConnection>)>(isLeaf: true)
+external int pkg_sqlite3_connection_pool_is_interrupted(
+  ffi.Pointer<PoolConnection> connection,
+);
+
 @ffi.Native<ffi.Void Function(ffi.Pointer<PoolRequest>)>()
 external void pkg_sqlite3_connection_pool_notify_updates(
   ffi.Pointer<PoolRequest> request,
@@ -131,6 +136,11 @@ external void pkg_sqlite3_connection_pool_request_close(
   ffi.Pointer<PoolRequest> request,
 );
 
+@ffi.Native<ffi.Void Function(ffi.Pointer<PoolConnection>)>(isLeaf: true)
+external void pkg_sqlite3_connection_pool_set_interrupted(
+  ffi.Pointer<PoolConnection> connection,
+);
+
 @ffi.Native<
   ffi.Pointer<ffi.Void> Function(
     ffi.Pointer<PoolConnection>,
@@ -158,6 +168,22 @@ external int pkg_sqlite3_connection_pool_stmt_cache_put(
   ffi.Pointer<ffi.Uint8> sql,
   int sql_len,
   ffi.Pointer<ffi.Void> stmt,
+  ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>>
+  sqlite3_finalize,
+);
+
+@ffi.Native<
+  ffi.Int Function(
+    ffi.Pointer<PoolConnection>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.UintPtr,
+    ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>>,
+  )
+>(isLeaf: true)
+external int pkg_sqlite3_connection_pool_stmt_cache_remove(
+  ffi.Pointer<PoolConnection> connection,
+  ffi.Pointer<ffi.Uint8> sql,
+  int sql_len,
   ffi.Pointer<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>>
   sqlite3_finalize,
 );
