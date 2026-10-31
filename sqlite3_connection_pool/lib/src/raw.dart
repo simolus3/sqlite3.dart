@@ -294,6 +294,11 @@ final class RawSqliteConnectionPool implements Finalizable {
 /// file to form a valid pool. Additionally, connections should use the
 /// [WAL](https://sqlite.org/wal.html) journal mode to support parallel reads
 /// and writes.
+///
+/// Note that no callbacks (user-defined functions, update hooks, ...) may be
+/// installed on any database connection that is part of the pool. Dart
+/// callbacks can only be invoked on the isolate that created them, which does
+/// not work for this package where connections are used on different isolates.
 final class PoolConnections {
   /// The connection used for writes to the database.
   final Database writer;

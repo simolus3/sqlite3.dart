@@ -69,5 +69,11 @@ After you have access to a pool, you can:
  Connections obtained this way must be returned into the pool with `returnLease()`.
 - Inspect all connections at once with `await pool.exclusiveAccess()`.
 
+> [!WARNING]
+> Pools (and their connections) are designed to be used across isolates. This means that no Dart callbacks
+> (user-defined functions, update hooks, ...) can be installed on those connections. Invoking those would
+> crashes the process.
+> Update hooks are built in to this package, user-defined functions would have to be written natively.
+
 You can explicitly close pools with `close()`, the underlying connections will be closed once all pools
 with the shared name have been closed.
