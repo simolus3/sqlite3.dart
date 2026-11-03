@@ -1,3 +1,7 @@
+# 0.9.6 (unreleased)
+
+- Improve contention handling in `opfsWithExternalLocksWorkaround` mode.
+
 ## 0.9.5
 
 - Add `WorkerDatabase.close`, which can be used to customize how databases are
