@@ -6,6 +6,7 @@ import '../sqlite3/test/ffi/ffi_test.dart' as ffi_test;
 import '../sqlite3/test/ffi/prepared_statement_test.dart'
     as prepared_statement_test;
 import '../sqlite3/test/ffi/sqlite3_test.dart' as sqlite3_test;
+import '../sqlite3/test/ffi/traces_test.dart' as traces_test;
 import '../sqlite3/test/ffi/vfs_test.dart' as vfs_test;
 
 import '../sqlite3_connection_pool/test/pool_test.dart' as pool_test;
@@ -22,6 +23,7 @@ void main() {
     group('ffi_test.dart', ffi_test.main);
     group('prepared_statement_test.dart', prepared_statement_test.main);
     group('sqlite3_test.dart', sqlite3_test.main);
+    group('traces_test.dart', traces_test.main);
     group('vfs_test.dart', vfs_test.main);
   });
 

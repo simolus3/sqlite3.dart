@@ -114,6 +114,24 @@ void main() {
     );
   });
 
+  test('invokes trace callbacks', () {
+    final db = sqlite3.openInMemory()..closeWhenDone();
+    final statements = <SqliteTraceStatement>[];
+    db.trace = SqliteTraceCallback(
+      (event) {
+        statements.add(event as SqliteTraceStatement);
+        return 0;
+      },
+      row: false,
+      profile: false,
+    );
+
+    db.execute('SELECT 1');
+
+    expect(statements, hasLength(1));
+    expect(statements.single.sql, 'SELECT 1');
+  });
+
   const ciphers = bool.fromEnvironment('sqlite3.multipleciphers');
   if (ciphers) {
     test('contains sqlite3multipleciphers', () {

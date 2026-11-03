@@ -548,6 +548,12 @@ const SQLITE_DELETE = 9;
 const SQLITE_INSERT = 18;
 const SQLITE_UPDATE = 23;
 
+// Trace event codes, https://www.sqlite.org/c3ref/c_trace.html
+const SQLITE_TRACE_STMT = 0x01;
+const SQLITE_TRACE_PROFILE = 0x02;
+const SQLITE_TRACE_ROW = 0x04;
+const SQLITE_TRACE_CLOSE = 0x08;
+
 // Connection config options https://www.sqlite.org/c3ref/c_dbconfig_defensive.html
 const SQLITE_DBCONFIG_DQS_DML = 1013;
 const SQLITE_DBCONFIG_DQS_DDL = 1014;
