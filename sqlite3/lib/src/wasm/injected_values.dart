@@ -362,14 +362,16 @@ final class DartBridgeCallbacks {
       SQLITE_TRACE_PROFILE => () {
         final lo = memory.int32ValueOfPointer(payload);
         final hi = memory.int32ValueOfPointer(payload + 4);
-        final nanoseconds = (lo & 0xFFFFFFFF) | (hi & 0xFFFFFFFF) << 32;
+        // Combine with arithmetic: bitwise operations truncate to 32 bits
+        // when compiled to JavaScript.
+        final nanoseconds = (lo & 0xFFFFFFFF) + (hi & 0xFFFFFFFF) * 0x100000000;
         return SqliteTraceProfile(
           Duration(microseconds: nanoseconds ~/ 1000),
           statementAddress,
         );
       }(),
       SQLITE_TRACE_ROW => SqliteTraceRow(statementAddress),
-      _ => null, // unreachable: we only subscribe to the union mask
+      _ => null,
     };
 
     if (trace == null) {

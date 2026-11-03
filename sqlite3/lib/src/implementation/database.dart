@@ -541,6 +541,8 @@ base class DatabaseImplementation implements CommonDatabase {
 
   @override
   set trace(SqliteTraceCallback? callback) {
+    ensureOpen();
+
     if (callback == null) {
       if (_trace == null) return;
 

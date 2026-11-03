@@ -294,29 +294,8 @@ SQLITE_API void dart_sqlite3_updates(sqlite3* db, __externref_t function) {
 
 static int dartXTrace(unsigned int event, void* context, void* statement,
                       void* payload) {
-  // NOTE: sqlite invokes xCallback(T, C, P, X): context second, statement
-  // third.
-  switch (event) {
-    case SQLITE_TRACE_STMT:
-      // X: unexpanded SQL text (const char*), NULL for some internal
-      // statements.
-      return dartDispatchTraceHook(host_object_get(context), event,
-                                   (int)(intptr_t)statement, payload);
-    case SQLITE_TRACE_PROFILE:
-      // X: pointer to a 64-bit nanosecond count. Dart reads the value from
-      // memory as two 32-bit integers to avoid a JS BigInt allocation per
-      // event.
-      [[fallthrough]];
-    case SQLITE_TRACE_ROW:
-      // X: unused.
-      return dartDispatchTraceHook(host_object_get(context), event,
-                                   (int)(intptr_t)statement, payload);
-    default:
-      break;  // SQLITE_TRACE_CLOSE is never subscribed.
-  }
-  // The value returned by trace callbacks is currently ignored by sqlite,
-  // but reserved for future use.
-  return 0;
+  return dartDispatchTraceHook(host_object_get(context), event,
+                               (int)(intptr_t)statement, payload);
 }
 
 static const char kTraceClientData[] = "dart_sqlite3_trace";

@@ -41,6 +41,14 @@ void testTraces(FutureOr<CommonSqlite3> Function() loadSqlite) {
     );
   });
 
+  test('registering a callback after closing is rejected', () {
+    database.close();
+    expect(
+      () => database.trace = SqliteTraceCallback((_) => 0),
+      throwsStateError,
+    );
+  });
+
   test('reports statement and profile events', () {
     database.execute('CREATE TABLE tbl (a)');
     final events = <SqliteTrace>[];
