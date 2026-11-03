@@ -1,13 +1,7 @@
 ## 3.9.0 (unreleased)
 
 - Add `CommonDatabase.trace`, reporting statement trace events through a
-  callback registered with `sqlite3_trace_v2`. The callback runs synchronously
-  while statements are running; as the property mirrors the native interface,
-  each database supports a single callback at a time and assigning a new one
-  replaces the previous registration (`db.trace = null` removes it).
-
-## 3.8.1-wip
-
+  callback registered with `sqlite3_trace_v2`.
 - Add `Database.interrupt()` and `Database.isInterrupted` on native platforms.
 - IndexedDB file system: Treat unexpected abort events as errors.
 - Update SQLCipher to version 4.20.0.
