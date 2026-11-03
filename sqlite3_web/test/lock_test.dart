@@ -87,6 +87,7 @@ void main() {
       final locks = DatabaseLocks(name, true);
       await locks.lock(() async {}, null);
 
+      await pumpEventQueue(); // time to clear the -tmp lock
       // Should keep the outer and inner lock locked at this point.
       expect(await _queryHeldLocks(name), hasLength(2));
 
@@ -105,6 +106,7 @@ void main() {
       final name = _randomLockName();
       final locks = DatabaseLocks(name, true);
       await locks.lock(() async {}, null);
+      await pumpEventQueue(); // time to clear the -tmp lock
       expect(await _queryHeldLocks(name), hasLength(2));
 
       await locks.releaseNavigatorLocks();
