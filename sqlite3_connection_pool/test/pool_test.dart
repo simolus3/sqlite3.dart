@@ -746,11 +746,14 @@ void main() {
       await Isolate.spawn(_exitWhileStatementRuns, (sandbox, port.sendPort));
       expect(await messages.next, 'exited');
 
-      await SqliteConnectionPool.open(
+      final pool = SqliteConnectionPool.open(
         name: sandbox,
         openConnections: () => throw 'pool was closed',
-      ).close();
+      );
       expect(await messages.next, 1000000);
+      // The database must be closed before the sandbox is deleted on Windows.
+      (await pool.writer()).returnLease();
+      await pool.close();
     });
   });
 
