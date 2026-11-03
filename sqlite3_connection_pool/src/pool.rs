@@ -5,6 +5,7 @@ use std::cell::UnsafeCell;
 use std::collections::VecDeque;
 use std::ffi::{c_char, c_int, c_void};
 use std::marker::PhantomData;
+use std::pin::Pin;
 use std::ptr::NonNull;
 use std::sync::{Arc, Mutex};
 
@@ -36,11 +37,55 @@ pub struct PoolConnection {
     /// The raw `sqlite3*` connection pointer.
     pub raw: Connection,
     /// If statement caches are enabled, an LRU cache storing prepared statements by their SQL text.
-    pub cached_statements: Option<StatementCache>,
+    ///
+    /// Safety: The (Dart) context holding the lease on this connection is assumed to have a mutable
+    /// reference to the cache. We can't safely give Dart a `&mut Self` because the connection is
+    /// still reachable through the shared pool state.
+    pub cached_statements: Option<UnsafeCell<StatementCache>>,
+}
+
+impl PoolConnection {
+    /// Looks up a cached prepared statement for `sql`, if the cache is enabled and holds one.
+    ///
+    /// ## Safety
+    ///
+    /// The caller must hold the lease on this connection, and must not call this or
+    /// [Self::store_cached_statement] concurrently.
+    pub unsafe fn lookup_cached_statement(&self, sql: &str) -> Option<NonNull<c_void>> {
+        let cache = self.cached_statements.as_ref()?;
+        // Safety: Guaranteed by the caller.
+        let cache = unsafe { &mut *cache.get() };
+
+        cache.lookup(sql)
+    }
+
+    /// Stores `stmt` in the statement cache, reporting whether it was inserted.
+    ///
+    /// ## Safety
+    ///
+    /// Same as [Self::lookup_cached_statement].
+    pub unsafe fn store_cached_statement(
+        &self,
+        sql: String,
+        stmt: PreparedStatement,
+        finalize: extern "C" fn(PreparedStatement) -> c_int,
+    ) -> bool {
+        let Some(cache) = self.cached_statements.as_ref() else {
+            return false;
+        };
+        // Safety: Guaranteed by the caller.
+        let cache = unsafe { &mut *cache.get() };
+
+        cache.put(sql, stmt, finalize);
+        true
+    }
 }
 
 struct ReadState {
-    connections: Vec<PoolConnection>,
+    /// The read connections of this pool.
+    ///
+    /// Boxed because they are shared with Dart by address.
+    connections: Vec<Pin<Box<PoolConnection>>>,
     idle_connections: VecDeque<usize>,
     waiters: LinkedList<Self>,
 }
@@ -109,10 +154,9 @@ struct WritePoolRequest {
     has_writer: bool,
 }
 
-#[derive(Default)]
 struct ExclusivePoolRequest {
     has_writer: bool,
-    obtained_read_connections: usize,
+    obtained_read_connections: Vec<usize>,
 }
 
 impl PoolState {
@@ -126,14 +170,18 @@ impl PoolState {
         let wrap_connection = |conn: Connection| -> PoolConnection {
             PoolConnection {
                 raw: conn,
-                cached_statements: StatementCache::new(cache_size),
+                cached_statements: StatementCache::new(cache_size).map(UnsafeCell::new),
             }
         };
 
         Self {
             reads: ReadState {
                 idle_connections: (0usize..reads.len()).collect(),
-                connections: reads.iter().copied().map(wrap_connection).collect(),
+                connections: reads
+                    .iter()
+                    .copied()
+                    .map(|c| Box::pin(wrap_connection(c)))
+                    .collect(),
                 waiters: Default::default(),
             },
             writes: WriteState {
@@ -152,17 +200,21 @@ impl PoolState {
         }
     }
 
+    fn unlink(&mut self, waiter: &mut WaitNode) {
+        if waiter.read_entry.is_some() {
+            self.reads.waiters.unlink(waiter);
+        }
+        if waiter.write_entry.is_some() {
+            self.writes.waiters.unlink(waiter);
+        }
+    }
+
     unsafe fn drop_waiter(&mut self, waiter: NonNull<WaitNode>) {
         let mut waiter = unsafe { Box::from_raw(waiter.as_ptr()) };
         let as_mut = waiter.as_mut();
 
         // Remove waiter from queue
-        if as_mut.read_entry.is_some() {
-            self.reads.waiters.unlink(as_mut);
-        }
-        if as_mut.write_entry.is_some() {
-            self.writes.waiters.unlink(as_mut);
-        }
+        self.unlink(as_mut);
 
         // Return resources owned by waiter
         match waiter.waiter {
@@ -180,12 +232,12 @@ impl PoolState {
                     self.return_write_connection();
                 }
             }
-            Waiter::Exclusive(ref exclusive) => {
+            Waiter::Exclusive(exclusive) => {
                 if exclusive.has_writer {
                     self.return_write_connection()
                 }
-                for i in 0..self.reads.connections.len() {
-                    self.return_read_connection(i)
+                for conn in exclusive.obtained_read_connections {
+                    self.return_read_connection(conn)
                 }
             }
         }
@@ -198,7 +250,7 @@ impl PoolState {
             let waiter = unsafe { waiting.as_mut() };
             let did_complete = self.try_complete(waiter, &mut false, &mut false);
             if did_complete {
-                self.reads.waiters.unlink(waiter);
+                self.unlink(waiter);
             }
         }
     }
@@ -235,7 +287,7 @@ impl PoolState {
             let waiter = unsafe { waiting.as_mut() };
             let did_complete = self.try_complete(waiter, &mut false, &mut false);
             if did_complete {
-                self.writes.waiters.unlink(waiter);
+                self.unlink(waiter);
             }
         }
     }
@@ -262,7 +314,14 @@ impl PoolState {
         pool: ConnectionPool,
         msg: PendingMessage,
     ) -> PoolRequestHandle {
-        self.register_waiter(pool, msg, Waiter::Exclusive(Default::default()))
+        self.register_waiter(
+            pool,
+            msg,
+            Waiter::Exclusive(ExclusivePoolRequest {
+                has_writer: false,
+                obtained_read_connections: Vec::with_capacity(self.reads.connections.len()),
+            }),
+        )
     }
 
     pub fn add_readers(&mut self, connections: &[Connection]) {
@@ -271,10 +330,10 @@ impl PoolState {
 
         let start_index = self.reads.connections.len();
         for connection in connections {
-            self.reads.connections.push(PoolConnection {
+            self.reads.connections.push(Box::pin(PoolConnection {
                 raw: *connection,
-                cached_statements: StatementCache::new(self.cache_size),
-            });
+                cached_statements: StatementCache::new(self.cache_size).map(UnsafeCell::new),
+            }));
         }
 
         let end_index = start_index + connections.len();
@@ -284,7 +343,7 @@ impl PoolState {
     }
 
     /// Returns the write and all read connections of this pool.
-    pub fn view_connections(&self) -> (&PoolConnection, &[PoolConnection]) {
+    pub fn view_connections(&self) -> (&PoolConnection, &[Pin<Box<PoolConnection>>]) {
         let writer = &self.writes.connection;
         let readers = self.reads.connections.as_slice();
 
@@ -343,14 +402,16 @@ impl PoolState {
 
                 let connection = if let Some(conn_idx) = self.reads.idle_connections.pop_front() {
                     reads.assigned_connection = Some(conn_idx);
-                    Some(&self.reads.connections[conn_idx])
-                } else if self.reads.connections.is_empty()
-                    && self.try_assign_write(&mut reads.has_writer)
-                {
+                    Some(&*self.reads.connections[conn_idx])
+                } else if self.reads.connections.is_empty() || waiter.write_entry.is_some() {
                     // Special case: When the pool has no read connections (i.e., consists of a
                     // single write connection), also allow reads to use that connection.
-                    *waiting_for_writes = true;
-                    Some(&self.writes.connection)
+                    if self.try_assign_write(&mut reads.has_writer) {
+                        Some(&self.writes.connection)
+                    } else {
+                        *waiting_for_writes = true;
+                        None
+                    }
                 } else {
                     None
                 };
@@ -385,11 +446,11 @@ impl PoolState {
                     return false;
                 }
 
-                while exclusive.obtained_read_connections < self.reads.connections.len() {
-                    let Some(_) = self.reads.idle_connections.pop_front() else {
+                while exclusive.obtained_read_connections.len() < self.reads.connections.len() {
+                    let Some(idx) = self.reads.idle_connections.pop_front() else {
                         return false;
                     };
-                    exclusive.obtained_read_connections += 1;
+                    exclusive.obtained_read_connections.push(idx);
                 }
 
                 waiter.port.send_did_obtain_exclusive(&self.functions);
@@ -412,7 +473,7 @@ impl PoolState {
 
     fn drop_connection(conn: &mut PoolConnection, functions: &ExternalFunctions) {
         if let Some(cache) = &mut conn.cached_statements {
-            cache.close_statements(&functions);
+            cache.get_mut().close_statements(&functions);
         }
 
         (functions.sqlite3_close_v2)(conn.raw);

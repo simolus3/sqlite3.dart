@@ -6,6 +6,12 @@
   each database supports a single callback at a time and assigning a new one
   replaces the previous registration (`db.trace = null` removes it).
 
+## 3.8.1-wip
+
+- Add `Database.interrupt()` and `Database.isInterrupted` on native platforms.
+- IndexedDB file system: Treat unexpected abort events as errors.
+- Update SQLCipher to version 4.20.0.
+
 ## 3.8.0
 
 - Fix `InMemoryFileSystem` (and `IndexedDbFileSystem`, which reads through it)

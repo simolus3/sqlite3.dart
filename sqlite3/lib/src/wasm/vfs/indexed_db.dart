@@ -97,7 +97,7 @@ class AsynchronousIndexedDbFileSystem {
       try {
         await body(tx);
       } on Object {
-        raw.abort();
+        tx._abort();
         rethrow;
       }
       raw.commit();
@@ -122,22 +122,34 @@ final class _IndexedDbTransaction {
   final web.IDBTransaction _transaction;
   final Completer<void> _completer = Completer.sync();
   var closeAfterwards = false;
+  var _wasAbortedInDart = false;
 
   final web.IDBObjectStore _files, _blocks;
 
   _IndexedDbTransaction(this._transaction)
     : _files = _transaction.objectStore(_filesStore),
       _blocks = _transaction.objectStore(_blocksStore) {
-    final handleComplete = () {
+    _transaction.oncomplete = () {
       _completer.complete();
     }.toJS;
-
-    _transaction.oncomplete = handleComplete;
-    _transaction.onabort = handleComplete;
+    _transaction.onabort = () {
+      if (!_completer.isCompleted) {
+        if (_wasAbortedInDart) {
+          // The abort event is expected, don't report it as an error.
+          _completer.complete();
+        } else {
+          _completer.completeError(
+            _transaction.error ?? web.DOMException('IDB transaction aborted'),
+          );
+        }
+      }
+    }.toJS;
     _transaction.onerror = () {
-      _completer.completeError(
-        _transaction.error ?? web.DOMException('IDB transaction error'),
-      );
+      if (!_completer.isCompleted) {
+        _completer.completeError(
+          _transaction.error ?? web.DOMException('IDB transaction error'),
+        );
+      }
     }.toJS;
   }
 
@@ -159,6 +171,11 @@ final class _IndexedDbTransaction {
       [fileId.toJS, startOffset.toJS].toJS,
       [fileId.toJS, endOffsetInclusive.toJS].toJS,
     );
+  }
+
+  void _abort() {
+    _wasAbortedInDart = true;
+    _transaction.abort();
   }
 
   Future<void> clear() {

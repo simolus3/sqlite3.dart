@@ -1,3 +1,6 @@
+/// @docImport '../constants.dart';
+library;
+
 import 'dart:ffi';
 
 import '../database.dart';
@@ -194,6 +197,26 @@ abstract class Database extends CommonDatabase {
   ///
   /// See https://sqlite.org/c3ref/db_release_memory.html
   void releaseMemory();
+
+  /// Interrupts a query currently running on this connection, making it fail
+  /// with [SqlError.SQLITE_INTERRUPT].
+  ///
+  /// Note that this does nothing when no statement is running, and that it does
+  /// not affect statements started afterwards. Interrupting a statement in an
+  /// explicit transaction may roll that transaction back.
+  ///
+  /// See https://sqlite.org/c3ref/interrupt.html
+  void interrupt();
+
+  /// Whether an [interrupt] is pending on this connection.
+  ///
+  /// Note that SQLite clears this once another statement runs, and that a
+  /// pending interrupt does not stop a statement that has not started yet.
+  ///
+  /// Requires SQLite 3.41.0 or later.
+  ///
+  /// See https://sqlite.org/c3ref/interrupt.html
+  bool get isInterrupted;
 }
 
 /// A prepared statement.

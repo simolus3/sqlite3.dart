@@ -1,3 +1,12 @@
+## 0.2.16
+
+- Fix dangling references to existing pool connections when pool grows.
+- Fix deadlock when a read is requested on a pool without any read connections.
+
+## 0.2.15
+
+- Fix pool corruption when an exclusive lease holding some read connections is aborted.
+
 ## 0.2.14
 
 - Fix a double-free when `returnLease()` is called twice.

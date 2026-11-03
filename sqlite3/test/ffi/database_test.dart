@@ -88,6 +88,28 @@ void main() {
     expect(busyHandlerInvocations, [0, 1, 2, 3]);
   });
 
+  test('interrupt', () {
+    final db = sqlite3.openInMemory();
+    addTearDown(db.close);
+
+    final stmt = db.prepare('VALUES (1), (2), (3)');
+    final cursor = stmt.selectCursor();
+    expect(cursor.moveNext(), isTrue);
+
+    db.interrupt();
+    expect(
+      cursor.moveNext,
+      throwsSqlError(SqlError.SQLITE_INTERRUPT, SqlError.SQLITE_INTERRUPT),
+    );
+    expect(db.isInterrupted, isTrue);
+    stmt.close();
+    expect(db.isInterrupted, isTrue);
+
+    // New statements reset the interrupted flag.
+    db.execute('SELECT 1');
+    expect(db.isInterrupted, isFalse);
+  });
+
   group('borrowed connections', () {
     test('fromPointer', () {
       final originalConnection = sqlite3.openInMemory();
