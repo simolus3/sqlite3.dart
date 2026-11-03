@@ -648,6 +648,10 @@ pub struct PoolRequestHandle {
     node: NonNull<WaitNode>,
 }
 
+// The node is only accessed with a mutex on the pool, so handles can be shared across threads.
+unsafe impl Send for PoolRequestHandle {}
+unsafe impl Sync for PoolRequestHandle {}
+
 impl Drop for PoolRequestHandle {
     fn drop(&mut self) {
         let mut pool = self.pool.lock().unwrap();

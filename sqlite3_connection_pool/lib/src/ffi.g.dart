@@ -131,6 +131,11 @@ external void pkg_sqlite3_connection_pool_request_close(
   ffi.Pointer<PoolRequest> request,
 );
 
+@ffi.Native<ffi.UintPtr Function(ffi.Pointer<PoolRequest>)>()
+external int pkg_sqlite3_connection_pool_request_transfer(
+  ffi.Pointer<PoolRequest> request,
+);
+
 @ffi.Native<
   ffi.Pointer<ffi.Void> Function(
     ffi.Pointer<PoolConnection>,
@@ -162,6 +167,14 @@ external int pkg_sqlite3_connection_pool_stmt_cache_put(
   sqlite3_finalize,
 );
 
+@ffi.Native<ffi.Void Function(ffi.UintPtr)>()
+external void pkg_sqlite3_connection_pool_transfer_close(int transfer);
+
+@ffi.Native<ffi.Pointer<PoolRequest> Function(ffi.UintPtr)>()
+external ffi.Pointer<PoolRequest> pkg_sqlite3_connection_pool_transfer_receive(
+  int transfer,
+);
+
 @ffi.Native<
   ffi.Void Function(ffi.Pointer<ConnectionPool>, ffi.Int, ffi.Int64)
 >()
@@ -189,6 +202,9 @@ class _SymbolAddresses {
   ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<PoolRequest>)>>
   get pkg_sqlite3_connection_pool_request_close =>
       ffi.Native.addressOf(self.pkg_sqlite3_connection_pool_request_close);
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.UintPtr)>>
+  get pkg_sqlite3_connection_pool_transfer_close =>
+      ffi.Native.addressOf(self.pkg_sqlite3_connection_pool_transfer_close);
 }
 
 final class ConnectionPool extends ffi.Opaque {}

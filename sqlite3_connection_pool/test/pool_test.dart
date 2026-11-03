@@ -715,6 +715,115 @@ void main() {
     });
   });
 
+  group('isolate exiting while its statement runs', () {
+    test('keeps connection leased', () async {
+      final pool = testPool();
+      final port = ReceivePort();
+      addTearDown(port.close);
+      final exited = Completer<void>();
+      var statementDone = false;
+      port.listen((message) {
+        if (message == 'exited') {
+          exited.complete();
+        } else {
+          statementDone = true;
+        }
+      });
+
+      await Isolate.spawn(_exitWhileStatementRuns, (pool.name, port.sendPort));
+      await exited.future;
+
+      final writer = await pool.writer();
+      expect(statementDone, isTrue);
+      writer.returnLease();
+    });
+
+    test('keeps pool open', () async {
+      final port = ReceivePort();
+      addTearDown(port.close);
+      final messages = StreamQueue(port);
+      // The other isolate opens the pool, so it holds the last reference.
+      await Isolate.spawn(_exitWhileStatementRuns, (sandbox, port.sendPort));
+      expect(await messages.next, 'exited');
+
+      await SqliteConnectionPool.open(
+        name: sandbox,
+        openConnections: () => throw 'pool was closed',
+      ).close();
+      expect(await messages.next, 1000000);
+    });
+  });
+
+  test('does not keep lease when computation cannot be sent', () async {
+    final pool = testPool();
+    final writer = await pool.writer();
+    final port = ReceivePort();
+    addTearDown(port.close);
+
+    // A ReceivePort can't be sent to another isolate, so this never runs.
+    await expectLater(
+      writer.unsafeAccessOnIsolate((_) => port.close()),
+      throwsArgumentError,
+    );
+    writer.returnLease();
+    (await pool.writer()).returnLease();
+  });
+
+  test('waiting call keeps connection leased after returnLease', () async {
+    final pool = testPool();
+    final port = ReceivePort();
+    addTearDown(port.close);
+    var waitingDone = false;
+    port.listen((_) => waitingDone = true);
+
+    final writer = await pool.writer();
+    final first = writer.select('SELECT 1');
+    final waiting = writer.unsafeAccessOnIsolate(_countRows(port.sendPort));
+    writer.returnLease();
+    await first;
+
+    final next = await pool.writer();
+    expect(waitingDone, isTrue);
+    next.returnLease();
+    await waiting;
+  });
+
+  test('does not keep lease when computation never runs', () async {
+    final pool = testPool();
+    final port = ReceivePort();
+    await Isolate.spawn(_exitBeforeComputationRuns, (pool.name, port.sendPort));
+    await port.first;
+
+    final writer = await pool.writer(
+      abortSignal: Future.delayed(const Duration(seconds: 3)),
+    );
+    writer.returnLease();
+  });
+
+  test('unsafeAccessOnIsolate with custom run', () async {
+    final pool = testPool();
+    final replies = ReceivePort();
+    final worker = await Isolate.spawn(_runComputations, replies.sendPort);
+    addTearDown(worker.kill);
+    final requests = await replies.first as SendPort;
+
+    var runs = 0;
+    Future<R> run<R>(FutureOr<R> Function() computation) async {
+      runs++;
+      final result = ReceivePort();
+      requests.send((computation, result.sendPort));
+      return await result.first as R;
+    }
+
+    final writer = await pool.writer();
+    expect(await writer.unsafeAccessOnIsolate((_) => 1, run: run), 1);
+    expect(runs, 1);
+    writer.returnLease();
+
+    // The worker is still alive, so it must have released the connection.
+    (await pool.writer()).returnLease();
+  });
+
   group('cannot use database after returning lease', () {
     test('read', () async {
       final pool = testPool();
@@ -788,6 +897,53 @@ PoolConnections Function() poolConnectionOpener(
 Database openDatabase(String directory) {
   return sqlite3.open(p.join(directory, 'test.db'))
     ..execute('pragma journal_mode = wal;');
+}
+
+void _exitWhileStatementRuns((String, SendPort) args) async {
+  final (directory, port) = args;
+  final started = ReceivePort();
+  final notifyStarted = started.sendPort;
+  final writer = await createPool(directory: directory).writer();
+  writer.unsafeAccessOnIsolate((conn) {
+    notifyStarted.send(null);
+    final result = conn.select(
+      'WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c '
+      'LIMIT 1000000) SELECT count(*) FROM c',
+    );
+    port.send(result.single.columnAt(0));
+  });
+
+  // Exit while the statement is still running.
+  await started.first;
+  Isolate.exit(port, 'exited');
+}
+
+void Function(PoolConnection) _countRows(SendPort done) {
+  return (conn) {
+    conn.select(
+      'WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c '
+      'LIMIT 1000000) SELECT count(*) FROM c',
+    );
+    done.send(null);
+  };
+}
+
+void _exitBeforeComputationRuns((String, SendPort) args) async {
+  final (directory, port) = args;
+  final writer = await createPool(directory: directory).writer();
+  // This run never calls the computation.
+  writer.unsafeAccessOnIsolate((_) {}, run: <R>(_) => Completer<R>().future);
+  Isolate.exit(port);
+}
+
+void _runComputations(SendPort replies) {
+  final requests = ReceivePort();
+  replies.send(requests.sendPort);
+  requests.listen((message) async {
+    final (computation, result) =
+        message as (FutureOr<Object?> Function(), SendPort);
+    result.send(await computation());
+  });
 }
 
 void _startIsolateForOpenTest(SendPort notify) {

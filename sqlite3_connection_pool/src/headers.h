@@ -60,6 +60,10 @@ void pkg_sqlite3_connection_pool_query_connections(
     struct PoolConnection** readers, uintptr_t reader_count);
 
 void pkg_sqlite3_connection_pool_request_close(PoolRequest* request);
+uintptr_t pkg_sqlite3_connection_pool_request_transfer(
+    const PoolRequest* request);
+PoolRequest* pkg_sqlite3_connection_pool_transfer_receive(uintptr_t transfer);
+void pkg_sqlite3_connection_pool_transfer_close(uintptr_t transfer);
 
 void pkg_sqlite3_connection_pool_update_listener(const ConnectionPool* pool,
                                                  int add, DartPort listener);

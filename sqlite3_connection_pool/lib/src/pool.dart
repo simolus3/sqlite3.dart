@@ -383,13 +383,17 @@ final class SqliteConnectionPool {
 base class AsyncConnection {
   final PoolConnection _connection;
 
+  // The native request from which the database has been obtained. Closing this
+  // will return the connection to the pool.
+  final RawPoolRequest _request;
+
   // Because the database is used across multiple isolates (the current one and
   // the short-lived ones used for computations), we need to guard access to the
   // database with a mutex.
   final Mutex _mutex = Mutex();
   var _closed = false;
 
-  AsyncConnection._(this._connection);
+  AsyncConnection._(this._connection, this._request);
 
   /// If the connection is in a transaction, rolls that transaction back.
   ///
@@ -432,20 +436,57 @@ base class AsyncConnection {
   /// On a short-lived isolate, calls [computation] as a critical section with
   /// the underlying database.
   ///
+  /// The connection stays leased until [computation] completes, even if this
+  /// isolate exits while it runs. If the isolate running [computation] exits
+  /// before [computation] completes, its open statements can be finalized after
+  /// the connection has been returned to the pool.
+  ///
+  /// [run] starts [computation] on another isolate and defaults to
+  /// [Isolate.run]. It must not complete before [computation] does or its
+  /// isolate exits.
+  ///
   /// See [unsafeAccess] for potential issues to be aware of when calling this
   /// method.
   Future<T> unsafeAccessOnIsolate<T>(
+    FutureOr<T> Function(PoolConnection) computation, {
+    Future<R> Function<R>(FutureOr<R> Function() computation) run = Isolate.run,
+  }) async {
+    if (_closed) {
+      throw StateError('LeasedDatabase used after callback returned');
+    }
+
+    // The lease can be returned while we wait on the mutex, so transfer it now.
+    final transfer = _request.transfer();
+    try {
+      return await unsafeAccess(
+        (conn) => run(
+          _runWithTransfer(
+            transfer.id,
+            conn.unsafePointer.address,
+            computation,
+          ),
+        ),
+      );
+    } finally {
+      transfer.close();
+    }
+  }
+
+  static Future<T> Function() _runWithTransfer<T>(
+    int transfer,
+    int address,
     FutureOr<T> Function(PoolConnection) computation,
   ) {
-    return unsafeAccess((conn) {
-      final address = conn.unsafePointer.address;
-      return Isolate.run(() {
-        final conn = PoolConnection.unsafeFromPointer(
-          Pointer.fromAddress(address),
+    return () async {
+      final request = ReceivedPoolRequest(transfer);
+      try {
+        return await computation(
+          PoolConnection.unsafeFromPointer(Pointer.fromAddress(address)),
         );
-        return computation(conn);
-      });
-    });
+      } finally {
+        request.close();
+      }
+    };
   }
 
   /// Returns the [Database.autocommit] status for the wrapped database.
@@ -502,12 +543,9 @@ base class AsyncConnection {
 /// access is closed for any reason, the lease is also automatically returned.
 
 final class ConnectionLease extends AsyncConnection {
-  // The native request from which the database has been obtained. Closing this
-  // will return the connection to the pool.
-  final RawPoolRequest _request;
   final bool _isWriter;
 
-  ConnectionLease._(super._connection, this._request, this._isWriter)
+  ConnectionLease._(super._connection, super._request, this._isWriter)
     : super._();
 
   /// Returns this leased connection back to the pool.
@@ -564,11 +602,13 @@ final class ExclusivePoolAccess {
     List<PoolConnectionRef> readers,
   ) : writer = AsyncConnection._(
         PoolConnection.unsafeFromPointer(writer.connection),
+        _request,
       ),
       readers = [
         for (final reader in readers)
           AsyncConnection._(
             PoolConnection.unsafeFromPointer(reader.connection),
+            _request,
           ),
       ];
 

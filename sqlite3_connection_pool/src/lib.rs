@@ -4,9 +4,11 @@ use crate::dart::DartPort;
 use crate::pool::{ConnectionPool, PendingMessage, PoolConnection, PoolRequestHandle, PoolState};
 use crate::registry::{InitializedPool, MaybeInitializedPool, PoolRegistry, UninitializedPool};
 use crate::update_hook::send_update_notification;
+use std::collections::BTreeMap;
 use std::ffi::{CStr, c_char, c_int, c_void};
 use std::mem::MaybeUninit;
 use std::ptr::NonNull;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::{ptr, slice};
 
@@ -96,12 +98,12 @@ extern "C" fn pkg_sqlite3_connection_pool_obtain_single(
     tag: i64,
     port: DartPort,
     read: c_char,
-) -> *mut PoolRequestHandle {
+) -> *const PoolRequestHandle {
     let pool = &client.pool;
     let mut state = pool.lock().unwrap();
     let pool = clone_arc(pool);
 
-    Box::into_raw(Box::new(state.request_single(
+    Arc::into_raw(Arc::new(state.request_single(
         pool,
         PendingMessage { tag, port },
         read != 0,
@@ -113,12 +115,12 @@ extern "C" fn pkg_sqlite3_connection_pool_obtain_exclusive(
     client: &PoolClient,
     tag: i64,
     port: DartPort,
-) -> *mut PoolRequestHandle {
+) -> *const PoolRequestHandle {
     let pool = &client.pool;
     let mut state = pool.lock().unwrap();
     let pool = clone_arc(pool);
 
-    Box::into_raw(Box::new(
+    Arc::into_raw(Arc::new(
         state.request_exclusive(pool, PendingMessage { tag, port }),
     ))
 }
@@ -137,8 +139,46 @@ extern "C" fn pkg_sqlite3_connection_pool_add_readers(
 }
 
 #[unsafe(no_mangle)]
-extern "C" fn pkg_sqlite3_connection_pool_request_close(request: *mut PoolRequestHandle) {
-    drop(unsafe { Box::from_raw(request) });
+extern "C" fn pkg_sqlite3_connection_pool_request_close(request: *const PoolRequestHandle) {
+    drop(unsafe { Arc::from_raw(request) });
+}
+
+/// Requests passed to another isolate that it hasn't received yet. This is not part of the pool
+/// because the other isolate may look up its transfer after the pool has been closed.
+static TRANSFERS: Mutex<BTreeMap<usize, Arc<PoolRequestHandle>>> = Mutex::new(BTreeMap::new());
+static NEXT_TRANSFER: AtomicUsize = AtomicUsize::new(1);
+
+/// Creates a transfer keeping `request` open for another isolate, even if this isolate exits.
+///
+/// The other isolate takes the request with [pkg_sqlite3_connection_pool_transfer_receive] and
+/// closes it once done. This isolate calls [pkg_sqlite3_connection_pool_transfer_close] after that,
+/// which also closes the request if it was never received.
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_request_transfer(
+    request: *const PoolRequestHandle,
+) -> usize {
+    unsafe { Arc::increment_strong_count(request) };
+    let request = unsafe { Arc::from_raw(request) };
+
+    let transfer = NEXT_TRANSFER.fetch_add(1, Ordering::Relaxed);
+    TRANSFERS.lock().unwrap().insert(transfer, request);
+    transfer
+}
+
+/// Returns the request of the transfer, or null if the sending isolate has already closed it.
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_transfer_receive(
+    transfer: usize,
+) -> *const PoolRequestHandle {
+    let request = TRANSFERS.lock().unwrap().remove(&transfer);
+    request.map_or(ptr::null(), Arc::into_raw)
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_transfer_close(transfer: usize) {
+    // Closes the request if the other isolate never received it.
+    let request = TRANSFERS.lock().unwrap().remove(&transfer);
+    drop(request);
 }
 
 #[unsafe(no_mangle)]

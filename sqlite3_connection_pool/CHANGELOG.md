@@ -1,3 +1,11 @@
+## 0.2.17-wip
+
+- Fix connections being reused or closed while a computation from
+  `AsyncConnection.unsafeAccessOnIsolate` is still running, when the isolate
+  that started it exits.
+- Add a `run` parameter to `unsafeAccessOnIsolate` to choose how the
+  computation is started on another isolate.
+
 ## 0.2.16
 
 - Fix dangling references to existing pool connections when pool grows.
