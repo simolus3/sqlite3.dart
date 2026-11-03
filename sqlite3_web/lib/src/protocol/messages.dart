@@ -241,9 +241,14 @@ enum TypeCode {
       case null:
         value = null;
         code = TypeCode.$null;
-      case final int integer:
+      case final int integer when integer.isSafeInteger:
         value = integer.toJS;
         code = TypeCode.integer;
+      case final int integer:
+        // A 64-bit int (dart2wasm) outside the safe integer range of a
+        // JavaScript number: send it as a BigInt so it arrives exactly.
+        value = JsBigInt.fromInt(integer);
+        code = TypeCode.bigInt;
       case final BigInt bi when supportDartBigInts:
         value = JsBigInt.fromBigInt(bi);
         code = TypeCode.bigInt;
@@ -498,4 +503,10 @@ class _UniqueFieldNames {
   static const autocommit = 'x';
   static const lastInsertRowid = 'y';
   static const lockId = 'z';
+}
+
+extension on int {
+  /// Whether this integer is in the range a JavaScript number represents
+  /// exactly (`Number.isSafeInteger`); always true on dart2js.
+  bool get isSafeInteger => this >= -9007199254740991 && this <= 9007199254740991;
 }

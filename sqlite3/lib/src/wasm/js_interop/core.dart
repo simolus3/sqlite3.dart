@@ -26,12 +26,43 @@ extension type WrappedJSObject._(JSObject _) implements JSObject {
   external static JSArray<JSAny?> keys(JSObject o);
 }
 
+/// The range of integers a JavaScript number represents exactly
+/// (`Number.MIN_SAFE_INTEGER` to `Number.MAX_SAFE_INTEGER`).
+const _maxSafeInteger = 9007199254740991;
+const _minSafeInteger = -9007199254740991;
+
 extension type JsBigInt(JSBigInt _jsBigInt) implements JSBigInt {
   factory JsBigInt.parse(String s) => JsBigInt(_bigInt(s.toJS));
-  factory JsBigInt.fromInt(int i) => JsBigInt(_bigInt(i.toJS));
+
+  /// Creates a JavaScript `BigInt` holding exactly [i].
+  ///
+  /// A Dart `int` outside the safe integer range of a JavaScript number (on
+  /// dart2wasm, where ints are 64 bits) is converted through its decimal
+  /// representation, because `i.toJS` would round it to the nearest double.
+  factory JsBigInt.fromInt(int i) {
+    if (i >= _minSafeInteger && i <= _maxSafeInteger) {
+      return JsBigInt(_bigInt(i.toJS));
+    }
+    return JsBigInt.parse(i.toString());
+  }
+
   factory JsBigInt.fromBigInt(BigInt i) => JsBigInt.parse(i.toString());
 
-  int get asDartInt => _number(_jsBigInt).toDartInt;
+  /// This value as a Dart `int`.
+  ///
+  /// On dart2wasm, where a Dart `int` is a 64-bit integer, a value outside
+  /// the safe integer range of a JavaScript number is converted exactly
+  /// through its decimal representation (converting it through a JavaScript
+  /// number would round it to the nearest double). On dart2js, where a Dart
+  /// `int` is a JavaScript number, such a value cannot be represented exactly
+  /// either way; use [asDartBigInt] there.
+  int get asDartInt {
+    final number = _number(_jsBigInt);
+    if (_numberIsSafeInteger(number).toDart) {
+      return number.toDartInt;
+    }
+    return int.parse(jsToString());
+  }
 
   Object get asDartBigInt {
     if (!supportDartBigInts) {

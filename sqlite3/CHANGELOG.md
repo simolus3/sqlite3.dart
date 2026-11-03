@@ -1,5 +1,7 @@
 ## 3.8.1-wip
 
+- Web: `JsBigInt.asDartInt` and `JsBigInt.fromInt` now convert 64-bit integers outside
+  the safe integer range of a JavaScript number exactly (dart2wasm).
 - Add `Database.interrupt()` and `Database.isInterrupted` on native platforms.
 - IndexedDB file system: Treat unexpected abort events as errors.
 - Update SQLCipher to version 4.20.0.
