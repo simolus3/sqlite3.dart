@@ -566,6 +566,32 @@ void main() {
     });
   });
 
+  group('shared connection', () {
+    test('before return', () async {
+      final pool = testPool();
+      final reader = await pool.reader();
+      reader.unsafeAccess((_) async {
+        final shared = reader.sharableConnection;
+        final clone = shared.obtainConnection();
+        expect(clone, isNotNull);
+        clone!.returnLease();
+      });
+
+      reader.returnLease();
+    });
+
+    test('after return', () async {
+      final pool = testPool();
+      final reader = await pool.reader();
+
+      final shared = reader.sharableConnection;
+      reader.returnLease();
+      expect(shared.obtainConnection(), isNull);
+
+      expect(() => reader.sharableConnection, throwsStateError);
+    });
+  });
+
   group('aborting request', () {
     test('writer abort', () async {
       final pool = testPool();

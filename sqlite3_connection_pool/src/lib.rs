@@ -5,9 +5,9 @@ use crate::pool::{ConnectionPool, PendingMessage, PoolConnection, PoolRequestHan
 use crate::registry::{InitializedPool, MaybeInitializedPool, PoolRegistry, UninitializedPool};
 use crate::update_hook::send_update_notification;
 use std::ffi::{CStr, c_char, c_int, c_void};
-use std::mem::MaybeUninit;
+use std::mem::{self, ManuallyDrop, MaybeUninit};
 use std::ptr::NonNull;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 use std::{ptr, slice};
 
 mod client;
@@ -134,6 +134,53 @@ extern "C" fn pkg_sqlite3_connection_pool_add_readers(
 
     let connections = unsafe { slice::from_raw_parts(reads, count) };
     state.add_readers(connections);
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_request_create_weak(
+    dart_object: dart::Handle,
+    request: *const PoolRequestHandle,
+) -> c_int {
+    fn drop_weak(ptr: *const c_void) {
+        let weak = unsafe { Weak::from_raw(ptr as *const PoolRequestHandle) };
+        drop(weak);
+    }
+
+    extern "C" fn cleanup(_isolate_callback_data: *mut c_void, peer: *mut c_void) {
+        drop_weak(peer);
+    }
+
+    let arc = ManuallyDrop::new(unsafe { Arc::from_raw(request) });
+    let weak = Weak::into_raw(Arc::downgrade(&arc)) as *const c_void;
+
+    let pool = arc.pool.lock().unwrap();
+
+    let did_create = !(pool.functions.dart.new_finalizable_handle)(dart_object, weak, 8, cleanup)
+        .0
+        .is_null();
+    drop(pool);
+
+    if did_create {
+        true as c_int
+    } else {
+        drop_weak(weak);
+        false as c_int
+    }
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn pkg_sqlite3_connection_pool_request_try_upgrade(
+    request: *const PoolRequestHandle,
+) -> c_int {
+    let weak = ManuallyDrop::new(unsafe { Weak::from_raw(request) });
+
+    (match weak.upgrade() {
+        Some(did_upgrade) => {
+            mem::forget(did_upgrade);
+            true
+        }
+        None => false,
+    }) as c_int
 }
 
 #[unsafe(no_mangle)]

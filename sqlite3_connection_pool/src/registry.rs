@@ -1,5 +1,5 @@
 use crate::connection::Connection;
-use crate::pool::{ConnectionPool, ExternalFunctions, PoolState};
+use crate::pool::{ConnectionPool, DartLinkData, ExternalFunctions, PoolState};
 use std::collections::HashMap;
 use std::ffi::c_uchar;
 use std::slice;
@@ -24,7 +24,7 @@ pub enum MaybeInitializedPool<'a> {
 
 #[repr(C)]
 pub struct InitializedPool {
-    functions: ExternalFunctions,
+    functions: DartLinkData,
     write: Connection,
     reads: *const Connection,
     read_count: usize,
@@ -52,7 +52,7 @@ impl PoolRegistry {
 impl<'a> UninitializedPool<'a> {
     pub fn initialize(mut self, initialized: &InitializedPool) -> ConnectionPool {
         let state = PoolState::new(
-            initialized.functions,
+            ExternalFunctions::from(&initialized.functions),
             initialized.write,
             unsafe { slice::from_raw_parts(initialized.reads, initialized.read_count) },
             initialized.prepared_statement_cache_size,

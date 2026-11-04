@@ -257,7 +257,7 @@ final class RawSqliteConnectionPool implements Finalizable {
             .cast()
         ..sqlite3_finalize = libsqlite3.addresses.sqlite3_finalize.cast()
         ..sqlite3_close_v2 = libsqlite3.addresses.sqlite3_close_v2.cast()
-        ..dart_post_c_object = NativeApi.postCObject.cast();
+        ..dart_api_data = NativeApi.initializeApiDLData;
 
       try {
         final PoolConnections(
@@ -354,10 +354,23 @@ extension type PoolConnectionRef(
   }
 }
 
+/// An `Arc<PoolRequestHandle>`.
+///
+/// Closing this aborts a request and releases acquired connections back into
+/// the pool.
+///
+/// These objects can't be sent across isolates, and always have a
+/// [NativeFinalizer] attached on them. This means that if an isolate owning a
+/// handle exits for whatever reason, the finalizer runs immediately and
+/// connections are released.
+///
+/// On the other hand, [WeakPoolRequest]s are owned by an isolate group. They
+/// don't have a [NativeFinalizer] attached on them, we attach a finalizer to
+/// the object in Rust.
 @internal
 final class RawPoolRequest implements Finalizable {
   final int _dartTag;
-  final RawSqliteConnectionPool _pool;
+  final RawSqliteConnectionPool? _pool;
 
   final Pointer<PoolRequest> _handle;
   final Object _detachToken = Object();
@@ -366,13 +379,14 @@ final class RawPoolRequest implements Finalizable {
     _requestFinalizer.attach(this, _handle.cast(), detach: _detachToken);
   }
 
-  bool get isCompleted => !_pool._outstandingRequests.containsKey(_dartTag);
+  bool get isCompleted =>
+      _pool != null && !_pool._outstandingRequests.containsKey(_dartTag);
 
   void close() {
     _requestFinalizer.detach(_detachToken);
     pkg_sqlite3_connection_pool_request_close(_handle);
 
-    _pool._outstandingRequests
+    _pool?._outstandingRequests
         .remove(_dartTag)
         ?.completer
         .completeError(PoolAbortException());
@@ -386,6 +400,37 @@ final class RawPoolRequest implements Finalizable {
 
   void notifyUpdates() {
     pkg_sqlite3_connection_pool_notify_updates(_handle);
+  }
+}
+
+/// A weak reference to a [RawPoolRequest].
+///
+/// These objects have a finalizer on them that is shared by the entire isolate
+/// group. That finalizer is configured in Rust sources.
+@pragma('vm:deeply-immutable')
+final class WeakPoolRequest {
+  // This pattern was inspired from https://github.com/dart-lang/native/pull/1060
+  final Pointer<PoolRequest> _weakHandle;
+
+  WeakPoolRequest._(this._weakHandle);
+
+  factory WeakPoolRequest(RawPoolRequest request) {
+    final tmp = WeakPoolRequest._(request._handle);
+    if (pkg_sqlite3_connection_pool_request_create_weak(tmp, request._handle) ==
+        0) {
+      throw StateError('Could not create weak handle');
+    }
+
+    return tmp;
+  }
+
+  RawPoolRequest? upgrade() {
+    if (pkg_sqlite3_connection_pool_request_try_upgrade(_weakHandle) == 1) {
+      // Incremented strong count, let RawPoolRequest take ownership of that.
+      return RawPoolRequest._(-1, null, _weakHandle);
+    }
+
+    return null;
   }
 }
 

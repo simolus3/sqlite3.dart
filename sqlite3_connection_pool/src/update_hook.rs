@@ -128,6 +128,6 @@ fn raw_send_update_notification(
 
     // Send to registered update ports.
     for listener in listeners {
-        (functions.dart_post_c_object)(*listener, &mut dart_msg);
+        (functions.dart.post_c_object)(*listener, &mut dart_msg);
     }
 }

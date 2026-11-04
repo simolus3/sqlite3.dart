@@ -1,5 +1,5 @@
 use crate::connection::{Connection, PreparedStatement, StatementCache};
-use crate::dart::{DartPort, RawDartCObject, RawDartCObjectArray, RawDartCObjectValue};
+use crate::dart::{DartPort, Functions, RawDartCObject, RawDartCObjectArray, RawDartCObjectValue};
 use crate::update_hook::CollectedTableUpdates;
 use std::cell::UnsafeCell;
 use std::collections::VecDeque;
@@ -538,7 +538,7 @@ impl PendingMessage {
             },
         };
 
-        (api.dart_post_c_object)(self.port, &mut array);
+        (api.dart.post_c_object)(self.port, &mut array);
     }
 
     /// Sends a `[tag, false, connection_ptr]` message to this port.
@@ -558,7 +558,7 @@ impl PendingMessage {
             },
         };
 
-        (api.dart_post_c_object)(self.port, &mut array);
+        (api.dart.post_c_object)(self.port, &mut array);
     }
 }
 
@@ -660,7 +660,6 @@ impl Drop for PoolRequestHandle {
 /// The Dart client will provide these function pointers because we want to link SQLite through
 /// hooks instead of adding it as a link-dependency of this crate.
 #[derive(Copy, Clone)]
-#[repr(C)]
 pub struct ExternalFunctions {
     pub sqlite3_update_hook: extern "C" fn(
         Connection,
@@ -680,5 +679,46 @@ pub struct ExternalFunctions {
     pub sqlite3_get_autocommit: extern "C" fn(Connection) -> c_int,
     pub sqlite3_finalize: extern "C" fn(PreparedStatement) -> c_int,
     pub sqlite3_close_v2: extern "C" fn(Connection) -> c_int,
-    pub dart_post_c_object: extern "C" fn(port: DartPort, message: &mut RawDartCObject) -> bool,
+    pub dart: Functions,
+}
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct DartLinkData {
+    pub sqlite3_update_hook: extern "C" fn(
+        Connection,
+        Option<extern "C" fn(NonNull<c_void>, c_int, *const c_char, *const c_char, i64)>,
+        *mut c_void,
+    ) -> *mut c_void,
+    pub sqlite3_commit_hook: extern "C" fn(
+        Connection,
+        Option<extern "C" fn(NonNull<c_void>) -> c_int>,
+        *mut c_void,
+    ) -> *mut c_void,
+    pub sqlite3_rollback_hook: extern "C" fn(
+        Connection,
+        Option<extern "C" fn(NonNull<c_void>)>,
+        *mut c_void,
+    ) -> *mut c_void,
+    pub sqlite3_get_autocommit: extern "C" fn(Connection) -> c_int,
+    pub sqlite3_finalize: extern "C" fn(PreparedStatement) -> c_int,
+    pub sqlite3_close_v2: extern "C" fn(Connection) -> c_int,
+    pub dart_api_data: *const c_void,
+}
+
+impl From<&DartLinkData> for ExternalFunctions {
+    fn from(value: &DartLinkData) -> Self {
+        Self {
+            sqlite3_update_hook: value.sqlite3_update_hook,
+            sqlite3_commit_hook: value.sqlite3_commit_hook,
+            sqlite3_rollback_hook: value.sqlite3_rollback_hook,
+            sqlite3_get_autocommit: value.sqlite3_get_autocommit,
+            sqlite3_finalize: value.sqlite3_finalize,
+            sqlite3_close_v2: value.sqlite3_close_v2,
+            dart: unsafe {
+                // Safety: Dart passes a pointer to a valid Dart api struct
+                Functions::initialize(value.dart_api_data).unwrap()
+            },
+        }
+    }
 }
