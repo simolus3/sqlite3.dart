@@ -570,8 +570,8 @@ void main() {
     test('before return', () async {
       final pool = testPool();
       final reader = await pool.reader();
-      reader.unsafeAccess((_) async {
-        final shared = reader.sharableConnection;
+      await reader.unsafeAccess((_) async {
+        final shared = reader.shareableConnection;
         final clone = shared.obtainConnection();
         expect(clone, isNotNull);
         clone!.returnLease();
@@ -584,11 +584,11 @@ void main() {
       final pool = testPool();
       final reader = await pool.reader();
 
-      final shared = reader.sharableConnection;
+      final shared = reader.shareableConnection;
       reader.returnLease();
       expect(shared.obtainConnection(), isNull);
 
-      expect(() => reader.sharableConnection, throwsStateError);
+      expect(() => reader.shareableConnection, throwsStateError);
     });
   });
 

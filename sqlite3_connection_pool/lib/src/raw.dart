@@ -248,7 +248,7 @@ final class RawSqliteConnectionPool implements Finalizable {
 
       final initOptionsPtr = alloc<InitializedPool>();
       final initOptions = initOptionsPtr.ref;
-      initOptions.functions
+      initOptions.functions.sqlite
         ..sqlite3_update_hook = libsqlite3.addresses.sqlite3_update_hook.cast()
         ..sqlite3_rollback_hook = libsqlite3.addresses.sqlite3_rollback_hook
             .cast()
@@ -256,8 +256,8 @@ final class RawSqliteConnectionPool implements Finalizable {
         ..sqlite3_get_autocommit = libsqlite3.addresses.sqlite3_get_autocommit
             .cast()
         ..sqlite3_finalize = libsqlite3.addresses.sqlite3_finalize.cast()
-        ..sqlite3_close_v2 = libsqlite3.addresses.sqlite3_close_v2.cast()
-        ..dart_api_data = NativeApi.initializeApiDLData;
+        ..sqlite3_close_v2 = libsqlite3.addresses.sqlite3_close_v2.cast();
+      initOptions.functions.dart_api_data = NativeApi.initializeApiDLData;
 
       try {
         final PoolConnections(
@@ -276,14 +276,22 @@ final class RawSqliteConnectionPool implements Finalizable {
         for (final (i, reader) in readers.indexed) {
           (initOptions.reads + i).value = reader.leak().cast();
         }
-
-        return RawSqliteConnectionPool._(
-          pkg_sqlite3_connection_pool_initialize(initializer, initOptionsPtr),
-        );
       } on Object {
         pkg_sqlite3_connection_pool_close_uninitialized(initializer);
         rethrow;
       }
+
+      final initialized = pkg_sqlite3_connection_pool_initialize(
+        initializer,
+        initOptionsPtr,
+      );
+      if (initialized.address == 0) {
+        throw StateError(
+          'Could not initialize pool, likely due to a DartDL change.',
+        );
+      }
+
+      return RawSqliteConnectionPool._(initialized);
     });
   }
 }
@@ -380,7 +388,7 @@ final class RawPoolRequest implements Finalizable {
   }
 
   bool get isCompleted =>
-      _pool != null && !_pool._outstandingRequests.containsKey(_dartTag);
+      _pool == null || !_pool._outstandingRequests.containsKey(_dartTag);
 
   void close() {
     _requestFinalizer.detach(_detachToken);
@@ -425,7 +433,8 @@ final class WeakPoolRequest {
   }
 
   RawPoolRequest? upgrade() {
-    if (pkg_sqlite3_connection_pool_request_try_upgrade(_weakHandle) == 1) {
+    if (pkg_sqlite3_connection_pool_request_try_upgrade(this, _weakHandle) ==
+        1) {
       // Incremented strong count, let RawPoolRequest take ownership of that.
       return RawPoolRequest._(-1, null, _weakHandle);
     }

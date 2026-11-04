@@ -49,9 +49,9 @@ impl CollectedTableUpdates {
             0
         }
 
-        (functions.sqlite3_update_hook)(connection, Some(update_hook), ptr.cast());
-        (functions.sqlite3_commit_hook)(connection, Some(commit_hook), ptr.cast());
-        (functions.sqlite3_rollback_hook)(connection, Some(rollback_hook), ptr.cast());
+        (functions.sqlite.sqlite3_update_hook)(connection, Some(update_hook), ptr.cast());
+        (functions.sqlite.sqlite3_commit_hook)(connection, Some(commit_hook), ptr.cast());
+        (functions.sqlite.sqlite3_rollback_hook)(connection, Some(rollback_hook), ptr.cast());
     }
 
     fn handle_update(&mut self, table: &CStr) {

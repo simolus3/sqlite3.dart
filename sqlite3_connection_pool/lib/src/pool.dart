@@ -391,6 +391,7 @@ base class AsyncConnection {
   // database with a mutex.
   final Mutex _mutex = Mutex();
   var _closed = false;
+  ShareableAsyncConnection? _weak;
 
   AsyncConnection._(this._connection, this._request, this._isWriter);
 
@@ -421,16 +422,16 @@ base class AsyncConnection {
   PoolConnection get unsafeRawConnection => _connection;
 
   /// Obtains a weak reference to this connection from which another lease can
-  /// be constructed, even on anoter isolate.
+  /// be constructed, even on another isolate.
   ///
   /// The connection returned by [ShareableAsyncConnection.obtainConnection]
   /// may not be used at the same time as this one. Typically, it is used in
   /// child isolates to run statements while the parent isolate waits for
   /// results in an [unsafeAccess] block.
-  ShareableAsyncConnection get sharableConnection {
+  ShareableAsyncConnection get shareableConnection {
     _checkNotClosed();
 
-    return ShareableAsyncConnection(
+    return _weak ??= ShareableAsyncConnection._(
       WeakPoolRequest(_request),
       _connection.unsafePointer.address,
       _isWriter,
@@ -461,7 +462,7 @@ base class AsyncConnection {
     FutureOr<T> Function(PoolConnection) computation,
   ) {
     return unsafeAccess((conn) {
-      return Isolate.run(_isolateClosure(computation, sharableConnection));
+      return Isolate.run(_isolateClosure(computation, shareableConnection));
     });
   }
 
@@ -627,7 +628,7 @@ final class ExclusivePoolAccess {
 
 /// An [AsyncConnection] that can be sent across isolates.
 ///
-/// This is created by [AsyncConnection.unsafeShareableConnection] and forms a
+/// This is created by [AsyncConnection.shareableConnection] and forms a
 /// _weak_ reference to the underlying connection: If the associated connection
 /// lease was returned earlier, it won't be possible to obtain it again.
 ///
@@ -641,7 +642,7 @@ final class ShareableAsyncConnection {
   final int _connection;
   final bool _isWriter;
 
-  ShareableAsyncConnection(this._weak, this._connection, this._isWriter);
+  ShareableAsyncConnection._(this._weak, this._connection, this._isWriter);
 
   /// If a strong reference to the original [AsyncConnection] exists anywhere
   /// in the current isolate group, obtains another.
@@ -652,7 +653,7 @@ final class ShareableAsyncConnection {
   ///
   /// The [ConnectionLease] is only returned into the pool when
   /// [ConnectionLease.returnLease] is called for all strong references. If an
-  /// isolate exits while refrencing a connection lease, it is automatically
+  /// isolate exits while referencing a connection lease, it is automatically
   /// returned.
   ConnectionLease? obtainConnection() {
     final request = _weak.upgrade();
