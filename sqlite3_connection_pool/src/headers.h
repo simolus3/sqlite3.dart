@@ -11,18 +11,22 @@ struct PoolConnection {
   Connection raw;
 };
 
-typedef struct ExternalFunctions {
+struct SqliteFunctions {
   void (*sqlite3_update_hook)(Connection, void*, void*);
   void (*sqlite3_commit_hook)(Connection, void*, void*);
   void (*sqlite3_rollback_hook)(Connection, void*, void*);
   int (*sqlite3_get_autocommit)(Connection);
   int (*sqlite3_finalize)(void*);
   int (*sqlite3_close_v2)(Connection);
-  int (*dart_post_c_object)(int64_t, const void* message);
-} SqliteFunctions;
+};
+
+struct DartLinkData {
+  struct SqliteFunctions sqlite;
+  void* dart_api_data;
+};
 
 typedef struct InitializedPool {
-  struct ExternalFunctions functions;
+  struct DartLinkData functions;
   Connection write;
   const Connection* reads;
   uintptr_t read_count;
@@ -31,6 +35,7 @@ typedef struct InitializedPool {
 } InitializedPool;
 
 typedef int64_t DartPort;
+typedef struct _Dart_Handle* Dart_Handle;
 
 void pkg_sqlite3_connection_pool_open(const uint8_t* name, uintptr_t name_len,
                                       UninitializedPool** initializer,
@@ -59,6 +64,8 @@ void pkg_sqlite3_connection_pool_query_connections(
     const ConnectionPool* pool, struct PoolConnection** writer,
     struct PoolConnection** readers, uintptr_t reader_count);
 
+int pkg_sqlite3_connection_pool_request_create_weak(Dart_Handle handle, PoolRequest* request);
+int pkg_sqlite3_connection_pool_request_try_upgrade(Dart_Handle handle, PoolRequest* weak);
 void pkg_sqlite3_connection_pool_request_close(PoolRequest* request);
 
 void pkg_sqlite3_connection_pool_update_listener(const ConnectionPool* pool,

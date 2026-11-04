@@ -2,7 +2,6 @@
 library;
 
 import 'dart:async';
-import 'dart:ffi';
 import 'dart:isolate';
 
 import 'package:sqlite3/sqlite3.dart';
@@ -382,14 +381,19 @@ final class SqliteConnectionPool {
 /// queries in short-lived background isolates.
 base class AsyncConnection {
   final PoolConnection _connection;
+  // The native request from which the database has been obtained. Closing this
+  // will return the connection to the pool.
+  final RawPoolRequest _request;
+  final bool _isWriter;
 
   // Because the database is used across multiple isolates (the current one and
   // the short-lived ones used for computations), we need to guard access to the
   // database with a mutex.
   final Mutex _mutex = Mutex();
   var _closed = false;
+  ShareableAsyncConnection? _weak;
 
-  AsyncConnection._(this._connection);
+  AsyncConnection._(this._connection, this._request, this._isWriter);
 
   /// If the connection is in a transaction, rolls that transaction back.
   ///
@@ -405,11 +409,34 @@ base class AsyncConnection {
     }
   }
 
+  void _checkNotClosed() {
+    if (_closed) {
+      throw StateError('LeasedDatabase used after callback returned');
+    }
+  }
+
   /// Gets unprotected acccess to the [Database] without a mutex.
   ///
   /// Calling this method is unsafe if another call on this [ConnectionLease] is
   /// operating concurrently.
   PoolConnection get unsafeRawConnection => _connection;
+
+  /// Obtains a weak reference to this connection from which another lease can
+  /// be constructed, even on another isolate.
+  ///
+  /// The connection returned by [ShareableAsyncConnection.obtainConnection]
+  /// may not be used at the same time as this one. Typically, it is used in
+  /// child isolates to run statements while the parent isolate waits for
+  /// results in an [unsafeAccess] block.
+  ShareableAsyncConnection get shareableConnection {
+    _checkNotClosed();
+
+    return _weak ??= ShareableAsyncConnection._(
+      WeakPoolRequest(_request),
+      _connection.unsafePointer.address,
+      _isWriter,
+    );
+  }
 
   /// Calls [computation] as a critical section with the underlying database.
   ///
@@ -422,10 +449,7 @@ base class AsyncConnection {
   Future<T> unsafeAccess<T>(
     FutureOr<T> Function(PoolConnection) computation,
   ) async {
-    if (_closed) {
-      throw StateError('LeasedDatabase used after callback returned');
-    }
-
+    _checkNotClosed();
     return _mutex.withCriticalSection(() => computation(_connection));
   }
 
@@ -438,14 +462,22 @@ base class AsyncConnection {
     FutureOr<T> Function(PoolConnection) computation,
   ) {
     return unsafeAccess((conn) {
-      final address = conn.unsafePointer.address;
-      return Isolate.run(() {
-        final conn = PoolConnection.unsafeFromPointer(
-          Pointer.fromAddress(address),
-        );
-        return computation(conn);
-      });
+      return Isolate.run(_isolateClosure(computation, shareableConnection));
     });
+  }
+
+  static FutureOr<T> Function() _isolateClosure<T>(
+    FutureOr<T> Function(PoolConnection) computation,
+    ShareableAsyncConnection shared,
+  ) {
+    return () {
+      final connection = shared.obtainConnection();
+      if (connection == null) {
+        throw StateError('Parent isolate closed first');
+      }
+
+      return computation(connection.unsafeRawConnection);
+    };
   }
 
   /// Returns the [Database.autocommit] status for the wrapped database.
@@ -502,12 +534,7 @@ base class AsyncConnection {
 /// access is closed for any reason, the lease is also automatically returned.
 
 final class ConnectionLease extends AsyncConnection {
-  // The native request from which the database has been obtained. Closing this
-  // will return the connection to the pool.
-  final RawPoolRequest _request;
-  final bool _isWriter;
-
-  ConnectionLease._(super._connection, this._request, this._isWriter)
+  ConnectionLease._(super._connection, super._request, super._isWriter)
     : super._();
 
   /// Returns this leased connection back to the pool.
@@ -564,11 +591,15 @@ final class ExclusivePoolAccess {
     List<PoolConnectionRef> readers,
   ) : writer = AsyncConnection._(
         PoolConnection.unsafeFromPointer(writer.connection),
+        _request,
+        true,
       ),
       readers = [
         for (final reader in readers)
           AsyncConnection._(
             PoolConnection.unsafeFromPointer(reader.connection),
+            _request,
+            false,
           ),
       ];
 
@@ -592,5 +623,46 @@ final class ExclusivePoolAccess {
     }
 
     _request.close();
+  }
+}
+
+/// An [AsyncConnection] that can be sent across isolates.
+///
+/// This is created by [AsyncConnection.shareableConnection] and forms a
+/// _weak_ reference to the underlying connection: If the associated connection
+/// lease was returned earlier, it won't be possible to obtain it again.
+///
+/// Otherwise, [ShareableAsyncConnection.obtainConnection] returns a new strong
+/// reference to the same connection. Because this can be called on independent
+/// isolates, a typical pattern is to only hand out shareable connections in an
+/// [AsyncConnection.unsafeAccess] block.
+@pragma('vm:deeply-immutable')
+final class ShareableAsyncConnection {
+  final WeakPoolRequest _weak;
+  final int _connection;
+  final bool _isWriter;
+
+  ShareableAsyncConnection._(this._weak, this._connection, this._isWriter);
+
+  /// If a strong reference to the original [AsyncConnection] exists anywhere
+  /// in the current isolate group, obtains another.
+  ///
+  /// This function is typically called in child isolates running database
+  /// statements. If the parent isolate has exited unexpectedly before this
+  /// shared connection was received, it returns null.
+  ///
+  /// The [ConnectionLease] is only returned into the pool when
+  /// [ConnectionLease.returnLease] is called for all strong references. If an
+  /// isolate exits while referencing a connection lease, it is automatically
+  /// returned.
+  ConnectionLease? obtainConnection() {
+    final request = _weak.upgrade();
+    if (request == null) return null;
+
+    return ConnectionLease._(
+      .unsafeFromPointer(.fromAddress(_connection)),
+      request,
+      _isWriter,
+    );
   }
 }
