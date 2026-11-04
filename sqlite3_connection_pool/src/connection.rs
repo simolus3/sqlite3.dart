@@ -50,7 +50,7 @@ impl StatementCache {
 
     pub fn close_statements(&mut self, functions: &ExternalFunctions) {
         for (_, stmt) in self.cache.iter() {
-            (functions.sqlite.sqlite3_finalize)(*stmt);
+            (functions.sqlite3_finalize)(*stmt);
         }
 
         self.cache.clear()

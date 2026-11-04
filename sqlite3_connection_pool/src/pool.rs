@@ -1,5 +1,5 @@
 use crate::connection::{Connection, PreparedStatement, StatementCache};
-use crate::dart::{self, DartPort, RawDartCObject, RawDartCObjectArray, RawDartCObjectValue};
+use crate::dart::{DartPort, RawDartCObject, RawDartCObjectArray, RawDartCObjectValue};
 use crate::update_hook::CollectedTableUpdates;
 use std::cell::UnsafeCell;
 use std::collections::VecDeque;
@@ -9,12 +9,9 @@ use std::pin::Pin;
 use std::ptr::NonNull;
 use std::sync::{Arc, Mutex};
 
-pub type ConnectionPool = Arc<PoolAndFunctions>;
-
-pub struct PoolAndFunctions {
-    pub state: Mutex<PoolState>,
-    pub dart: dart::Functions,
-}
+/// A connection pool can be locked, in which case some Dart actor has exclusive access to all
+/// connections. When a new pool is initialized, it is also in this state.
+pub type ConnectionPool = Arc<Mutex<PoolState>>;
 
 pub struct PoolState {
     reads: ReadState,
@@ -262,7 +259,7 @@ impl PoolState {
     ///
     /// The caller must currently own a lease to the write connection of the pool.
     pub unsafe fn send_update_notifications(&self) {
-        if (self.functions.sqlite.sqlite3_get_autocommit)(self.writes.connection.raw) != 0 {
+        if (self.functions.sqlite3_get_autocommit)(self.writes.connection.raw) != 0 {
             // No longer in a transaction, notify clients for completed writes.
             let Some(updates) = self.table_updates.as_ref() else {
                 return;
@@ -479,7 +476,7 @@ impl PoolState {
             cache.get_mut().close_statements(&functions);
         }
 
-        (functions.sqlite.sqlite3_close_v2)(conn.raw);
+        (functions.sqlite3_close_v2)(conn.raw);
     }
 
     pub fn register_update_listener(&mut self, update_listener: DartPort) {
@@ -492,7 +489,7 @@ impl PoolState {
     }
 
     pub fn register_hooks_on_writer(arc: &ConnectionPool) {
-        let pool = arc.state.lock().unwrap();
+        let pool = arc.lock().unwrap();
         let Some(updates) = pool.table_updates.as_ref() else {
             return;
         };
@@ -541,7 +538,7 @@ impl PendingMessage {
             },
         };
 
-        (api.dart.post_c_object)(self.port, &mut array);
+        (api.dart_post_c_object)(self.port, &mut array);
     }
 
     /// Sends a `[tag, false, connection_ptr]` message to this port.
@@ -561,7 +558,7 @@ impl PendingMessage {
             },
         };
 
-        (api.dart.post_c_object)(self.port, &mut array);
+        (api.dart_post_c_object)(self.port, &mut array);
     }
 }
 
@@ -653,14 +650,18 @@ pub struct PoolRequestHandle {
 
 impl Drop for PoolRequestHandle {
     fn drop(&mut self) {
-        let mut pool = self.pool.state.lock().unwrap();
+        let mut pool = self.pool.lock().unwrap();
         unsafe { pool.drop_waiter(self.node) };
     }
 }
 
+/// References to `sqlite3` and `Dart_DL` functions we want to use.
+///
+/// The Dart client will provide these function pointers because we want to link SQLite through
+/// hooks instead of adding it as a link-dependency of this crate.
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct SqliteFunctions {
+pub struct ExternalFunctions {
     pub sqlite3_update_hook: extern "C" fn(
         Connection,
         Option<extern "C" fn(NonNull<c_void>, c_int, *const c_char, *const c_char, i64)>,
@@ -679,21 +680,5 @@ pub struct SqliteFunctions {
     pub sqlite3_get_autocommit: extern "C" fn(Connection) -> c_int,
     pub sqlite3_finalize: extern "C" fn(PreparedStatement) -> c_int,
     pub sqlite3_close_v2: extern "C" fn(Connection) -> c_int,
-}
-
-/// References to `sqlite3` and `Dart_DL` functions we want to use.
-///
-/// The Dart client will provide these function pointers because we want to link SQLite through
-/// hooks instead of adding it as a link-dependency of this crate.
-#[derive(Copy, Clone)]
-pub struct ExternalFunctions {
-    pub sqlite: SqliteFunctions,
-    pub dart: dart::Functions,
-}
-
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct DartLinkData {
-    pub sqlite: SqliteFunctions,
-    pub dart_api_data: *const c_void,
+    pub dart_post_c_object: extern "C" fn(port: DartPort, message: &mut RawDartCObject) -> bool,
 }

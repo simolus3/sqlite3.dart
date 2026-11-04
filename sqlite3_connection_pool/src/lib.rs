@@ -1,15 +1,13 @@
 use crate::client::PoolClient;
 use crate::connection::{Connection, PreparedStatement};
 use crate::dart::DartPort;
-use crate::pool::{
-    ConnectionPool, PendingMessage, PoolAndFunctions, PoolConnection, PoolRequestHandle,
-};
+use crate::pool::{ConnectionPool, PendingMessage, PoolConnection, PoolRequestHandle, PoolState};
 use crate::registry::{InitializedPool, MaybeInitializedPool, PoolRegistry, UninitializedPool};
 use crate::update_hook::send_update_notification;
 use std::ffi::{CStr, c_char, c_int, c_void};
-use std::mem::{self, ManuallyDrop, MaybeUninit};
+use std::mem::MaybeUninit;
 use std::ptr::NonNull;
-use std::sync::{Arc, Weak};
+use std::sync::{Arc, Mutex};
 use std::{ptr, slice};
 
 mod client;
@@ -64,10 +62,9 @@ extern "C" fn pkg_sqlite3_connection_pool_open(
 extern "C" fn pkg_sqlite3_connection_pool_initialize(
     uninitialized: NonNull<UninitializedPool>,
     initialize: &InitializedPool,
-) -> Option<NonNull<PoolClient>> {
+) -> NonNull<PoolClient> {
     let guard = unsafe { Box::from_raw(uninitialized.as_ptr()) };
-
-    Some(to_client(guard.initialize(initialize).ok()?))
+    to_client(guard.initialize(initialize))
 }
 
 /// Consumes an uninitialized pool by releasing resources without turning it into an opened
@@ -86,7 +83,7 @@ extern "C" fn pkg_sqlite3_connection_pool_close(pool: *mut PoolClient) {
     drop(pool)
 }
 
-fn clone_arc(pool: &PoolAndFunctions) -> ConnectionPool {
+fn clone_arc(pool: &Mutex<PoolState>) -> ConnectionPool {
     let ptr = ptr::from_ref(pool);
 
     unsafe { Arc::increment_strong_count(ptr) };
@@ -99,12 +96,12 @@ extern "C" fn pkg_sqlite3_connection_pool_obtain_single(
     tag: i64,
     port: DartPort,
     read: c_char,
-) -> *const PoolRequestHandle {
+) -> *mut PoolRequestHandle {
     let pool = &client.pool;
-    let mut state = pool.state.lock().unwrap();
+    let mut state = pool.lock().unwrap();
     let pool = clone_arc(pool);
 
-    Arc::into_raw(Arc::new(state.request_single(
+    Box::into_raw(Box::new(state.request_single(
         pool,
         PendingMessage { tag, port },
         read != 0,
@@ -116,12 +113,12 @@ extern "C" fn pkg_sqlite3_connection_pool_obtain_exclusive(
     client: &PoolClient,
     tag: i64,
     port: DartPort,
-) -> *const PoolRequestHandle {
+) -> *mut PoolRequestHandle {
     let pool = &client.pool;
-    let mut state = pool.state.lock().unwrap();
+    let mut state = pool.lock().unwrap();
     let pool = clone_arc(pool);
 
-    Arc::into_raw(Arc::new(
+    Box::into_raw(Box::new(
         state.request_exclusive(pool, PendingMessage { tag, port }),
     ))
 }
@@ -133,69 +130,22 @@ extern "C" fn pkg_sqlite3_connection_pool_add_readers(
     reads: *const Connection,
 ) {
     let pool = &client.pool;
-    let mut state = pool.state.lock().unwrap();
+    let mut state = pool.lock().unwrap();
 
     let connections = unsafe { slice::from_raw_parts(reads, count) };
     state.add_readers(connections);
 }
 
 #[unsafe(no_mangle)]
-extern "C" fn pkg_sqlite3_connection_pool_request_create_weak(
-    dart_object: dart::Handle,
-    request: *const PoolRequestHandle,
-) -> c_int {
-    fn drop_weak(ptr: *const c_void) {
-        let weak = unsafe { Weak::from_raw(ptr as *const PoolRequestHandle) };
-        drop(weak);
-    }
-
-    extern "C" fn cleanup(_isolate_callback_data: *mut c_void, peer: *mut c_void) {
-        drop_weak(peer);
-    }
-
-    let arc = ManuallyDrop::new(unsafe { Arc::from_raw(request) });
-    let weak = Weak::into_raw(Arc::downgrade(&arc)) as *const c_void;
-
-    let did_create = !(arc.pool.dart.new_finalizable_handle)(dart_object, weak, 8, cleanup)
-        .0
-        .is_null();
-
-    if did_create {
-        true as c_int
-    } else {
-        drop_weak(weak);
-        false as c_int
-    }
-}
-
-#[unsafe(no_mangle)]
-extern "C" fn pkg_sqlite3_connection_pool_request_try_upgrade(
-    // We only pass this to ensure the WeakPoolRequest isn't GCed during this call, as that runs a
-    // finalizer freeing the Weak we're reading here.
-    _weak: dart::Handle,
-    request: *const PoolRequestHandle,
-) -> c_int {
-    let weak = ManuallyDrop::new(unsafe { Weak::from_raw(request) });
-
-    (match weak.upgrade() {
-        Some(did_upgrade) => {
-            mem::forget(did_upgrade);
-            true
-        }
-        None => false,
-    }) as c_int
-}
-
-#[unsafe(no_mangle)]
-extern "C" fn pkg_sqlite3_connection_pool_request_close(request: *const PoolRequestHandle) {
-    drop(unsafe { Arc::from_raw(request) });
+extern "C" fn pkg_sqlite3_connection_pool_request_close(request: *mut PoolRequestHandle) {
+    drop(unsafe { Box::from_raw(request) });
 }
 
 #[unsafe(no_mangle)]
 extern "C" fn pkg_sqlite3_connection_pool_query_read_connection_count(
     client: &PoolClient,
 ) -> usize {
-    let state = client.pool.state.lock().unwrap();
+    let state = client.pool.lock().unwrap();
     let (_, readers) = state.view_connections();
     readers.len()
 }
@@ -207,7 +157,7 @@ extern "C" fn pkg_sqlite3_connection_pool_query_connections(
     readers: *mut *const PoolConnection,
     reader_count: usize,
 ) {
-    let state = client.pool.state.lock().unwrap();
+    let state = client.pool.lock().unwrap();
     let (pool_writer, pool_readers) = state.view_connections();
 
     *writer = pool_writer;
@@ -235,7 +185,7 @@ extern "C" fn pkg_sqlite3_connection_pool_update_listener(
 
 #[unsafe(no_mangle)]
 extern "C" fn pkg_sqlite3_connection_pool_notify_updates(request: &PoolRequestHandle) {
-    let pool = request.pool.state.lock().unwrap();
+    let pool = request.pool.lock().unwrap();
     unsafe {
         // Safety: Dart must only call this when owning a write connection.
         pool.send_update_notifications()
@@ -248,7 +198,7 @@ extern "C" fn pkg_sqlite3_connection_pool_notify_updates_custom(
     updates: *const *const c_char,
     updates_count: usize,
 ) {
-    let pool = client.pool.state.lock().unwrap();
+    let pool = client.pool.lock().unwrap();
     let updates = (0..updates_count).map(|i| {
         let c_str = unsafe {
             // Safety: Updates is an array with length updates_count
