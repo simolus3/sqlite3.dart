@@ -136,7 +136,15 @@ struct DartApi {
 /// Function pointers to Dart VM APIs, provided from `dart:ffi`.
 #[derive(Clone, Copy)]
 pub struct Functions {
+    /// Posts a structure to a `SendPort` in Dart.
+    ///
+    /// [API definition](https://github.com/dart-lang/sdk/blob/576c9cc4b132e7ccf6de1799bcc7199c3b8313e9/runtime/include/dart_native_api.h#L106-L129)
     pub post_c_object: PostCObject,
+    /// Invokes a callback once a Dart object is GCed. The object can be shared across isolates, the
+    /// callback runs once it's no longer reachable on any isolate in the group (or once the group
+    /// shuts down).
+    ///
+    /// [API definition](https://github.com/dart-lang/sdk/blob/576c9cc4b132e7ccf6de1799bcc7199c3b8313e9/runtime/include/dart_api.h#L507-L545).
     pub new_finalizable_handle: NewFinalizableHandle,
 }
 
