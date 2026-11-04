@@ -1,4 +1,4 @@
-# 0.9.6 (unreleased)
+# 0.9.6
 
 - Improve contention handling in `opfsWithExternalLocksWorkaround` mode.
 

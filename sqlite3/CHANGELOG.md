@@ -1,4 +1,4 @@
-## 3.9.0 (unreleased)
+## 3.9.0
 
 - Add `CommonDatabase.trace`, reporting statement trace events through a
   callback registered with `sqlite3_trace_v2`.
