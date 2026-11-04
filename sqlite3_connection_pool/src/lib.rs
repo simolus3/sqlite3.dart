@@ -96,12 +96,12 @@ extern "C" fn pkg_sqlite3_connection_pool_obtain_single(
     tag: i64,
     port: DartPort,
     read: c_char,
-) -> *mut PoolRequestHandle {
+) -> *const PoolRequestHandle {
     let pool = &client.pool;
     let mut state = pool.lock().unwrap();
     let pool = clone_arc(pool);
 
-    Box::into_raw(Box::new(state.request_single(
+    Arc::into_raw(Arc::new(state.request_single(
         pool,
         PendingMessage { tag, port },
         read != 0,
@@ -113,12 +113,12 @@ extern "C" fn pkg_sqlite3_connection_pool_obtain_exclusive(
     client: &PoolClient,
     tag: i64,
     port: DartPort,
-) -> *mut PoolRequestHandle {
+) -> *const PoolRequestHandle {
     let pool = &client.pool;
     let mut state = pool.lock().unwrap();
     let pool = clone_arc(pool);
 
-    Box::into_raw(Box::new(
+    Arc::into_raw(Arc::new(
         state.request_exclusive(pool, PendingMessage { tag, port }),
     ))
 }
@@ -137,8 +137,8 @@ extern "C" fn pkg_sqlite3_connection_pool_add_readers(
 }
 
 #[unsafe(no_mangle)]
-extern "C" fn pkg_sqlite3_connection_pool_request_close(request: *mut PoolRequestHandle) {
-    drop(unsafe { Box::from_raw(request) });
+extern "C" fn pkg_sqlite3_connection_pool_request_close(request: *const PoolRequestHandle) {
+    drop(unsafe { Arc::from_raw(request) });
 }
 
 #[unsafe(no_mangle)]
