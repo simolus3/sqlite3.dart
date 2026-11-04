@@ -20,10 +20,6 @@ final _requestFinalizer = NativeFinalizer(
   addresses.pkg_sqlite3_connection_pool_request_close.cast(),
 );
 
-final _transferFinalizer = NativeFinalizer(
-  addresses.pkg_sqlite3_connection_pool_transfer_close.cast(),
-);
-
 final class _OutstandingRequest {
   final int tag;
   final Completer<_PoolLease> completer = Completer();
@@ -392,32 +388,8 @@ final class RawPoolRequest implements Finalizable {
     pkg_sqlite3_connection_pool_notify_updates(_handle);
   }
 
-  PoolRequestTransfer transfer() {
-    return PoolRequestTransfer._(
-      pkg_sqlite3_connection_pool_request_transfer(_handle),
-    );
-  }
-}
-
-/// Keeps a [RawPoolRequest] open for a [ReceivedPoolRequest] until [close] is
-/// called or this isolate exits. A request that was not received by then is
-/// closed with the transfer.
-@internal
-final class PoolRequestTransfer implements Finalizable {
-  final int id;
-  final Object _detachToken = Object();
-
-  PoolRequestTransfer._(this.id) {
-    _transferFinalizer.attach(
-      this,
-      Pointer.fromAddress(id),
-      detach: _detachToken,
-    );
-  }
-
-  void close() {
-    _transferFinalizer.detach(_detachToken);
-    pkg_sqlite3_connection_pool_transfer_close(id);
+  int share() {
+    return pkg_sqlite3_connection_pool_request_share(_handle).address;
   }
 }
 
@@ -426,10 +398,12 @@ final class ReceivedPoolRequest implements Finalizable {
   final Pointer<PoolRequest> _handle;
   final Object _detachToken = Object();
 
-  ReceivedPoolRequest(int transfer)
-    : _handle = pkg_sqlite3_connection_pool_transfer_receive(transfer) {
+  ReceivedPoolRequest(int shared)
+    : _handle = pkg_sqlite3_connection_pool_request_upgrade(
+        Pointer.fromAddress(shared),
+      ) {
     if (_handle == nullptr) {
-      throw StateError('Transfer was closed before it was received');
+      throw StateError('Lease was returned before the computation started');
     }
     _requestFinalizer.attach(this, _handle.cast(), detach: _detachToken);
   }

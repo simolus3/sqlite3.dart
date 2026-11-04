@@ -436,14 +436,19 @@ base class AsyncConnection {
   /// On a short-lived isolate, calls [computation] as a critical section with
   /// the underlying database.
   ///
-  /// The connection stays leased until [computation] completes, even if this
-  /// isolate exits while it runs. If the isolate running [computation] exits
-  /// before [computation] completes, its open statements can be finalized after
-  /// the connection has been returned to the pool.
+  /// Once [computation] has started, the connection stays leased until it
+  /// completes, even if this isolate exits while it runs. If the lease is
+  /// returned before that (for instance while this call waits for an earlier
+  /// one), [computation] doesn't run and this throws a [StateError]. If the
+  /// isolate running [computation] exits before [computation] completes, its
+  /// open statements can be finalized after the connection has been returned to
+  /// the pool.
   ///
   /// [run] starts [computation] on another isolate and defaults to
-  /// [Isolate.run]. It must not complete before [computation] does or its
-  /// isolate exits.
+  /// [Isolate.run]. It must start [computation] at most once, and must not
+  /// complete before [computation] does or its isolate exits. If [computation]
+  /// never starts (because it can't be sent, or an isolate exits before it
+  /// starts), a small native allocation is leaked.
   ///
   /// See [unsafeAccess] for potential issues to be aware of when calling this
   /// method.
@@ -455,30 +460,21 @@ base class AsyncConnection {
       throw StateError('LeasedDatabase used after callback returned');
     }
 
-    // The lease can be returned while we wait on the mutex, so transfer it now.
-    final transfer = _request.transfer();
-    try {
-      return await unsafeAccess(
-        (conn) => run(
-          _runWithTransfer(
-            transfer.id,
-            conn.unsafePointer.address,
-            computation,
-          ),
-        ),
-      );
-    } finally {
-      transfer.close();
-    }
+    // The lease can be returned while we wait on the mutex, so share it now.
+    final shared = _request.share();
+    return unsafeAccess(
+      (conn) =>
+          run(_runWithShared(shared, conn.unsafePointer.address, computation)),
+    );
   }
 
-  static Future<T> Function() _runWithTransfer<T>(
-    int transfer,
+  static Future<T> Function() _runWithShared<T>(
+    int shared,
     int address,
     FutureOr<T> Function(PoolConnection) computation,
   ) {
     return () async {
-      final request = ReceivedPoolRequest(transfer);
+      final request = ReceivedPoolRequest(shared);
       try {
         return await computation(
           PoolConnection.unsafeFromPointer(Pointer.fromAddress(address)),

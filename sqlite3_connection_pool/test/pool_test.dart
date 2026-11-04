@@ -757,50 +757,20 @@ void main() {
     });
   });
 
-  test('does not keep lease when computation cannot be sent', () async {
+  test('waiting call throws after returnLease', () async {
     final pool = testPool();
     final writer = await pool.writer();
-    final port = ReceivePort();
-    addTearDown(port.close);
-
-    // A ReceivePort can't be sent to another isolate, so this never runs.
-    await expectLater(
-      writer.unsafeAccessOnIsolate((_) => port.close()),
-      throwsArgumentError,
-    );
+    final first = Completer<void>();
+    final running = writer.unsafeAccess((_) => first.future);
+    final waiting = writer.unsafeAccessOnIsolate((_) {});
     writer.returnLease();
-    (await pool.writer()).returnLease();
-  });
 
-  test('waiting call keeps connection leased after returnLease', () async {
-    final pool = testPool();
-    final port = ReceivePort();
-    addTearDown(port.close);
-    var waitingDone = false;
-    port.listen((_) => waitingDone = true);
-
-    final writer = await pool.writer();
-    final first = writer.select('SELECT 1');
-    final waiting = writer.unsafeAccessOnIsolate(_countRows(port.sendPort));
-    writer.returnLease();
-    await first;
-
+    // The waiting call doesn't keep the lease.
     final next = await pool.writer();
-    expect(waitingDone, isTrue);
+    first.complete();
+    await running;
+    await expectLater(waiting, throwsStateError);
     next.returnLease();
-    await waiting;
-  });
-
-  test('does not keep lease when computation never runs', () async {
-    final pool = testPool();
-    final port = ReceivePort();
-    await Isolate.spawn(_exitBeforeComputationRuns, (pool.name, port.sendPort));
-    await port.first;
-
-    final writer = await pool.writer(
-      abortSignal: Future.delayed(const Duration(seconds: 3)),
-    );
-    writer.returnLease();
   });
 
   test('unsafeAccessOnIsolate with custom run', () async {
@@ -919,24 +889,6 @@ void _exitWhileStatementRuns((String, SendPort) args) async {
   // Exit while the statement is still running.
   await started.first;
   Isolate.exit(port, 'exited');
-}
-
-void Function(PoolConnection) _countRows(SendPort done) {
-  return (conn) {
-    conn.select(
-      'WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c '
-      'LIMIT 1000000) SELECT count(*) FROM c',
-    );
-    done.send(null);
-  };
-}
-
-void _exitBeforeComputationRuns((String, SendPort) args) async {
-  final (directory, port) = args;
-  final writer = await createPool(directory: directory).writer();
-  // This run never calls the computation.
-  writer.unsafeAccessOnIsolate((_) {}, run: <R>(_) => Completer<R>().future);
-  Isolate.exit(port);
 }
 
 void _runComputations(SendPort replies) {

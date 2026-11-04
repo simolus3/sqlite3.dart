@@ -5,6 +5,9 @@
   that started it exits.
 - Add a `run` parameter to `unsafeAccessOnIsolate` to choose how the
   computation is started on another isolate.
+- `unsafeAccessOnIsolate` throws a `StateError` instead of running the
+  computation when the lease is returned before it starts, for instance while
+  the call waits for an earlier one.
 
 ## 0.2.16
 
