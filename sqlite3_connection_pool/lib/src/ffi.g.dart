@@ -131,18 +131,6 @@ external void pkg_sqlite3_connection_pool_request_close(
   ffi.Pointer<PoolRequest> request,
 );
 
-@ffi.Native<ffi.Int Function(ffi.Handle, ffi.Pointer<PoolRequest>)>()
-external int pkg_sqlite3_connection_pool_request_create_weak(
-  Object handle,
-  ffi.Pointer<PoolRequest> request,
-);
-
-@ffi.Native<ffi.Int Function(ffi.Handle, ffi.Pointer<PoolRequest>)>()
-external int pkg_sqlite3_connection_pool_request_try_upgrade(
-  Object handle,
-  ffi.Pointer<PoolRequest> weak,
-);
-
 @ffi.Native<
   ffi.Pointer<ffi.Void> Function(
     ffi.Pointer<PoolConnection>,
@@ -205,41 +193,7 @@ class _SymbolAddresses {
 
 final class ConnectionPool extends ffi.Opaque {}
 
-final class DartLinkData extends ffi.Struct {
-  external SqliteFunctions sqlite;
-
-  external ffi.Pointer<ffi.Void> dart_api_data;
-}
-
-final class InitializedPool extends ffi.Struct {
-  external DartLinkData functions;
-
-  external ffi.Pointer<ffi.Void> write;
-
-  external ffi.Pointer<ffi.Pointer<ffi.Void>> reads;
-
-  @ffi.UintPtr()
-  external int read_count;
-
-  @ffi.UintPtr()
-  external int prepared_statement_cache_size;
-
-  @ffi.UnsignedChar()
-  external int enable_update_hooks;
-}
-
-final class PoolConnection extends ffi.Struct {
-  external ffi.Pointer<ffi.Void> raw;
-
-  static ffi.Pointer<PoolConnection> $allocate(
-    ffi.Allocator $allocator, {
-    required ffi.Pointer<ffi.Void> raw,
-  }) => $allocator<PoolConnection>()..ref.raw = raw;
-}
-
-final class PoolRequest extends ffi.Opaque {}
-
-final class SqliteFunctions extends ffi.Struct {
+final class ExternalFunctions extends ffi.Struct {
   external ffi.Pointer<
     ffi.NativeFunction<
       ffi.Void Function(
@@ -288,7 +242,12 @@ final class SqliteFunctions extends ffi.Struct {
   >
   sqlite3_close_v2;
 
-  static ffi.Pointer<SqliteFunctions> $allocate(
+  external ffi.Pointer<
+    ffi.NativeFunction<ffi.Int Function(ffi.Int64, ffi.Pointer<ffi.Void>)>
+  >
+  dart_post_c_object;
+
+  static ffi.Pointer<ExternalFunctions> $allocate(
     ffi.Allocator $allocator, {
     required ffi.Pointer<
       ffi.NativeFunction<
@@ -332,13 +291,46 @@ final class SqliteFunctions extends ffi.Struct {
       ffi.NativeFunction<ffi.Int Function(ffi.Pointer<ffi.Void>)>
     >
     sqlite3_close_v2,
-  }) => $allocator<SqliteFunctions>()
+    required ffi.Pointer<
+      ffi.NativeFunction<ffi.Int Function(ffi.Int64, ffi.Pointer<ffi.Void>)>
+    >
+    dart_post_c_object,
+  }) => $allocator<ExternalFunctions>()
     ..ref.sqlite3_update_hook = sqlite3_update_hook
     ..ref.sqlite3_commit_hook = sqlite3_commit_hook
     ..ref.sqlite3_rollback_hook = sqlite3_rollback_hook
     ..ref.sqlite3_get_autocommit = sqlite3_get_autocommit
     ..ref.sqlite3_finalize = sqlite3_finalize
-    ..ref.sqlite3_close_v2 = sqlite3_close_v2;
+    ..ref.sqlite3_close_v2 = sqlite3_close_v2
+    ..ref.dart_post_c_object = dart_post_c_object;
 }
+
+final class InitializedPool extends ffi.Struct {
+  external ExternalFunctions functions;
+
+  external ffi.Pointer<ffi.Void> write;
+
+  external ffi.Pointer<ffi.Pointer<ffi.Void>> reads;
+
+  @ffi.UintPtr()
+  external int read_count;
+
+  @ffi.UintPtr()
+  external int prepared_statement_cache_size;
+
+  @ffi.UnsignedChar()
+  external int enable_update_hooks;
+}
+
+final class PoolConnection extends ffi.Struct {
+  external ffi.Pointer<ffi.Void> raw;
+
+  static ffi.Pointer<PoolConnection> $allocate(
+    ffi.Allocator $allocator, {
+    required ffi.Pointer<ffi.Void> raw,
+  }) => $allocator<PoolConnection>()..ref.raw = raw;
+}
+
+final class PoolRequest extends ffi.Opaque {}
 
 final class UninitializedPool extends ffi.Opaque {}
