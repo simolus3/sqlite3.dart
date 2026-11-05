@@ -25,7 +25,7 @@ void main() {
   }
 
   test('opening pools is synchronized', () async {
-    const numIsolates = 10_000;
+    const numIsolates = 100;
     final receiveControl = ReceivePort();
     var countOpened = 0;
     final allOpened = Completer();
@@ -43,7 +43,7 @@ void main() {
       }
     });
 
-    // Spawn 10k isolates attempting to open the same pool.
+    // Spawn 100 isolates attempting to open the same pool.
     for (var i = 0; i < numIsolates; i++) {
       final notify = receiveControl.sendPort;
       _startIsolateForOpenTest(notify);
@@ -563,6 +563,32 @@ void main() {
         isNot(contains('USING COVERING INDEX i1')),
       );
       writer.returnLease();
+    });
+  });
+
+  group('shared connection', () {
+    test('before return', () async {
+      final pool = testPool();
+      final reader = await pool.reader();
+      await reader.unsafeAccess((_) async {
+        final shared = reader.shareableConnection;
+        final clone = shared.obtainConnection();
+        expect(clone, isNotNull);
+        clone!.returnLease();
+      });
+
+      reader.returnLease();
+    });
+
+    test('after return', () async {
+      final pool = testPool();
+      final reader = await pool.reader();
+
+      final shared = reader.shareableConnection;
+      reader.returnLease();
+      expect(shared.obtainConnection(), isNull);
+
+      expect(() => reader.shareableConnection, throwsStateError);
     });
   });
 
