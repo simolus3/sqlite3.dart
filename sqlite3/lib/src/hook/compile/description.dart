@@ -315,29 +315,38 @@ final class PrecompiledFromGithubAssets extends PrecompiledBinary {
       ..findProxy = HttpClient.findProxyFromEnvironment;
     final uri = downloadUri(filename);
 
-    HttpClientResponse response;
     try {
-      final request = await client.getUrl(uri);
-      request.headers.add(
-        'User-Agent',
-        'github.com/simolus3/sqlite3.dart artifact downloader, version $releaseTag',
-      );
-      response = await request.close();
-    } catch (e, s) {
-      // Improve error message by providing some context about why we download
-      // SQLite.
-      Error.throwWithStackTrace(CouldNotDownloadException(uri, e), s);
-    }
-
-    await for (final chunk in response) {
-      if (chunk is Uint8List) {
-        yield chunk;
-      } else {
-        yield Uint8List.fromList(chunk);
+      HttpClientResponse response;
+      try {
+        final request = await client.getUrl(uri);
+        request.headers.add(
+          'User-Agent',
+          'github.com/simolus3/sqlite3.dart artifact downloader, version $releaseTag',
+        );
+        response = await request.close();
+      } catch (e, s) {
+        // Improve error message by providing some context about why we download
+        // SQLite.
+        Error.throwWithStackTrace(CouldNotDownloadException(uri, e), s);
       }
-    }
 
-    client.close();
+      if (response.statusCode != HttpStatus.ok) {
+        throw CouldNotDownloadException(
+          uri,
+          'Unexpected response code: ${response.statusCode} ${response.reasonPhrase}',
+        );
+      }
+
+      await for (final chunk in response) {
+        if (chunk is Uint8List) {
+          yield chunk;
+        } else {
+          yield Uint8List.fromList(chunk);
+        }
+      }
+    } finally {
+      client.close();
+    }
   }
 
   static const defaultUrlPattern =
