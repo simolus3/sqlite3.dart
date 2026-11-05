@@ -1,3 +1,7 @@
+## 0.2.17
+
+- Add `ShareableAsyncConnection` to safely share pool leases across isolates.
+
 ## 0.2.16
 
 - Fix dangling references to existing pool connections when pool grows.
