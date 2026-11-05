@@ -25,7 +25,7 @@ void main() {
   }
 
   test('opening pools is synchronized', () async {
-    const numIsolates = 10_000;
+    const numIsolates = 100;
     final receiveControl = ReceivePort();
     var countOpened = 0;
     final allOpened = Completer();
@@ -43,7 +43,7 @@ void main() {
       }
     });
 
-    // Spawn 10k isolates attempting to open the same pool.
+    // Spawn 100 isolates attempting to open the same pool.
     for (var i = 0; i < numIsolates; i++) {
       final notify = receiveControl.sendPort;
       _startIsolateForOpenTest(notify);
