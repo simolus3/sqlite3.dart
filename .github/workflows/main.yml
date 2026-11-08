@@ -131,7 +131,7 @@ jobs:
     - name: Checksec
       if: runner.os == 'Linux'
       run: |
-        curl -LO https://github.com/slimm609/checksec/releases/download/3.2.0/checksec_3.2.0_amd64.deb
+        curl -fLO https://github.com/slimm609/checksec/releases/download/3.2.0/checksec_3.2.0_amd64.deb
         sudo dpkg -i checksec_3.2.0_amd64.deb
         rm checksec_3.2.0_amd64.deb
         dart tool/checksec.dart sqlite-compiled/*linux* sqlite3_connection_pool/lib/src/precompiled/*linux*
