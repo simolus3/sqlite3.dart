@@ -1,4 +1,11 @@
 
+## 3.9.2-wip
+
+- Fix native finalizers for statements and databases running a second time on
+  an already-released handle when the isolate is killed while a statement or
+  database is being closed. This caused crashes in `sqlite3_finalize` during
+  isolate shutdown.
+
 ## 3.9.1
 
 - Hook: Improve error message when a download from GitHub releases fails.
