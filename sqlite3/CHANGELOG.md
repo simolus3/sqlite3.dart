@@ -1,3 +1,8 @@
+
+## 3.9.1
+
+- Hook: Improve error message when a download from GitHub releases fails.
+
 ## 3.9.0
 
 - Add `CommonDatabase.trace`, reporting statement trace events through a
