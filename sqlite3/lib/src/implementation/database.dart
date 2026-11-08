@@ -7,7 +7,6 @@ import 'package:meta/meta.dart';
 
 import '../constants.dart';
 import '../database.dart';
-import '../exception.dart';
 import '../functions.dart';
 import '../result_set.dart';
 import '../statement.dart';
@@ -284,20 +283,7 @@ base class DatabaseImplementation implements CommonDatabase {
       return;
     }
 
-    final code = database.sqlite3_close_v2();
-    SqliteException? exception;
-    if (code != SqlError.SQLITE_OK) {
-      exception = createExceptionRaw(
-        bindings,
-        database,
-        code,
-        operation: 'closing database',
-      );
-    }
-
-    if (exception != null) {
-      throw exception;
-    }
+    database.sqlite3_close_v2();
   }
 
   @override

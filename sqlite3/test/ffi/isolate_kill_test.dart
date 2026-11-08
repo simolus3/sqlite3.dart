@@ -2,15 +2,15 @@
 library;
 
 import 'dart:isolate';
+import 'dart:math';
 
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
 
 void main() {
-  // When an isolate is killed, the VM runs the native finalizers of every
-  // object the isolate still owns. A kill can arrive while a statement is
-  // being closed, and the statement must then not be finalized a second time.
+  // Regression test for https://github.com/simolus3/sqlite3.dart/issues/437
   test('killing an isolate while it closes statements', () async {
+    final random = Random();
     for (var i = 0; i < 300; i++) {
       final ready = ReceivePort();
       final exit = ReceivePort();
@@ -20,7 +20,7 @@ void main() {
         onExit: exit.sendPort,
       );
       await ready.first;
-      await Future<void>.delayed(Duration(microseconds: (i * 37) % 2000));
+      await Future<void>.delayed(Duration(microseconds: random.nextInt(2000)));
       isolate.kill(priority: Isolate.immediate);
       await exit.first;
     }

@@ -203,7 +203,11 @@ abstract interface class RawSqliteDatabase {
   int sqlite3_error_offset();
 
   void sqlite3_extended_result_codes(int onoff);
-  int sqlite3_close_v2();
+
+  /// Closes the connection. `sqlite3_close_v2` can't fail (with statements
+  /// still open it defers the close until they're finalized), so there is no
+  /// result code to check.
+  void sqlite3_close_v2();
   String sqlite3_errmsg();
 
   void sqlite3_update_hook(RawUpdateHook? hook);
