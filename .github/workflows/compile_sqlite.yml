@@ -39,6 +39,8 @@ jobs:
 
       - name: Download sqlite3
         if: steps.cache_build.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           dart run tool/download_sqlite.dart
 
@@ -84,8 +86,12 @@ jobs:
       - name: Download OpenSSL
         if: steps.cache_build.outputs.cache-hit != 'true'
         # When updating this, also update the version in tool/generate_sbom.dart
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          curl -L https://github.com/openssl/openssl/releases/download/openssl-4.1.0/openssl-4.1.0.tar.gz | tar --extract --gzip
+          gh release download openssl-4.1.0 --repo openssl/openssl --pattern openssl-4.1.0.tar.gz
+          tar --extract --gzip --file openssl-4.1.0.tar.gz
+          rm openssl-4.1.0.tar.gz
           mv openssl-4.1.0 openssl-src
 
       - name: Compile OpenSSL (host)
@@ -279,15 +285,17 @@ jobs:
 
       - name: Download WASI SDK
         if: steps.cache_build.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           ls -al ${LLVM_PATH}
 
-          curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-27/wasi-sdk-27.0-x86_64-linux.deb -o wasi-sdk.deb
+          gh release download wasi-sdk-27 --repo WebAssembly/wasi-sdk --pattern wasi-sdk-27.0-x86_64-linux.deb --output wasi-sdk.deb
           sudo dpkg -i wasi-sdk.deb
           sudo mkdir /usr/lib/llvm-18/lib/clang/18/lib/wasi
           sudo cp -r /opt/wasi-sdk/lib/clang/20/lib/* ${LLVM_PATH}/lib/clang/21/lib/
 
-          curl -L https://github.com/WebAssembly/binaryen/releases/download/version_124/binaryen-version_124-x86_64-linux.tar.gz -o binaryen.tar.gz
+          gh release download version_124 --repo WebAssembly/binaryen --pattern binaryen-version_124-x86_64-linux.tar.gz --output binaryen.tar.gz
           tar --extract --gzip --file binaryen.tar.gz
           sudo mv binaryen-version_124/bin/* /usr/local/bin
 

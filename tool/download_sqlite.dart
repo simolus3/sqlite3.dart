@@ -49,7 +49,16 @@ void main(List<String> args) async {
 }
 
 Future<void> _downloadAndExtract(String url, String filename) async {
-  await _run('curl -L $url --output $filename.zip', workingDirectory: tmpDir);
+  final forwardToken = switch (Platform.environment['GH_TOKEN']) {
+    final token? when token.isNotEmpty && Uri.parse(url).host == 'github.com' =>
+      '-H "Authorization: Bearer \$GH_TOKEN" ',
+    _ => '',
+  };
+
+  await _run(
+    'curl -fL $forwardToken$url --output $filename.zip',
+    workingDirectory: tmpDir,
+  );
   await _run('unzip $filename.zip', workingDirectory: tmpDir);
 }
 
