@@ -68,6 +68,13 @@ jobs:
 
         gh release upload "$tag" sqlite-compiled/*
 
+    - name: Upload assets to Bunny Storage
+      if: "${{ startsWith(github.ref_name, 'sqlite3-') }}"
+      env:
+        BUNNY_URL: ${{ secrets.BUNNY_URL }}
+        BUNNY_ACCESS_KEY: ${{ secrets.BUNNY_ACCESS_KEY }}
+      run: dart tool/upload_release_assets.dart sqlite-compiled/
+
   publish_sqlite3:
     needs: [prepare_release]
     permissions:
