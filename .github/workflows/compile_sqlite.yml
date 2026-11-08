@@ -32,7 +32,7 @@ jobs:
         id: cache_build
         with:
           path: sqlite-src/
-          key: sqlite-src-${{ hashFiles('tool/download_sqlite.dart') }}
+          key: sqlite-src-${{ hashFiles('tool/compile/download_sqlite.dart') }}
 
       - uses: dart-lang/setup-dart@v1
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -42,7 +42,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          dart run tool/download_sqlite.dart
+          dart run tool/compile/download_sqlite.dart
 
       - name: Upload sqlite3 sources
         uses: actions/upload-artifact@v7
@@ -78,7 +78,7 @@ jobs:
         id: cache_build
         with:
           path: openssl-compiled
-          key: openssl-prebuilt-${{ matrix.target }}-4.1.0-${{ hashFiles('tool/build_openssl.dart') }}
+          key: openssl-prebuilt-${{ matrix.target }}-4.1.0-${{ hashFiles('tool/compile/build_openssl.dart') }}
       - uses: dart-lang/setup-dart@v1
         id: setup_dart
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -98,7 +98,7 @@ jobs:
         if: steps.cache_build.outputs.cache-hit != 'true' && !matrix.container
         run: |
           dart pub get
-          dart run tool/build_openssl.dart ${{ matrix.target }}
+          dart run tool/compile/build_openssl.dart ${{ matrix.target }}
 
       - name: Compile OpenSSL (container)
         if: steps.cache_build.outputs.cache-hit != 'true' && matrix.container
@@ -117,7 +117,7 @@ jobs:
           docker exec openssl-build dpkg -i dart_$DART_VERSION-1_amd64.deb
 
           docker exec -w /src/ openssl-build dart pub get
-          docker exec -w /src/ openssl-build dart run tool/build_openssl.dart $TARGET
+          docker exec -w /src/ openssl-build dart run tool/compile/build_openssl.dart $TARGET
 
       - name: Upload openssl binaries
         uses: actions/upload-artifact@v7
@@ -156,7 +156,7 @@ jobs:
         id: cache_build
         with:
           path: sqlite-compiled
-          key: sqlite-prebuilt-${{ matrix.target }}-${{ hashFiles('tool/**', 'sqlite3/hook/**', 'sqlite3/lib/src/hook/compile/**') }}
+          key: sqlite-prebuilt-${{ matrix.target }}-${{ hashFiles('tool/compile/**', 'sqlite3/hook/**', 'sqlite3/lib/src/hook/compile/**') }}
 
       - name: Download sqlite3 sources
         if: steps.cache_build.outputs.cache-hit != 'true'
@@ -180,7 +180,7 @@ jobs:
         if: steps.cache_build.outputs.cache-hit != 'true' && !matrix.container
         run: |
           dart pub get
-          dart run tool/build_sqlite.dart ${{ matrix.target }}
+          dart run tool/compile/build_sqlite.dart ${{ matrix.target }}
 
       - name: Compile sqlite3 (container)
         if: steps.cache_build.outputs.cache-hit != 'true' && matrix.container
@@ -199,7 +199,7 @@ jobs:
           docker exec sqlite-build dpkg -i dart_$DART_VERSION-1_amd64.deb
 
           docker exec -w /src/ sqlite-build dart pub get
-          docker exec -w /src/ sqlite-build dart run tool/build_sqlite.dart $TARGET
+          docker exec -w /src/ sqlite-build dart run tool/compile/build_sqlite.dart $TARGET
 
       - name: Upload sqlite3 binaries
         uses: actions/upload-artifact@v7
@@ -222,7 +222,7 @@ jobs:
         id: cache_build
         with:
           path: sqlite-sanitized
-          key: sqlite-sanitizers-${{ runner.os }}-${{ hashFiles('tool/**', 'sqlite3/lib/src/hook/description.dart', 'sqlite3_connection_pool/src/**') }}
+          key: sqlite-sanitizers-${{ runner.os }}-${{ hashFiles('tool/compile/**', 'sqlite3/lib/src/hook/description.dart', 'sqlite3_connection_pool/src/**') }}
       - name: Download sqlite3 sources
         if: steps.cache_build.outputs.cache-hit != 'true'
         uses: actions/download-artifact@v8
@@ -248,7 +248,7 @@ jobs:
         if: steps.cache_build.outputs.cache-hit != 'true'
         run: |
           dart pub get
-          dart run tool/build_with_sanitizers.dart
+          dart run tool/compile/build_with_sanitizers.dart
 
       - name: Compile pool libraries
         if: steps.cache_build.outputs.cache-hit != 'true'

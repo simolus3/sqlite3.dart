@@ -15,8 +15,8 @@ import 'package:path/path.dart' as p;
 /// and the pool helper library. Either obtain that from the `sqlite3-sanitized`
 /// asset uploaded to CI runs on GitHub assets, or use:
 ///
-/// 1. tool/download_sqlite.dart
-/// 2. tool/build_with_sanitizers.dart (requires clang and LLVM).
+/// 1. tool/compile/download_sqlite.dart
+/// 2. tool/compile/build_with_sanitizers.dart (requires clang and LLVM).
 /// 3. tool/build_linux_sanitizer.sh in sqlite3_connection_pool.
 void main(List<String> args) async {
   final parser = ArgParser(allowTrailingOptions: false);

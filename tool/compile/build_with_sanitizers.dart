@@ -9,7 +9,7 @@ import 'package:pool/pool.dart';
 
 import 'package:sqlite3/src/hook/compile/description.dart';
 
-import '../sqlite3/hook/build.dart' as hook;
+import '../../sqlite3/hook/build.dart' as hook;
 
 final _limitConcurrency = Pool(Platform.numberOfProcessors);
 
