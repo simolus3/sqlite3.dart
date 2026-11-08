@@ -148,7 +148,9 @@ void main(List<String> args) async {
             targetOS: os,
             linkModePreference: LinkModePreference.dynamic,
             iOS: iOS,
-            macOS: os == OS.macOS ? MacOSCodeConfig(targetVersion: 13) : null,
+            macOS: os == OS.macOS
+                ? MacOSCodeConfig(deploymentVersion: AppleVersion(13))
+                : null,
             android: os == OS.android
                 ? AndroidCodeConfig(targetNdkApi: 24)
                 : null,
@@ -219,7 +221,10 @@ void main(List<String> args) async {
           () => buildAndCopy(
             os,
             architecture,
-            iOS: IOSCodeConfig(targetSdk: IOSSdk.iPhoneOS, targetVersion: 12),
+            iOS: IOSCodeConfig(
+              targetSdk: IOSSdk.iPhoneOS,
+              deploymentVersion: AppleVersion(12),
+            ),
           ),
         );
       }
@@ -228,7 +233,7 @@ void main(List<String> args) async {
         // Also compile for iOS simulators
         final simulatorConfig = IOSCodeConfig(
           targetSdk: IOSSdk.iPhoneSimulator,
-          targetVersion: 12,
+          deploymentVersion: AppleVersion(12),
         );
 
         scheduleTask(

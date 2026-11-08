@@ -144,7 +144,7 @@ void main() {
           targetArchitecture: Architecture.arm64,
           targetOS: OS.macOS,
           linkModePreference: LinkModePreference.dynamic,
-          macOS: MacOSCodeConfig(targetVersion: 13),
+          macOS: MacOSCodeConfig(deploymentVersion: AppleVersion(13)),
         ),
       ],
     );
@@ -177,7 +177,7 @@ void main() {
           targetArchitecture: Architecture.arm64,
           targetOS: OS.macOS,
           linkModePreference: LinkModePreference.dynamic,
-          macOS: MacOSCodeConfig(targetVersion: 13),
+          macOS: MacOSCodeConfig(deploymentVersion: AppleVersion(13)),
         ),
       ],
     );
@@ -330,9 +330,14 @@ Future<T> resolveForOS<T>(
         targetOS: os,
         linkModePreference: LinkModePreference.dynamic,
         iOS: os == OS.iOS
-            ? IOSCodeConfig(targetSdk: IOSSdk.iPhoneOS, targetVersion: 13)
+            ? IOSCodeConfig(
+                targetSdk: IOSSdk.iPhoneOS,
+                deploymentVersion: AppleVersion(13),
+              )
             : null,
-        macOS: os == OS.macOS ? MacOSCodeConfig(targetVersion: 13) : null,
+        macOS: os == OS.macOS
+            ? MacOSCodeConfig(deploymentVersion: AppleVersion(13))
+            : null,
       ),
     ],
   );
