@@ -242,9 +242,11 @@ final class WasmDatabase implements RawSqliteDatabase {
   }
 
   @override
-  int sqlite3_close_v2() {
+  void sqlite3_close_v2() {
     bindings.databaseFinalizer?.detach(detach);
-    return bindings.sqlite3_close_v2(db);
+    final rc = bindings.sqlite3_close_v2(db);
+    // sqlite3_close_v2 can't fail, see FfiDatabase.sqlite3_close_v2.
+    assert(rc == SqlError.SQLITE_OK);
   }
 
   @override

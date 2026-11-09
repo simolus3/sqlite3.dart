@@ -902,16 +902,20 @@ final class FfiDatabase implements RawSqliteDatabase, Finalizable {
   }
 
   @override
-  int sqlite3_close_v2() {
+  void sqlite3_close_v2() {
+    // Detach before closing: if the isolate is killed between the two calls,
+    // the native finalizer would otherwise close the freed connection again
+    // when the isolate shuts down.
+    detachFinalizer();
     final rc = libsqlite3.sqlite3_close_v2(db);
+    // sqlite3_close_v2 can't fail: with statements still open it marks the
+    // connection as a zombie and frees it once they're finalized.
+    assert(rc == SqlError.SQLITE_OK);
 
     // TODO: Functions and their finalizers might still be called here, since
     // finalizing a statement might invoke an xFinal for an aggregate.
     _functions.closeAll();
     _FunctionFinalizers.finalizer.detach(_detachToken);
-
-    detachFinalizer();
-    return rc;
   }
 
   void detachFinalizer() {
@@ -1413,8 +1417,10 @@ final class FfiStatement implements RawSqliteStatement, Finalizable {
 
   @override
   void sqlite3_finalize() {
-    libsqlite3.sqlite3_finalize(stmt);
+    // Detach before finalizing, for the same reason as in
+    // FfiDatabase.sqlite3_close_v2.
     detachFinalizer();
+    libsqlite3.sqlite3_finalize(stmt);
   }
 
   @override
