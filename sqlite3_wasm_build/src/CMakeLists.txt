@@ -20,7 +20,7 @@ FetchContent_Declare(
 
 FetchContent_Declare(
     sqlite3mc
-    URL https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.6.1/sqlite3mc-2.6.1-sqlite-3.54.0-amalgamation.zip
+    URL https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.7.0/sqlite3mc-2.7.0-sqlite-3.54.1-amalgamation.zip
     DOWNLOAD_EXTRACT_TIMESTAMP NEW
     PATCH_COMMAND dart run ${CMAKE_CURRENT_SOURCE_DIR}/../tool/patch_sqlite3mc.dart <SOURCE_DIR>/sqlite3mc_amalgamation.c
 )

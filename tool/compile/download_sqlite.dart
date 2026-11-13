@@ -5,7 +5,7 @@ import 'dart:io';
 const sqlitePath = 'sqlite-amalgamation-3540100';
 const sqliteSource = 'https://sqlite.org/2026/$sqlitePath.zip';
 const sqliteMultipleCiphersSource =
-    'https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.6.1/sqlite3mc-2.6.1-sqlite-3.54.0-amalgamation.zip';
+    'https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.7.0/sqlite3mc-2.7.0-sqlite-3.54.1-amalgamation.zip';
 
 const sqlcipherVersion = '4.20.0';
 const sqlcipherSource =

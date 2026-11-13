@@ -5,6 +5,7 @@
   an already-released handle when the isolate is killed while a statement or
   database is being closed. This caused crashes in `sqlite3_finalize` during
   isolate shutdown.
+- Update SQLite3 Multiple Ciphers to version 2.7.0.
 
 ## 3.9.1
 
