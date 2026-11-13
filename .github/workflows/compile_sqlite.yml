@@ -292,7 +292,7 @@ jobs:
 
           gh release download wasi-sdk-27 --repo WebAssembly/wasi-sdk --pattern wasi-sdk-27.0-x86_64-linux.deb --output wasi-sdk.deb
           sudo dpkg -i wasi-sdk.deb
-          sudo mkdir /usr/lib/llvm-18/lib/clang/18/lib/wasi
+          sudo mkdir /usr/lib/llvm-22/lib/clang/22/lib/wasi
           sudo cp -r /opt/wasi-sdk/lib/clang/20/lib/* ${LLVM_PATH}/lib/clang/21/lib/
 
           gh release download version_124 --repo WebAssembly/binaryen --pattern binaryen-version_124-x86_64-linux.tar.gz --output binaryen.tar.gz
