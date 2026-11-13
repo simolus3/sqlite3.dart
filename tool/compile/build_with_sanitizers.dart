@@ -62,6 +62,7 @@ void main() async {
             includes: [p.dirname(sourceFile)],
             defines: {
               'SQLITE_ENABLE_API_ARMOR': '1',
+              'SQLITE_ENABLE_BATCH_ATOMIC_WRITE': '1',
               ...CompilerDefines.defaults(false),
             },
             flags: [
