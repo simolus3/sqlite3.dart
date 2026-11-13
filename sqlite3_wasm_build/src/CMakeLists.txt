@@ -62,6 +62,7 @@ macro(base_sqlite3_target name debug crypto)
       "-DHAVE_CIPHER_ASCON128=0"
       "-DHAVE_CIPHER_AEGIS=0"
       "-DHAVE_CIPHER_CHACHA20=1"
+      "-DSQLITE3MC_WASM_USE_GETENTROPY=1"
     )
   else()
     list(APPEND sources "${sqlite3_SOURCE_DIR}/sqlite3.c")

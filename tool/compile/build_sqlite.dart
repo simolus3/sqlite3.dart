@@ -173,6 +173,11 @@ void main(List<String> args) async {
             defines: {
               'source': 'source',
               'path': p.relative(sourcePath, from: fs.currentDirectory.path),
+              if (mode == .sqlite)
+                // The encrypted builds don't support this.
+                'defines': {
+                  'defines': ['SQLITE_ENABLE_BATCH_ATOMIC_WRITE'],
+                },
               if (mode == SqliteFork.sqlcipher) ...{
                 'additional_includes': additionalIncludes,
                 'additional_flags': additionalFlags,
@@ -180,9 +185,6 @@ void main(List<String> args) async {
                 'additional_libraries': additionalLibraries,
                 'defines': {
                   'defines': [
-                    // The encrypted builds don't support this.
-                    if (mode == .sqlite) 'SQLITE_ENABLE_BATCH_ATOMIC_WRITE',
-
                     // Minimum extra flags to build SQLCipher
                     'SQLITE_HAS_CODEC',
                     'SQLITE_TEMP_STORE=2',
