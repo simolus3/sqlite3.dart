@@ -180,6 +180,9 @@ void main(List<String> args) async {
                 'additional_libraries': additionalLibraries,
                 'defines': {
                   'defines': [
+                    // The encrypted builds don't support this.
+                    if (mode == .sqlite) 'SQLITE_ENABLE_BATCH_ATOMIC_WRITE',
+
                     // Minimum extra flags to build SQLCipher
                     'SQLITE_HAS_CODEC',
                     'SQLITE_TEMP_STORE=2',

@@ -579,7 +579,6 @@ final class CouldNotDownloadException {
   }
 }
 
-// Keep in sync with tool/compile_sqlite.dart
 const _defaultDefines = '''
   SQLITE_ENABLE_DBSTAT_VTAB
   SQLITE_ENABLE_FTS5
@@ -605,5 +604,4 @@ const _defaultDefines = '''
   SQLITE_HAVE_LOCALTIME_S
   SQLITE_HAVE_MALLOC_USABLE_SIZE
   SQLITE_HAVE_STRCHRNUL
-  SQLITE_ENABLE_BATCH_ATOMIC_WRITE
 ''';
