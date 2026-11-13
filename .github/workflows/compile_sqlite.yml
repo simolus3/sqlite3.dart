@@ -276,24 +276,21 @@ jobs:
           path: sqlite3_wasm_build/out/
           key: sqlite-prebuilt-wasm-${{ hashFiles('sqlite3_wasm_build/src/**', 'sqlite3_wasm_build/tool/**') }}
 
-      # clang 18 that ships on ubuntu crashes when compiling the wasm sources
-      - name: Install LLVM and Clang
-        if: steps.cache_build.outputs.cache-hit != 'true'
-        uses: KyleMayes/install-llvm-action@ebc0426251bc40c7cd31162802432c68818ab8f0 #v2.0.9
-        with:
-          version: "21"
-
       - name: Download WASI SDK
         if: steps.cache_build.outputs.cache-hit != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ls -al ${LLVM_PATH}
+          clang --version
 
           gh release download wasi-sdk-27 --repo WebAssembly/wasi-sdk --pattern wasi-sdk-27.0-x86_64-linux.deb --output wasi-sdk.deb
           sudo dpkg -i wasi-sdk.deb
-          sudo mkdir /usr/lib/llvm-22/lib/clang/22/lib/wasi
-          sudo cp -r /opt/wasi-sdk/lib/clang/20/lib/* ${LLVM_PATH}/lib/clang/21/lib/
+
+          # Install the wasm32 compiler-rt builtins from the WASI SDK into the
+          # resource directory of the system clang.
+          CLANG_RESOURCE_DIR=$(clang -print-resource-dir)
+          sudo mkdir -p ${CLANG_RESOURCE_DIR}/lib
+          sudo cp -r /opt/wasi-sdk/lib/clang/20/lib/* ${CLANG_RESOURCE_DIR}/lib/
 
           gh release download version_124 --repo WebAssembly/binaryen --pattern binaryen-version_124-x86_64-linux.tar.gz --output binaryen.tar.gz
           tar --extract --gzip --file binaryen.tar.gz
