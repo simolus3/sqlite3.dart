@@ -400,6 +400,14 @@ base class DatabaseImplementation implements CommonDatabase {
       }
     }
 
+    // SQLite treats a NUL char as a statement terminator, but we need to skip
+    // past it to read subsequent statements.
+    void skipNulBytes() {
+      while (offset < bytes.length && bytes[offset] == 0) {
+        offset++;
+      }
+    }
+
     while (offset < bytes.length) {
       final result = compiler.sqlite3_prepare(
         offset,
@@ -429,6 +437,7 @@ base class DatabaseImplementation implements CommonDatabase {
       }
 
       offset = endOffset;
+      skipNulBytes();
 
       if (createdStatements.length == maxStatements) {
         break;
@@ -445,7 +454,6 @@ base class DatabaseImplementation implements CommonDatabase {
           prepFlags,
         );
         offset = compiler.endOffset;
-
         final stmt = result.result;
 
         if (stmt != null) {
@@ -466,6 +474,8 @@ base class DatabaseImplementation implements CommonDatabase {
             'Has trailing data after the first sql statement:',
           );
         }
+
+        skipNulBytes();
       }
     }
 
