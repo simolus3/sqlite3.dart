@@ -369,13 +369,6 @@ base class DatabaseImplementation implements CommonDatabase {
     }
   }
 
-  /// The offset to continue preparing at when a prepare call at [offset]
-  /// made no progress: after the NUL character there, or the end of [bytes]
-  /// if it stopped for another reason (so that callers always terminate).
-  static int _afterNul(List<int> bytes, int offset) {
-    return bytes[offset] == 0 ? offset + 1 : bytes.length;
-  }
-
   List<StatementImplementation> _prepareInternal(
     String sql, {
     bool persistent = false,
@@ -407,6 +400,14 @@ base class DatabaseImplementation implements CommonDatabase {
       }
     }
 
+    // SQLite treats a NUL char as a statement terminator, but we need to skip
+    // past it to read subsequent statements.
+    void skipNulBytes() {
+      while (offset < bytes.length && bytes[offset] == 0) {
+        offset++;
+      }
+    }
+
     while (offset < bytes.length) {
       final result = compiler.sqlite3_prepare(
         offset,
@@ -433,15 +434,10 @@ base class DatabaseImplementation implements CommonDatabase {
         final stmtSql = utf8.decoder.convert(bytes, offset, endOffset);
 
         createdStatements.add(wrapStatement(stmtSql, stmt));
-      } else if (endOffset <= offset) {
-        // SQLite reads a NUL character as the end of the text: it returns
-        // no statement and does not move past it. Skip it like a statement
-        // separator, so that what follows it is still looked at.
-        offset = _afterNul(bytes, offset);
-        continue;
       }
 
       offset = endOffset;
+      skipNulBytes();
 
       if (createdStatements.length == maxStatements) {
         break;
@@ -457,18 +453,8 @@ base class DatabaseImplementation implements CommonDatabase {
           bytes.length - offset,
           prepFlags,
         );
-        final endOffset = compiler.endOffset;
+        offset = compiler.endOffset;
         final stmt = result.result;
-
-        if (stmt == null &&
-            result.resultCode == SqlError.SQLITE_OK &&
-            endOffset <= offset) {
-          // A NUL character, see above: a statement after it is still an
-          // unexpected trailing statement.
-          offset = _afterNul(bytes, offset);
-          continue;
-        }
-        offset = endOffset;
 
         if (stmt != null) {
           // Had an unexpected trailing statement -> throw!
@@ -488,6 +474,8 @@ base class DatabaseImplementation implements CommonDatabase {
             'Has trailing data after the first sql statement:',
           );
         }
+
+        skipNulBytes();
       }
     }
 
