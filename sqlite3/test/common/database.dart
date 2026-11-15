@@ -811,6 +811,91 @@ void testDatabase(
         expect(stmts[1].sql, ' /* and */ SELECT 2;');
       });
 
+      group('NUL characters', () {
+        // SQLite reads a NUL as the end of the text. These calls used to
+        // never return (https://github.com/simolus3/sqlite3.dart/issues/442).
+        final nul = String.fromCharCode(0);
+
+        test('only', () {
+          expect(() => database.prepare(nul), throwsArgumentError);
+          expect(
+            () => database.prepare(nul, checkNoTail: true),
+            throwsArgumentError,
+          );
+          expect(database.prepareMultiple(nul), isEmpty);
+          expect(database.prepareMultiple('$nul $nul'), isEmpty);
+          expect(() => database.select(nul), throwsArgumentError);
+        });
+
+        test('trailing', () {
+          expect(database.select('SELECT 1 AS a$nul'), [
+            {'a': 1},
+          ]);
+          expect(database.select('SELECT 1 AS a;$nul$nul '), [
+            {'a': 1},
+          ]);
+
+          final stmt = database.prepare('SELECT 1$nul', checkNoTail: true);
+          expect(stmt.sql, 'SELECT 1');
+        });
+
+        test('leading', () {
+          expect(database.select('${nul}SELECT 1 AS a'), [
+            {'a': 1},
+          ]);
+        });
+
+        test('separate statements', () {
+          final stmts = database.prepareMultiple(
+            'SELECT 1;${nul}SELECT 2$nul SELECT 3;',
+          );
+          expect(stmts.map((stmt) => stmt.sql), [
+            'SELECT 1;',
+            'SELECT 2',
+            ' SELECT 3;',
+          ]);
+        });
+
+        test('a statement after one is a trailing statement', () {
+          for (final sql in [
+            'SELECT 1$nul SELECT 2',
+            'SELECT 1;${nul}SELECT 2',
+            'SELECT 1$nul; SELECT 2',
+            'SELECT 1$nul$nul/* comment */${nul}SELECT 2',
+          ]) {
+            expect(
+              () => database.prepare(sql, checkNoTail: true),
+              throwsArgumentError,
+              reason: sql.replaceAll(nul, '<NUL>'),
+            );
+            expect(
+              () => database.select(sql),
+              throwsArgumentError,
+              reason: sql.replaceAll(nul, '<NUL>'),
+            );
+            expect(
+              () => database.execute(sql, const [1]),
+              throwsArgumentError,
+              reason: sql.replaceAll(nul, '<NUL>'),
+            );
+          }
+
+          // Without the check, the first statement is the one prepared.
+          expect(database.prepare('SELECT 1$nul SELECT 2').sql, 'SELECT 1');
+        });
+
+        test('invalid text after one is still refused', () {
+          expect(
+            () => database.prepare('SELECT 1$nul not sql', checkNoTail: true),
+            throwsArgumentError,
+          );
+          expect(
+            () => database.prepareMultiple('SELECT 1$nul not sql'),
+            throwsA(isA<SqliteException>()),
+          );
+        });
+      });
+
       test('BigInt bounds', () {
         database.execute('CREATE TABLE foo (a INTEGER);');
 
