@@ -6,6 +6,8 @@ import 'dart:js_interop';
 import 'dart:typed_data';
 
 import 'package:sqlite3/common.dart';
+// ignore: implementation_imports
+import 'package:sqlite3/src/wasm/js_interop/core.dart';
 import 'package:sqlite3_web/sqlite3_web.dart';
 import 'package:sqlite3_web/src/channel.dart';
 import 'package:sqlite3_web/src/protocol.dart';
@@ -81,6 +83,15 @@ void main() {
       beyondSafeInteger,
       beyondSafeIntegerNegated,
     ]);
+    // The BigInts themselves must be exact, as a peer compiled with dart2js
+    // reads them as they are.
+    expect(
+      [
+        for (final value in serializedParams.toDart.skip(8))
+          JsBigInt(value as JSBigInt).jsToString(),
+      ],
+      ['9007199254740993', '-9007199254740993'],
+    );
     await client.sendRequest(
       newRunQuery(
         requestId: 0,

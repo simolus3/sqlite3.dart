@@ -234,6 +234,7 @@ enum TypeCode {
     // serialize BigInts, possible dartify/jsify incompatibilities between
     // dart2js and dart2wasm and most importantly, being able to keep 1 and 1.0
     // apart in dart2wasm when the worker is compiled with dart2js.
+    const isCompilingToJavaScript = identical(0, 0.0);
     final JSAny? value;
     final TypeCode code;
 
@@ -241,7 +242,8 @@ enum TypeCode {
       case null:
         value = null;
         code = TypeCode.$null;
-      case final int integer when integer.isSafeInteger:
+      case final int integer
+          when isCompilingToJavaScript || integer.isSafeInteger:
         value = integer.toJS;
         code = TypeCode.integer;
       case final int integer:
@@ -508,5 +510,6 @@ class _UniqueFieldNames {
 extension on int {
   /// Whether this integer is in the range a JavaScript number represents
   /// exactly (`Number.isSafeInteger`); always true on dart2js.
-  bool get isSafeInteger => this >= -9007199254740991 && this <= 9007199254740991;
+  bool get isSafeInteger =>
+      this >= -9007199254740991 && this <= 9007199254740991;
 }
