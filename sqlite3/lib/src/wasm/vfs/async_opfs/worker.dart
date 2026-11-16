@@ -277,14 +277,15 @@ class VfsWorker {
 
     if (file.syncHandle == null) {
       try {
-        await _openForSynchronousAccess(file);
-        file.explicitlyLocked = true;
+        await _openForSynchronousAccess(file, forExplicitLock: true);
+        assert(file.explicitlyLocked);
       } on Object {
         throw const VfsException(SqlExtendedError.SQLITE_IOERR_LOCK);
       }
     } else {
       // We already have an (implicit) lock on this file, so we just need to
       // make it explicit.
+      _implicitlyHeldLocks.remove(file);
       file.explicitlyLocked = true;
     }
 
@@ -306,8 +307,7 @@ class VfsWorker {
 
   Future<void> start() async {
     while (!_stopped) {
-      final waitResult = synchronizer.waitForRequest();
-      if (waitResult == Atomics.timedOut) {
+      if (!synchronizer.waitForRequest()) {
         // No requests for some time, transition to idle
         _releaseImplicitLocks();
         continue;
@@ -398,8 +398,9 @@ class VfsWorker {
   }
 
   Future<FileSystemSyncAccessHandle> _openForSynchronousAccess(
-    _OpenedFileHandle file,
-  ) async {
+    _OpenedFileHandle file, {
+    bool forExplicitLock = false,
+  }) async {
     final existing = file.syncHandle;
     if (existing != null) {
       return existing;
@@ -420,8 +421,12 @@ class VfsWorker {
         // most operations (e.g. subsequent reads and writes), we keep a lock
         // across requests.
         if (!file.explicitlyLocked) {
-          _implicitlyHeldLocks.add(file);
-          _log('Acquired implicit lock for ${file.debugPath}');
+          if (forExplicitLock) {
+            file.explicitlyLocked = true;
+          } else {
+            _implicitlyHeldLocks.add(file);
+            _log('Acquired implicit lock for ${file.debugPath}');
+          }
         }
         return handle;
       } catch (e) {

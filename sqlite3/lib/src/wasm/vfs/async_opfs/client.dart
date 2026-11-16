@@ -169,8 +169,8 @@ class WasmFile extends BaseVfsFile {
   int xCheckReservedLock() {
     // Copying the approach from sqlite3's implementation here: We can't check
     // whether another tab has a lock on this file without racing. So, we just
-    // reprot whether _we_ have a lock...
-    return lockStatus != SqlFileLockingLevels.SQLITE_LOCK_NONE ? 1 : 0;
+    // report whether _we_ have a lock...
+    return lockStatus >= SqlFileLockingLevels.SQLITE_LOCK_RESERVED ? 1 : 0;
   }
 
   @override
@@ -216,6 +216,8 @@ class WasmFile extends BaseVfsFile {
         mode == SqlFileLockingLevels.SQLITE_LOCK_NONE) {
       vfs._runInWorker(WorkerOperation.xUnlock, Flags(fd, mode, 0));
     }
+
+    lockStatus = mode;
   }
 
   @override

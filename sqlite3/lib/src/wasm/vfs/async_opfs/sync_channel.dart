@@ -60,21 +60,41 @@ class RequestResponseSynchronizer {
 
     // Async worker will take over here...
 
-    Atomics.wait(int32View, _responseIndex, -1);
-    return Atomics.load(int32View, _responseIndex);
+    var rc = Atomics.load(int32View, _responseIndex);
+    while (rc == -1) {
+      // Wait for a -1 value. The loop prevents race conditions where a previous
+      // request didn't have to wait and we're now getting that notify.
+      Atomics.wait(int32View, _responseIndex, -1);
+      rc = Atomics.load(int32View, _responseIndex);
+    }
+
+    return rc;
   }
 
-  String waitForRequest() {
-    return Atomics.waitWithTimeout(
-      int32View,
-      _requestIndex,
-      -1,
-      asyncIdleWaitTimeMs,
-    );
+  /// Waits for a request, returning false if that timed out.
+  bool waitForRequest() {
+    var rc = Atomics.load(int32View, _requestIndex);
+    while (rc == -1) {
+      final code = Atomics.waitWithTimeout(
+        int32View,
+        _requestIndex,
+        -1,
+        asyncIdleWaitTimeMs,
+      );
+      if (code == Atomics.timedOut) {
+        return false;
+      }
+
+      rc = Atomics.load(int32View, _requestIndex);
+    }
+
+    return true;
   }
 
   int takeOpcode() {
     final opcode = Atomics.load(int32View, _requestIndex);
+    assert(opcode != -1);
+
     Atomics.store(int32View, _requestIndex, -1);
     return opcode;
   }
