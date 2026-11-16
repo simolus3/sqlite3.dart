@@ -16,14 +16,14 @@ impl PoolClient {
 
     pub fn register_update_listener(&mut self, update_listener: DartPort) {
         self.update_listeners.push(update_listener);
-        let mut pool = self.pool.lock().unwrap();
+        let mut pool = self.pool.state.lock().unwrap();
         pool.register_update_listener(update_listener);
     }
 
     pub fn remove_update_listener(&mut self, update_listener: DartPort) {
         self.update_listeners
             .retain(|listener| listener != &update_listener);
-        let mut pool = self.pool.lock().unwrap();
+        let mut pool = self.pool.state.lock().unwrap();
         pool.remove_update_listeners(&[update_listener]);
     }
 }
@@ -31,7 +31,7 @@ impl PoolClient {
 impl Drop for PoolClient {
     fn drop(&mut self) {
         if !self.update_listeners.is_empty() {
-            let mut pool = self.pool.lock().unwrap();
+            let mut pool = self.pool.state.lock().unwrap();
             pool.remove_update_listeners(&self.update_listeners);
         }
     }

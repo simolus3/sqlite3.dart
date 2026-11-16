@@ -5,7 +5,7 @@ import 'dart:io';
 const sqlitePath = 'sqlite-amalgamation-3540100';
 const sqliteSource = 'https://sqlite.org/2026/$sqlitePath.zip';
 const sqliteMultipleCiphersSource =
-    'https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.6.1/sqlite3mc-2.6.1-sqlite-3.54.0-amalgamation.zip';
+    'https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.7.1/sqlite3mc-2.7.1-sqlite-3.54.1-amalgamation.zip';
 
 const sqlcipherVersion = '4.20.0';
 const sqlcipherSource =
@@ -49,7 +49,16 @@ void main(List<String> args) async {
 }
 
 Future<void> _downloadAndExtract(String url, String filename) async {
-  await _run('curl -L $url --output $filename.zip', workingDirectory: tmpDir);
+  final forwardToken = switch (Platform.environment['GH_TOKEN']) {
+    final token? when token.isNotEmpty && Uri.parse(url).host == 'github.com' =>
+      '-H "Authorization: Bearer \$GH_TOKEN" ',
+    _ => '',
+  };
+
+  await _run(
+    'curl -fL $forwardToken$url --output $filename.zip',
+    workingDirectory: tmpDir,
+  );
   await _run('unzip $filename.zip', workingDirectory: tmpDir);
 }
 

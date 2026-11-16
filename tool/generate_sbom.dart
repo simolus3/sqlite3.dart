@@ -7,7 +7,7 @@ import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:path/path.dart' as p;
 import 'package:crypto/crypto.dart' show sha256;
 
-import 'download_sqlite.dart' as download_sqlite;
+import 'compile/download_sqlite.dart' as download_sqlite;
 
 const openSslVersion = '4.1.0';
 

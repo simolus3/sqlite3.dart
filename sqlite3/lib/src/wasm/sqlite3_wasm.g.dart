@@ -66,6 +66,7 @@ extension type SqliteExports(JSObject raw) implements JSObject {
     Pointer /*<struct sqlite3 *>*/ db,
     ExternalDartReference<Object>? callback,
   );
+  external JSFunction? get dart_sqlite3_trace;
   external int dart_sqlite3_unregister_vfs(
     Pointer /*<struct sqlite3_vfs *>*/ vfs,
   );

@@ -7,7 +7,6 @@ import 'package:meta/meta.dart';
 
 import '../constants.dart';
 import '../database.dart';
-import '../exception.dart';
 import '../functions.dart';
 import '../result_set.dart';
 import '../statement.dart';
@@ -31,6 +30,9 @@ base class DatabaseImplementation implements CommonDatabase {
   _StreamHandlers<SqliteUpdate, void Function()>? _updates;
   _StreamHandlers<void, void Function()>? _rollbacks;
   _StreamHandlers<void, VoidPredicate>? _commits;
+
+  /// The trace callback registered through [trace], if any.
+  SqliteTraceCallback? _trace;
 
   @internal
   var isClosed = false;
@@ -271,25 +273,17 @@ base class DatabaseImplementation implements CommonDatabase {
     _commits?.close();
     _rollbacks?.close();
 
+    if (_trace != null) {
+      _trace = null;
+      database.sqlite3_trace_v2(0, null);
+    }
+
     if (isBorrowed) {
       // Keep the connection open for the actual owner of it to use.
       return;
     }
 
-    final code = database.sqlite3_close_v2();
-    SqliteException? exception;
-    if (code != SqlError.SQLITE_OK) {
-      exception = createExceptionRaw(
-        bindings,
-        database,
-        code,
-        operation: 'closing database',
-      );
-    }
-
-    if (exception != null) {
-      throw exception;
-    }
+    database.sqlite3_close_v2();
   }
 
   @override
@@ -406,6 +400,14 @@ base class DatabaseImplementation implements CommonDatabase {
       }
     }
 
+    // SQLite treats a NUL char as a statement terminator, but we need to skip
+    // past it to read subsequent statements.
+    void skipNulBytes() {
+      while (offset < bytes.length && bytes[offset] == 0) {
+        offset++;
+      }
+    }
+
     while (offset < bytes.length) {
       final result = compiler.sqlite3_prepare(
         offset,
@@ -435,6 +437,7 @@ base class DatabaseImplementation implements CommonDatabase {
       }
 
       offset = endOffset;
+      skipNulBytes();
 
       if (createdStatements.length == maxStatements) {
         break;
@@ -451,7 +454,6 @@ base class DatabaseImplementation implements CommonDatabase {
           prepFlags,
         );
         offset = compiler.endOffset;
-
         final stmt = result.result;
 
         if (stmt != null) {
@@ -472,6 +474,8 @@ base class DatabaseImplementation implements CommonDatabase {
             'Has trailing data after the first sql statement:',
           );
         }
+
+        skipNulBytes();
       }
     }
 
@@ -527,6 +531,55 @@ base class DatabaseImplementation implements CommonDatabase {
 
   @override
   Stream<SqliteUpdate> get updatesSync => _updatesHandler().syncStream;
+
+  @override
+  SqliteTraceCallback? get trace => _trace;
+
+  @override
+  set trace(SqliteTraceCallback? callback) {
+    ensureOpen();
+
+    if (callback == null) {
+      if (_trace == null) return;
+
+      _trace = null;
+      database.sqlite3_trace_v2(0, null);
+      return;
+    }
+
+    var mask = 0;
+    if (callback.statement) mask |= SQLITE_TRACE_STMT;
+    if (callback.profile) mask |= SQLITE_TRACE_PROFILE;
+    if (callback.row) mask |= SQLITE_TRACE_ROW;
+
+    if (mask == 0) {
+      throw ArgumentError(
+        'At least one event category must be enabled when tracing.',
+      );
+    }
+
+    final result = database.sqlite3_trace_v2(mask, _handleTrace);
+    if (result != SqlError.SQLITE_OK) {
+      throwException(this, result, operation: 'register trace callback');
+    }
+
+    _trace = callback;
+  }
+
+  /// A stable callback dispatching to the callback registered through
+  /// [trace].
+  ///
+  /// Backends keep a single native callback per database, so this method is
+  /// always passed to `sqlite3_trace_v2` and dispatches through [_trace] -
+  /// which the [trace] setter may replace at any time.
+  int _handleTrace(SqliteTrace trace) {
+    final callback = _trace;
+    if (callback != null) {
+      return callback.onTrace(trace);
+    }
+
+    return 0;
+  }
 
   @override
   Stream<void> get rollbacks => _rollbackHandler().stream;

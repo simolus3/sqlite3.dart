@@ -77,16 +77,21 @@ class HeldLock {
 /// Additionally, we want to avoid lock overhead for single-tab apps. So, the
 /// lock protocol is as follows:
 ///
-///   1. Obtain an outer lock, stealing it if necessary.
-///   2. Obtain an inner lock.
-///   3. Run the exclusive operation.
-///   4. Wait for another tab to steal the outer lock from us.
-///   5. Return the inner lock.
+///   1. Obtain a temporary lock (not needed for correctness, but improves
+///      contention handling).
+///   2. Obtain an outer lock, stealing it if necessary.
+///   3. Obtain an inner lock.
+///   4. Return the temporary lock.
+///   5. Run the exclusive operation.
+///   6. Wait for another tab to steal the outer lock from us.
+///   7. Return the inner lock.
 final class DatabaseLocks {
   @visibleForTesting
   final String outerLockName;
   @visibleForTesting
   final String innerLockName;
+
+  final String _temporaryLockName;
 
   final Mutex _dartMutex = Mutex();
 
@@ -106,7 +111,8 @@ final class DatabaseLocks {
   (HeldLock, HeldLock)? _heldNavigatorLocks;
 
   DatabaseLocks(this.innerLockName, this.needsInterContextLocks)
-    : outerLockName = '$innerLockName-outer';
+    : outerLockName = '$innerLockName-outer',
+      _temporaryLockName = '$innerLockName-tmp';
 
   /// Returns whether a synchronous block could run immediately.
   ///
@@ -127,10 +133,17 @@ final class DatabaseLocks {
   Future<void> _acquireNavigatorLocks(AbortSignal? abortSignal) async {
     assert(_heldNavigatorLocks == null);
     final locks = WebLocks.instance!;
-    HeldLock? outer, inner;
+    HeldLock? temporary, outer, inner;
 
     try {
-      // 1. Request the outer lock, stealing it from another tab if necessary.
+      // 1. Serialize lock requests to reduce contention noise as tabs try to
+      // steal the outer lock from each other.
+      temporary = await locks.request(
+        _temporaryLockName,
+        abortSignal: abortSignal,
+      );
+
+      // 2. Request the outer lock, stealing it from another tab if necessary.
       outer = await locks.request(
         outerLockName,
         steal: true,
@@ -138,7 +151,7 @@ final class DatabaseLocks {
         // Not passing an abort signal here, those aren't supported with steal.
       );
 
-      // 2. Obtain the inner lock.
+      // 3. Obtain the inner lock.
       inner = await locks.request(innerLockName, abortSignal: abortSignal);
 
       await _attachedVfs?.markHasExclusiveAccess();
@@ -148,6 +161,9 @@ final class DatabaseLocks {
       outer?.release();
       inner?.release();
       rethrow;
+    } finally {
+      // Step 4
+      temporary?.release();
     }
   }
 
@@ -158,7 +174,7 @@ final class DatabaseLocks {
   }
 
   void _handleOuterLockStolen() {
-    // Step 4 and 5.
+    // Step 6 and 7.
     releaseNavigatorLocks();
   }
 
@@ -176,9 +192,9 @@ final class DatabaseLocks {
       }
 
       return _acquireNavigatorLocks(abortSignal).then((_) {
-        // Step 3: Run the exclusive operation.
+        // Step 5: Run the exclusive operation.
         return criticalSection();
-        // Note: Step 4 and 5 run when the outer lock gets stolen from us, a
+        // Note: Step 6 and 7 run when the outer lock gets stolen from us, a
         // callback reacting to that would have been installed at this point.
       });
     });

@@ -101,7 +101,7 @@ void testVfs(FutureOr<CommonSqlite3> Function() loadSqlite) {
       ]);
     },
     // This test requires SQLITE_ENABLE_BATCH_ATOMIC_WRITE.
-    tags: 'require_built',
+    tags: ['require_built', 'require_non_encrypted'],
   );
 }
 

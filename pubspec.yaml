@@ -12,7 +12,7 @@ dependencies:
   pool: ^1.5.2
   hooks: ^2.0.0
 
-  code_assets: ^2.0.0
+  code_assets: ^2.2.0
 
 workspace:
   - sqlite3

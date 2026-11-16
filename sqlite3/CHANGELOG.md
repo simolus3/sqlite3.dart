@@ -1,5 +1,24 @@
-## 3.8.1-wip
 
+## 3.9.2-wip
+
+- Fix native finalizers for statements and databases running a second time on
+  an already-released handle when the isolate is killed while a statement or
+  database is being closed. This caused crashes in `sqlite3_finalize` during
+  isolate shutdown.
+- Update SQLite3 Multiple Ciphers to version 2.7.0.
+- Fix `prepare`, `prepareMultiple` and `select` never returning for SQL
+  containing a NUL character. A NUL now separates statements, so a statement
+  after one is found by `prepareMultiple` and refused as a trailing statement
+  by `select` and `prepare(checkNoTail: true)`.
+
+## 3.9.1
+
+- Hook: Improve error message when a download from GitHub releases fails.
+
+## 3.9.0
+
+- Add `CommonDatabase.trace`, reporting statement trace events through a
+  callback registered with `sqlite3_trace_v2`.
 - Add `Database.interrupt()` and `Database.isInterrupted` on native platforms.
 - IndexedDB file system: Treat unexpected abort events as errors.
 - Update SQLCipher to version 4.20.0.

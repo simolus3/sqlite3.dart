@@ -242,9 +242,11 @@ final class WasmDatabase implements RawSqliteDatabase {
   }
 
   @override
-  int sqlite3_close_v2() {
+  void sqlite3_close_v2() {
     bindings.databaseFinalizer?.detach(detach);
-    return bindings.sqlite3_close_v2(db);
+    final rc = bindings.sqlite3_close_v2(db);
+    // sqlite3_close_v2 can't fail, see FfiDatabase.sqlite3_close_v2.
+    assert(rc == SqlError.SQLITE_OK);
   }
 
   @override
@@ -382,6 +384,23 @@ final class WasmDatabase implements RawSqliteDatabase {
   @override
   void sqlite3_rollback_hook(RawRollbackHook? hook) {
     bindings.dart_sqlite3_rollbacks(db, hook);
+  }
+
+  @override
+  int sqlite3_trace_v2(int mask, RawTraceHook? hook) {
+    if (!bindings.supportsDartSqliteTrace) {
+      // Old wasm bundles don't export the (unstable) dart_sqlite3_trace
+      // symbol. Registering fails loudly, unregistering is a harmless no-op.
+      if (hook != null) {
+        throw UnsupportedError(
+          'Tracing is not supported by the current sqlite3.wasm bundle, try '
+          'upgrading to a more recent version.',
+        );
+      }
+      return 0;
+    }
+
+    return bindings.dart_sqlite3_trace(db, mask, hook);
   }
 
   @override

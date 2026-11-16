@@ -208,7 +208,7 @@ final class SimpleOpfsFileSystem extends BaseVirtualFileSystem {
     if (type == null) {
       return _memory.xDelete(path, syncDir);
     } else {
-      _requireFiles().markExists(type, false);
+      _requireFiles().markExists(type, false, flush: syncDir != 0);
     }
   }
 
@@ -374,13 +374,29 @@ final class _OpfsFiles {
   _OpfsFiles(this.metaHandle, this.database, this.journal);
 
   bool exists(FileType type) {
-    metaHandle.readDart(_existsList, FileSystemReadWriteOptions(at: 0));
+    final readBytes = metaHandle.readDart(
+      _existsList,
+      FileSystemReadWriteOptions(at: 0),
+    );
+    _checkSize(readBytes);
     return _existsList[type.index] != 0;
   }
 
-  void markExists(FileType type, bool exists) {
+  void markExists(FileType type, bool exists, {bool flush = false}) {
     _existsList[type.index] = exists ? 1 : 0;
-    metaHandle.writeDart(_existsList, FileSystemReadWriteOptions(at: 0));
+    final writtenBytes = metaHandle.writeDart(
+      _existsList,
+      FileSystemReadWriteOptions(at: 0),
+    );
+
+    _checkSize(writtenBytes);
+    if (flush) metaHandle.flush();
+  }
+
+  void _checkSize(int actualBytes) {
+    if (actualBytes != _existsList.length) {
+      throw VfsException(SqlError.SQLITE_IOERR);
+    }
   }
 
   FileSystemSyncAccessHandle handleFor(FileType type) {

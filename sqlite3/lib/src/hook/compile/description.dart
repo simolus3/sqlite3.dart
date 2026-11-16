@@ -315,29 +315,38 @@ final class PrecompiledFromGithubAssets extends PrecompiledBinary {
       ..findProxy = HttpClient.findProxyFromEnvironment;
     final uri = downloadUri(filename);
 
-    HttpClientResponse response;
     try {
-      final request = await client.getUrl(uri);
-      request.headers.add(
-        'User-Agent',
-        'github.com/simolus3/sqlite3.dart artifact downloader, version $releaseTag',
-      );
-      response = await request.close();
-    } catch (e, s) {
-      // Improve error message by providing some context about why we download
-      // SQLite.
-      Error.throwWithStackTrace(CouldNotDownloadException(uri, e), s);
-    }
-
-    await for (final chunk in response) {
-      if (chunk is Uint8List) {
-        yield chunk;
-      } else {
-        yield Uint8List.fromList(chunk);
+      HttpClientResponse response;
+      try {
+        final request = await client.getUrl(uri);
+        request.headers.add(
+          'User-Agent',
+          'github.com/simolus3/sqlite3.dart artifact downloader, version $releaseTag',
+        );
+        response = await request.close();
+      } catch (e, s) {
+        // Improve error message by providing some context about why we download
+        // SQLite.
+        Error.throwWithStackTrace(CouldNotDownloadException(uri, e), s);
       }
-    }
 
-    client.close();
+      if (response.statusCode != HttpStatus.ok) {
+        throw CouldNotDownloadException(
+          uri,
+          'Unexpected response code: ${response.statusCode} ${response.reasonPhrase}',
+        );
+      }
+
+      await for (final chunk in response) {
+        if (chunk is Uint8List) {
+          yield chunk;
+        } else {
+          yield Uint8List.fromList(chunk);
+        }
+      }
+    } finally {
+      client.close();
+    }
   }
 
   static const defaultUrlPattern =
@@ -570,7 +579,6 @@ final class CouldNotDownloadException {
   }
 }
 
-// Keep in sync with tool/compile_sqlite.dart
 const _defaultDefines = '''
   SQLITE_ENABLE_DBSTAT_VTAB
   SQLITE_ENABLE_FTS5
@@ -587,7 +595,6 @@ const _defaultDefines = '''
   SQLITE_OMIT_PROGRESS_CALLBACK
   SQLITE_OMIT_SHARED_CACHE
   SQLITE_OMIT_TCL_VARIABLE
-  SQLITE_OMIT_TRACE
   SQLITE_USE_ALLOCA
   SQLITE_ENABLE_SESSION
   SQLITE_ENABLE_PREUPDATE_HOOK
@@ -597,5 +604,4 @@ const _defaultDefines = '''
   SQLITE_HAVE_LOCALTIME_S
   SQLITE_HAVE_MALLOC_USABLE_SIZE
   SQLITE_HAVE_STRCHRNUL
-  SQLITE_ENABLE_BATCH_ATOMIC_WRITE
 ''';

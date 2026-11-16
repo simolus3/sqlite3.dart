@@ -9,7 +9,7 @@ import 'package:pool/pool.dart';
 
 import 'package:sqlite3/src/hook/compile/description.dart';
 
-import '../sqlite3/hook/build.dart' as hook;
+import '../../sqlite3/hook/build.dart' as hook;
 
 final _limitConcurrency = Pool(Platform.numberOfProcessors);
 
@@ -62,6 +62,7 @@ void main() async {
             includes: [p.dirname(sourceFile)],
             defines: {
               'SQLITE_ENABLE_API_ARMOR': '1',
+              'SQLITE_ENABLE_BATCH_ATOMIC_WRITE': '1',
               ...CompilerDefines.defaults(false),
             },
             flags: [

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'functions.dart';
 import 'result_set.dart';
 import 'statement.dart';
@@ -111,6 +113,54 @@ abstract class CommonDatabase {
   /// See also:
   ///   - [Commit Hooks](https://www.sqlite.org/c3ref/commit_hook.html)
   Stream<void> get rollbacks;
+
+  /// The trace callback currently registered on this database, if any.
+  ///
+  /// The callback is invoked synchronously for statement trace events, as
+  /// reported by [sqlite3_trace_v2](https://www.sqlite.org/c3ref/trace_v2.html).
+  /// It runs while the traced statement is running - in particular, it is
+  /// invoked before the call running the statement (e.g. [execute] or
+  /// [select]) returns. Events are always reported in the order in which they
+  /// occur; use [SqliteTraceWithStatement.statementAddress] to correlate
+  /// events belonging to the same statement.
+  ///
+  /// Only the event categories enabled through [SqliteTraceCallback.statement],
+  /// [SqliteTraceCallback.row] and [SqliteTraceCallback.profile] are reported.
+  /// As this property mirrors the underlying C interface, a database only
+  /// supports a single trace callback: assigning a new callback (or enabling
+  /// different categories) replaces the previous registration. Applications
+  /// observing the same database from multiple places can fan events out in
+  /// their callback.
+  ///
+  /// As the callback runs as part of running statements, it must not modify
+  /// the database. Exceptions thrown by the callback are ignored (they cannot
+  /// be propagated through sqlite's native frames); the value it returns is
+  /// passed back to sqlite, which currently ignores it. Note that durations
+  /// reported by [SqliteTraceProfile] events include the overhead of invoking
+  /// the callback itself.
+  ///
+  /// While a callback is registered, statements report events by invoking it
+  /// synchronously - one invocation per enabled event. In particular, enabling
+  /// [SqliteTraceCallback.row] adds overhead proportional to the number of
+  /// rows returned by statements, so unless row-level events are needed, prefer
+  /// a smaller set of categories such as [SqliteTraceCallback.statement] and
+  /// [SqliteTraceCallback.profile].
+  ///
+  /// Assigning a callback throws an [UnsupportedError] if the sqlite3 library
+  /// in use doesn't support tracing, e.g. because an outdated `sqlite3.wasm`
+  /// bundle is being used. All native sqlite3 libraries shipped with releases
+  /// of this package support tracing.
+  SqliteTraceCallback? get trace;
+
+  /// Registers [callback] as this database's trace callback, replacing any
+  /// previous registration.
+  ///
+  /// Assigning `null` removes the callback, after which statements no longer
+  /// report trace events. Doing so is a no-op if no callback is registered or
+  /// if the sqlite3 library in use does not support tracing at all.
+  ///
+  /// See [trace] for the semantics of registered callbacks.
+  set trace(SqliteTraceCallback? callback);
 
   /// Executes the [sql] statement(s) with the provided [parameters], ignoring
   /// any rows returned by the statement(s).
@@ -382,6 +432,113 @@ final class SqliteUpdate {
   String toString() {
     return 'SqliteUpdate: $kind on $tableName, rowid = $rowId';
   }
+}
+
+/// A callback for trace events, as registered through [CommonDatabase.trace].
+///
+/// {@category common}
+final class SqliteTraceCallback {
+  /// Creates a trace callback that is invoked for the event categories
+  /// enabled through [statement], [row] and [profile].
+  ///
+  /// At least one of these categories must be enabled.
+  SqliteTraceCallback(
+    this.onTrace, {
+    this.statement = true,
+    this.row = true,
+    this.profile = true,
+  });
+
+  /// The function invoked synchronously while the traced statement is
+  /// running.
+  ///
+  /// It must return `0`: sqlite currently ignores the value returned by
+  /// trace callbacks, but reserves it for future use. Applications must not
+  /// modify the database from the callback.
+  final int Function(SqliteTrace trace) onTrace;
+
+  /// Whether to report statements starting to run, as [SqliteTraceStatement]
+  /// events.
+  final bool statement;
+
+  /// Whether to report rows returned by a running statement, as
+  /// [SqliteTraceRow] events.
+  final bool row;
+
+  /// Whether to report statements finishing to run, as [SqliteTraceProfile]
+  /// events.
+  final bool profile;
+}
+
+/// A trace event reported by [CommonDatabase.trace].
+///
+/// {@category common}
+sealed class SqliteTrace {}
+
+/// A [SqliteTrace] event that belongs to a single prepared statement.
+///
+/// {@category common}
+abstract interface class SqliteTraceWithStatement {
+  /// An opaque address identifying the native statement object this event
+  /// belongs to. It is stable for the duration of the statement's execution,
+  /// so it can be used to correlate the events reported for it.
+  int get statementAddress;
+}
+
+/// A statement starting to run, as reported by
+/// [CommonDatabase.trace].
+///
+/// {@category common}
+final class SqliteTraceStatement extends SqliteTrace
+    implements SqliteTraceWithStatement {
+  /// The unexpanded SQL text of the statement, or `null` when sqlite does
+  /// not provide SQL text (e.g. for internal statements).
+  final String? sql;
+
+  @override
+  final int statementAddress;
+
+  SqliteTraceStatement(this.sql, this.statementAddress);
+
+  @override
+  String toString() =>
+      'SqliteTraceStatement: ${sql ?? '<no sql>'} ($statementAddress)';
+}
+
+/// A statement finishing to run, as reported by
+/// [CommonDatabase.trace].
+///
+/// {@category common}
+final class SqliteTraceProfile extends SqliteTrace
+    implements SqliteTraceWithStatement {
+  /// How long the statement took to run.
+  ///
+  /// Note that this duration includes the overhead of invoking trace
+  /// callbacks reported while the statement was running.
+  final Duration duration;
+
+  @override
+  final int statementAddress;
+
+  SqliteTraceProfile(this.duration, this.statementAddress);
+
+  @override
+  String toString() => 'SqliteTraceProfile: $duration ($statementAddress)';
+}
+
+/// A row being returned by a running statement, as reported by
+/// [CommonDatabase.trace].
+///
+/// {@category common}
+final class SqliteTraceRow extends SqliteTrace
+    implements SqliteTraceWithStatement {
+  @override
+  final int statementAddress;
+
+  SqliteTraceRow(this.statementAddress);
+
+  @override
+  String toString() => 'SqliteTraceRow ($statementAddress)';
 }
 
 /// Make configuration changes to the database connection.

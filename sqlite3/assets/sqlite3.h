@@ -48,6 +48,9 @@ void* sqlite3_update_hook(sqlite3*,
                           void*);
 void* sqlite3_commit_hook(sqlite3*, int (*)(void*), void*);
 void* sqlite3_rollback_hook(sqlite3*, void (*)(void*), void*);
+int sqlite3_trace_v2(sqlite3* db, unsigned int mask,
+                     int (*xCallback)(unsigned int, void*, void*, void*),
+                     void* ctx);
 int sqlite3_get_autocommit(sqlite3* db);
 int sqlite3_db_release_memory(sqlite3* db);
 int sqlite3_db_status64(sqlite3* db, int op, int64_t* pCur, int64_t* pHiwtr,

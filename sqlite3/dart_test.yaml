@@ -4,6 +4,7 @@ tags:
   wasm:
     test_on: browser
   require_built:
+  require_non_encrypted:
   ci_only:
     skip: "This test requires special setup and only runs in the GitHub CI action"
 
@@ -46,3 +47,7 @@ presets:
     tags:
       require_built:
         skip: "Requires SQLite build from this package"
+  encrypted:
+    tags:
+      require_non_encrypted:
+        skip: "Requires SQLite build without encryption"

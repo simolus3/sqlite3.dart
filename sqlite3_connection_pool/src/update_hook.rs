@@ -49,9 +49,9 @@ impl CollectedTableUpdates {
             0
         }
 
-        (functions.sqlite3_update_hook)(connection, Some(update_hook), ptr.cast());
-        (functions.sqlite3_commit_hook)(connection, Some(commit_hook), ptr.cast());
-        (functions.sqlite3_rollback_hook)(connection, Some(rollback_hook), ptr.cast());
+        (functions.sqlite.sqlite3_update_hook)(connection, Some(update_hook), ptr.cast());
+        (functions.sqlite.sqlite3_commit_hook)(connection, Some(commit_hook), ptr.cast());
+        (functions.sqlite.sqlite3_rollback_hook)(connection, Some(rollback_hook), ptr.cast());
     }
 
     fn handle_update(&mut self, table: &CStr) {
@@ -128,6 +128,6 @@ fn raw_send_update_notification(
 
     // Send to registered update ports.
     for listener in listeners {
-        (functions.dart_post_c_object)(*listener, &mut dart_msg);
+        (functions.dart.post_c_object)(*listener, &mut dart_msg);
     }
 }
