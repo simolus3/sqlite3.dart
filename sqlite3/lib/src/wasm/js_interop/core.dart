@@ -26,12 +26,43 @@ extension type WrappedJSObject._(JSObject _) implements JSObject {
   external static JSArray<JSAny?> keys(JSObject o);
 }
 
+const _isCompilingToJavaScript = identical(0, 0.0);
+
+// Range of integers we can safely convert to a JS double.
+const _maxSafeInteger = 9007199254740991;
+const _minSafeInteger = -9007199254740991;
+
+final JSBigInt _twoTo32 = _bigInt(0x100000000.toJS);
+
 extension type JsBigInt(JSBigInt _jsBigInt) implements JSBigInt {
   factory JsBigInt.parse(String s) => JsBigInt(_bigInt(s.toJS));
-  factory JsBigInt.fromInt(int i) => JsBigInt(_bigInt(i.toJS));
+
+  factory JsBigInt.fromInt(int i) {
+    if (_isCompilingToJavaScript ||
+        (i >= _minSafeInteger && i <= _maxSafeInteger)) {
+      return JsBigInt(_bigInt(i.toJS));
+    }
+
+    // A 64-bit int (dart2wasm) that i.toJS would round: combine its halves.
+    final high = _bigInt((i >> 32).toJS);
+    final low = _bigInt((i & 0xFFFFFFFF).toJS);
+    return JsBigInt(high.multiply(_twoTo32).add(low) as JSBigInt);
+  }
+
   factory JsBigInt.fromBigInt(BigInt i) => JsBigInt.parse(i.toString());
 
-  int get asDartInt => _number(_jsBigInt).toDartInt;
+  int get asDartInt {
+    final number = _number(_jsBigInt);
+    if (_isCompilingToJavaScript || _numberIsSafeInteger(number).toDart) {
+      return number.toDartInt;
+    }
+
+    // A 64-bit int (dart2wasm) that Number() rounded: combine its halves.
+    // The remainder has the sign of this value, so add it instead of or-ing.
+    final high = _number(_jsBigInt.divide(_twoTo32)).toDartInt;
+    final low = _number(_jsBigInt.modulo(_twoTo32)).toDartInt;
+    return (high << 32) + low;
+  }
 
   Object get asDartBigInt {
     if (!supportDartBigInts) {

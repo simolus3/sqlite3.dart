@@ -11,6 +11,8 @@
   after one is found by `prepareMultiple` and refused as a trailing statement
   by `select` and `prepare(checkNoTail: true)`.
 - Fix a few locking issues in `WasmVfs` ([#439](https://github.com/simolus3/sqlite3.dart/issues/439)).
+- Web: `JsBigInt.asDartInt` and `JsBigInt.fromInt` now convert 64-bit integers outside
+  the safe integer range of a JavaScript number exactly (dart2wasm).
 
 ## 3.9.1
 
