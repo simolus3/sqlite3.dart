@@ -1,4 +1,4 @@
-## 0.9.7-wip
+## 0.9.7
 
 - Fix integers outside the safe range of a JavaScript number (beyond 2^53) being
   rounded when sent to or read from a worker, or an in-context database, with

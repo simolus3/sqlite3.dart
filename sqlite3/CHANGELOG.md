@@ -1,5 +1,5 @@
 
-## 3.9.2-wip
+## 3.9.2
 
 - Fix native finalizers for statements and databases running a second time on
   an already-released handle when the isolate is killed while a statement or
