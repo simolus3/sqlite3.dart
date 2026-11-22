@@ -274,6 +274,7 @@ export class DatabaseClient implements WebSqlite {
     databaseName?: string;
   }): Promise<FeatureDetectionResult> {
     const dbName = options?.databaseName ?? null;
+    const errors: Error[] = [];
     await this.#startWorkers();
 
     const existing: ExistingDatabase[] = [];
@@ -299,9 +300,9 @@ export class DatabaseClient implements WebSqlite {
         >(
           { t: typeDedicatedCompatibilityCheck, d: dbName },
           typeSimpleSuccessResponse,
-          AbortSignal.timeout(workerInitializationTimeout),
         );
-      } catch {
+      } catch (cause) {
+        errors.push(new Error(`Dedicated worker`, { cause }));
         return;
       }
 
@@ -339,9 +340,9 @@ export class DatabaseClient implements WebSqlite {
         >(
           { t: typeSharedCompatibilityCheck, d: dbName },
           typeSimpleSuccessResponse,
-          AbortSignal.timeout(workerInitializationTimeout),
         );
-      } catch {
+      } catch (cause) {
+        errors.push(new Error(`Shared worker`, { cause }));
         return;
       }
 
@@ -382,6 +383,7 @@ export class DatabaseClient implements WebSqlite {
       missingFeatures: [...this.#missingFeatures],
       existingDatabases: existing,
       availableImplementations: available,
+      errors,
     });
   }
 
@@ -730,5 +732,3 @@ class RemoteFileSystem implements FileSystem {
 function fileTypeIndex(type: FileType): number {
   return type == "database" ? 0 : 1;
 }
-
-const workerInitializationTimeout = 1_000;

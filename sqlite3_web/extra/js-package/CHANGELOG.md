@@ -1,3 +1,7 @@
+## 0.2.6
+
+- Report worker errors from feature detection.
+
 ## 0.2.5
 
 - Allow passing custom type codes for requests, include them in responses.

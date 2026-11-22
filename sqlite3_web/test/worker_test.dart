@@ -483,6 +483,21 @@ void main() {
     );
     await second.execute('SELECT 1');
   });
+
+  test('reports errors for workers', () async {
+    final client = WebSqlite.open(
+      workers: .defaultWorkers('/invalid/path.js'),
+      wasmModule: sqlite3WasmUri,
+    );
+
+    final results = await client.runFeatureDetection();
+    // One for the dedicated, one for the shared worker.
+    expect(results.errors, hasLength(2));
+
+    final defaultDb = await client.connectToRecommended('missing_workers');
+    expect(defaultDb.access, AccessMode.inCurrentContext);
+    defaultDb.database.dispose();
+  });
 }
 
 final class _FakeWorkerConnector implements WorkerConnector {

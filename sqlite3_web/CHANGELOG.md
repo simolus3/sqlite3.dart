@@ -3,6 +3,7 @@
 - Fix integers outside the safe range of a JavaScript number (beyond 2^53) being
   rounded when sent to or read from a worker, or an in-context database, with
   dart2wasm: such values are now transferred as `BigInt`s and read back exactly.
+- Remove worker timeout, report worker errors in feature detection.
 
 # 0.9.6
 

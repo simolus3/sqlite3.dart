@@ -141,6 +141,8 @@ export interface FeatureDetectionResult {
    * All available database implementations that can be used in the current browser.
    */
   availableImplementations: DatabaseImplementation[];
+  /** Errors when received from workers before they responded with available features. */
+  errors: Error[];
 }
 
 /**

@@ -552,6 +552,7 @@ final class DatabaseClient implements WebSqlite {
 
     final existing = <ExistingDatabase>{};
     final available = <DatabaseImplementation>[];
+    final errors = <(Object, StackTrace)>[];
     var workersReportedIndexedDbSupport = false;
 
     Future<void> dedicatedCompatibilityCheck(
@@ -559,16 +560,15 @@ final class DatabaseClient implements WebSqlite {
     ) async {
       SimpleSuccessResponse response;
       try {
-        response = await connection
-            .sendRequest(
-              newDedicatedCompatibilityCheck(
-                requestId: 0,
-                databaseName: databaseName,
-              ),
-              MessageType.simpleSuccessResponse,
-            )
-            .timeout(_workerInitializationTimeout);
-      } on Object {
+        response = await connection.sendRequest(
+          newDedicatedCompatibilityCheck(
+            requestId: 0,
+            databaseName: databaseName,
+          ),
+          MessageType.simpleSuccessResponse,
+        );
+      } on Object catch (e, s) {
+        errors.add((e, s));
         return;
       }
 
@@ -607,16 +607,12 @@ final class DatabaseClient implements WebSqlite {
     Future<void> sharedCompatibilityCheck(WorkerConnection connection) async {
       SimpleSuccessResponse response;
       try {
-        response = await connection
-            .sendRequest(
-              newSharedCompatibilityCheck(
-                requestId: 0,
-                databaseName: databaseName,
-              ),
-              MessageType.simpleSuccessResponse,
-            )
-            .timeout(_workerInitializationTimeout);
-      } on Object {
+        response = await connection.sendRequest(
+          newSharedCompatibilityCheck(requestId: 0, databaseName: databaseName),
+          MessageType.simpleSuccessResponse,
+        );
+      } on Object catch (e, s) {
+        errors.add((e, s));
         return;
       }
 
@@ -663,6 +659,7 @@ final class DatabaseClient implements WebSqlite {
       missingFeatures: _missingFeatures.toList(),
       existingDatabases: existing.toList(),
       availableImplementations: available,
+      errors: errors,
     );
   }
 
@@ -801,8 +798,6 @@ final class DatabaseClient implements WebSqlite {
     // opfsWithExternalLocks. We prefer the latter.
     return a.index.compareTo(b.index);
   }
-
-  static const _workerInitializationTimeout = Duration(seconds: 1);
 }
 
 extension on DatabaseImplementation {

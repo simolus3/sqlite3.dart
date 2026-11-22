@@ -233,10 +233,15 @@ final class FeatureDetectionResult {
   /// supported by this browser.
   final List<DatabaseImplementation> availableImplementations;
 
+  /// A list of errors reported from workers before they were able to report
+  /// available features.
+  final List<(Object, StackTrace)> errors;
+
   FeatureDetectionResult({
     required this.missingFeatures,
     required this.existingDatabases,
     required this.availableImplementations,
+    required this.errors,
   });
 
   @override

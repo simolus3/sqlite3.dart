@@ -57,6 +57,7 @@ export function sqliteTestCases(module: typeof sqlite) {
   test("feature detection", async ({ sqlite }) => {
     const results = await sqlite.runFeatureDetection();
 
+    expect(results.errors).toHaveLength(0);
     console.log(`${results}`);
   });
 
@@ -70,6 +71,16 @@ export function sqliteTestCases(module: typeof sqlite) {
 
     await db.closed;
     await expect(db.execute("SELECT 1")).rejects.toThrow();
+  });
+
+  baseTest("handles worker errors", async () => {
+    const brokenSqlite = module.openWebSqlite({
+      workers: module.defaultWorkerConnector("/not/a/worker.js"),
+      wasmUri: wasmCiphersUrl,
+    });
+
+    const features = await brokenSqlite.runFeatureDetection();
+    expect(features.errors).toHaveLength(2);
   });
 
   describe("database", () => {
