@@ -195,7 +195,6 @@ void main(List<String> args) async {
                     // https://github.com/sqlcipher/sqlcipher-android/blob/7fab57af75039e5004b087086142b11a9d2a2380/sqlcipher/src/main/jni/sqlcipher/Android.mk#L9
                     'HAVE_USLEEP',
                     'SQLITE_USE_URI',
-                    'SQLITE_ENABLE_MEMORY_MANAGEMENT',
                     if (isAppleTarget) 'SQLCIPHER_CRYPTO_CC',
                   ],
                 },

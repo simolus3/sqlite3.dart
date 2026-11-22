@@ -13,6 +13,7 @@
 - Fix a few locking issues in `WasmVfs` ([#439](https://github.com/simolus3/sqlite3.dart/issues/439)).
 - Web: `JsBigInt.asDartInt` and `JsBigInt.fromInt` now convert 64-bit integers outside
   the safe integer range of a JavaScript number exactly (dart2wasm).
+- Consistently disable `SQLITE_ENABLE_MEMORY_MANAGEMENT` (it was previously enabled by default for SQLCipher).
 
 ## 3.9.1
 
