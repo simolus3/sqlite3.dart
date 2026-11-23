@@ -21,10 +21,12 @@ void main() {
               'pkg_sqlite3_connection_pool',
             )
             // The obtain functions post completions to a port and don't obtain any
-            // locks, so we can mark them as isLeaf.
+            // locks, so we can mark them as isLeaf. The interrupt functions are a
+            // single atomic load or store each.
             ..isLeaf =
                 node.originalName.contains('obtain') ||
-                node.originalName.contains('stmt_cache')
+                node.originalName.contains('stmt_cache') ||
+                node.originalName.contains('interrupted')
             // Close functions are used for native finalizers
             ..exposeSymbolAddress = node.originalName.contains('close');
         },
